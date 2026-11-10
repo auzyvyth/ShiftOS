@@ -1,7 +1,7 @@
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { handoffSuffix } from "../lib/authHandoff";
 import { isPlatformRole } from "./platformOnly";
-import { ROOT_DOMAIN, SITE_URL, isOwnHost } from "../config/site";
+import { SITE_URL, isOwnHost } from "../config/site";
 
 // ── THE one answer to "where does this account land after signing in?" ──────
 // Plain version: password login, Google, magic links, the email-confirm link
@@ -85,12 +85,13 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
     if (profile.onboarding_complete === false && !profile.subdomain) {
       return { url: "/dealer-onboarding", hard: false };
     }
-    // Dealer dashboards live on <sub>.xdrive.my, another origin: carry the
-    // session in the hash. Only on the real domain — a preview or localhost
-    // has no dealer subdomains, and jumping anyway lands on production.
-    if (profile.subdomain && prod) {
-      return { url: `https://${profile.subdomain}.${ROOT_DOMAIN}/dashboard${handoffSuffix(session)}`, hard: true };
-    }
+    // The dashboard lives on the MAIN domain, like the salesman panels
+    // (2026-11-09). It used to open on <sub>.drevo.my: another origin, outside
+    // the installed app's scope, so the home-screen app showed Chrome's black
+    // "left the app" bar (X, title, URL) over the whole dashboard. The
+    // subdomain is the dealer's storefront for buyers only. Sign-in can start
+    // on www or a subdomain, so on prod hand the session to SITE_URL.
+    if (prod) return { url: `${SITE_URL}/dashboard${handoffSuffix(session)}`, hard: true };
     return { url: "/dashboard", hard: false };
   }
 

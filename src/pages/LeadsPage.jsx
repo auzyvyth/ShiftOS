@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Plus, Search, X, Inbox } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -170,10 +170,20 @@ function StageModal({ stage, leads, onOpen, onClose }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function LeadsPage({ dealerId = null }) {
-  const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads(dealerId);
+export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDoc }) {
+  const { leads, loading, fetching, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads(dealerId);
 
   const [openLead, setOpenLead]             = useState(null);
+
+  // Deep link (?lead=<id>): open that lead once the list has it. Once per id, so
+  // closing the drawer does not reopen it on the next refetch.
+  const openedFor = useRef(null);
+  useEffect(() => {
+    if (!openLeadId || openedFor.current === openLeadId) return;
+    const hit = leads.find(l => l.id === openLeadId);
+    if (hit) { openedFor.current = openLeadId; setOpenLead(hit); }
+    else if (!fetching) { openedFor.current = openLeadId; toast.error('That lead is no longer in your list.'); }
+  }, [openLeadId, leads, fetching]);
   const [openStage, setOpenStage]           = useState(null);
   const [showAdd, setShowAdd]               = useState(false);
   const [search, setSearch]                 = useState('');
@@ -410,6 +420,7 @@ export default function LeadsPage({ dealerId = null }) {
           lead={openLead} onClose={() => setOpenLead(null)}
           onUpdate={handleUpdateLead} onDelete={handleDeleteLead}
           teamMembers={teamMembers}
+          onOpenDoc={onOpenDoc}
         />
       )}
 

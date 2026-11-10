@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
-  AlertTriangle,
   TrendingUp,
   DollarSign,
   Users,
   Package,
-  X,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
+import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtRM = (n) =>
@@ -18,9 +17,6 @@ const fmtRM = (n) =>
 
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
-
-const hoursAgo = (iso) =>
-  iso ? Math.floor((Date.now() - new Date(iso)) / 3600000) : null;
 
 const startOfMonth = () => {
   const d = new Date();
@@ -136,66 +132,6 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
   );
 }
 
-function AlertBanner({ type, message, cta, onClick, onDismiss }) {
-  const styles = {
-    red: {
-      bg: "rgba(220,38,38,0.06)",
-      border: "rgba(220,38,38,0.18)",
-      icon: "#ef4444",
-      text: "#374151",
-    },
-    amber: {
-      bg: "rgba(217,119,6,0.06)",
-      border: "rgba(217,119,6,0.18)",
-      icon: "#d97706",
-      text: "#374151",
-    },
-  };
-  const s = styles[type] || styles.amber;
-  const clickable = typeof onClick === "function";
-  return (
-    <div
-      onClick={clickable ? onClick : undefined}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={clickable ? (e) => { if (e.key === "Enter") onClick(); } : undefined}
-      className="flex items-start gap-3 px-4 py-3 rounded-lg"
-      style={{ background: s.bg, border: `1px solid ${s.border}`, cursor: clickable ? "pointer" : "default" }}
-    >
-      <AlertTriangle
-        style={{
-          width: 15,
-          height: 15,
-          color: s.icon,
-          flexShrink: 0,
-          marginTop: 1,
-        }}
-      />
-      <span style={{ fontSize: 13, color: s.text, flex: 1, lineHeight: 1.5 }}>
-        {message}
-        {clickable && (
-          <span style={{ color: s.icon, fontWeight: 700, marginLeft: 6, whiteSpace: "nowrap" }}>
-            {cta || "View"} →
-          </span>
-        )}
-      </span>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        style={{
-          color: "#6b7280",
-          flexShrink: 0,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          display: "flex",
-        }}
-      >
-        <X style={{ width: 13, height: 13 }} />
-      </button>
-    </div>
-  );
-}
 
 function SourcePill({ source, count }) {
   return (
@@ -233,7 +169,8 @@ function ResponseTimeDot({ minutes }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLeads }) {
+// Alerts used to live here too; they are on Overview now (the ONE "needs you" list).
+export default function RevOpsPage({ userId }) {
   // ── Revenue data ────────────────────────────────────────────────────────────
   // Every section persists its last result, so the tab paints the numbers it
   // showed last time; "loading" only means "nothing to show yet" (usePersistentState).
@@ -253,10 +190,6 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
   const [addonFetching, setAddonLoading] = useState(true);
   const addonLoading = addonFetching && !addonData;
 
-  // ── Alerts ───────────────────────────────────────────────────────────────
-  const [alerts, setAlerts] = usePersistentState(ck('alerts'), []);
-  const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
-
   // ── Section 1: Revenue Overview ──────────────────────────────────────────
   useEffect(() => {
     if (!userId) return;
@@ -270,7 +203,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
       // RevOps and Overview disagree on the same month's numbers.
       // Three independent reads, run together (they were serial: three round
       // trips to Sydney back to back before the first tile could fill).
-      const [{ data: pnl, error: pnlErr }, { count: activeCount }, { count: activeLeads }] = await Promise.all([
+      const [{ data: pnl, error: pnlErr }, { count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
         supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId }),
         // Active listings for stock turn
         supabase
@@ -286,6 +219,9 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
           .not("stage", "in", "(won,closed_won,lost,closed_lost)"),
       ]);
       if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
+      // A failed read keeps the numbers already on screen (saved copy); writing
+      // zeros here showed "RM 0 this month" whenever the database was slow.
+      if (pnlErr || stockErr || leadsCountErr || !pnl) { setRevLoading(false); return; }
 
       setRevData({
         revMTD: Number(pnl?.mtd?.revenue) || 0,
@@ -312,6 +248,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
         .eq("dealer_id", userId)
         .gte("created_at", since);
       if (leadsErr) console.error("[RevOps] leads fetch error:", leadsErr.message);
+      if (leadsErr) { setLeadLoading(false); return; } // keep the saved numbers
 
       const all = leads || [];
       const total = all.length;
@@ -347,7 +284,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
 
       const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
       if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
-      setSalesmanScores(
+      else setSalesmanScores(
         (scores || [])
           .filter(s => s.avg_response_min != null)
           .sort((a, b) => a.avg_response_min - b.avg_response_min)
@@ -375,6 +312,7 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
         .in("leads.stage", ["won", "closed_won"])
         .gte("leads.updated_at", monthStart);
       if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
+      if (addonErr) { setAddonLoading(false); return; } // keep the saved numbers
 
       // Won leads this month (for attachment rate denominator) — both won variants
       const { count: wonCount } = await supabase
@@ -423,88 +361,6 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
     fetch();
   }, [userId]);
 
-  // ── Alerts ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!userId) return;
-    const fetch = async () => {
-      const newAlerts = [];
-
-      // Alert 1 — Unresponded leads (new leads >30 min without a stage change)
-      const thirtyMinsAgo = new Date(Date.now() - 30 * 60000).toISOString();
-      const { data: unresponded, error: respErr } = await supabase
-        .from("leads")
-        .select("id, created_at")
-        .eq("dealer_id", userId)
-        .is("first_response_at", null)
-        .eq("stage", "new")
-        .lt("created_at", thirtyMinsAgo);
-
-      if (!respErr && unresponded && unresponded.length > 0) {
-        const oldest = unresponded.reduce((a, b) =>
-          new Date(a.created_at) < new Date(b.created_at) ? a : b,
-        );
-        const hrs = hoursAgo(oldest.created_at);
-        newAlerts.push({
-          id: "unresponded",
-          type: "red",
-          message: `${unresponded.length} lead${unresponded.length > 1 ? "s" : ""} haven't been responded to — oldest is ${hrs}h ago`,
-          cta: "Open leads",
-          action: "leads",
-        });
-      }
-
-      // Alert 2 — Aged stock
-      const fortyfiveDaysAgo = new Date(
-        Date.now() - 45 * 86400000,
-      ).toISOString();
-      const { count: agedCount } = await supabase
-        .from("stock_units")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", userId)
-        .eq("status", "in_stock")
-        .lt("created_at", fortyfiveDaysAgo);
-
-      if (agedCount && agedCount > 0) {
-        newAlerts.push({
-          id: "aged_stock",
-          type: "amber",
-          message: `${agedCount} unit${agedCount > 1 ? "s" : ""} have been in stock over 45 days — consider a price review`,
-          cta: "Review stock",
-          action: "stock",
-        });
-      }
-
-      // Alert 3 — No sales this month (after day 7)
-      const dayOfMonth = new Date().getDate();
-      if (dayOfMonth > 7) {
-        const { count: salesCount } = await supabase
-          .from("car_listings")
-          .select("id", { count: "exact", head: true })
-          .eq("dealer_id", userId)
-          .eq("status", "sold")
-          .gte("sold_at", startOfMonth());
-
-        if (salesCount === 0) {
-          newAlerts.push({
-            id: "no_sales",
-            type: "amber",
-            message: "No sales recorded this month yet",
-            cta: "View stock",
-            action: "stock",
-          });
-        }
-      }
-
-      setAlerts(newAlerts);
-    };
-    fetch();
-  }, [userId]);
-
-  const dismissAlert = (id) =>
-    setDismissedAlerts((prev) => new Set([...prev, id]));
-
-  const visibleAlerts = alerts.filter((a) => !dismissedAlerts.has(a.id));
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
@@ -522,47 +378,16 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
             lineHeight: 1,
           }}
         >
-          Revenue Operations
+          Revenue
         </h1>
         <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-          Your dealership at a glance
+          Sales, gross and add-on revenue
         </p>
-      </div>
-
-      {/* ── Alerts strip ──────────────────────────────────────────────────── */}
-      <div className="space-y-2" style={{ overflow: 'hidden' }}>
-        {visibleAlerts.map((a) => {
-          const onClick =
-            a.action === "leads" ? onNavigateToLeads
-            : a.action === "stock" ? onNavigateToStock
-            : undefined;
-          return (
-            <AlertBanner
-              key={a.id}
-              type={a.type}
-              message={a.message}
-              cta={a.cta}
-              onClick={onClick}
-              onDismiss={() => dismissAlert(a.id)}
-            />
-          );
-        })}
       </div>
 
       {/* ── Section 1: Revenue Overview ──────────────────────────────────── */}
+      {/* No "Revenue Overview" label: the page heading already says Revenue. */}
       <div>
-        <p
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#4b5563",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            marginBottom: 10,
-          }}
-        >
-          Revenue Overview
-        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
             label="Total Revenue This Month"
@@ -929,6 +754,23 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
             </p>
           )}
       </div>
+
+      {/* ── Monthly targets + what drove revenue (moved from GM Oversight) ── */}
+      <div>
+        <p style={RO_LABEL}>Monthly Targets</p>
+        <GoalTracker
+          dealerId={userId}
+          mtdRevenue={revData?.revMTD || 0}
+          mtdProfit={revData?.gpMTD || 0}
+          mtdUnits={revData?.unitsSoldMTD || 0}
+        />
+      </div>
+      <div>
+        <p style={RO_LABEL}>What Drove Revenue</p>
+        <RevenueBreakdown dealerId={userId} />
+      </div>
     </div>
   );
 }
+
+const RO_LABEL = { fontSize: 11, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" };

@@ -2,17 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
-import { premiumDark as PD } from '../../theme/tokens';
+import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
 
 const STEP_META = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s]));
 
 // Salesman Premium (SIMPLE-2): mint for done, neutral otherwise; no amber.
-const PREMIUM_STATUS = {
-  pending:     { ...STATUS_CONFIG.pending,     color: PD.textMuted, bg: PD.hover },
-  in_progress: { ...STATUS_CONFIG.in_progress, color: PD.text,      bg: PD.hover },
-  done:        { ...STATUS_CONFIG.done,        color: PD.up,        bg: 'rgba(110,231,183,0.12)' },
-  na:          { ...STATUS_CONFIG.na,          color: PD.textMuted, bg: PD.hover },
-};
+// The same rules on the dealer dashboard's light tokens (theme="plight").
+const toneStatus = (K, doneBg) => ({
+  pending:     { ...STATUS_CONFIG.pending,     color: K.textMuted, bg: K.hover },
+  in_progress: { ...STATUS_CONFIG.in_progress, color: K.text,      bg: K.hover },
+  done:        { ...STATUS_CONFIG.done,        color: K.up,        bg: doneBg },
+  na:          { ...STATUS_CONFIG.na,          color: K.textMuted, bg: K.hover },
+});
+const PREMIUM_STATUS = toneStatus(PD, 'rgba(110,231,183,0.12)');
+const PLIGHT_STATUS = toneStatus(PL, 'rgba(4,120,87,0.10)');
 
 // Malaysian motor policies and road tax both run 12 months, so that is the
 // default the expiry field opens with — a correct guess in the normal case, one
@@ -63,11 +66,13 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
     if (reportRef.current && tasks.length) reportRef.current(tasks);
   }, [tasks]);
 
-  const premium = theme === 'premium';
-  const STATUS = premium ? PREMIUM_STATUS : STATUS_CONFIG;
-  const doneHue = premium ? PD.up : '#059669';
+  // "plight" = the dealer dashboard's premiumLight: Premium's rules on light tokens.
+  const premium = theme === 'premium' || theme === 'plight';
+  const K = theme === 'plight' ? PL : PD;
+  const STATUS = theme === 'plight' ? PLIGHT_STATUS : premium ? PREMIUM_STATUS : STATUS_CONFIG;
+  const doneHue = premium ? K.up : '#059669';
   const th = premium
-    ? { rowBg: PD.raised, rowDoneBg: PD.raised, border: 'transparent', text: PD.text, sub: PD.textSec, muted: PD.textMuted, track: PD.hover, chip: PD.hover, inputBg: PD.hover, inputBorder: 'transparent', totalBg: PD.raised }
+    ? { rowBg: K.raised, rowDoneBg: K.raised, border: 'transparent', text: K.text, sub: K.textSec, muted: K.textMuted, track: K.hover, chip: K.hover, inputBg: K.hover, inputBorder: 'transparent', totalBg: K.raised }
     : dark
     ? { rowBg: 'rgba(255,255,255,0.03)', rowDoneBg: 'rgba(255,255,255,0.015)', border: 'rgba(255,255,255,0.1)', text: '#f1f5f9', sub: '#9ca3af', muted: 'rgba(255,255,255,0.4)', track: 'rgba(255,255,255,0.1)', chip: 'rgba(255,255,255,0.06)', inputBg: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.15)', totalBg: 'rgba(255,255,255,0.03)' }
     : { rowBg: '#fff', rowDoneBg: '#f9fafb', border: '#e5e7eb', text: '#111827', sub: '#6b7280', muted: '#9ca3af', track: '#e5e7eb', chip: '#f3f4f6', inputBg: '#fff', inputBorder: '#d1d5db', totalBg: '#f9fafb' };
@@ -99,7 +104,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
           const isOpen = expanded === t.id;
           const isDone = t.status === 'done';
           return (
-            <div key={t.id} style={{ background: isDone ? th.rowDoneBg : th.rowBg, border: `1px solid ${th.border}`, borderRadius: premium ? PD.radius.row : 10, padding: '10px 12px' }}>
+            <div key={t.id} style={{ background: isDone ? th.rowDoneBg : th.rowBg, border: `1px solid ${th.border}`, borderRadius: premium ? K.radius.row : 10, padding: '10px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* One-tap complete: pending/in-progress -> done, done -> pending */}
                 <button
@@ -188,7 +193,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     {/* Quick status overrides for the less-common states */}
                     <button onClick={() => updateTask(t.id, { status: 'in_progress' })}
-                      style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'in_progress' ? (premium ? '#fff' : '#d97706') : th.sub, background: t.status === 'in_progress' ? (premium ? PD.accent : 'rgba(217,119,6,0.1)') : th.chip, border: `1px solid ${th.border}` }}>
+                      style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'in_progress' ? (premium ? '#fff' : '#d97706') : th.sub, background: t.status === 'in_progress' ? (premium ? K.accent : 'rgba(217,119,6,0.1)') : th.chip, border: `1px solid ${th.border}` }}>
                       In progress
                     </button>
                     {meta.optional && (

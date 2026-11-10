@@ -25,8 +25,11 @@
 // normal case — found the cache "expired" and sat through the full cold start,
 // which during a slow patch on the database was 15-28 seconds of spinner
 // (edge logs, 2026-09-26). Logout still purges everything (rule 2), and the
-// idle sign-out is 30 days, so 7 days only ever serves the same signed-in user.
-export const PANEL_SEED_TTL = 7 * 24 * 60 * 60 * 1000;
+// idle sign-out is 30 days, so the window only ever serves the same signed-in
+// user. It was 7 days (2026-09-26); raised to match the 30-day idle sign-out
+// (2026-11-09) so a dealer who opens the dashboard every week or two still gets
+// the instant paint instead of a full cold start on a slow database.
+export const PANEL_SEED_TTL = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_TTL = PANEL_SEED_TTL;
 
 // ── TTL envelope ───────────────────────────────────────────────────────────

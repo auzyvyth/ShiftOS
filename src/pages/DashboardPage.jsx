@@ -5,12 +5,12 @@ import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import ShareMenu from "../components/ShareMenu";
-import { cdnImg } from "../utils/img";
+import { cdnImg, imgFallback } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { logActivity } from "../utils/activityLog";
 import { isWonDealBlock, offerUndoSale, relistCar } from "../utils/undoSale";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { useDebouncedCallback } from 'use-debounce';
@@ -35,7 +35,6 @@ import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import { liveChannel } from "../lib/liveChannel";
-
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
@@ -61,8 +60,22 @@ class TabErrorBoundary extends Component {
     return this.props.children;
   }
 }
-
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
+const INVENTORY_VIEW_KEY = "xd_inventory_view";
+const INVENTORY_TABS = [
+  { id: "listings", label: "Listings" },
+  { id: "stock",    label: "Stock & costs" },
+];
+// Sold = what happens after the win: Handover | Customers | Documents, ONE nav
+// item (owner, 2026-11-10), same shape as Inventory. Routes stay
+// /dashboard/handover, /customers, /documents so every old link keeps working.
+const SOLD_VIEW_KEY = "xd_sold_view";
+const SOLD_TABS = [
+  { id: "handover",  label: "Handover" },
+  { id: "customers", label: "Customers" },
+  { id: "documents", label: "Documents" },
+];
+const SOLD_IDS = new Set(SOLD_TABS.map(t => t.id));
 function SubTabBar({ tabs, active, onChange }) {
   return (
     <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
@@ -99,7 +112,7 @@ const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const PerformanceTab   = React.lazy(() => import("../components/PerformanceTab"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
-const OversightTab     = React.lazy(() => import("../components/OversightTab"));
+const AuditTrail       = React.lazy(() => import("../components/reports/ReportSections").then(m => ({ default: m.AuditTrail })));
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
@@ -107,9 +120,10 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import PhoneInput from "../components/ui/PhoneInput";
-import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
+import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
+import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
 import DamageMap from "../components/DamageMap";
@@ -121,6 +135,13 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { premiumLight, premiumLight as PL } from '../theme/tokens';
+import '../theme/premiumLight.css';
+import { plWord, plPill } from '../theme/plStatus';
+import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
+import { WindowStickerSheet } from '../components/inventory/WindowSticker';
+import { BulkBar, BulkPriceSheet } from '../components/inventory/BulkBar';
+import { AutoPostButton, AutoPostSheet, AutoPostSettings, useAutoPost } from '../components/autopost/AutoPost';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import { isOwnUrl } from '../config/site';
 import {
@@ -132,7 +153,6 @@ import {
   X,
   TrendingUp,
   DollarSign,
-  Eye,
   Menu,
   Building2,
   Clock,
@@ -170,10 +190,8 @@ import {
   Shield,
   KeyRound,
   AlertTriangle,
-  RefreshCw,
   ExternalLink,
   ChevronDown,
-  ChevronUp,
   Palette,
   Inbox,
   Gauge,
@@ -201,6 +219,7 @@ import {
   Film,
   ShieldCheck,
   Activity,
+  Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
 import { effectiveRecon } from "../utils/reconCost";
@@ -214,8 +233,13 @@ const PANEL_CACHE_KEY = "dash";
 // Which sidebar group owns each tab. Module scope on purpose: this was three
 // identical copies in three scopes, so a new tab had to be added to all three
 // or its group quietly stopped opening.
+// Tabs whose content opens with its own heading (or a sub-tab bar naming it):
+// the dashboard's title block is not drawn above them. Analytics > Revenue
+// (RevOpsPage) and > Listings (AnalyticsTab) are handled by sub-tab.
+const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "add", "market", "hp", "storefront", "ai_manager"]);
+
 const TAB_TO_GROUP = {
-  overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
+  overview: "g_reports", analytics: "g_reports",
   crm: "g_sales",       hp: "g_sales",
   listings: "g_inventory", add: "g_inventory", stock: "g_inventory", market: "g_inventory",
   handover: "g_operations", customers: "g_operations", documents: "g_operations",
@@ -231,7 +255,7 @@ const STYLES = `
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  body { background: #F7F8FA; color: #0F172A; font-family: system-ui, sans-serif; }
+  body { background: ${premiumLight.canvas}; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
 
   /* ── Sidebar nav ── */
   .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
@@ -313,22 +337,6 @@ const iCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 const taCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
-
-// Fire-and-forget audit logger — never throws, never blocks the caller
-const logActivity = ({ dealerId, actor, tableName, recordId, action, summary, fieldChanges = null }) => {
-  if (!dealerId) return;
-  supabase.from('activity_log').insert({
-    dealer_id:    dealerId,
-    actor_id:     actor?.id   || null,
-    actor_name:   actor?.full_name || actor?.email || 'Unknown',
-    actor_role:   actor?.role  || null,
-    table_name:   tableName,
-    record_id:    recordId    || null,
-    action,
-    summary,
-    field_changes: fieldChanges,
-  }).then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
-};
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -457,33 +465,13 @@ function CostProcurementForm({ listing, dealerId, onClose }) {
   );
 }
 
+// premiumLight (owner, 2026-11-09): one grey pill; the days turn red from 30.
 const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
-  if (d < 15)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-        <Clock className="w-3 h-3" />
-        {d === 0 ? "Today" : `${d}d`}
-      </span>
-    );
-  if (d < 25)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20">
-        <Clock className="w-3 h-3" />
-        {d}d
-      </span>
-    );
-  if (d < 30)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-400/10 text-orange-400 border border-orange-400/20">
-        <Clock className="w-3 h-3" />
-        {d}d
-      </span>
-    );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/25">
-      <Clock className="w-3 h-3" />
-      {d}d
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: premiumLight.raised, color: d >= 30 ? premiumLight.accentText : premiumLight.textSec }}>
+      <Clock style={{ width: 12, height: 12 }} />
+      {d === 0 ? "Today" : `${d}d`}
     </span>
   );
 });
@@ -571,278 +559,6 @@ function SettingsField({ label, hint, children }) {
         {hint && <span className="text-xs text-gray-600">{hint}</span>}
       </div>
       {children}
-    </div>
-  );
-}
-
-// ─── ProductsCatalogue ────────────────────────────────────────────────────────
-// Category options sourced from serviceCategories.js (single source of truth).
-const PRODUCT_CATEGORIES = PRODUCT_CATEGORY_OPTIONS;
-
-const PRODUCT_SEEDS = [
-  { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
-  { name: 'Window Tint',           category: 'window_tint', selling_price: 350, cost_price: 150 },
-  { name: 'Extended Warranty 1yr', category: 'warranty',    selling_price: 600, cost_price: 250 },
-  { name: 'Insurance Referral',    category: 'insurance',   selling_price: 200, cost_price: 0   },
-];
-
-const EMPTY_PRODUCT_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true };
-
-function marginColor(sell, cost) {
-  if (!sell) return '#6b7280';
-  const pct = ((sell - cost) / sell) * 100;
-  if (pct >= 40) return '#4ade80';
-  if (pct >= 20) return '#fbbf24';
-  return '#f87171';
-}
-
-function ProductsCatalogue({ dealerId, profile }) {
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [open, setOpen]           = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  useModalHistory(showModal, () => setShowModal(false), { isDirty: () => true });
-  const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
-  const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
-  const [saving, setSaving]       = useState(false);
-  const [stockCountMap, setStockCountMap] = useState({});
-
-  const fetchProducts = async () => {
-    if (!dealerId) return;
-    setLoading(true);
-    const [{ data }, { data: stockListings }] = await Promise.all([
-      supabase.from('dealer_products').select('*').eq('dealer_id', dealerId).order('created_at', { ascending: false }),
-      supabase.from('car_listings').select('included_services').eq('dealer_id', dealerId).neq('status', 'sold'),
-    ]);
-    setProducts(data || []);
-    // Build per-product stock count
-    const countMap = {};
-    (stockListings || []).forEach(car => {
-      (car.included_services || []).forEach(svc => {
-        if (svc.id) countMap[svc.id] = (countMap[svc.id] || 0) + 1;
-      });
-    });
-    setStockCountMap(countMap);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchProducts(); }, [dealerId]);
-
-  const openAdd = () => { setForm(EMPTY_PRODUCT_FORM); setEditTarget(null); setShowModal(true); };
-  const openEdit = (p) => { setForm({ name: p.name, category: p.category, cost_price: p.cost_price ?? '', selling_price: p.selling_price, description: p.description || '', is_active: p.is_active }); setEditTarget(p); setShowModal(true); };
-
-  const handleSave = async () => {
-    if (!form.name.trim() || !form.selling_price) { toast.error('Name and selling price are required'); return; }
-    setSaving(true);
-    const payload = {
-      dealer_id:     dealerId,
-      name:          form.name.trim(),
-      category:      form.category,
-      cost_price:    Number(form.cost_price) || 0,
-      selling_price: Number(form.selling_price),
-      description:   form.description.trim() || null,
-      is_active:     form.is_active,
-      updated_at:    new Date().toISOString(),
-    };
-    try {
-      if (editTarget) {
-        await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
-        const changes = {};
-        if (Number(editTarget.cost_price) !== payload.cost_price) changes.cost_price = { from: editTarget.cost_price, to: payload.cost_price };
-        if (Number(editTarget.selling_price) !== payload.selling_price) changes.selling_price = { from: editTarget.selling_price, to: payload.selling_price };
-        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: editTarget.id, action: 'updated', summary: `Product updated — ${payload.name}`, fieldChanges: Object.keys(changes).length ? changes : null });
-      } else {
-        const { data: ins } = await supabase.from('dealer_products').insert(payload).select().single();
-        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: ins?.id, action: 'created', summary: `Product added — ${payload.name} · sell RM ${payload.selling_price.toLocaleString()}` });
-      }
-      await fetchProducts();
-      setShowModal(false);
-      toast.success(editTarget ? 'Product updated' : 'Product added');
-    } catch { toast.error('Save failed'); }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this product?')) return;
-    const target = products.find(x => x.id === id);
-    await supabase.from('dealer_products').delete().eq('id', id);
-    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: id, action: 'deleted', summary: `Product deleted${target ? ` — ${target.name}` : ''}` });
-    setProducts(p => p.filter(x => x.id !== id));
-    toast.success('Deleted');
-  };
-
-  const handleToggleActive = async (p) => {
-    await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
-    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: p.id, action: 'updated', summary: `Product ${!p.is_active ? 'activated' : 'deactivated'} — ${p.name}` });
-    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
-  };
-
-  const seedProduct = async (seed) => {
-    const payload = { dealer_id: dealerId, ...seed, description: null, is_active: true };
-    await supabase.from('dealer_products').insert(payload);
-    await fetchProducts();
-    toast.success(`"${seed.name}" added`);
-  };
-
-  const catLabel = (v) => PRODUCT_CATEGORIES.find(c => c.value === v)?.label || v;
-
-  return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid #e5e7eb', background: '#f9fafb' }}
-    >
-      {/* Collapsible header */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.025] transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}>
-            <Tag className="w-4 h-4 text-red-400" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900">Services & Add-ons</p>
-            {!loading && <p className="text-xs text-gray-600 mt-px">{products.length} product{products.length !== 1 ? 's' : ''} configured</p>}
-          </div>
-        </div>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
-      </button>
-
-      {open && (
-        <div style={{ borderTop: '1px solid #e5e7eb' }}>
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3">
-            <p className="text-xs text-gray-500">Products your dealership sells as add-ons</p>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
-            >
-              <PlusCircle className="w-3 h-3" />Add Product
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="px-5 pb-5 space-y-2">
-              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: '#f9fafb' }} />)}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="px-5 pb-5">
-              <p className="text-xs text-gray-600 mb-3">Quick-start suggestions:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {PRODUCT_SEEDS.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => seedProduct(s)}
-                    className="text-left p-3 rounded-lg border transition-all hover:border-red-600/30 hover:bg-red-600/[0.04]"
-                    style={{ background: '#f9fafb', border: '1px dashed #d1d5db' }}
-                  >
-                    <p className="text-xs font-semibold text-gray-900">{s.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">RM {s.selling_price.toLocaleString()} selling</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="px-5 pb-5">
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
-                {/* Header row */}
-                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                  <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
-                </div>
-                {products.map(p => {
-                  const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
-                  const stockCount = stockCountMap[p.id] || 0;
-                  return (
-                    <div key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <div className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px' }}>
-                        <div className="min-w-0">
-                          <span className="text-sm text-gray-900 font-medium truncate block">{p.name}</span>
-                          {stockCount > 0 && (
-                            <span className="text-[10px] text-cyan-400/70 font-medium">
-                              In {stockCount} listing{stockCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
-                        <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
-                        <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
-                        <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
-                        <button onClick={() => handleToggleActive(p)} className="flex items-center">
-                          {p.is_active
-                            ? <ToggleRight className="w-5 h-5 text-green-400" />
-                            : <ToggleLeft className="w-5 h-5 text-gray-600" />}
-                        </button>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-gray-900 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Add / Edit Modal ── */}
-      {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="w-full max-w-md rounded-xl relative" style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <p className="font-semibold text-gray-900 text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Name *</label>
-                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Paint Protection Film" className={iCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
-                <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} className={iCls} style={{ appearance: 'none' }}>
-                  {PRODUCT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cost Price (RM)</label>
-                  <input type="number" value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Selling Price (RM) *</label>
-                  <input type="number" value={form.selling_price} onChange={e => setForm(p => ({ ...p, selling_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
-                </div>
-              </div>
-              {form.selling_price && (
-                <p className="text-xs" style={{ color: marginColor(Number(form.selling_price), Number(form.cost_price) || 0) }}>
-                  Margin: {(((Number(form.selling_price) - (Number(form.cost_price) || 0)) / Number(form.selling_price)) * 100).toFixed(1)}%
-                </p>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description (optional)</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={2} className={taCls} />
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-500">Active</span>
-                <button onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))} className="flex items-center">
-                  {form.is_active ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-600" />}
-                </button>
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mt-1"
-                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', opacity: saving ? 0.7 : 1 }}
-              >
-                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1039,7 +755,7 @@ function WaTemplatesEditor({ dealerId, actor }) {
 }
 
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
-function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
+function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
@@ -1654,6 +1370,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
     ]},
     { group: 'Storefront', items: [
       { key: 'frontpage', icon: Globe, label: 'Homepage', desc: 'Hero banner, CTA & announcement' },
+      { key: 'autopost', icon: Share2, label: 'Auto-post', desc: 'Post every car to your socials once' },
       { key: 'storefront', icon: Settings, label: 'Page Content', desc: 'About, photos & layout' },
     ]},
     { group: 'Operations', items: [
@@ -1661,7 +1378,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
       { key: 'costs', icon: Calculator, label: 'Cost Floor', desc: 'Overhead, runner & holding costs' },
       { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
       { key: 'availability', icon: Clock, label: 'Viewing Hours', desc: 'When buyers can book viewings' },
-      { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
+      // The add-on catalogue has ONE home: Storefront > Services & Add-ons (ServicesPage).
+      // This entry is a shortcut there, not a second editor.
+      { key: 'services', icon: Package, label: 'Services', desc: 'Opens Storefront > Services & Add-ons' },
       { key: 'handover_ops', icon: ClipboardCheck, label: 'Handover', desc: 'Road tax & insurance handling' },
     ]},
     { group: 'Notifications', items: [
@@ -2619,6 +2338,16 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           <SaveBtn sectionKey="costs" onClick={saveCostSettings} saving={saving} saved={saved} />
         </div>
       </SettingsSection>}
+      {effectiveNav === 'autopost' && <SettingsSection
+        title="Auto-post"
+        subtitle="Set it once. Every car you add goes out to the accounts you switch on."
+        icon={Share2}
+        iconColor="text-gray-700"
+        iconBg="#f5f6f8"
+        iconBorder="#f5f6f8"
+      >
+        <AutoPostSettings dealerId={settingsDealerId} />
+      </SettingsSection>}
       {effectiveNav === 'telegram' && <SettingsSection
         title="Notifications"
         subtitle="Push alerts on your devices, and Telegram auto-posting for new listings"
@@ -2783,7 +2512,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           <ErrMsg k="storefront" errors={errors} />
         </div>
       </SettingsSection>}
-      {effectiveNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
+
     </div>
   );
 
@@ -2802,7 +2531,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
                   {items.map(({ key, icon: Icon, label, desc }, idx) => (
                     <button
                       key={key}
-                      onClick={() => setSettingsNav(key)}
+                      onClick={() => (key === 'services' && onOpenServices ? onOpenServices() : setSettingsNav(key))}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 13, width: '100%',
                         padding: '11px 14px', background: 'none', border: 'none',
@@ -2858,7 +2587,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
                 return (
                   <button
                     key={key}
-                    onClick={() => setSettingsNav(key)}
+                    onClick={() => (key === 'services' && onOpenServices ? onOpenServices() : setSettingsNav(key))}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
                       borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
@@ -3558,7 +3287,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {l.images?.[0] ? (
-                            <img src={l.images[0]} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                            <img src={cdnImg(l.images[0], 64, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
                           )}
@@ -3619,7 +3348,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
                           <img
-                            src={l.images[0]}
+                            src={cdnImg(l.images[0], 64, 70)}
+                            onError={imgFallback(l.images[0])}
+                            loading="lazy"
+                            decoding="async"
                             alt=""
                             className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
@@ -3686,7 +3418,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
                           <img
-                            src={l.images[0]}
+                            src={cdnImg(l.images[0], 64, 70)}
+                            onError={imgFallback(l.images[0])}
+                            loading="lazy"
+                            decoding="async"
                             alt=""
                             className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
@@ -4167,324 +3902,6 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
   );
 }
 
-// ─── MarketplaceAnalyticsTab ──────────────────────────────────────────────────
-function normalizePath(p) {
-  if (!p) return null;
-  if (/^\/showroom\/.+/.test(p)) return "/showroom/:slug";
-  if (/^\/cars\/.+/.test(p)) return "/cars/:slug";
-  if (/^\/s\/.+/.test(p)) return "/s/:slug";
-  return p;
-}
-
-function categorizeRef(ref) {
-  if (!ref) return "Direct";
-  if (/google\./i.test(ref)) return "Google";
-  if (/facebook\.|fb\.com/i.test(ref)) return "Facebook";
-  if (/instagram\./i.test(ref)) return "Instagram";
-  if (/tiktok\./i.test(ref)) return "TikTok";
-  if (/twitter\.|t\.co/i.test(ref)) return "Twitter / X";
-  if (/whatsapp\./i.test(ref)) return "WhatsApp";
-  if (isOwnUrl(ref)) return "Internal";
-  return "Other";
-}
-
-function MarketplaceAnalyticsTab({ profile }) {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState(30);
-  const [isOwner, setIsOwner] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsOwner(user?.id === '1e7bf24e-5b71-4c64-8d03-b60db5e59316');
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isOwner) return;
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      const since = new Date(Date.now() - range * 86400000).toISOString();
-      const { data } = await supabase
-        .from("analytics_events")
-        .select("event_type,session_id,page_path,referrer,car_name,time_spent,created_at")
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(5000);
-      if (!cancelled) {
-        setEvents(data || []);
-        setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [range, isOwner]);
-
-  const pageEvents = useMemo(
-    () => events.filter(e => e.event_type === "page_view" || e.event_type === "store_visit"),
-    [events]
-  );
-  const exitEvents = useMemo(
-    () => events.filter(e => e.event_type === "page_exit" && e.time_spent > 0),
-    [events]
-  );
-  const carViewEvents = useMemo(
-    () => events.filter(e => e.event_type === "car_view"),
-    [events]
-  );
-  const waEvents = useMemo(
-    () => events.filter(e => e.event_type === "whatsapp_click"),
-    [events]
-  );
-
-  const uniqueVisitors = useMemo(
-    () => new Set(pageEvents.map(e => e.session_id).filter(Boolean)).size,
-    [pageEvents]
-  );
-  const avgTimeSecs = useMemo(() => {
-    if (!exitEvents.length) return null;
-    return Math.round(exitEvents.reduce((s, e) => s + (e.time_spent || 0), 0) / exitEvents.length);
-  }, [exitEvents]);
-  const waConvPct = uniqueVisitors > 0
-    ? ((waEvents.length / uniqueVisitors) * 100).toFixed(1)
-    : "0.0";
-
-  const pageBreakdown = useMemo(() => {
-    const map = {};
-    pageEvents.forEach(e => {
-      const p = normalizePath(e.page_path);
-      if (!p) return;
-      if (!map[p]) map[p] = { visits: 0, sessions: new Set() };
-      map[p].visits++;
-      if (e.session_id) map[p].sessions.add(e.session_id);
-    });
-    const timeMap = {};
-    exitEvents.forEach(e => {
-      const p = normalizePath(e.page_path);
-      if (!p) return;
-      if (!timeMap[p]) timeMap[p] = [];
-      timeMap[p].push(e.time_spent);
-    });
-    return Object.entries(map)
-      .map(([path, v]) => ({
-        path,
-        visits: v.visits,
-        unique: v.sessions.size,
-        avgTime: timeMap[path]
-          ? Math.round(timeMap[path].reduce((s, t) => s + t, 0) / timeMap[path].length)
-          : null,
-      }))
-      .sort((a, b) => b.visits - a.visits);
-  }, [pageEvents, exitEvents]);
-
-  const sources = useMemo(() => {
-    const map = {};
-    pageEvents.forEach(e => {
-      const src = categorizeRef(e.referrer);
-      map[src] = (map[src] || 0) + 1;
-    });
-    return Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [pageEvents]);
-  const sourceMax = sources[0]?.count || 1;
-
-  const topCars = useMemo(() => {
-    const map = {};
-    carViewEvents.forEach(e => {
-      if (!e.car_name) return;
-      map[e.car_name] = (map[e.car_name] || 0) + 1;
-    });
-    return Object.entries(map)
-      .map(([name, views]) => ({ name, views }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 10);
-  }, [carViewEvents]);
-  const carMax = topCars[0]?.views || 1;
-
-  const trend = useMemo(() => {
-    const map = {};
-    pageEvents.forEach(e => {
-      const d = e.created_at?.slice(0, 10);
-      if (d) map[d] = (map[d] || 0) + 1;
-    });
-    return Object.entries(map)
-      .map(([date, visits]) => ({ date: date.slice(5), visits }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [pageEvents]);
-
-  function fmtTime(secs) {
-    if (secs === null || secs === undefined) return "—";
-    if (secs < 60) return `${secs}s`;
-    return `${Math.floor(secs / 60)}m ${secs % 60}s`;
-  }
-
-  const cardStyle = { background: "#fff", border: "1px solid #e5e7eb" };
-  const labelCls = "text-[10px] text-gray-500 uppercase tracking-widest font-medium mb-3";
-  const pageMax = pageBreakdown[0]?.visits || 1;
-
-  if (!isOwner) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
-        <Shield className="w-8 h-8 text-gray-700" />
-        <p className="text-gray-500 text-sm">Access restricted.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5 pb-10">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">Marketplace Analytics</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Drevo public traffic — all visitors, all pages</p>
-        </div>
-        <div className="flex gap-1.5">
-          {[7, 30, 90].map(d => (
-            <button
-              key={d}
-              onClick={() => setRange(d)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                range === d ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <RefreshCw className="w-5 h-5 text-gray-600 animate-spin" />
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Page Visits", value: pageEvents.length, Icon: Eye, grad: "grad-blue" },
-              { label: "Unique Visitors", value: uniqueVisitors, Icon: Users, grad: "grad-cyan" },
-              { label: "Car Detail Views", value: carViewEvents.length, Icon: Car, grad: "grad-purple" },
-              { label: "WhatsApp CVR", value: `${waConvPct}%`, Icon: MessageCircle, grad: "grad-green" },
-            ].map(({ label, value, Icon, grad }) => (
-              <div key={label} className="card-top relative rounded-xl p-4" style={cardStyle}>
-                <Icon className="w-4 h-4 text-gray-600 mb-2" />
-                <div className={`text-2xl font-bold ${grad}`}>{value}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
-              </div>
-            ))}
-          </div>
-
-          {avgTimeSecs !== null && (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={cardStyle}>
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-500">Avg time on page:</span>
-              <span className="text-sm text-gray-900 font-semibold">{fmtTime(avgTimeSecs)}</span>
-            </div>
-          )}
-
-          {trend.length > 0 && (
-            <div className="card-top relative rounded-xl p-4" style={cardStyle}>
-              <p className={labelCls}>Daily Visits</p>
-              <ResponsiveContainer width="100%" height={160}>
-                <LineChart data={trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                  <XAxis dataKey="date" tick={{ fill: "#4b5563", fontSize: 10 }} tickLine={false} />
-                  <YAxis tick={{ fill: "#4b5563", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "#6b7280" }}
-                  />
-                  <Line type="monotone" dataKey="visits" stroke="#dc2626" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="card-top relative rounded-xl p-4" style={cardStyle}>
-              <p className={labelCls}>Pages</p>
-              {pageBreakdown.length === 0 ? (
-                <p className="text-gray-600 text-xs">No page data in this range</p>
-              ) : (
-                <div className="space-y-3">
-                  {pageBreakdown.map(({ path, visits, unique, avgTime }) => (
-                    <div key={path}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-mono text-gray-700 truncate max-w-[160px]">{path}</span>
-                        <span className="text-gray-500 ml-2 shrink-0">
-                          {visits} visits · {unique} uniq{avgTime ? ` · ${fmtTime(avgTime)}` : ""}
-                        </span>
-                      </div>
-                      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-red-600 rounded-full"
-                          style={{ width: `${(visits / pageMax) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="card-top relative rounded-xl p-4" style={cardStyle}>
-              <p className={labelCls}>Traffic Sources</p>
-              {sources.length === 0 ? (
-                <p className="text-gray-600 text-xs">No referrer data in this range</p>
-              ) : (
-                <div className="space-y-3">
-                  {sources.map(({ name, count }) => (
-                    <div key={name}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-700">{name}</span>
-                        <span className="text-gray-500">{count}</span>
-                      </div>
-                      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full"
-                          style={{ width: `${(count / sourceMax) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {topCars.length > 0 && (
-            <div className="card-top relative rounded-xl p-4" style={cardStyle}>
-              <p className={labelCls}>Top Car Views</p>
-              <div className="space-y-3">
-                {topCars.map(({ name, views }, i) => (
-                  <div key={name}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-700">
-                        <span className="text-gray-400 mr-1.5">{i + 1}.</span>
-                        {name}
-                      </span>
-                      <span className="text-gray-500">{views} views</span>
-                    </div>
-                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 rounded-full"
-                        style={{ width: `${(views / carMax) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// FIXED: auth-first account creation
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
 function lastActiveText(ts) {
   if (!ts) return 'No activity yet';
@@ -6076,11 +5493,42 @@ function parseTags(raw) {
 
 const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
 
+// Listings row: counted views + enquiry taps (WhatsApp, call, booking), last 30 days.
+// null = still loading: a placeholder, never a 0.
+function InterestCell({ stats, compact, scans }) {
+  if (!stats) {
+    return <span aria-label="Loading" style={{ display: 'inline-block', width: compact ? 70 : 54, height: compact ? 12 : 28, borderRadius: 6, background: premiumLight.raised }} />;
+  }
+  const none = !stats.views && !stats.enq;
+  if (compact) {
+    return (
+      <span style={{ fontSize: 11, color: none ? premiumLight.textMuted : premiumLight.textSec, fontWeight: 500 }}>
+        {none ? 'No views yet' : `${stats.views} views · ${stats.enq} enq.`}{scans ? ` · ${scans} scan${scans === 1 ? '' : 's'}` : ''}
+      </span>
+    );
+  }
+  return (
+    <div title="Last 30 days. Views count only buyers who allowed analytics, so the real number is higher.">
+      <p style={{ fontSize: 13, color: none ? premiumLight.textMuted : premiumLight.text, fontWeight: 600, margin: 0 }}>{stats.views} views</p>
+      <p style={{ fontSize: 11, color: stats.enq ? premiumLight.up : premiumLight.textMuted, margin: '2px 0 0', fontWeight: stats.enq ? 600 : 400 }}>{stats.enq} enquir{stats.enq === 1 ? 'y' : 'ies'}</p>
+      {scans ? <p style={{ fontSize: 11, color: premiumLight.textSec, margin: '2px 0 0' }}>{scans} sticker scan{scans === 1 ? '' : 's'}</p> : null}
+    </div>
+  );
+}
+
+function SelectTick({ on }) {
+  return (
+    <span style={{ position: 'absolute', top: 4, left: 4, zIndex: 1, width: 20, height: 20, borderRadius: 6, background: on ? premiumLight.text : '#fff', boxShadow: '0 0 0 1.5px ' + (on ? premiumLight.text : '#9ca3af'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {on && <Check style={{ width: 13, height: 13, color: '#fff' }} />}
+    </span>
+  );
+}
+
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio,
+  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker,
 }) {
   useModalHistory(true, onClose);
   const { can } = usePermissions(profile);
@@ -6445,6 +5893,13 @@ function ListingDetailDrawer({
                   </button>
                 )}
 
+                {/* Window sticker: an A4 page for the windscreen, QR to the car page */}
+                {openSticker && !isSold && (
+                  <button onClick={() => openSticker(listing)} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#111827' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                    <Printer style={{ width: 14, height: 14, flexShrink: 0 }} />Window Sticker
+                  </button>
+                )}
+
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
                   <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
@@ -6613,7 +6068,10 @@ function stockCostBasis(u) {
 // stockNetProfit() below is just front + addonNet for callers that only want
 // one combined number (row badges, loss filter).
 function stockNetProfitParts(u, ctx = {}) {
-  const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  const { ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  // `cfg` is null until dealer_cost_settings answers, and the cars paint first from the
+  // device copy, so a default of {} (undefined only) was not enough: Stock crashed on reopen.
+  const cfg = ctx.cfg || {};
   const cost = stockCostBasis(u);
   const c = u.car_listings || {};
   const isSold = u.status === 'sold';
@@ -6706,29 +6164,24 @@ function StockStatsStrip({ dealerId }) {
   }, [dealerId]);
 
   const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
+  // Four tiles (owner, 2026-11-09). Revenue and sold-this-month live in
+  // Reports > Revenue; car and add-on profit are one figure with the split under it.
+  const profit = s ? s.carGpMonth + s.addonGpMonth : null;
   const items = s ? [
-    { label: 'Revenue (sold)', val: rm(s.soldRevenue), sub: s.soldAddonRevenue > 0 ? `incl. ${rm(s.soldAddonRevenue)} add-ons` : undefined },
-    { label: 'Stock Value', val: rm(s.stockValue) },
-    { label: 'Avg Days', val: String(s.avgDays) },
-    { label: 'Car GP (month)', val: rm(s.carGpMonth), color: s.carGpMonth >= 0 ? '#16a34a' : '#dc2626' },
-    { label: 'Add-on GP (month)', val: rm(s.addonGpMonth), color: s.addonGpMonth >= 0 ? '#16a34a' : '#dc2626' },
-    { label: 'Sold (month)', val: String(s.soldMonth) },
-    { label: 'Aging 60d+', val: String(s.aging), color: s.aging > 0 ? '#dc2626' : undefined },
-  ] : Array.from({ length: 7 }, () => ({}));
+    { label: 'Stock value', val: rm(s.stockValue), sub: 'Asking prices, unsold cars' },
+    { label: 'Avg days in stock', val: String(s.avgDays) },
+    { label: 'Over 60 days', val: String(s.aging), tone: s.aging > 0 ? 'bad' : undefined, sub: s.aging > 0 ? 'Cut the price or push them' : 'None ageing' },
+    { label: 'Profit this month', val: rm(profit), tone: profit < 0 ? 'bad' : undefined,
+      sub: s.addonGpMonth ? `Cars ${rm(s.carGpMonth)} · add-ons ${rm(s.addonGpMonth)}` : undefined },
+  ] : Array.from({ length: 4 }, () => ({}));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8, marginBottom: 24 }}>
-      {items.map((it, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', minWidth: 0 }}>
-          <p style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label || ''}</p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: it.color || '#111827', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.val ?? '—'}</p>
-          {it.sub && <p style={{ fontSize: 9, color: '#9ca3af', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.sub}</p>}
-        </div>
-      ))}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+      {items.map((it, i) => <InvTile key={i} label={it.label || ''} value={it.val} sub={it.sub} tone={it.tone} />)}
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false, onAdd }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   // Persisted so the stock table paints last-known units instantly (no IC or
@@ -6942,7 +6395,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // "In loss" filter, the row Net badge and the Listings stats strip via one shared
   // helper so all three agree.
   const netProfit = (u) => stockNetProfit(u, {
-    cfg: costCfg, ads: costExtras.ads, handover: costExtras.handover,
+    cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
     addRev: costExtras.addRev, addCost: costExtras.addCost,
   });
 
@@ -7494,7 +6947,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   return (
     <>
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
+      {!hideSummary && <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
           <div key={label} className="stat-card card-top rounded-2xl overflow-hidden glass" style={{ position: 'relative' }}>
             {spark && (
@@ -7511,92 +6964,49 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
-      <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Stock Units</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
-            <button onClick={() => { setShowVendors(true); fetchVendors(); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)', color: '#6b7280' }}><Wrench className="w-3.5 h-3.5" />Vendors</button>
-            <button onClick={() => { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }}><Upload className="w-3.5 h-3.5" />Import CSV</button>
-            <button onClick={() => navigate('/dashboard/import-stock')} className="flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.3)', color: '#f87171' }} title="Upload a messy stocklist (spreadsheet or PDF) and let AI extract the cars"><Bot className="w-3.5 h-3.5" />AI Import</button>
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><PlusCircle className="w-3.5 h-3.5" />Add Stock</button>
+      <div style={{ ...INV_CARD, overflow: 'hidden' }}>
+        <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
+        {/* One card: search + sort + Needs attention + Add car, then the status
+            pills, then the cars. Import CSV / AI import live in the Add car sheet. */}
+        <div style={{ padding: '16px 16px 0', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 0 }}>
+            <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: premiumLight.textMuted, pointerEvents: 'none' }} />
+            <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search brand, model, plate, VIN"
+              style={{ ...INV_INPUT, padding: '9px 30px 9px 32px' }} />
+            {stockSearch && (
+              <button onClick={() => setStockSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: premiumLight.textMuted, cursor: 'pointer', display: 'flex', padding: 0 }}><X style={{ width: 14, height: 14 }} /></button>
+            )}
           </div>
+          {onAdd && <AddCarButton onClick={onAdd} className="inv-add-last" />}
+          <NeedsAttentionMenu
+            checks={STOCK_FILTER_CHIPS.map(c => ({ ...c, count: (stockView === 'available' ? activeUnits : soldUnits).filter(u => stockFilterFns[c.key]?.(u)).length }))}
+            active={stockFilters}
+            onToggle={toggleStockFilter}
+            onClear={() => setStockFilters(new Set())}
+          />
+          <select value={stockSort} onChange={e => setStockSort(e.target.value)} aria-label="Sort"
+            style={{ ...INV_GHOST_BTN, width: 'auto', minWidth: 0, maxWidth: 160, flex: '1 1 90px', padding: '9px 10px', appearance: 'auto' }}>
+            {STOCK_SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
         </div>
-        {/* Available / Sold tab toggle */}
-        <div style={{ display: 'flex', gap: 0, padding: '0 20px 0', borderBottom: '1px solid #e5e7eb' }}>
-          {[
-            { id: 'available', label: 'Available', count: activeUnits.length },
-            { id: 'sold',      label: 'Sold',      count: soldUnits.length   },
-          ].map(({ id, label, count }) => (
-            <button
-              key={id}
-              onClick={() => setStockView(id)}
-              style={{
-                padding: '10px 18px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                background: 'none',
-                color: stockView === id ? '#f3f4f6' : '#6b7280',
-                borderBottom: stockView === id ? '2px solid #3b82f6' : '2px solid transparent',
-                fontFamily: "system-ui, sans-serif",
-                transition: 'color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-              }}
-            >
-              {label}
-              <span style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: '1px 7px',
-                borderRadius: 10,
-                background: stockView === id ? '#EFF6FF' : '#f9fafb',
-                color: stockView === id ? '#93c5fd' : '#4b5563',
-              }}>{count}</span>
-            </button>
-          ))}
+        <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <StatusPills
+            active={stockView}
+            onChange={setStockView}
+            items={[
+              { key: 'available', label: 'In stock', count: activeUnits.length },
+              // Sold moves to the Sold tab once it exists (owner, 2026-11-09).
+              { key: 'sold',      label: 'Sold',     count: soldUnits.length },
+            ]}
+          />
+          <button onClick={() => { setShowVendors(true); fetchVendors(); }} style={{ ...INV_GHOST_BTN, background: 'transparent', padding: '7px 8px', color: premiumLight.textSec }}>
+            <Wrench style={{ width: 14, height: 14 }} /> Vendors
+          </button>
         </div>
-        {/* Search + filter + sort bar */}
-        {units.length > 0 && (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: 9 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-                <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#9ca3af', pointerEvents: 'none' }} />
-                <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Search brand, model, plate, VIN…"
-                  style={{ width: '100%', padding: '8px 28px 8px 32px', fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb', outline: 'none', background: '#fff', color: '#111827', fontFamily: "system-ui,sans-serif" }} />
-                {stockSearch && (
-                  <button onClick={() => setStockSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><X style={{ width: 11, height: 11 }} /></button>
-                )}
-              </div>
-              <select value={stockSort} onChange={e => setStockSort(e.target.value)}
-                style={{ flexShrink: 0, padding: '8px 10px', fontSize: 12, fontWeight: 600, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: "system-ui,sans-serif", maxWidth: 150 }}>
-                {STOCK_SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'thin' }}>
-              {STOCK_FILTER_CHIPS.map(c => {
-                const active = stockFilters.has(c.key);
-                return (
-                  <button key={c.key} onClick={() => toggleStockFilter(c.key)}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: `1px solid ${active ? '#dc2626' : '#e5e7eb'}`, background: active ? '#FEF2F2' : '#fff', color: active ? '#dc2626' : '#6b7280', whiteSpace: 'nowrap', fontFamily: "system-ui,sans-serif" }}>
-                    {c.label}
-                  </button>
-                );
-              })}
-              {(stockFilters.size > 0 || stockSearch) && (
-                <button onClick={() => { setStockFilters(new Set()); setStockSearch(''); }}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 14, cursor: 'pointer', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#6b7280', whiteSpace: 'nowrap', fontFamily: "system-ui,sans-serif" }}>
-                  Clear all
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <div style={{ height: 1, background: premiumLight.line }} />
         <div>
           {loading ? (
             <p style={{ color: '#9ca3af', fontSize: 13, padding: '24px 20px' }}>Loading…</p>
@@ -7638,17 +7048,17 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       onClick={() => setDetailUnit(u)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px',
-                        borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
-                        background: isAging ? 'rgba(248,113,113,0.03)' : 'transparent',
+                        borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer',
+                        background: 'transparent',
                         transition: 'background 0.1s',
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = isAging ? 'rgba(248,113,113,0.07)' : '#f9fafb'}
-                      onMouseLeave={e => e.currentTarget.style.background = isAging ? 'rgba(248,113,113,0.03)' : 'transparent'}
+                      onMouseEnter={e => e.currentTarget.style.background = premiumLight.raised}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       {/* Thumbnail */}
                       <div style={{ width: 68, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {thumb ? (
-                          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
+                          <img src={cdnImg(thumb, 160, 70)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (!e.target.dataset.fb) { e.target.dataset.fb = '1'; e.target.src = thumb; } else { e.target.style.display = 'none'; } }} />
                         ) : (
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round">
                             <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
@@ -7657,65 +7067,42 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                         )}
                       </div>
 
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {car.brand} {car.model}
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                              {carAge != null && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399' }}>{carAge}yr</span>
-                              )}
-                              {plate ? (
-                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 3, padding: '0 5px' }}>{plate.toUpperCase()}</span>
-                              ) : (
-                                <span style={{ fontSize: 9, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 3, padding: '0 5px' }}>no plate</span>
-                              )}
-                              {isAging && <span style={{ fontSize: 9, fontWeight: 700, color: '#f87171', background: 'rgba(248,113,113,0.1)', borderRadius: 3, padding: '0 4px' }}>60d+</span>}
+                      {/* Info: name, one quiet line, price + days. The checks (B7, B5,
+                          loan, published), grade and net profit open on tap in the car's
+                          record (owner, 2026-11-09: "too crowded, details on click").
+                          One red "N to sort" says there is something waiting there. */}
+                      {(() => {
+                        const toSort = u.status === 'in_stock'
+                          ? [ps.color !== '#22c55e', b5.color !== '#22c55e', (u.encumbrance_status || 'unknown') === 'unknown', isUnpublished].filter(Boolean).length
+                          : 0;
+                        const meta = [carAge != null ? `${carAge}yr` : null, plate ? plate.toUpperCase() : null].filter(Boolean).join(' · ');
+                        return (
+                          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: premiumLight.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {car.brand} {car.model}
+                              </p>
+                              <p style={{ fontSize: 12, color: premiumLight.textMuted, margin: '3px 0 0', display: 'flex', gap: 6, minWidth: 0 }}>
+                                <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta || 'No plate yet'}</span>
+                                {toSort > 0 && <span style={{ flexShrink: 0, whiteSpace: 'nowrap', color: premiumLight.accentText, fontWeight: 600 }}>{toSort} to sort</span>}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 700, color: premiumLight.text, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                                RM {(stockView === 'available'
+                                  ? (Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0)
+                                  : (Number(u.sold_price) || 0)).toLocaleString()}
+                              </p>
+                              <p style={{ fontSize: 12, margin: '3px 0 0', color: isAging ? premiumLight.accentText : premiumLight.textMuted, fontWeight: isAging ? 600 : 400 }}>
+                                {stockView === 'available'
+                                  ? (days !== '—' ? `${days} days` : '—')
+                                  : (u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—')}
+                              </p>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            {stockView === 'available' ? (
-                              <>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>RM {(Number(u.asking_price)||0).toLocaleString()}</p>
-                                <p style={{ fontSize: 10, color: isAging ? '#f87171' : '#9ca3af', margin: '1px 0 0' }}>{days !== '—' ? `${days}d` : '—'}</p>
-                              </>
-                            ) : (
-                              <>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: '#34d399', margin: 0 }}>RM {(Number(u.sold_price)||0).toLocaleString()}</p>
-                                <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—'}</p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {/* Status badges */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                          {u.status === 'in_stock' && <>
-                            <span title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days from the inspection date. Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color }}>{ps.label}</span>
-                            <span title="PUSPAKOM B5 — ownership-transfer inspection (no hard expiry; re-inspect if older than ~12 months). Tap the card to update." style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color }}>{b5.label}</span>
-                            <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color }}>{enc.label}</span>
-                            {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>Not published</span>}
-                          </>}
-                          {u.appraisal?.overall && (() => {
-                            const t = u.appraisal.overall === 'A' ? { c: '#059669', b: '#6ee7b7', bg: 'rgba(52,211,153,0.12)' }
-                              : u.appraisal.overall === 'D' ? { c: '#dc2626', b: '#fca5a5', bg: 'rgba(248,113,113,0.1)' }
-                              : { c: '#b45309', b: '#fde68a', bg: '#fffbeb' };
-                            return (
-                              <span title={summarizeAppraisal(u.appraisal)} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: t.bg, border: `1px solid ${t.b}`, color: t.c }}>
-                                Grade {u.appraisal.overall}{u.appraisal.attention_count > 0 ? ` · ${u.appraisal.attention_count}` : ''}
-                              </span>
-                            );
-                          })()}
-                          {can('view_gross') && gp != null && (
-                            <span title="Net profit after recon, services, commission, ad spend and holding" style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: gp >= 0 ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.1)', border: `1px solid ${gp >= 0 ? '#6ee7b7' : '#fca5a5'}`, color: gp >= 0 ? '#059669' : '#dc2626' }}>
-                              Net {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0 }} />
+                        );
+                      })()}
+                      <ChevronRight style={{ width: 16, height: 16, color: premiumLight.textMuted, flexShrink: 0 }} />
                     </div>
                   );
                 })}
@@ -7723,7 +7110,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   <div style={{ padding: '14px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
                     <button
                       onClick={() => setVisibleCount(c => c + 30)}
-                      style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: 8, padding: '8px 24px', cursor: 'pointer' }}
+                      style={{ ...INV_GHOST_BTN }}
                     >
                       Load {Math.min(30, displayUnits.length - visibleCount)} more
                     </button>
@@ -7753,17 +7140,22 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
         const carYear = car?.year ? Number(car.year) : null;
         const carAge = carYear ? currentYear - carYear : null;
 
-        const ACTION_BTN = (label, desc, color, bg, border, onClick) => (
-          <button onClick={onClick}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "system-ui,sans-serif", transition: 'opacity 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color, margin: 0 }}>{label}</p>
-              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{desc}</p>
-            </div>
-            <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0, marginTop: 2 }} />
-          </button>
-        );
+        // premiumLight (owner, 2026-11-09): every action is the same grey row with
+        // ink words. Only the main action ('primary') is red. No per-row colours.
+        const ACTION_BTN = (label, desc, kind, _bg, _border, onClick) => {
+          const primary = kind === 'primary';
+          return (
+            <button onClick={onClick}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: primary ? premiumLight.accent : premiumLight.raised, border: 'none', borderRadius: premiumLight.radius.row, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "system-ui,sans-serif", transition: 'background 0.15s' }}
+              onMouseEnter={e => { if (!primary) e.currentTarget.style.background = premiumLight.hover; }} onMouseLeave={e => { if (!primary) e.currentTarget.style.background = premiumLight.raised; }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: primary ? '#fff' : premiumLight.text, margin: 0 }}>{label}</p>
+                <p style={{ fontSize: 11, color: primary ? 'rgba(255,255,255,0.85)' : premiumLight.textMuted, margin: '2px 0 0' }}>{desc}</p>
+              </div>
+              <ChevronRight style={{ width: 15, height: 15, color: primary ? '#fff' : premiumLight.textMuted, flexShrink: 0 }} />
+            </button>
+          );
+        };
 
         // Only show spec rows that have values
         const SPEC_ROWS = [
@@ -7793,7 +7185,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#fff', borderRadius: 16, width: '100%', maxWidth: isMobile ? 540 : 880,
+                background: '#fff', borderRadius: premiumLight.radius.card, width: '100%', maxWidth: isMobile ? 540 : 880,
                 maxHeight: isMobile ? '88vh' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain',
                 boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
@@ -7811,7 +7203,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ width: 72, height: 52, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {thumb ? (
-                    <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
+                    <img src={cdnImg(thumb, 160, 70)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (!e.target.dataset.fb) { e.target.dataset.fb = '1'; e.target.src = thumb; } else { e.target.style.display = 'none'; } }} />
                   ) : (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>
                   )}
@@ -7822,13 +7214,13 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
                     {car.year && <span style={{ fontSize: 12, color: '#6b7280' }}>{car.year}</span>}
-                    {carAge != null && <span style={{ fontSize: 11, fontWeight: 700, color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399' }}>{carAge}yr</span>}
+                    {carAge != null && <span style={{ fontSize: 12, color: premiumLight.textMuted }}>· {carAge}yr</span>}
                     {plate ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{plate.toUpperCase()}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: premiumLight.textSec, background: premiumLight.raised, borderRadius: 6, padding: '2px 7px' }}>{plate.toUpperCase()}</span>
                     ) : (
                       <span style={{ fontSize: 10, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>no plate</span>
                     )}
-                    {isAging && <span style={{ fontSize: 10, fontWeight: 700, color: '#f87171' }}>{daysNum}d in stock</span>}
+                    {isAging && <span style={{ fontSize: 11, fontWeight: 700, color: premiumLight.accentText }}>{daysNum}d in stock</span>}
                   </div>
                 </div>
                 <button onClick={() => setDetailUnit(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>
@@ -7839,9 +7231,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               {/* Financial stats strip */}
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${[1, can('view_cost') ? 1 : 0, can('view_gross') ? 1 : 0].reduce((a, b) => a + b)}, 1fr)`, gap: 1, background: '#f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
                 {[
-                  { label: 'Asking',   val: u.asking_price ? `RM ${Number(u.asking_price).toLocaleString()}` : '—', color: '#111827' },
+                  { label: 'Asking',   val: (Number(u.asking_price) || Number(u.car_listings?.selling_price)) ? `RM ${(Number(u.asking_price) || Number(u.car_listings?.selling_price)).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
-                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
+                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? premiumLight.textMuted : gp >= 0 ? premiumLight.up : premiumLight.accentText } : null,
                 ].filter(Boolean).map((s, i) => (
                   <div key={i} style={{ background: '#fff', padding: '10px 14px', textAlign: 'center' }}>
                     <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>{s.label}</p>
@@ -7876,12 +7268,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
-                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
-                    <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>{enc.label}</button>
+                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={plPill(ps.color)}>B7 · {ps.label.replace('B7 ', '')}</button>
+                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={plPill(b5.color)}>B5 · {b5.label.replace('B5 ', '')}</button>
+                    <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={plPill(enc.color)}>{enc.label}</button>
                     {isUnpublished && (
                       <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', cursor: publishingStockId === u.id ? 'default' : 'pointer', opacity: publishingStockId === u.id ? 0.6 : 1 }}>
+                        style={{ ...plPill('#dc2626'), fontWeight: 700, cursor: publishingStockId === u.id ? 'default' : 'pointer', opacity: publishingStockId === u.id ? 0.6 : 1 }}>
                         {publishingStockId === u.id ? 'Publishing…' : 'Not published — tap to publish'}
                       </button>
                     )}
@@ -7892,12 +7284,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               {/* Actions — child modals open ON TOP of this drawer (z-10000 > z-9999) */}
               <div style={{ padding: '12px 16px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
-                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', '#059669', 'rgba(5,150,105,0.06)', '#6ee7b7', () => fetchPnl(u))}
-                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', '#d97706', 'rgba(245,158,11,0.06)', '#fde68a', () => fetchReconJobs(u))}
-                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', '#db2777', 'rgba(236,72,153,0.06)', '#fbcfe8', () => openAdSpend(u))}
-                {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
-                {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
-                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => setSoldTarget(u))}
+                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', 'primary', null, null, () => setSoldTarget(u))}
+                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
+                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', null, null, null, () => fetchReconJobs(u))}
+                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', null, null, null, () => openAdSpend(u))}
+                {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', null, null, null, () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
+                {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', null, null, null, () => fetchHistory(u))}
               </div>
               </div>{/* /RIGHT column */}
               </div>{/* /body grid */}
@@ -7907,7 +7299,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
                 <div style={{ marginTop: 12 }}>
                   <button onClick={() => handleSaveAppraisal(u)} disabled={apprSaving}
-                    style={{ fontSize: 13, fontWeight: 600, padding: '9px 18px', borderRadius: 8, cursor: apprSaving ? 'default' : 'pointer', color: '#fff', background: '#dc2626', border: 'none', opacity: apprSaving ? 0.6 : 1 }}>
+                    style={{ fontSize: 13, fontWeight: 600, padding: '10px 18px', borderRadius: premiumLight.radius.row, cursor: apprSaving ? 'default' : 'pointer', color: '#fff', background: premiumLight.text, border: 'none', opacity: apprSaving ? 0.6 : 1 }}>
                     {apprSaving ? 'Saving…' : 'Save appraisal'}
                   </button>
                 </div>
@@ -7986,11 +7378,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 </div>
               </div>
               {/* Intake checklist reminder */}
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
-                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2">Intake checklist</p>
+              <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: '10px 12px' }}>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Intake checklist</p>
                 {['Physical inspection done', 'Geran / registration card sighted', 'Keys + spare key received', 'Service history noted', 'Photos uploaded to listing'].map(item => (
-                  <p key={item} className="text-[11px] text-green-800 m-0 flex items-center gap-1.5 mb-1">
-                    <span style={{ width: 12, height: 12, borderRadius: 2, border: '1.5px solid #16a34a', display: 'inline-block', flexShrink: 0 }} />
+                  <p key={item} className="text-[11px] text-gray-700 m-0 flex items-center gap-1.5 mb-1">
+                    <span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid #9ca3af', display: 'inline-block', flexShrink: 0 }} />
                     {item}
                   </p>
                 ))}
@@ -8134,9 +7526,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       reasons.push(`RM ${v.commission.toLocaleString()} sales commission`);
                     if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4)
                       reasons.push(`RM ${v.adSpend.toLocaleString()} ad spend`);
-                    const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
-                               : thin ? { bg: '#fffbeb', bd: '#fde68a', tx: '#b45309', ic: '#d97706' }
-                                      : { bg: '#f0fdf4', bd: '#bbf7d0', tx: '#15803d', ic: '#16a34a' };
+                    // premiumLight: one grey block; only the headline word carries the verdict.
+                    const word = loss || thin ? premiumLight.accentText : premiumLight.up;
+                    const tone = { bg: premiumLight.raised, bd: 'transparent', tx: premiumLight.textSec, ic: word, head: word };
                     const headline = loss
                       ? `Losing RM ${Math.abs(v.netPnl).toLocaleString()} on this unit`
                       : thin
@@ -8149,11 +7541,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                         : `RM ${spread.toLocaleString()} spread over buy price survives all costs.`;
                     const aging = v.holdingDays > 60 && !v.isSold && v.dailyHold > 0;
                     return (
-                      <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                      <div style={{ background: tone.bg, borderRadius: premiumLight.radius.row, padding: '12px 14px', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {loss ? <AlertTriangle style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />
                                 : <TrendingUp style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />}
-                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx }}>{headline}</span>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.head }}>{headline}</span>
                         </div>
                         <p style={{ fontSize: 12, color: tone.tx, opacity: 0.92, margin: '6px 0 0', lineHeight: 1.45 }}>{body}</p>
                         {aging && <p style={{ fontSize: 11, color: tone.tx, opacity: 0.82, margin: '5px 0 0', lineHeight: 1.4 }}>Aged {v.holdingDays} days — every extra day adds RM {Math.round(v.dailyHold).toLocaleString()}. Repricing to move it stops the bleed.</p>}
@@ -8179,14 +7571,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                         <span style={{ color: '#6b7280' }}>{label}</span>
-                        <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
+                        <span style={{ color: premiumLight.textSec }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
                     {/* Recon estimate vs actual reconciliation (DMS-5) — only when an estimate was booked */}
                     {pnlData.reconActual > 0 && pnlData.reconEst > 0 && pnlData.reconActual !== pnlData.reconEst && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2, marginBottom: 3, paddingLeft: 8 }}>
                         <span style={{ color: '#9ca3af' }}>↳ vs RM {pnlData.reconEst.toLocaleString()} estimate</span>
-                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? '#f59e0b' : '#059669' }}>
+                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? premiumLight.accentText : premiumLight.up }}>
                           {pnlData.reconActual > pnlData.reconEst ? `+${(pnlData.reconActual - pnlData.reconEst).toLocaleString()} over` : `${(pnlData.reconEst - pnlData.reconActual).toLocaleString()} under`}
                         </span>
                       </div>
@@ -8198,7 +7590,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
                       <span style={{ color: '#374151' }}>Front gross</span>
-                      <span style={{ color: pnlData.frontGross >= 0 ? '#059669' : '#f87171' }}>
+                      <span style={{ color: pnlData.frontGross >= 0 ? premiumLight.up : premiumLight.accentText }}>
                         {pnlData.frontGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.frontGross).toLocaleString()}
                       </span>
                     </div>
@@ -8221,12 +7613,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       {pnlData.addonCost > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                           <span style={{ color: '#6b7280' }}>Add-on cost</span>
-                          <span style={{ color: '#f87171' }}>− RM {pnlData.addonCost.toLocaleString()}</span>
+                          <span style={{ color: premiumLight.textSec }}>− RM {pnlData.addonCost.toLocaleString()}</span>
                         </div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
                         <span style={{ color: '#374151' }}>Back gross</span>
-                        <span style={{ color: pnlData.backGross >= 0 ? '#059669' : '#f87171' }}>
+                        <span style={{ color: pnlData.backGross >= 0 ? premiumLight.up : premiumLight.accentText }}>
                           {pnlData.backGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.backGross).toLocaleString()}
                         </span>
                       </div>
@@ -8236,7 +7628,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   <div style={{ padding: '14px 0 4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Total Gross</span>
-                      <span style={{ fontSize: 20, fontFamily: "'Bebas Neue',cursive", color: pnlData.netPnl >= 0 ? '#34d399' : '#f87171', letterSpacing: 1 }}>
+                      <span style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: pnlData.netPnl >= 0 ? premiumLight.up : premiumLight.accentText }}>
                         {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
                       </span>
                     </div>
@@ -8369,8 +7761,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
                   {/* Add job form */}
                   {showReconAdd ? (
-                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14 }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
+                    <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: premiumLight.textSec, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <input value={reconForm.title} onChange={e => setReconForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
                         <select value={reconForm.category} onChange={e => setReconForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
@@ -8388,7 +7780,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#fffbeb', border: '1px dashed #fbbf24', color: '#d97706', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: premiumLight.radius.row, background: premiumLight.raised, border: 'none', color: premiumLight.text, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       + Add Recon Job
                     </button>
                   )}
@@ -8413,7 +7805,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             <div className="overflow-y-auto flex-1 p-5">
               {csvRows.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#fef2f2', border: '2px dashed #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: premiumLight.raised, border: '2px dashed #d1d5db', borderRadius: premiumLight.radius.row, color: premiumLight.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     <Upload style={{ width: 16, height: 16 }} />Choose CSV File
                   </button>
                   {csvError && <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{csvError}</p>}
@@ -8498,7 +7890,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                               </div>
                               {v.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{v.notes}</p>}
                             </div>
-                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? '#16a34a' : '#9ca3af', background: v.is_active ? '#f0fdf4' : '#f3f4f6', border: `1px solid ${v.is_active ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? premiumLight.up : premiumLight.textMuted, background: premiumLight.raised, border: 'none', borderRadius: 999, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
                               {v.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </div>
@@ -8568,6 +7960,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
 const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+// Short pill labels: the full names did not fit one row beside the search box.
+const DOC_TYPE_PILL = { 'Sales Agreement': 'Agreements', 'Deposit Receipt': 'Receipts', 'Handover Checklist': 'Checklists' };
 const DOC_TYPE_PREFIX = { 'Sales Agreement': 'SA', 'Deposit Receipt': 'DR', 'Handover Checklist': 'HC' };
 const DEFAULT_HANDOVER_ITEMS = [
   'Geran (Vehicle Ownership Certificate) — original',
@@ -8624,6 +8018,13 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [listingSearch, setListingSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
+  // Documents pop-ups sit above the page (portal) with the page locked behind them.
+  const docOverlayOpen = showGen || !!printDoc || !!deleteId;
+  useEffect(() => {
+    if (!docOverlayOpen) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [docOverlayOpen]);
   const [newHandoverItem, setNewHandoverItem] = useState('');
   const [linkedStock, setLinkedStock] = useState(null);
   const [emailSendingId, setEmailSendingId] = useState(null);
@@ -9153,96 +8554,74 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
   return (
     <div className="space-y-4">
-      {/* ── Document list ── */}
-      <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
-            Documents
-            {filteredDocs.length !== documents.length && <span style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', marginLeft: 8 }}>{filteredDocs.length} of {documents.length}</span>}
-          </h2>
-          <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
+      {/* ── Document list (premiumLight, 2026-11-10). The Sold pill names the page, so
+          no second "Documents" heading; type is a pill row, not a drop-down; the one red
+          button is New document; a draft's Issue is the dark key. ── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+          <StatusPills
+            items={[{ key: '', label: 'All', count: documents.length }, ...DOC_TYPES.map(t => ({ key: t, label: DOC_TYPE_PILL[t] || t, count: documents.filter(d => d.doc_type === t).length }))]}
+            active={docTypeFilter} onChange={setDocTypeFilter} />
         </div>
-
-        {/* Search + filter bar */}
-        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f3f4f6', background: '#fafafa', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
-            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
-            <input
-              value={docSearch} onChange={e => setDocSearch(e.target.value)}
-              placeholder="Search ref, buyer, car…"
-              style={{ width: '100%', paddingLeft: 30, paddingRight: docSearch ? 28 : 10, paddingTop: 6, paddingBottom: 6, fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
-            />
-            {docSearch && (
-              <button onClick={() => setDocSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex' }}><X style={{ width: 12, height: 12 }} /></button>
-            )}
-          </div>
-          <select value={docTypeFilter} onChange={e => setDocTypeFilter(e.target.value)} style={{ fontSize: 12, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', color: '#374151', outline: 'none', flexShrink: 0 }}>
-            <option value="">All Types</option>
-            {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 320 }}>
+          <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: PL.textMuted, pointerEvents: 'none' }} />
+          <input value={docSearch} onChange={e => setDocSearch(e.target.value)} placeholder="Search ref, buyer, car"
+            style={{ ...INV_INPUT, paddingLeft: 32, background: PL.card, boxShadow: PL.shadow }} />
         </div>
-
-        <div className="table-wrap">
-          {loading ? (
-            <p className="text-gray-500 text-sm p-6">Loading…</p>
-          ) : documents.length === 0 ? (
-            <p className="text-gray-500 text-sm p-6">No documents generated yet.</p>
-          ) : filteredDocs.length === 0 ? (
-            <p className="text-gray-500 text-sm p-6">No documents match your search.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  {['Ref', 'Type', 'Buyer', 'Car', 'Status', 'Date', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDocs.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 14px', fontSize: 11, fontFamily: 'monospace', color: '#6b7280', whiteSpace: 'nowrap' }}>{doc.doc_ref || '—'}</td>
-                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' }}>{doc.doc_type}</span></td>
-                    <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{doc.buyer_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—')}</td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {doc.doc_status === 'issued'
-                        ? <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '2px 8px' }}>Issued</span>
-                        : <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '2px 8px' }}>Draft</span>
-                      }
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}><Printer className="w-3 h-3" />View</button>
-                        {doc.doc_status !== 'issued' && (
-                          <button onClick={() => handleIssue(doc)} style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Issue</button>
-                        )}
-                        {doc.doc_status === 'issued' && (
-                          <button
-                            onClick={() => handleSendEmail(doc)}
-                            disabled={emailSendingId === doc.id}
-                            title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email — edit doc to add one'}
-                            style={{ fontSize: 11, fontWeight: 600, color: doc.buyer_email ? '#3b82f6' : '#9ca3af', background: doc.buyer_email ? 'rgba(59,130,246,0.08)' : '#f9fafb', border: `1px solid ${doc.buyer_email ? 'rgba(59,130,246,0.25)' : '#e5e7eb'}`, borderRadius: 6, padding: '4px 10px', cursor: doc.buyer_email ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: emailSendingId === doc.id ? 0.5 : 1 }}
-                          >
-                            {emailSendingId === doc.id ? 'Sending…' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
-                          </button>
-                        )}
-                        {doc.doc_status !== 'issued' && (
-                          <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <button onClick={() => setShowGen(true)} style={{ ...INV_GHOST_BTN, background: PL.accent, color: PL.onAccent }}>
+          <FileText style={{ width: 14, height: 14 }} />New document
+        </button>
       </div>
 
+      <div style={{ ...INV_CARD, padding: 8 }}>
+        {loading ? (
+          <p style={{ padding: '28px 16px', margin: 0, fontSize: 14, color: PL.textMuted }}>Loading…</p>
+        ) : filteredDocs.length === 0 ? (
+          <p style={{ padding: '36px 16px', margin: 0, fontSize: 14, color: PL.textMuted, textAlign: 'center' }}>
+            {documents.length === 0 ? 'No documents yet. Make a sales agreement or deposit receipt from a buyer\'s lead, or press New document.' : 'No document matches that search.'}
+          </p>
+        ) : filteredDocs.map((doc, i) => {
+          const issued = doc.doc_status === 'issued';
+          const car = doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : null);
+          const btn = { ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12 };
+          return (
+            <div key={doc.id} className="doc-row" style={{ display: 'grid', gap: '8px 16px', alignItems: 'center', padding: '12px 10px', borderTop: i ? `1px solid ${PL.line}` : 'none' }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PL.text }}>
+                  {doc.buyer_name || 'No buyer named'}
+                  <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: issued ? PL.textMuted : PL.accentText }}>{issued ? 'Issued' : 'Draft'}</span>
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: PL.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {[doc.doc_type, car, doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ')}
+                  {doc.doc_ref && <span style={{ fontFamily: 'monospace', marginLeft: 6 }}>{doc.doc_ref}</span>}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={() => setPrintDoc(doc)} style={btn}><Printer style={{ width: 13, height: 13 }} />View</button>
+                {issued ? (
+                  <button onClick={() => handleSendEmail(doc)} disabled={!doc.buyer_email || emailSendingId === doc.id}
+                    title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email. Open the document to add one.'}
+                    style={{ ...btn, opacity: !doc.buyer_email || emailSendingId === doc.id ? 0.5 : 1, cursor: doc.buyer_email ? 'pointer' : 'not-allowed' }}>
+                    {emailSendingId === doc.id ? 'Sending…' : !doc.buyer_email ? 'No email' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => handleIssue(doc)} style={{ ...btn, background: PL.text, color: '#fff' }}>Issue</button>
+                    <button onClick={() => setDeleteId(doc.id)} aria-label="Delete draft" style={{ ...btn, padding: 8, color: PL.textMuted }}><Trash2 style={{ width: 14, height: 14 }} /></button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <style>{`
+        .doc-row { grid-template-columns: 1fr; }
+        @media (min-width: 760px) { .doc-row { grid-template-columns: minmax(0,1fr) auto; } }
+      `}</style>
+
       {/* ── Generate Modal ── */}
-      {showGen && (
+      {showGen && createPortal(
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -9266,7 +8645,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
-                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
+                          <img src={cdnImg(selectedListing.images[0], 96, 70)} onError={imgFallback(selectedListing.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
                           <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#6b7280' }} /></div>
                         )}
@@ -9306,7 +8685,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                               onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
                               onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
                               {l.images?.[0] ? (
-                                <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
+                                <img src={cdnImg(l.images[0], 96, 70)} onError={imgFallback(l.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                               ) : (
                                 <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#6b7280' }} /></div>
                               )}
@@ -9506,10 +8885,10 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             })()}
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ── Print Preview Modal ── */}
-      {printDoc && (
+      {printDoc && createPortal(
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
           <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -9541,10 +8920,10 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ── Delete Confirmation ── */}
-      {deleteId && (
+      {deleteId && createPortal(
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl p-6 max-w-xs w-full mx-4" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>Delete document?</h3>
@@ -9555,7 +8934,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
@@ -9671,6 +9050,48 @@ export default function DashboardPage() {
   // Stock tools (CSV import / vendors / add unit) are reached from the Listings
   // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
+  const handleTabChangeRef = useRef(null);
+  const [addCarOpen, setAddCarOpen] = useState(false);
+  const [autoPostOpen, setAutoPostOpen] = useState(false);
+  const [stickerCar, setStickerCar] = useState(null);
+  // Select several cars and change them at once (INV-BULK).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const toggleSelected = (id) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  // Views + enquiries per car on the Listings rows (INV-INTEREST), last 30 days.
+  // Kept on the device so the numbers paint at once; null = not loaded yet (a
+  // placeholder shows, never a 0).
+  const interestDealer = getDealerIdFromProfile(profile);
+  const [carInterest, setCarInterest] = usePersistentState(interestDealer ? `inv_interest:${interestDealer}` : null, null);
+  // Window-sticker scans per car, last 30 days. null = the database function is not
+  // there yet (queued migration 20261110b) or has not answered: show nothing, never a 0.
+  const [stickerScans, setStickerScans] = useState(null);
+  const autoPost = useAutoPost(getDealerIdFromProfile(profile));
+  // Inventory is ONE nav item with two pills, Listings | Stock (owner, 2026-11-09).
+  // The nav item opens whichever pill the dealer last opened on this device, so
+  // they choose what they see first by using it. Routes stay /dashboard/listings
+  // and /dashboard/stock, so every old link and the Tools menu keep working.
+  const openInventory = useCallback((view) => {
+    try { localStorage.setItem(INVENTORY_VIEW_KEY, view); } catch { /* private mode */ }
+    handleTabChangeRef.current?.(view);
+  }, []);
+  const lastInventoryView = () => {
+    try { return localStorage.getItem(INVENTORY_VIEW_KEY) === "stock" ? "stock" : "listings"; } catch { return "listings"; }
+  };
+  // ONE handover state for the Handover and Customers pills (CLAUDE.md "One post-sale
+  // state"): Customers used to run its own post_sale_tasks query for the same %.
+  // Loads only while a Sold pill is open, so no other tab gains a query.
+  const soldHandover = useHandover(SOLD_IDS.has(activeTab) && userId ? getDealerIdFromProfile(profile) : null);
+  const openSold = useCallback((view) => {
+    try { localStorage.setItem(SOLD_VIEW_KEY, view); } catch { /* private mode */ }
+    handleTabChangeRef.current?.(view);
+  }, []);
+  const lastSoldView = () => {
+    try { const v = localStorage.getItem(SOLD_VIEW_KEY); return SOLD_IDS.has(v) ? v : "handover"; } catch { return "handover"; }
+  };
   const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
   const toolsBtnRef = useRef(null);
   const [toolsBtnRect, setToolsBtnRect] = useState(null);
@@ -9679,7 +9100,8 @@ export default function DashboardPage() {
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
   const closeNotif = () => { setNotifOpen(false); setSidebarBellRect(null); };
-  const [notifications,    setNotifications]    = useState([]);
+  // Cached per dealer so the bell shows its count on the first frame.
+  const [notifications,    setNotifications]    = usePersistentState(userId ? `dash_notifs:${userId}` : null, []);
   const [notifOpen,        setNotifOpen]        = useState(false);
   useModalHistory(notifOpen, () => setNotifOpen(false));
   const [pendingStockListing, setPendingStockListing] = useState(null);
@@ -9808,7 +9230,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm, error: smError }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
@@ -9846,15 +9268,17 @@ export default function DashboardPage() {
           addonNet[d.listing_id] = (addonNet[d.listing_id] || 0) + (Number(d.sold_price) || 0) - (Number(d.dealer_products?.cost_price) || 0);
         });
         setAddonNetByListing(addonNet);
-        setListings(carsError ? [] : merged);
-        setSalesmen(sm || []);
+        // A failed read (DB stall / timeout) keeps whatever is on screen — the
+        // cached grid — instead of blanking it to "no cars".
+        if (!carsError) setListings(merged);
+        if (!smError) setSalesmen(sm || []);
         setLoading(false);
         // Cache the listings table + team roster for the next cold start. Skipped
         // on a failed read so one bad response can't overwrite a good cache with
         // an empty grid.
         if (!carsError) {
           writeCache(`${PANEL_CACHE_KEY}_listings_${uid}`, merged);
-          writeCache(`${PANEL_CACHE_KEY}_salesmen_${uid}`, sm || []);
+          if (!smError) writeCache(`${PANEL_CACHE_KEY}_salesmen_${uid}`, sm || []);
         }
       }
     };
@@ -9931,7 +9355,7 @@ export default function DashboardPage() {
     const reload = () =>
       supabase.from('dealer_notifications').select('*').eq('dealer_id', userId)
         .order('created_at', { ascending: false }).limit(20)
-        .then(({ data }) => setNotifications(data || []));
+        .then(({ data, error }) => { if (!error) setNotifications(data || []); });
     reload();
     const ch = liveChannel(supabase, `notifs_${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dealer_notifications', filter: `dealer_id=eq.${userId}` }, reload)
@@ -9994,17 +9418,21 @@ export default function DashboardPage() {
   };
   const [addMode, setAddMode] = useState(null); // null | 'marketplace' | 'internal'
   const [marketplaceDraftListing, setMarketplaceDraftListing] = useState(null); // listing created by AddCarForm, awaiting CarForm continuation
-  const handleTabChange = useCallback((tab) => {
+  // `query` (optional) lands as ?key=value on the tab's URL, e.g.
+  // handleTabChange("crm", { sub: "bookings" }) or { lead: <id> } to open one lead.
+  const handleTabChange = useCallback((tab, query) => {
     startTransition(() => {
       setActiveTab(tab);
       setSidebarOpen(false);
       if (tab !== 'add') { setAddMode(null); setMarketplaceDraftListing(null); }
-      navigate(`/dashboard/${tab}`);
+      const qs = query ? new URLSearchParams(query).toString() : '';
+      navigate(`/dashboard/${tab}${qs ? `?${qs}` : ''}`);
       // Keep the group containing this tab open in the sidebar
       const gid = TAB_TO_GROUP[tab];
       if (gid) setOpenGroups(prev => new Set([...prev, gid]));
     });
   }, [navigate]);
+  handleTabChangeRef.current = handleTabChange;
 
   // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
   // old deep-links and saved URLs don't render a blank pane.
@@ -10016,21 +9444,33 @@ export default function DashboardPage() {
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       ai_manager:  { tab: "ai_manager", sub: [] },
+      // GM Oversight was split up (2026-11-09): alerts -> Overview, targets +
+      // what drove revenue -> Revenue, activity trail -> Team.
+      oversight:   { tab: "overview",   sub: [] },
       // Merged into Leads / CRM. Old notifications (link_to) and saved URLs
       // still carry these; without the alias they open a blank pane.
       enquiries:   { tab: "crm", sub: [] },
-      bookings:    { tab: "crm", sub: [] },
-      outreach:    { tab: "crm", sub: [] },
+      bookings:    { tab: "crm", sub: ["crm", "bookings"] },
+      outreach:    { tab: "crm", sub: ["crm", "outreach"] },
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {
       if (mapped.sub[0] === "analytics") setAnalyticsSub(mapped.sub[1]);
       if (mapped.sub[0] === "storefront") setStorefrontSub(mapped.sub[1]);
+      if (mapped.sub[0] === "crm") { navigate(`/dashboard/crm?sub=${mapped.sub[1]}`, { replace: true }); return; }
       if (activeTab !== mapped.tab) setActiveTab(mapped.tab);
       return;
     }
     if (tabParam !== activeTab) setActiveTab(tabParam);
   }, [tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // CRM sub-tab + a lead to open, read from the URL (/dashboard/crm?sub=bookings,
+  // /dashboard/crm?lead=<id>) so Overview alerts land on the exact place.
+  const teamTrail = useMemo(() => new URLSearchParams(location.search).get('trail') || 'all', [location.search]);
+  const crmQuery = useMemo(() => {
+    const p = new URLSearchParams(location.search);
+    return { sub: p.get('sub'), lead: p.get('lead') };
+  }, [location.search]);
 
   // Sync analyticsSub when the user navigates back/forward through sub-tab history entries
   useEffect(() => {
@@ -10096,6 +9536,87 @@ export default function DashboardPage() {
     setAssignToast({ listingId, msg: "Unassigned" });
     setTimeout(() => setAssignToast(null), 2000);
   };
+  useEffect(() => {
+    if (activeTab !== 'listings' || !interestDealer) return undefined;
+    let off = false;
+    supabase.rpc('get_dealer_car_analytics', { p_dealer_id: interestDealer, p_days: 30 }).then(({ data, error }) => {
+      if (off || error) return; // a failed read keeps what is on the device
+      const m = {};
+      (data || []).forEach(r => {
+        m[r.car_id] = { views: Number(r.views) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
+      });
+      setCarInterest(m);
+    });
+    supabase.rpc('get_dealer_sticker_scans', { p_dealer_id: interestDealer, p_days: 30 }).then(({ data, error }) => {
+      if (off || error) return;
+      const m = {};
+      (data || []).forEach(r => { m[r.car_id] = Number(r.scans) || 0; });
+      setStickerScans(m);
+    });
+    return () => { off = true; };
+  }, [activeTab, interestDealer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving Listings, or changing the status pill, drops the selection.
+  useEffect(() => { exitSelect(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedCars = listings.filter(l => selectedIds.has(l.id));
+
+  // Bulk status. Sold cars are skipped (a sold car leaves 'sold' only through
+  // undo_car_sale) and 'sold' is not offered at all. The .in() guard reads the
+  // server's status, so a car sold elsewhere a second ago is not relisted.
+  const bulkStatus = async (status) => {
+    const targets = selectedCars.filter(l => l.status !== 'sold' && (l.status || 'available') !== status);
+    const skippedSold = selectedCars.filter(l => l.status === 'sold').length;
+    if (!targets.length) { toast(skippedSold ? 'Sold cars cannot be changed here.' : 'Those cars already have that status.'); return; }
+    setBulkBusy(true);
+    let ok = 0, failed = 0, capHit = false;
+    const updated = {};
+    for (const l of targets) {
+      const { data, error } = await supabase.from('car_listings').update({ status })
+        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select();
+      if (error || !data?.length) {
+        failed++;
+        if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
+        continue;
+      }
+      ok++;
+      updated[l.id] = data[0];
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+    }
+    setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
+    setBulkBusy(false);
+    exitSelect();
+    if (capHit) toast.error(`Changed ${ok}. Your plan's listing limit stopped the rest.`);
+    else if (failed) toast.error(`Changed ${ok}, ${failed} could not be changed. Try those again.`);
+    else toast.success(`Changed ${ok} car${ok === 1 ? '' : 's'}${skippedSold ? `. Skipped ${skippedSold} sold` : ''}.`);
+  };
+
+  // Bulk price: the same rule as one car (PriceEditModal): a first drop keeps the
+  // old price as original_price (the "was" price + hot deal), a price back at or
+  // above it clears it.
+  const bulkPrice = async (changes) => {
+    setBulkBusy(true);
+    let ok = 0, failed = 0;
+    const updated = {};
+    for (const { car, from, to } of changes) {
+      const orig = car.original_price || null;
+      const payload = { selling_price: to };
+      if (orig && to >= orig) payload.original_price = null;
+      else if (!orig && to < from) payload.original_price = from;
+      const { data, error } = await supabase.from('car_listings').update(payload).eq('id', car.id).neq('status', 'sold').select();
+      if (error || !data?.length) { failed++; continue; }
+      ok++;
+      updated[car.id] = data[0];
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: car.id, action: 'price_changed', summary: `Price changed from RM ${from.toLocaleString()} to RM ${to.toLocaleString()} (bulk) — ${car.brand} ${car.model} ${car.year}`, fieldChanges: { selling_price: { from, to } } });
+    }
+    setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
+    setBulkBusy(false);
+    setBulkPriceOpen(false);
+    exitSelect();
+    if (failed) toast.error(`Changed ${ok} price${ok === 1 ? '' : 's'}, ${failed} failed. Try those again.`);
+    else toast.success(`Changed ${ok} price${ok === 1 ? '' : 's'}.`);
+  };
+
   const handleStatus = async (id, status) => {
     setUpdatingStatus(id);
     try {
@@ -10324,24 +9845,28 @@ export default function DashboardPage() {
 
   const STATUS = {
     available: {
+      word: premiumLight.up,
       label: "Available",
       dot: "bg-emerald-400",
       cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
       next: "reserved",
     },
     reserved: {
+      word: premiumLight.text,
       label: "Reserved",
       dot: "bg-amber-400",
       cls: "bg-amber-400/10 text-amber-400 border-amber-400/20",
       next: "sold",
     },
     sold: {
+      word: premiumLight.textMuted,
       label: "Sold",
       dot: "bg-red-400",
       cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
       next: "available",
     },
     unpublished: {
+      word: premiumLight.textMuted,
       label: "Unpublished",
       dot: "bg-gray-400",
       cls: "bg-gray-400/10 text-gray-500 border-gray-400/20",
@@ -10368,22 +9893,21 @@ export default function DashboardPage() {
         <button
           onClick={() => !busy && setOpen(o => !o)}
           disabled={busy}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
+          // premiumLight: one grey pill, the WORD carries the status colour.
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999, border: 'none', background: premiumLight.raised, color: cfg.word, fontSize: 12, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.5 : 1, fontFamily: 'inherit' }}
         >
-          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`} />
           {busy ? "…" : cfg.label}
-          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+          <ChevronDown style={{ width: 12, height: 12, color: premiumLight.textMuted }} />
         </button>
         {open && (
-          <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+          <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: 6, zIndex: 50, background: '#fff', borderRadius: 12, boxShadow: premiumLight.shadow, padding: 4, minWidth: 140 }}>
             {Object.entries(STATUS).map(([key, val]) => (
               <button
                 key={key}
                 onClick={() => { if (key !== s) handleStatus(listing.id, key); setOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${key === s ? "opacity-40 cursor-default" : "hover:bg-gray-800 cursor-pointer"}`}
+                style={{ display: 'flex', width: '100%', textAlign: 'left', padding: '8px 10px', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: key === s ? 700 : 500, color: val.word, background: key === s ? premiumLight.raised : 'transparent', cursor: key === s ? 'default' : 'pointer', fontFamily: 'inherit' }}
               >
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${val.dot}`} />
-                <span className={val.cls.split(" ")[1]}>{val.label}</span>
+                {val.label}
               </button>
             ))}
           </div>
@@ -10441,14 +9965,17 @@ export default function DashboardPage() {
     listings: { title: "Listings", sub: "Manage your inventory" },
     add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
-    analytics: { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
+    analytics: ({
+      revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
+      performance: { title: "Performance", sub: "Team, website traffic and stock health" },
+      listings:    { title: "Listings",    sub: "Per-car views, enquiries and days on lot" },
+    })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
     storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
     ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
-    outreach:   { title: "Outreach Hub",     sub: "Lead campaigns & WhatsApp automation" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
     handover:   { title: "Handover",         sub: "Post-sale processing: JPJ transfer, Puspakom, road tax & insurance" },
     market:     { title: "Market Demand",    sub: "What Malaysia registered last month, matched against your stock" },
@@ -10462,7 +9989,6 @@ export default function DashboardPage() {
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
         { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
-        { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
     {
@@ -10476,16 +10002,13 @@ export default function DashboardPage() {
       id: "g_inventory", Icon: Package, label: "Inventory",
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
-        { id: "add",      Icon: PlusCircle, label: "Add Listing" },
         { id: "market",   Icon: Activity,   label: "Market Demand" },
       ],
     },
     {
-      id: "g_operations", Icon: ClipboardCheck, label: "Operations",
+      id: "g_operations", Icon: ClipboardCheck, label: "After the sale",
       items: [
-        { id: "handover",  Icon: ClipboardCheck, label: "Handover" },
-        { id: "customers", Icon: UserCheck,       label: "Customers" },
-        { id: "documents", Icon: FileText,         label: "Documents" },
+        { id: "handover",  Icon: ClipboardCheck, label: "Sold" },
       ],
     },
     {
@@ -10511,40 +10034,6 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const STAT_CARDS = [
-    {
-      label: "Total Listings",
-      val: listings.length,
-      sub: "Active inventory",
-      grad: "grad-cyan",
-      Icon: Car,
-      glow: "rgba(103,232,249,0.13)",
-    },
-    {
-      label: "Reserved",
-      val: reservedCount,
-      sub: "Held with deposit",
-      grad: "grad-gold",
-      Icon: Tag,
-      glow: "rgba(251,191,36,0.13)",
-    },
-    {
-      label: "Total Value",
-      val: `RM ${totalVal.toLocaleString()}`,
-      sub: "Combined price",
-      grad: "grad-purple",
-      Icon: DollarSign,
-      glow: "rgba(216,180,254,0.13)",
-    },
-    {
-      label: "Hot Deals",
-      val: hotCount,
-      sub: hotCount > 0 ? "On homepage" : "No discounts",
-      grad: hotCount > 0 ? "grad-red" : "",
-      Icon: Flame,
-      glow: hotCount > 0 ? "rgba(248,113,113,0.08)" : "transparent",
-    },
-  ];
 
   const notifCount = notifications.filter(n => !n.is_read).length;
   const timeAgo = (iso) => {
@@ -10796,7 +10285,7 @@ export default function DashboardPage() {
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map(({ id, sub, Icon, label, badge }) => {
-                      const isActive = activeTab === id && (!sub || analyticsSub === sub);
+                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock") || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
@@ -10805,6 +10294,10 @@ export default function DashboardPage() {
                             setAnalyticsSub(sub);
                             setSidebarOpen(false);
                             startTransition(() => navigate(`/dashboard/${id}?sub=${sub}`));
+                          } else if (id === "listings") {
+                            openInventory(lastInventoryView());
+                          } else if (id === "handover") {
+                            openSold(lastSoldView());
                           } else {
                             handleTabChange(id);
                           }
@@ -11074,6 +10567,10 @@ export default function DashboardPage() {
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {/* The page title is said ONCE. Tabs that draw their own heading (or a
+              sub-tab bar that names the page) skip this one; it used to sit on top
+              of them, e.g. "Revenue" above "Revenue Operations" (owner, 2026-11-09). */}
+          {TITLES[activeTab] && !(OWN_HEADING_TABS.has(activeTab) || (activeTab === "analytics" && analyticsSub !== "performance")) && (
           <div className="hidden sm:block mb-3 sm:mb-4">
             <h1 style={{ fontSize: 18, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
@@ -11083,6 +10580,7 @@ export default function DashboardPage() {
             </p>
             <div className="mt-3 h-px" style={{ background: '#EAECF0' }} />
           </div>
+          )}
 
           {/* Push is REQUIRED on the dealer account: no "Not now", and it sits
               above every tab until this device is subscribed. Both dealers had
@@ -11106,19 +10604,20 @@ export default function DashboardPage() {
               {profile?.plan !== "dealer_starter" && (
                 <button
                   onClick={() => handleTabChange("ai_manager")}
+                  className="pl-key"
                   style={{
-                    display: "flex", alignItems: "center", gap: 10, width: "100%",
-                    padding: "10px 14px", borderRadius: 10,
-                    background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.18)",
+                    display: "flex", alignItems: "center", gap: 12, width: "100%",
+                    padding: "14px 16px", borderRadius: 20,
+                    background: premiumLight.cardBg, border: "none",
                     cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",
                   }}
                 >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Bot size={16} color="#3b82f6" />
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: "#f5f6f8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Bot size={17} color="#111827" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1e3a8a" }}>AI Sales Manager</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#111827" }}>AI Sales Manager</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
                   </div>
                   <ChevronRight size={16} color="#6b7280" />
                 </button>
@@ -11149,6 +10648,7 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
+              <InventorySwitch tabs={INVENTORY_TABS} active="listings" onChange={openInventory} />
               {/* The badge is worth nothing if nobody finds the upload step, and
                   Settings is the screen a dealer never opens. Jumps straight to
                   the Verified Badge section. */}
@@ -11158,133 +10658,47 @@ export default function DashboardPage() {
                 onStart={() => { setSettingsJump("verify"); handleTabChange("settings"); }}
               />
 
-              {/* Stock P&L stats (migrated from the Stock tab header) — shown first
-                  since revenue/value figures matter more at a glance than raw counts */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
-                {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
-                  <div key={label} className="stat-card overflow-hidden" style={{ position: 'relative' }}>
-                    {spark && (
-                      <div className="relative px-3.5 pt-3">
-                        <Sparkline data={spark} color={sparkColor || '#2563EB'} width={120} height={32} />
-                      </div>
-                    )}
-                    <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
-                      <div className="flex items-center justify-between mb-3">
-                        <p style={{ fontSize: 10, fontWeight: 600, color: color.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                          {label}
-                        </p>
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: glow + '22', color: glow }}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <p style={{ fontSize: 26, fontWeight: 700, color: color.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                        {val}
-                      </p>
-                      <p style={{ fontSize: 12, color: color.textMuted, marginTop: 4 }} className="truncate">
-                        {sub}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Listings panel ── */}
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #EAECF0', background: '#FFFFFF', boxShadow: '0 1px 4px rgba(15,23,42,0.06)', fontFamily: "system-ui, sans-serif" }}>
+              {/* ── Listings panel ── one card: search, filters, the one Add car button,
+                  the status pills, then the cars. No count tiles: the pills carry the counts. */}
+              <div style={{ ...INV_CARD, overflow: 'hidden', fontFamily: "system-ui, sans-serif" }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 600, color: color.ink, fontFamily: "system-ui, sans-serif", margin: 0, lineHeight: 1 }}>My Listings</h2>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 6, padding: '2px 8px', lineHeight: 1.5 }}>
-                        {filteredListings.length}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ position: 'relative' }}>
-                        <Search style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#4b5563', pointerEvents: 'none' }} />
-                        <input
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search…"
-                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 13, color: '#111827', fontFamily: "system-ui, sans-serif", outline: 'none', width: 160 }}
-                        />
-                        {searchQuery && (
-                          <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-                            <X style={{ width: 13, height: 13 }} />
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => setShowFilters(p => !p)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.1)' : '#f9fafb', border: `1px solid ${showFilters || activeFilterCount > 0 ? 'rgba(59,130,246,0.35)' : '#e5e7eb'}`, borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: showFilters || activeFilterCount > 0 ? '#93c5fd' : '#374151', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        <SlidersHorizontal style={{ width: 13, height: 13 }} />
-                        Filters
-                        {activeFilterCount > 0 && <span style={{ background: '#3b82f6', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', marginLeft: 2 }}>{activeFilterCount}</span>}
-                      </button>
-                      {/* Stock tools (migrated from the Stock tab) — portal so the card's
-                          overflow:hidden can't clip the menu (see overlay rules) */}
-                      <button
-                        ref={toolsBtnRef}
-                        onClick={() => {
-                          setToolsMenuOpen(o => {
-                            const next = !o;
-                            if (next && toolsBtnRef.current) setToolsBtnRect(toolsBtnRef.current.getBoundingClientRect());
-                            return next;
-                          });
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: toolsMenuOpen ? 'rgba(107,114,128,0.12)' : '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        <Wrench style={{ width: 13, height: 13 }} /> Tools
-                      </button>
-                      {toolsMenuOpen && toolsBtnRect && createPortal(
-                        <>
-                          <div onClick={() => setToolsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10040 }} />
-                          <div style={{ position: 'fixed', top: toolsBtnRect.bottom + 6, left: Math.min(Math.max(8, toolsBtnRect.left), window.innerWidth - 8 - 190), zIndex: 10041, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)', padding: 6, width: 190 }}>
-                            {[
-                              { key: 'csv', Icon: Upload, label: 'Import CSV' },
-                              { key: 'vendors', Icon: Wrench, label: 'Vendors' },
-                              { key: 'add', Icon: PlusCircle, label: 'Add Stock Unit' },
-                            ].map(({ key, Icon, label }) => (
-                              <button
-                                key={key}
-                                onClick={() => { setStockAutoTool(key); handleTabChange('stock'); setToolsMenuOpen(false); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "system-ui, sans-serif" }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                              >
-                                <Icon style={{ width: 14, height: 14, color: '#6b7280' }} /> {label}
-                              </button>
-                            ))}
-                          </div>
-                        </>,
-                        document.body
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 16px 0', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: '1 1 100px', minWidth: 0 }}>
+                      <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: premiumLight.textMuted, pointerEvents: 'none' }} />
+                      <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search cars"
+                        style={{ ...INV_INPUT, padding: '9px 30px 9px 32px' }}
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} aria-label="Clear search" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: premiumLight.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                          <X style={{ width: 14, height: 14 }} />
+                        </button>
                       )}
-                      <button
-                        onClick={() => setShowFastModal(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#dc2626', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        ⚡ Fast
-                      </button>
-                      <button
-                        onClick={() => handleTabChange("add")}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.28)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#f87171', fontFamily: "system-ui, sans-serif", cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.18)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.1)'}
-                      >
-                        <PlusCircle style={{ width: 14, height: 14 }} />
-                        Full Form
-                      </button>
                     </div>
+                    <button
+                      onClick={() => setShowFilters(p => !p)}
+                      style={{ ...INV_GHOST_BTN, background: showFilters || activeFilterCount > 0 ? premiumLight.text : premiumLight.raised, color: showFilters || activeFilterCount > 0 ? '#fff' : premiumLight.text }}
+                    >
+                      <SlidersHorizontal style={{ width: 14, height: 14 }} />
+                      <span className="inv-sm-hide">Filters</span>
+                      {activeFilterCount > 0 && <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.8 }}>{activeFilterCount}</span>}
+                    </button>
+                    <AutoPostButton onCount={autoPost.onCount} onClick={() => setAutoPostOpen(true)} />
+                    <AddCarButton onClick={() => setAddCarOpen(true)} />
                   </div>
+                  <AutoPostSheet
+                    open={autoPostOpen}
+                    onClose={() => setAutoPostOpen(false)}
+                    state={autoPost.state}
+                    onSetup={() => { setSettingsJump("autopost"); handleTabChange("settings"); }}
+                  />
 
                   {/* ── Collapsible filter panel ── */}
                   {showFilters && (
-                    <div style={{ margin: '12px 20px 0', padding: '14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                    <div style={{ margin: '12px 16px 0', padding: '14px 16px', background: premiumLight.raised, borderRadius: premiumLight.radius.row }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
                         <div>
                           <label style={{ display: 'block', fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Min Price (RM)</label>
@@ -11334,66 +10748,74 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* ── Status filter tabs ── */}
-                  <div className="no-scrollbar" style={{ display: 'flex', gap: 0, padding: '0 20px', borderBottom: '1px solid #e5e7eb', marginTop: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-                    {[
-                      { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
-                      { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
-                      { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
-                      { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
-                    ].map(({ key, label, count }) => (
+                  {/* ── Status pills ── */}
+                  <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <StatusPills
+                      active={statusFilter}
+                      onChange={(k) => { setStatusFilter(k); setSelectedIds(new Set()); }}
+                      items={[
+                        { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
+                        { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
+                        // Sold moves to the Sold tab once it exists (owner, 2026-11-09).
+                        { key: 'sold',     label: 'Sold',     count: listings.filter(l => l.status === 'sold').length },
+                        { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
+                      ].filter(t => t.count > 0 || t.key === 'available' || t.key === statusFilter)}
+                    />
+                    </div>
+                    {filteredListings.length > 0 && statusFilter !== 'sold' && (
                       <button
-                        key={key}
-                        onClick={() => setStatusFilter(key)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          padding: '10px 16px', fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap',
-                          fontWeight: statusFilter === key ? 600 : 400,
-                          fontFamily: "system-ui, sans-serif",
-                          color: statusFilter === key ? '#111827' : '#4b5563',
-                          borderBottom: statusFilter === key ? '2px solid #dc2626' : '2px solid transparent',
-                          marginBottom: -1,
-                          display: 'flex', alignItems: 'center', gap: 7,
-                          transition: 'color 0.15s',
-                        }}
+                        onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                        style={{ ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12, flexShrink: 0, background: selectMode ? premiumLight.text : premiumLight.raised, color: selectMode ? '#fff' : premiumLight.text }}
                       >
-                        {label}
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 4, lineHeight: 1.6,
-                          background: statusFilter === key ? 'rgba(220,38,38,0.12)' : '#f9fafb',
-                          color: statusFilter === key ? '#f87171' : '#374151',
-                        }}>
-                          {count}
-                        </span>
+                        {selectMode ? 'Done' : 'Select'}
                       </button>
-                    ))}
+                    )}
                   </div>
+                  <BulkBar
+                    count={selectedIds.size}
+                    total={filteredListings.length}
+                    busy={bulkBusy}
+                    onSelectAll={() => setSelectedIds(new Set(filteredListings.map(l => l.id)))}
+                    onClear={exitSelect}
+                    onStatus={bulkStatus}
+                    onPrice={() => setBulkPriceOpen(true)}
+                  />
+                  <BulkPriceSheet
+                    open={bulkPriceOpen}
+                    cars={selectedCars.filter(l => l.status !== 'sold')}
+                    busy={bulkBusy}
+                    onClose={() => setBulkPriceOpen(false)}
+                    onApply={bulkPrice}
+                  />
+                  <div style={{ height: 1, background: premiumLight.line }} />
 
                 {loading ? (
                   <div style={{ padding: 52, textAlign: 'center', color: '#4b5563', fontSize: 13 }}>Loading…</div>
                 ) : filteredListings.length === 0 ? (
                   <div style={{ padding: 52, textAlign: 'center' }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                      <Car style={{ width: 22, height: 22, color: 'rgba(220,38,38,0.45)' }} />
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: premiumLight.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                      <Car style={{ width: 22, height: 22, color: premiumLight.textMuted }} />
                     </div>
                     <p style={{ color: '#4b5563', fontSize: 13, marginBottom: listings.length === 0 ? 16 : 0 }}>
                       {listings.length === 0 ? 'No listings yet' : `No ${statusFilter} listings`}
                     </p>
                     {listings.length === 0 && (
-                      <button onClick={() => handleTabChange("add")} style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)', borderRadius: 8, padding: '8px 20px', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                        Add your first car
-                      </button>
+                      <AddCarButton onClick={() => setAddCarOpen(true)} label="Add your first car" />
                     )}
                   </div>
                 ) : (
                   <>
                     {/* Desktop table */}
                     <div className="hidden md:block" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
+                      {/* Cost / Recon / Gross columns removed (2026-11-09): a dealer's cost
+                          lives on stock_units only (batch 4), so on car_listings they were
+                          always blank. The Stock & costs pill shows them. */}
+                      <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
-                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            {['', 'Vehicle', 'Price', 'Cost', 'Recon', 'Gross', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
-                              <th key={i} style={{ padding: '11px 16px', fontSize: 10, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#374151', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', fontFamily: "system-ui, sans-serif" }}>{h}</th>
+                          <tr style={{ borderBottom: `1px solid ${premiumLight.line}` }}>
+                            {['', 'Vehicle', 'Price', 'Interest (30d)', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
+                              <th key={i} style={{ ...INV_MICRO, padding: '11px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -11408,15 +10830,16 @@ export default function DashboardPage() {
                             return (
                               <tr
                                 key={l.id}
-                                onClick={() => setDetailListing(l)}
-                                style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                                onClick={() => (selectMode ? toggleSelected(l.id) : setDetailListing(l))}
+                                style={{ borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1, background: selectedIds.has(l.id) ? premiumLight.raised : undefined }}
+                                onMouseEnter={e => e.currentTarget.style.background = premiumLight.raised}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
                                 {/* Thumbnail */}
-                                <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
+                                <td style={{ padding: '12px 8px 12px 16px', width: 84, position: 'relative' }}>
+                                  {selectMode && <SelectTick on={selectedIds.has(l.id)} />}
                                   {l.images?.[0]
-                                    ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
@@ -11433,34 +10856,13 @@ export default function DashboardPage() {
                                   {pct > 0 && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                                       <span style={{ fontSize: 10, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                                      <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '0 5px' }}>−{pct}%</span>
+                                      <span style={{ fontSize: 10, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '1px 7px' }}>−{pct}%</span>
                                     </div>
                                   )}
                                 </td>
-                                {/* Cost */}
+                                {/* Interest: counted views + enquiry taps, last 30 days */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  {l.purchase_price ? <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>RM {Number(l.purchase_price).toLocaleString()}</span> : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
-                                </td>
-                                {/* Recon */}
-                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  {l.recon_cost ? <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>RM {Number(l.recon_cost).toLocaleString()}</span> : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
-                                </td>
-                                {/* Gross */}
-                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  {l.purchase_price ? (() => {
-                                    const addonNet = addonNetByListing[l.id] || 0;
-                                    const gross = sp - Number(l.purchase_price) - Number(l.recon_cost || 0) + addonNet;
-                                    return (
-                                      <>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: gross >= 0 ? '#16a34a' : '#dc2626' }}>RM {gross.toLocaleString()}</span>
-                                        {addonNet !== 0 && (
-                                          <span style={{ display: 'block', fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                                            incl. RM {addonNet.toLocaleString()} F&amp;I
-                                          </span>
-                                        )}
-                                      </>
-                                    );
-                                  })() : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                                  <InterestCell stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
                                 </td>
                                 {/* Year / Km */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
@@ -11473,7 +10875,7 @@ export default function DashboardPage() {
                                 {/* Grade */}
                                 <td style={{ padding: '12px 16px' }}>
                                   {l.auction_grade
-                                    ? <span style={{ fontSize: 11, fontWeight: 700, color: extGC, background: `${extGC}15`, border: `1px solid ${extGC}28`, borderRadius: 5, padding: '2px 8px', display: 'inline-block' }}>{l.auction_grade}</span>
+                                    ? <span style={{ fontSize: 12, fontWeight: 700, color: premiumLight.text, background: premiumLight.raised, borderRadius: 999, padding: '3px 9px', display: 'inline-block' }}>{l.auction_grade}</span>
                                     : l.condition
                                       ? <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{l.condition}</span>
                                       : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
@@ -11511,7 +10913,7 @@ export default function DashboardPage() {
                                     return (
                                       <span
                                         title={`Missing: ${gaps.join(', ')}`}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 5, padding: '3px 8px', whiteSpace: 'nowrap', width: 'fit-content', cursor: 'default' }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '3px 8px', whiteSpace: 'nowrap', width: 'fit-content', cursor: 'default' }}
                                       >
                                         <AlertCircle style={{ width: 10, height: 10 }} />
                                         Incomplete
@@ -11531,7 +10933,7 @@ export default function DashboardPage() {
                                   {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                     <button
                                       onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
-                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, color: premiumLight.textSec, background: premiumLight.raised, border: 'none', borderRadius: 999, padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                     >
                                       <Tag style={{ width: 9, height: 9 }} />
                                       {l.included_services.length} svc
@@ -11542,7 +10944,7 @@ export default function DashboardPage() {
                                     if (rtD === null || rtD > 30) return null;
                                     const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
                                     const lbl = rtD < 0 ? 'Road tax exp.' : `RT ${Math.ceil(rtD)}d`;
-                                    return <span style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{lbl}</span>;
+                                    return <span style={{ display: 'block', width: 'fit-content', marginTop: 5, fontSize: 10, fontWeight: 700, color: plWord(c), background: premiumLight.raised, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{lbl}</span>;
                                   })()}
                                 </td>
                               </tr>
@@ -11563,13 +10965,14 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={l.id}
-                            onClick={() => setDetailListing(l)}
-                            style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', opacity: isSold ? 0.55 : 1, cursor: 'pointer' }}
+                            onClick={() => (selectMode ? toggleSelected(l.id) : setDetailListing(l))}
+                            style={{ padding: '14px 16px', borderBottom: `1px solid ${premiumLight.line}`, opacity: isSold ? 0.55 : 1, cursor: 'pointer', background: selectedIds.has(l.id) ? premiumLight.raised : undefined }}
                           >
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', position: 'relative' }}>
+                              {selectMode && <SelectTick on={selectedIds.has(l.id)} />}
                               {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                 : <div style={{ width: 80, height: 60, borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}
@@ -11588,7 +10991,7 @@ export default function DashboardPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
                                   <span style={{ fontSize: 15, color: '#111827', fontWeight: 700, letterSpacing: '-0.01em' }}>RM {sp.toLocaleString()}</span>
                                   {pct > 0 && (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: isHot ? '#60a5fa' : '#fbbf24', background: isHot ? 'rgba(96,165,250,0.1)' : 'rgba(251,191,36,0.1)', border: `1px solid ${isHot ? 'rgba(96,165,250,0.2)' : 'rgba(251,191,36,0.2)'}`, borderRadius: 4, padding: '1px 6px' }}>−{pct}%</span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '1px 7px' }}>−{pct}%</span>
                                   )}
                                 </div>
                               </div>
@@ -11597,12 +11000,13 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
                               {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
+                              <InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               {(() => {
                                 const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
                                 const nm = sm?.full_name || null;
                                 return (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: nm ? '#2563eb' : '#9ca3af', background: nm ? 'rgba(37,99,235,0.08)' : 'rgba(156,163,175,0.1)', border: `1px solid ${nm ? 'rgba(37,99,235,0.2)' : 'rgba(156,163,175,0.25)'}`, borderRadius: 4, padding: '1px 6px' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: nm ? premiumLight.textSec : premiumLight.textMuted, background: premiumLight.raised, borderRadius: 999, padding: '2px 8px' }}>
                                     <UserPlus style={{ width: 9, height: 9 }} />{nm || 'Unassigned'}
                                   </span>
                                 );
@@ -11612,7 +11016,7 @@ export default function DashboardPage() {
                                 const gaps = getListingGaps(l);
                                 if (gaps.length === 0) return null;
                                 return (
-                                  <span title={`Missing: ${gaps.join(', ')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 4, padding: '1px 6px' }}>
+                                  <span title={`Missing: ${gaps.join(', ')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '1px 6px' }}>
                                     <AlertCircle style={{ width: 9, height: 9 }} />Incomplete
                                   </span>
                                 );
@@ -11621,12 +11025,12 @@ export default function DashboardPage() {
                                 const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;
                                 if (rtD === null || rtD > 30) return null;
                                 const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
-                                return <span style={{ fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px' }}>{rtD < 0 ? 'RT exp.' : `RT ${Math.ceil(rtD)}d`}</span>;
+                                return <span style={{ fontSize: 10, fontWeight: 700, color: plWord(c), background: premiumLight.raised, borderRadius: 999, padding: '2px 8px' }}>{rtD < 0 ? 'RT exp.' : `RT ${Math.ceil(rtD)}d`}</span>;
                               })()}
                               {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                 <button
                                   onClick={e => { e.stopPropagation(); setSvcPopupListing(l); }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#60a5fa', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 4, padding: '2px 7px', cursor: 'pointer' }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: premiumLight.textSec, background: premiumLight.raised, border: 'none', borderRadius: 999, padding: '2px 7px', cursor: 'pointer' }}
                                 >
                                   <Tag style={{ width: 9, height: 9 }} />
                                   {l.included_services.length} svc
@@ -11650,6 +11054,7 @@ export default function DashboardPage() {
                     {visibleCount < filteredListings.length && (
                       <div ref={sentinelRef} style={{ height: 1 }} />
                     )}
+                    {selectedIds.size > 0 && <div style={{ height: 96 }} />}
                   </>
                 )}
                 </div>
@@ -11778,20 +11183,10 @@ export default function DashboardPage() {
           )}
           {activeTab === "analytics" && (
             <>
-              <SubTabBar
-                active={analyticsSub}
-                onChange={(sub) => {
-                  setAnalyticsSub(sub);
-                  navigate(`/dashboard/analytics?sub=${sub}`);
-                }}
-                tabs={[
-                  { id: "revenue",     label: "Revenue" },
-                  { id: "performance", label: "Performance" },
-                  { id: "listings",    label: "Listings" },
-                ]}
-              />
+              {/* No sub-tab bar: Revenue / Performance / Listings are already three
+                  sidebar items, and the page title names the one that is open. */}
               {analyticsSub === "revenue" && userId && (
-                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} onNavigateToLeads={() => handleTabChange("leads")} />
+                <RevOpsPage userId={getDealerIdFromProfile(profile)} />
               )}
               {analyticsSub === "performance" && userId && (
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
@@ -11812,13 +11207,28 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "team" && (
-            <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+            <>
+              <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+              {/* Who did what, when (was GM Oversight's Activity Trail). Overview's
+                  "unusual edits" alert opens it with ?trail=anomaly. */}
+              <div style={{ marginTop: 24 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Activity Trail</p>
+                <Suspense fallback={null}>
+                  <AuditTrail
+                    key={teamTrail}
+                    dealerId={getDealerIdFromProfile(profile)}
+                    initialFilter={teamTrail === "anomaly" ? "anomaly" : "all"}
+                  />
+                </Suspense>
+              </div>
+            </>
           )}
           {activeTab === "settings" && profile && (
             <SettingsTab
               profile={profile}
               onProfileUpdate={handleProfileUpdate}
               jumpTo={settingsJump}
+              onOpenServices={() => { setStorefrontSub("services"); handleTabChange("storefront"); }}
             />
           )}
           {activeTab === "crm" && (
@@ -11826,6 +11236,9 @@ export default function DashboardPage() {
               userId={userId}
               listings={listings}
               salesmen={salesmen}
+              initialTab={crmQuery.sub}
+              openLeadId={crmQuery.lead}
+              onTabChange={(t) => navigate(`/dashboard/crm?sub=${t}`, { replace: true })}
               onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }}
             />
           )}
@@ -11843,20 +11256,34 @@ export default function DashboardPage() {
                 <HeroSlidesPage userId={userId} profile={profile} />
               )}
               {storefrontSub === "services" && (
-                <ServicesPage userId={userId} />
+                <ServicesPage userId={getDealerIdFromProfile(profile)} profile={profile} />
               )}
             </>
           )}
+          {/* The one way to add a car, opened from both Inventory pills. */}
+          <AddCarSheet
+            open={addCarOpen}
+            onClose={() => setAddCarOpen(false)}
+            onQuick={() => setShowFastModal(true)}
+            onFull={() => { handleTabChange("add"); setAddMode("marketplace"); }}
+            onStock={() => { setStockAutoTool("add"); handleTabChange("stock"); }}
+            onCsv={() => { setStockAutoTool("csv"); handleTabChange("stock"); }}
+            onAi={() => navigate("/dashboard/import-stock")}
+          />
           {activeTab === "stock" && userId && (
             <>
-              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "system-ui, sans-serif" }}>
-                <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
-              </button>
-              <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen}
+              <InventorySwitch tabs={INVENTORY_TABS} active="stock" onChange={openInventory} />
+              {/* The money figures for the stock live here, once. StockTab's own
+                  summary cards repeated them, so it is told to skip them. */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+              <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen} hideSummary onAdd={() => setAddCarOpen(true)}
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
                 onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
               />
             </>
+          )}
+          {SOLD_IDS.has(activeTab) && (
+            <InventorySwitch tabs={SOLD_TABS} active={activeTab} onChange={openSold} />
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
@@ -11867,17 +11294,14 @@ export default function DashboardPage() {
                 <h2 className="font-semibold text-base" style={{ color: '#111827' }}>HP Board</h2>
                 <p className="text-gray-600 text-xs mt-0.5">Hire-purchase submissions across all deals — track bank status and follow-ups</p>
               </div>
-              <HPBoard dealerId={userId} />
+              <HPBoard dealerId={getDealerIdFromProfile(profile)} />
             </div>
           )}
-          {activeTab === "oversight" && userId && (
-            <OversightTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
-          )}
           {activeTab === "customers" && userId && (
-            <CustomersTab dealerId={userId} />
+            <CustomersTab dealerId={getDealerIdFromProfile(profile)} handover={soldHandover} />
           )}
           {activeTab === "handover" && userId && (
-            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} />
+            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} theme="plight" />
           )}
           {activeTab === "market" && userId && (
             <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
@@ -11905,6 +11329,7 @@ export default function DashboardPage() {
           setPriceEditListing={setPriceEditListing}
           setMarkSoldListing={setMarkSoldListing}
           setDeleteId={setDeleteId}
+          openSticker={(l) => { setDetailListing(null); setStickerCar(l); }}
           copyListing={copyListing}
           copiedListingId={copiedListingId}
           dealerSubdomain={dealerSubdomain}
@@ -12091,6 +11516,13 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <WindowStickerSheet
+        car={stickerCar}
+        dealerName={profile?.dealership || profile?.site_name}
+        scans={stickerCar && stickerScans ? (stickerScans[stickerCar.id] || 0) : null}
+        onClose={() => setStickerCar(null)}
+      />
 
       {priceEditListing && (
         <PriceEditModal

@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
 
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
+import StayInApp from "./components/StayInApp";
 import ConsentBanner from "./components/ConsentBanner";
 import InstallPrompt from "./components/InstallPrompt";
 import OfflineBanner from "./components/OfflineBanner";
@@ -156,6 +157,8 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      {/* Installed app: our own pages open in the app, not Chrome's black-bar browser */}
+      <StayInApp />
       <Toaster
         position="bottom-right"
         toastOptions={{

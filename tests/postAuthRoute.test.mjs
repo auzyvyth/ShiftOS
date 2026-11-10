@@ -71,8 +71,10 @@ is('dealer with subdomain on a preview stays on the preview',
    r({ role: 'dealer', subdomain: 'acme' }), { url: '/dashboard', hard: false });
 
 setHost('drevo.my');
-is('prod: dealer subdomain gets the session handoff',
-   r({ role: 'dealer', subdomain: 'acme' }), { url: 'https://acme.drevo.my/dashboard#_at=AT&_rt=RT', hard: true });
+// The dashboard stays on the apex (inside the installed app's scope), never
+// the dealer's storefront subdomain: another origin shows Chrome's out-of-app bar.
+is('prod: dealer lands on the apex dashboard with the session, not the subdomain',
+   r({ role: 'dealer', subdomain: 'acme' }), { url: 'https://drevo.my/dashboard#_at=AT&_rt=RT', hard: true });
 is('prod: premium rep lands on premium on the apex with the session',
    r({ role: 'salesman', plan: 'salesman_full', payment_status: 'received' }), { url: 'https://drevo.my/salesman-premium#_at=AT&_rt=RT', hard: true });
 

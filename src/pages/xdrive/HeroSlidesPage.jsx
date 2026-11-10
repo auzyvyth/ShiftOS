@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import {
   DndContext,
   closestCenter,
@@ -35,8 +36,9 @@ const btnRed = {
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function HeroSlidesPage({ userId, profile }) {
-  const [slides,    setSlides]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
+  // Painted from the device's last copy, refreshed behind it (PERF-LOAD).
+  const [slides,    setSlides, slidesCached] = usePersistentState(userId ? `hero_slides:${userId}` : null, []);
+  const [loading,   setLoading]   = useState(!slidesCached);
   const [showForm,  setShowForm]  = useState(false);
   const [editSlide, setEditSlide] = useState(null);
 
@@ -44,12 +46,13 @@ export default function HeroSlidesPage({ userId, profile }) {
 
   const fetchSlides = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('hero_carousel_slides')
       .select('*, car_listings(status, brand, model)')
       .eq('dealer_id', userId)
       .order('sort_order', { ascending: true });
-    setSlides(data || []);
+    // A failed read keeps the cached slides on screen.
+    if (!error) setSlides(data || []);
     setLoading(false);
   }, [userId]);
 

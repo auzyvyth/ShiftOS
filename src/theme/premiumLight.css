@@ -1,0 +1,40 @@
+/* premiumLight raised keys for TAPPABLE cards on the light dealer dashboard
+   (owner, 2026-11-09: "add the borders we did to premium buttons on the
+   clickable ones"). Same recipe as the Premium keys (salesmanLite/keys.css):
+   a light line on the top edge, a neutral grey lip on the bottom edge, a tight
+   contact shadow and a soft drop. Pressed: the
+   shadow goes inside and the card sinks 2px.
+   Only on things that DO something when tapped. Read-only cards (number tiles,
+   charts) keep the plain floating shadow, or everything looks clickable.
+   A card using .pl-key must NOT set box-shadow inline (the inline one wins). */
+.pl-key {
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .95),
+    inset 0 -3px 0 rgb(17 24 39 / .10),
+    0 2px 4px rgb(17 24 39 / .10),
+    0 10px 28px rgb(17 24 39 / .16);
+  transition: translate 90ms ease-out, box-shadow 120ms ease-out;
+}
+@media (hover: hover) {
+  .pl-key:hover {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / .95),
+      inset 0 -3px 0 rgb(17 24 39 / .14),
+      0 3px 6px rgb(17 24 39 / .12),
+      0 14px 36px rgb(17 24 39 / .22);
+    translate: 0 -1px;
+  }
+}
+.pl-key:active {
+  box-shadow:
+    inset 0 3px 8px rgb(17 24 39 / .14),
+    inset 0 -1px 0 rgb(17 24 39 / .07),
+    0 1px 2px rgb(17 24 39 / .08);
+  translate: 0 2px;
+}
+.pl-key:focus-visible { outline: 2px solid #111827; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .pl-key { transition: none; }
+  .pl-key:hover, .pl-key:active { translate: none; }
+}

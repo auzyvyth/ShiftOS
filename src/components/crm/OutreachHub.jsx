@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
@@ -72,8 +73,12 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   const WA_BTN = prem
     ? { background:PD.accent, boxShadow:'none', color:PD.onAccent }
     : { background:'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white' };
-  const [leadsData, setLeadsData] = useState([]);
-  const [loading, setLoading]     = useState(true);
+  // Painted from the device's last copy, refreshed behind it (PERF-LOAD). The
+  // select carries no IC or address, so nothing needs redacting.
+  const [leadsData, setLeadsData, leadsCached] = usePersistentState(
+    dealerId ? `outreach:${salesmanId || 'all'}:${dealerId}` : null, [],
+  );
+  const [loading, setLoading]     = useState(!leadsCached);
   const [segment, setSegment]     = useState('hot');
   const [selectedId, setSelectedId] = useState(null);
   const [template, setTemplate]   = useState('followup');
@@ -95,7 +100,6 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
 
   useEffect(() => {
     if (!dealerId) return;
-    setLoading(true);
     // Outreach works UNFINISHED leads only (active pipeline stages). Finished
     // leads — and their road tax / insurance expiry — live in the Customers tab.
     let q = supabase
@@ -108,7 +112,7 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
     if (salesmanId) q = q.eq('salesman_id', salesmanId);
     q.order('created_at', { ascending: false })
       .limit(500)
-      .then(({ data }) => { setLeadsData(data || []); setLoading(false); });
+      .then(({ data, error }) => { if (!error) setLeadsData(data || []); setLoading(false); });
   }, [dealerId, salesmanId, refreshKey]);
 
   const now = Date.now();

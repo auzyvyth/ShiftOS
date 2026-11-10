@@ -31,14 +31,16 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
     ? { bg: premiumDark.card, border: "transparent", icon: premiumDark.textSec, text: premiumDark.textSec, strong: premiumDark.text }
     : theme !== "light"
     ? { bg: "rgba(234,179,8,0.07)", border: "rgba(234,179,8,0.22)", icon: "#facc15", text: "#cbd5e1", strong: "#e5e7eb" }
-    : { bg: "#fefce8", border: "#fde68a", icon: "#ca8a04", text: "#4b5563", strong: "#111827" };
+    // "light" = the dealer dashboard, now premiumLight: a white card on its shadow,
+    // no yellow fill, no outline (owner, 2026-11-09).
+    : { bg: "#ffffff", border: "transparent", icon: "#4b5563", text: "#4b5563", strong: "#111827", shadow: "0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)", radius: 20 };
   const Icon = inReview ? Clock : ShieldCheck;
 
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px",
-      padding: "9px 12px", borderRadius: 10, background: c.bg,
-      border: `1px solid ${c.border}`,
+      padding: c.radius ? "12px 16px" : "9px 12px", borderRadius: c.radius || 10, background: c.bg,
+      border: `1px solid ${c.border}`, boxShadow: c.shadow,
     }}>
       <Icon size={15} style={{ color: c.icon, flexShrink: 0 }} />
       <p style={{ margin: 0, fontSize: 12.5, color: c.text, flex: 1, minWidth: 0, lineHeight: 1.45 }}>

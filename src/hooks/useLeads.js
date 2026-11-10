@@ -130,6 +130,7 @@ export function useLeads(dealerIdHint = null) {
     leads,
     setLeads,
     loading,
+    fetching, // true until the live read answers (loading is false early when a cached copy shows)
     error,
     fetchLeads,
     addLead,

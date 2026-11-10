@@ -102,6 +102,39 @@ export const premiumDark = {
   radius:  { card: 22, row: 14, pill: 999 },
 };
 
+// The dealer dashboard's take on premiumDark (owner, 2026-11-09: "reference
+// salesman premium, use that style but light"). Same rules, light surface:
+// depth by SHADOW (white cards floating on a light grey page, grey rows inside a card), no
+// borders on cards, no tinted background with a matching solid border, red for
+// FILLS (and a dot / urgent count), one green (up) used as text only.
+// Rolled out one tab at a time (Overview first); do not mix it with the old
+// bordered cards inside one tab.
+export const premiumLight = {
+  // Owner, 2026-11-09: white blocks FLOAT on a soft shadow, no border. The
+  // cards are plain white (a tint rising from the bottom was tried in red, then
+  // slate, and dropped: "revert to just white"); the COLOUR is the page behind
+  // them, `canvas`. One setting; DashboardPage paints body with it.
+  canvas:  '#eef0f4',                 // cool light grey
+  card:    '#ffffff',                 // layer 1: every card (always with `shadow`)
+  cardBg:  '#ffffff',
+  // Owner, 2026-11-09: "not enough, use darker shade" (was 0.05 / 0.07).
+  shadow:  '0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)',
+  shadowHover: '0 3px 6px rgba(17,24,39,0.10), 0 14px 36px rgba(17,24,39,0.22)',
+  raised:  '#f5f6f8',                 // layer 2: rows, chips, icon wells inside a card
+  hover:   '#eceef1',
+  line:    'rgba(17,24,39,0.06)',     // the one divider weight (inside a card only)
+  text:    '#111827',
+  textSec: '#4b5563',
+  textMuted: '#6b7280',
+  accent:  '#dc2626',                 // fills: primary buttons, the revenue line, urgent dots
+  accentText: '#b91c1c',              // red as TEXT (a fall, an urgent count)
+  up:      '#047857',                 // the only green, as text ("+12%", "Online")
+  onAccent: '#ffffff',
+  // Charts: told apart by lightness, not hue (no blue / purple / amber).
+  ramp:    ['#111827', '#4b5563', '#9ca3af', '#d1d5db', '#e5e7eb', '#f3f4f6'],
+  radius:  { card: 20, row: 12, pill: 999 },
+};
+
 // Pipeline-stage hues for the dark panel. Colour-codes a lead row by where it
 // sits in the funnel. TODO: SalesmanLite's own STAGE_COLOR map (pill bg/border/
 // text for the leads board) still lives inline — fold it in here on the leads

@@ -132,6 +132,10 @@ memory.
   product, check it against real law before it ships, not after a user catches it.
 
 ## How to talk to me — plain English + always show me the code
+- **Every viewable change comes with screenshots, unasked (owner, 2026-11-09).** When a change
+  shows on screen, send desktop + phone (375px) screenshots with SendUserFile before reporting it
+  done. A logged-in screen with no test account = a Playwright run against `vite preview` with the
+  Supabase calls answered by mock rows; say it is mock data.
 I am not reading this to be impressed. Explain things in SIMPLE terms.
 - Use plain words. If a technical term is unavoidable, define it in half a sentence
   the first time ("VAPID keys — the keypair that proves to Google/Apple that a push
@@ -147,6 +151,12 @@ I am not reading this to be impressed. Explain things in SIMPLE terms.
   not just a description of it.
 - When something has a gotcha, say the consequence in one line ("change this key and
   all 8 existing subscriptions die silently"), not a paragraph of theory.
+
+## Show me what you built — screenshots, every time (owner, 2026-11-09)
+For ANY visible change, take screenshots of the real component (phone 375px and desktop) and send
+them with SendUserFile before saying it is done. Show the realistic states, not just the happy one
+(e.g. a salesman doing well AND one doing badly, the pop-up opened). Render with mocked data when no
+live account shows that state; say which data is mocked. A change the owner cannot see is not done.
 
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
@@ -224,6 +234,46 @@ Project ID: lemdkdizdlcirhbzqlos
   (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard, MyNewModels);
   photo + cover are one card; no read-only username box (the Google preview shows the link).
 
+- **The dealer dashboard is moving to `premiumLight`** (`src/theme/tokens.js`, owner 2026-11-09:
+  "reference salesman premium, use that style but for dealers use light theme"). Premium's rules on a
+  light surface: plain WHITE blocks that FLOAT on a soft shadow (`PL.shadow`, `PL.shadowHover` for
+  tappable cards; owner 2026-11-09) on a light grey PAGE (`PL.canvas`, the one colour setting, painted on
+  body by DashboardPage; a tint inside the cards was tried in red and slate and dropped, owner:
+  "revert to just white, what's missing is the background colouring"),
+  TAPPABLE cards are raised keys (`.pl-key`, `src/theme/premiumLight.css`: Premium's key recipe in light,
+  a tinted bottom lip, sinks 2px when pressed); read-only cards never get it, or everything looks clickable, grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
+  alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),
+  status pills = one grey fill with a coloured WORD. Adopted one tab at a time: Overview
+  (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first,
+  then Inventory (Listings | Stock & costs, the stock record and its P&L; `src/components/inventory/
+  InventoryUi.jsx`). Old screens that tinted a whole pill with a hex now pass it to `plPill(hex)` /
+  `plWord(hex)` (`src/theme/plStatus.js`): grey fill, the word carries good/bad. Action rows are grey
+  with ink words; only the one main action is red.
+  Sold > Customers (2026-11-10, `crm/CustomersTab.jsx`, shared with the linked panel): one Renewals switch
+  (All | Road tax due | Insurance due) replaced four tiles + the pink banner; rows not an 8-column table;
+  edit pop-up portalled, its save checks the row came back.
+  Sold > Handover (2026-11-10): `PostSaleBoard theme="plight"` = Premium's board rules on `PL` tokens
+  (one shared branch, `K = PL | PD`, in PostSaleBoard + PostSaleChecklist), cards on a shadow, and a deal
+  opens as the `HandoverSheet` pop-up like Premium. The dealer keeps "N in processing" (its pill has no
+  badge). Linked panel (`dark`) and Premium (`premium`) unchanged.
+  Sold > Documents (2026-11-10, `DocumentsTab` in DashboardPage.jsx): type pills (`DOC_TYPE_PILL` short labels)
+  + search + the ONE red button (New document); rows not a 7-column table; a draft's Issue is the dark key;
+  the three pop-ups are portalled with a scroll lock. Still uncached (IC + address). The pop-ups' insides
+  are the old light look. Sold is now done.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings.
+- **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
+  `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
+  (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
+  The switches live on the device only (`xd_autopost_preview_<dealerId>`). Going real = Zernio: its key in an
+  edge function secret, never the browser; posting fires from the DB when a car goes live, not from a screen.
+- **Listings tools (owner 2026-11-10):** each row shows views + enquiry taps, last 30 days
+  (`InterestCell`, `get_dealer_car_analytics(p_days 30)`, kept on the device, placeholder until loaded).
+  "Select" picks cars for `BulkBar` (`src/components/inventory/BulkBar.jsx`): status Available / Reserved /
+  Unpublished and price up/down by RM or %, same `original_price` rule as `PriceEditModal`. Never add Sold to
+  the bulk menu: a sale goes through the won deal. Window sticker (`WindowSticker.jsx`, from the car's detail
+  panel): one A4 page, QR to `/showroom/<slug>?src=sticker` (counted as "Window sticker").
+  Do not mix the two looks inside one tab.
+
 ### Anti-slop UI rules (non-negotiable)
 - **A section never stretches across empty space on a wide screen (owner, 2026-11-04).** When
   a card, strip or banner sits in a row with space beside it on desktop, cap it at HALF the width
@@ -294,8 +344,15 @@ fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
-Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront, oversight
+Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
+  ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
+  ↳ **Sold = ONE nav item, three pills: Handover | Customers | Documents (owner, 2026-11-10)**, same shape
+    as Inventory (`SOLD_TABS`, `openSold`, `InventorySwitch`). Routes stay `/dashboard/handover`,
+    `/customers`, `/documents`, so old links and notifications still land. ONE `useHandover` instance
+    (`soldHandover`, loads only while a Sold pill is open) feeds `PostSaleBoard controller` AND
+    `CustomersTab handover`: Customers used to query `post_sale_tasks` itself for the same %. Do not split
+    the three back into separate nav items. Next: one dealer-sale tab plan in `docs/DEALER_DASHBOARD_PLAN.md`.
 
 ## Won = sold: one trigger does everything (DO NOT split this brain again)
 A lead reaching `won`/`closed_won` is the SINGLE source of truth for a closed deal.
@@ -405,7 +462,7 @@ never said the buyer had moved into handover at all.
   still refreshes in the background, its three reads in parallel; a tap bumps `edits` so a late
   read never un-ticks a step. Premium opens a deal as a POP-UP (`HandoverSheet` in
   PostSaleBoard.jsx, `theme="premium"` only; portal, scroll lock, `useModalHistory`); the dealer
-  dashboard and linked panel keep the inline expand.
+  dashboard (since 2026-11-10, `theme="plight"`) opens it the same way; the linked panel keeps the inline expand.
 - `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
   the percentage on every surface at once. That callback is held in a REF inside the
   checklist — parents pass an inline arrow, so keying the effect on it would re-fire every
@@ -1448,6 +1505,20 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
 
+## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
+`_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
+`gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
+(cron `team-health-daily`, 01:00 UTC) both call it; words for its codes: `src/utils/teamHealth.js`.
+- Activity = the salesman's OWN actions (their lead_activities, chat replies, activity_log). Never
+  `leads.updated_at` or anything the dealer did on their lead: `diara` scored 90 after 45 idle days
+  because the dealer created, assigned and won a lead for her.
+- Status active / quiet (7d) / inactive (14d) / never / new. No score when inactive, never, new or
+  under 3 leads in 30 days: the screen says why. No free points.
+- A lead given to a salesman sets `salesman_id` (their panel reads it), not only `assigned_to`
+  (`trg_lead_salesman_from_assigned`, which also refuses a salesman from another dealer).
+- Rules, not AI: every alert line quotes a real count. One roll-up push per dealer per day, the
+  same issue at most weekly. Do not add a second scoring copy on any screen.
+
 ## Performance tab (Salesman Premium) — DIAGNOSIS only, never a call list
 `src/utils/salesPerformance.js` (all the maths, pure + unit-tested via
 `npm run test:perf`) + `src/pages/salesmanPremium/AnalyticsTab.jsx` (UI) +
@@ -1584,10 +1655,13 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   calculator basic").** The only real trial users used Live and nothing else, and all of Live
   was free, so a lapsed trial lost nothing. `LivePresenter basic` (passed by
   `SalesmanProfilePage.jsx` as `profile.page_basic`, so trials and dealer-linked reps get it all)
-  keeps one car: price, deposit chips, monthly + tenures, working (price, deposit, loan, rate),
-  bank notes, contact, language. Everything else is Premium: Budget + Viewer, Docs, rebates,
-  insurance + NCD, totals, salary guide, offer, variant extras, car list / typed #N, colour,
-  comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
+  keeps one car: price, deposit chips, monthly + tenures, working (price, insurance, rebate,
+  deposit, loan, rate), NCD pills, bank notes, contact, language. **Rebate + insurance/NCD are
+  FREE again (owner, 2026-11-10):** the ad says the free presenter does what a paid spreadsheet
+  calculator does, so it must; both are typed on their own line (Adjust > Rebates, the
+  every-car list, stays Premium, so on Lite a used car has no rebate line). Everything else is
+  Premium: Budget + Viewer, Docs, totals, salary guide, offer, variant extras, car list /
+  typed #N, colour, comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
   it). Every seller still sees the button; `set_live_listing` has no plan check. Copy:
   `/for-salesmen` + plan cards say "basic" on Lite and list "Full Live presentation" first in
   `SALESMAN_PREMIUM_FEATURE_LINES` (group `live`, kept out of the grouped cards). A Live
@@ -2287,7 +2361,7 @@ Both displayed in separate labelled sections in the P&L modal.
 The database stalls (see DB migrations), so no dashboard screen may wait on the
 network before showing anything. Two layers, both purged on logout:
 - Panel bootstrap data (profile, listings, leads, enquiries, appts): `seedPanelCache`,
-  window `PANEL_SEED_TTL` (7 days) in `src/utils/panelCache.js`.
+  window `PANEL_SEED_TTL` (30 days, = the idle sign-out) in `src/utils/panelCache.js`.
 - Every tab's own data: `usePersistentState(key, initial, { redact })`
   (`src/hooks/usePersistentState.js`) in place of the `useState` the fetch fills.
   Pattern: `const [rows, setRows, cached] = usePersistentState(...)`, then
@@ -2424,6 +2498,15 @@ enquiries. Both were granted to `anon`.
    or Back needs two presses. Lost work: pass `{ isDirty: () => bool }` and Back asks
    (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
    every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
+
+## The installed app never shows Chrome's black bar (owner, 2026-11-09)
+In the home-screen app, Android opens ANY new-tab link (`target="_blank"`, `window.open`) and any
+page on another origin in Chrome's in-app browser: a black bar with X, title and address on top.
+- Our own pages: `src/components/StayInApp.jsx` (mounted once in App.jsx) turns a new-tab open of a
+  same-origin page into an in-app page change, only when installed. Never add a per-button fix.
+- Never send a signed-in user to another origin: the dealer dashboard is `drevo.my/dashboard`
+  (`postAuthRoute.js`), never `<sub>.drevo.my/dashboard`. A dealer subdomain is the buyers' storefront.
+- Still opens the bar, by design: the storefront subdomain, Facebook share, other websites.
 
 ## Red buttons are raised keys, Lite AND Premium (owner, 2026-11-01)
 Every red (accent-filled) button in the seller panels uses `.lk-red` from

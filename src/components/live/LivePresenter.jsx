@@ -192,9 +192,12 @@ const fmtPhone = (raw) => {
 // calculator basic"). The only Premium-only part of Lite their two real users
 // touched was Live, and it was all free, so a lapsed trial lost nothing. Basic
 // keeps one car: price, deposit chips, the monthly and its tenures, the working
-// (price, deposit, loan, rate) and the bank notes. Budget, Viewer, Docs,
-// rebates, insurance + NCD, totals, salary guide, offer, variant extras, the car
-// list, colour and comment line are Premium. The upsell is in Settings and the
+// (price, insurance + NCD, rebate, deposit, loan, rate) and the bank notes.
+// Rebate and insurance came back to basic on 2026-11-10 (owner: the free
+// presenter must do what a paid spreadsheet calculator does); both are typed on
+// their own line, Adjust > Rebates stays Premium. Budget, Viewer, Docs, totals,
+// salary guide, offer, variant extras, the car list, colour and comment line
+// are Premium. The upsell is in Settings and the
 // report, never on the stage (viewers see the stage).
 export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false, canInvite = false }) {
   // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
@@ -529,7 +532,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return () => clearTimeout(tm);
   }, [listings, embedded]);
   // price = asking, net = what the loan is worked from (asking - rebate).
-  const { price, rebate, net } = netPrice(shown, basic ? {} : rebates);
+  const { price, rebate, net } = netPrice(shown, rebates);
   // This car's rate group, its rate and how it was quoted.
   const rateGroup = isLocalNew(shown) ? 'local' : 'std';
   const { rate, basis } = rateOf(shown);
@@ -547,7 +550,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   };
   const insK = insKey(car, variant?.model_id);
   const insIsTyped = (insTyped[insK] ?? '') !== '';
-  const ins = basic ? null : insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
+  const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
   const insAmt = ins || 0;
 
   const go = useCallback((d) => {
@@ -1744,7 +1747,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
                   {/* Insurance is typed in place too, and the figure stays on this
                       device until changed (per variant on a model card). */}
-                  {!basic && price > 0 && (
+                  {price > 0 && (
                     insEdit ? (
                       <tr>
                         <td>{t.insuranceBeforeNcd}</td>
@@ -1767,7 +1770,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   )}
                   {/* New cars always show the Rebate line (brands run promos every
                       month); tapping it turns the number into a box, typed in place. */}
-                  {!basic && price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
+                  {price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
                     rebateEdit ? (
                       <tr className="lp-r-reb">
                         <td>{t.rebate}</td>
@@ -1815,7 +1818,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 alike, and hiding it left sellers unable to answer "I have 55% NCD".
                 Its own grid area: under the working on desktop, so the photo keeps
                 the whole row (under the photo it shrank the photo, 2026-10-24). */}
-            {!basic && price > 0 && (
+            {price > 0 && (
               <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                 <span>{t.ncd}</span>
                 {NCD_TIERS.map((n) => (
