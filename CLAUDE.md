@@ -249,7 +249,11 @@ Project ID: lemdkdizdlcirhbzqlos
   InventoryUi.jsx`). Old screens that tinted a whole pill with a hex now pass it to `plPill(hex)` /
   `plWord(hex)` (`src/theme/plStatus.js`): grey fill, the word carries good/bad. Action rows are grey
   with ink words; only the one main action is red.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold, Settings.
+  Sold > Customers (2026-11-10, `crm/CustomersTab.jsx`, shared with the linked panel): one Renewals switch
+  (All | Road tax due | Insurance due) replaced four tiles + the pink banner; rows not an 8-column table;
+  edit pop-up portalled, its save checks the row came back.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold > Handover +
+  Documents, Settings.
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
