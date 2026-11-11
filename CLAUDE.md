@@ -1709,7 +1709,10 @@ variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-
 console > Marketplace > New car prices). Only CARDS ever show on an advisor's page, never
 an automatic price list (built twice, rejected twice as clutter). **Since NEWCAR-2 (owner,
 2026-10-22, migration 20261022e, reverses "the page starts EMPTY") the advisor TICKS the
-models they sell** (`StarterModelPicker`, at signup and in Settings > New cars) and
+models they sell** (`StarterModelPicker` in Settings > New cars; **NEWCAR-3, owner 2026-11-11: signup
+no longer asks, it adds EVERY eligible model of the chosen brand**, `SalesmanOnboarding.jsx`
+`new_car_add_cards(starterModels)`; console-made accounts do not get this, the function needs the
+seller's own session) and
 `new_car_add_cards()` makes a card each, carrying the platform's photos from
 `new_car_model_media` (uploaded per model in the console price tab). Such a card has
 `stock_photos = true`. **No model card (`is_model_card`) is ever in a used/recon surface,
@@ -1786,7 +1789,10 @@ and the won-trigger marks it sold on the first deal.
 - **A console-made account starts like a fresh signup.** The owner signs in as the
   seller to add cars, so every intro plays for the owner and is marked done on the
   account. Saving the password on `/salesman-setup` resets `onboarding_tour_done` and
-  `starter_tasks`. Any NEW first-run flag must be reset there too.
+  `starter_tasks`, and so does every setup email the console sends (`freshFirstRun` in
+  `create-salesman`, only while `setup_complete` is not true), so a seller who signs in with the
+  emailed credentials or "Forgot password" without opening the link still gets the tour.
+  Any NEW first-run flag must be reset in BOTH places.
 - The Premium tour's "seen" backup is `sessionStorage` (`sp_tour_seen_<uid>`), never
   `localStorage`: a persistent copy made every DB reset invisible on that device.
 - **A console-made account answers what signup answers** (2026-10-19). `CreateSellerModal` asks
