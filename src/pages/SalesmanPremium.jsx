@@ -66,6 +66,9 @@ const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
 const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
+// LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
+const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
+const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
 import {
  LogOut,
  Copy,
@@ -134,6 +137,7 @@ import {
  Download,
  Star,
  Move,
+ Inbox,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
@@ -235,7 +239,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -371,6 +375,8 @@ export default function SalesmanPremium() {
  // LINKED-PREMIUM: true for a salesman under a dealer (opt-in, see salesmanPlan.js). A ref so
  // the bootstrap closures and refreshSales read the current value without re-creating.
  const linkedRef = useRef(false);
+ const isLinked = !!profile?.dealer_id; // the gate only lets a linked salesman in when opted in
+ const [incomingCount, setIncomingCount] = useState(0);
  const isPremium = isPremiumSalesman(profile);
  // Premium ends by itself when plan_expires_at passes (PREM-LAPSE). The plan
  // check in the bootstrap runs once, so a dashboard left open stayed on Premium
@@ -3069,6 +3075,11 @@ export default function SalesmanPremium() {
  icon: <User style={{ width: 16, height: 16 }} />,
  badge: leadsNeedingFollowUp || null,
  },
+ // Dealer connections, only for a salesman under a dealer (LINKED-PREMIUM).
+ ...(isLinked ? [
+ { tab: "incoming", label: "Incoming", icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
+ { tab: "inventory", label: "Dealer cars", icon: <Store style={{ width: 16, height: 16 }} /> },
+ ] : []),
  {
  tab: "enquiries",
  label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
@@ -7368,6 +7379,30 @@ export default function SalesmanPremium() {
   </div>
  )}
  {activeTab === "leads" && renderLeads()}
+ {activeTab === "incoming" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <IncomingLeads
+ dealerId={profile.dealer_id}
+ onCount={setIncomingCount}
+ onOpenChat={setChatSheet}
+ onClaimed={(lead) => { hydrateLeadInto(setLeads, lead.id, LEAD_SELECT); switchTab("leads"); }}
+ />
+ </Suspense>
+ )}
+ {activeTab === "inventory" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <DealerInventory
+ dealerId={profile.dealer_id}
+ userId={userId}
+ myCarIds={new Set(myListings.map((c) => c.id))}
+ onFeatured={async (car) => {
+ const { data: full } = await supabase.from("car_listings").select("*").eq("id", car.id).maybeSingle();
+ setMyListings((p) => (p.some((c) => c.id === car.id) ? p : [full || car, ...p]));
+ }}
+ onUnfeatured={(car) => setMyListings((p) => p.filter((c) => c.id !== car.id || c.assigned_to === userId))}
+ />
+ </Suspense>
+ )}
  {activeTab === "enquiries" && (
   <div>
    {/* Bookings and Lead History are two views of the same inbox, so they share
@@ -8186,6 +8221,8 @@ export default function SalesmanPremium() {
  theme="premium"
  aiAssist={isPremium}
  aiUpgrade={!isPremium}
+ // An unclaimed lead is read-only: two reps must not answer one buyer (claim it first).
+ readOnly={!!chatSheet.previewLead}
  onClose={() => setChatSheet(null)}
  />
  </Suspense>
