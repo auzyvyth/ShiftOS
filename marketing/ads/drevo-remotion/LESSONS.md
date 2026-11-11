@@ -74,3 +74,7 @@ mistakes, so the next one starts from them instead of repeating them.
    a false price in an ad. Use it for objects with no text; render screens and type here.
 6. **A change on screen = a cut between two real captures** (before / after the tap), never a number
    animated by hand.
+7. **Quote the generation before spending.** The default video model was 64 credits for one 4 s clip
+   (the account had 99); the budget model made a usable text-free object shot for 4. Use `get_cost` first.
+8. **Generated clips carry objects only.** Ring light, calculator: no words, no digits, no logos in the
+   prompt or the frame. Every word and number is laid over in Remotion.

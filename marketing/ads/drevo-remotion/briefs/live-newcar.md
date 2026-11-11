@@ -152,3 +152,16 @@ Captures: harness running, then `PW=$(npm root -g)/playwright node harness/live-
 captures (591 -> 480 on the 9-year tap; 470 with RM1,000 rebate; 462 with 45% NCD). Sound: `node make-audio-story.cjs`.
 Full render: `npx remotion render src/index.js Story-ms out/raw-story-ms.mp4 --props='{"lang":"ms","audio":true}'`
 then the ffmpeg finish in README. Higgsfield is not used in this cut.
+
+### Cut 3 (owner, 2026-11-10/11): base S70, Lite then Premium, DM CTA, two Higgsfield object clips
+- Car #1 is the Proton S70 1.5 Lite at the platform's official RM59,800 (`harness/fixture.js` PROTON).
+  Real numbers on screen: RM784 (7 years) -> RM637 (9 years) -> with RM1,000 rebate -> RM617 with 45% NCD.
+- Order: beats 4-5 are tagged "LITE · percuma" (calculator, rebate + NCD), beats 6-7 "PREMIUM" (Viewer:
+  pay RM3,000 -> the S70; then the Budget list, every car on one screen).
+- CTA is the owner's line: "DM saya. untuk setup percuma dan 7 hari percubaan percuma Premium." /
+  "DM me. for free setup and a 7-day free trial of Premium." No drevo.my, no price on the end card.
+- Beats 1 and 2 sit on generated object clips with NO text in them (Higgsfield, Seedance 2.0 Mini, 720p,
+  4 s, 4 credits each): `public/hf/ring.mp4` (job 6dc22a39-5a06-4163-9beb-205a1d67c1eb) and
+  `public/hf/calc.mp4` (job fd9ffe8b-28c0-4393-b8a5-fbac56daea1b). All words and numbers are ours, on top.
+  Quotes the same day: Seedance 2.5 1080p 4 s = 64 credits a clip, 720p = 28.
+- The cloud session needs `d8j0ntlcm91z4.cloudfront.net` allowed to download results (environment `shiftos`).

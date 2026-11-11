@@ -3,7 +3,7 @@
 // mono labels. The app is still the REAL Live presenter, shown WHOLE at DESKTOP size on a monitor (owner,
 // 2026-11-10: "make it the desktop version"): public/real/desk-*.png + desk-rects.json from harness/live-desk.cjs.
 import React from 'react';
-import { AbsoluteFill, Sequence, Img, Audio, staticFile, useCurrentFrame, interpolate, delayRender, continueRender } from 'remotion';
+import { AbsoluteFill, Sequence, Img, Audio, OffthreadVideo, staticFile, useCurrentFrame, interpolate, delayRender, continueRender } from 'remotion';
 import { FPS, sec, pop, clamp, ease } from '../lib';
 import { FONT, RED, INK } from '../ui';
 import DESK from './desk-rects.json';
@@ -31,20 +31,22 @@ const COPY = {
     live: { word: 'Live', a: 'setiap malam,', b: 'soalan sama', chips: ['bulanan berapa?', 'deposit 0 boleh?', 'gaji 3k lepas tak?'] },
     excel: { pre: 'Excel cuma', a: 'BAGI NOMBOR', b: 'ITU SAJA' },
     lead: { word: 'Drevo', a: 'BAGI LEAD', note: 'link di bio  ›  page anda  ›  WhatsApp' },
-    free: { pre: 'kalkulator live', word: 'Percuma.', tag: 'tiada kad kredit' },
-    rebate: { pre: 'rebat, insurans, NCD', word: 'Satu tap.' },
-    viewer: { pre: 'gaji RM3,000', word: 'Dapat apa?', tag: 'Premium · 7 hari percuma' },
-    cta: { a: 'Kalkulator live.', b: 'Page sendiri. Senarai lead.', word: 'Percuma.', fine: 'Premium: 7 hari percuma, kemudian RM35 sebulan.' },
+    free: { pre: 'kalkulator live', word: 'Percuma.', tag: 'LITE · percuma' },
+    rebate: { pre: 'rebat, insurans, NCD', word: 'Satu tap.', tag: 'LITE · percuma' },
+    viewer: { pre: 'gaji RM3,000', word: 'Dapat apa?', tag: 'PREMIUM' },
+    budget: { pre: 'semua kereta, ikut bajet', word: 'Satu skrin.', tag: 'PREMIUM' },
+    cta: { word: 'DM saya.', a: 'untuk setup percuma', b: 'dan 7 hari percubaan percuma Premium.' },
     fine: 'Contoh data. Anggaran sahaja, bank yang tentukan.', now: 'sekarang',
   },
   en: {
     live: { word: 'Live', a: 'every night,', b: 'same questions', chips: ['how much a month?', 'zero deposit ok?', 'RM3k pay, can I?'] },
     excel: { pre: 'Excel only', a: 'GIVES A NUMBER', b: "THAT'S ALL" },
     lead: { word: 'Drevo', a: 'GIVES THE LEAD', note: 'link in bio  ›  your page  ›  WhatsApp' },
-    free: { pre: 'live calculator', word: 'Free.', tag: 'no credit card' },
-    rebate: { pre: 'rebate, insurance, NCD', word: 'One tap.' },
-    viewer: { pre: 'pay RM3,000', word: 'Which car?', tag: 'Premium · 7 days free' },
-    cta: { a: 'Live calculator.', b: 'Your own page. Lead list.', word: 'Free.', fine: 'Premium: 7 days free, then RM35 a month.' },
+    free: { pre: 'live calculator', word: 'Free.', tag: 'LITE · free' },
+    rebate: { pre: 'rebate, insurance, NCD', word: 'One tap.', tag: 'LITE · free' },
+    viewer: { pre: 'pay RM3,000', word: 'Which car?', tag: 'PREMIUM' },
+    budget: { pre: 'every car, by budget', word: 'One screen.', tag: 'PREMIUM' },
+    cta: { word: 'DM me.', a: 'for free setup', b: 'and a 7-day free trial of Premium.' },
     fine: 'Sample data. Estimates only, the bank decides.', now: 'now',
   },
 };
@@ -142,29 +144,25 @@ const Push = ({ lang, style }) => (
   </div>
 );
 
+// A generated object clip behind the type (Higgsfield, Seedance 2.0 Mini, 720p, no text in frame:
+// public/hf/ring.mp4 = job 6dc22a39, calc.mp4 = job fd9ffe8b). Words and numbers are always ours, on top.
+const Clip = ({ file, from = 0, dark }) => (
+  <AbsoluteFill style={{ background: dark ? NIGHT : PAPER, overflow: 'hidden' }}>
+    <OffthreadVideo src={staticFile(`hf/${file}`)} startFrom={Math.round(from * FPS)} muted style={{ width: 1080, height: 1920, objectFit: 'cover' }} />
+    <Grain dark={dark} />
+  </AbsoluteFill>
+);
+
 // ---------- beats ----------
 // 1. The seller's night: a ring light, and the same three comments.
 const Live = ({ lang }) => {
   const C = COPY[lang].live;
   const f = useCurrentFrame();
-  const spots = [[430, 760, -5], [120, 980, 4], [380, 1190, -3]];
+  const spots = [[70, 760, -5], [50, 1000, 4], [80, 1240, -3]];
   return (
-    <Paper>
+    <AbsoluteFill>
+      <Clip file="ring.mp4" from={0.4} />
       <Barcode x={70} y={236} />
-      <Dots x={560} y={250} />
-      <Drift>
-        {/* the ring light and the phone on its stand: the object of this frame, drawn */}
-        <svg width="1080" height="1920" style={{ position: 'absolute', inset: 0 }}>
-          <g transform="translate(700 980)">
-            <circle r="270" fill="none" stroke={INK} strokeWidth="46" />
-            <circle r="270" fill="none" stroke="#fff" strokeWidth="22" opacity="0.9" />
-            <rect x="-62" y="-118" width="124" height="236" rx="22" fill={INK} />
-            <rect x="-50" y="-104" width="100" height="208" rx="12" fill={RED} />
-            <rect x="-9" y="270" width="18" height="520" fill={INK} />
-            <path d="M0 720 L-190 900 M0 720 L190 900" stroke={INK} strokeWidth="18" strokeLinecap="round" />
-          </g>
-        </svg>
-      </Drift>
       <In at={0.02} y={40} style={{ left: 64, top: 300, font: `italic 900 330px/0.9 ${SERIF}`, color: INK, letterSpacing: -10 }}>{C.word}</In>
       <In at={0.35} y={30} style={{ left: 78, top: 630, display: 'flex', gap: 18, alignItems: 'center' }}><Label>{C.a}</Label><Label red>{C.b}</Label></In>
       {C.chips.map((t, i) => {
@@ -175,7 +173,7 @@ const Live = ({ lang }) => {
           </div>
         );
       })}
-    </Paper>
+    </AbsoluteFill>
   );
 };
 // 2. Night frame: a sheet of cells, one number in it, nothing else.
@@ -184,13 +182,8 @@ const Excel = ({ lang }) => {
   const f = useCurrentFrame();
   const cell = pop(f, 0.5);
   return (
-    <Paper dark>
-      <Drift from={1.08}>
-        <svg width="1080" height="1920" style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 9 }, (_, i) => <line key={`v${i}`} x1={i * 150 - 30} y1="0" x2={i * 150 - 30} y2="1920" stroke="rgba(255,255,255,0.13)" strokeWidth="2" />)}
-          {Array.from({ length: 26 }, (_, i) => <line key={`h${i}`} x1="0" y1={i * 78 + 20} x2="1080" y2={i * 78 + 20} stroke="rgba(255,255,255,0.13)" strokeWidth="2" />)}
-        </svg>
-      </Drift>
+    <AbsoluteFill>
+      <Clip file="calc.mp4" from={1.0} dark />
       <In at={0.02} y={20} style={{ left: 120, top: 268, font: `500 34px ${MONO}`, color: 'rgba(255,255,255,0.75)' }}>{C.pre}</In>
       {/* one block, so a line that wraps pushes the red line down and never sits on it */}
       <div style={{ position: 'absolute', left: 120, right: 70, top: 870, font: `800 ${C.a.length > 12 ? 82 : 96}px/1.12 ${SERIF}`, letterSpacing: C.a.length > 12 ? 9 : 14 }}>
@@ -199,8 +192,8 @@ const Excel = ({ lang }) => {
       </div>
       {/* the lone cell */}
       <div style={{ position: 'absolute', left: 120, top: 560, width: 380, height: 190, border: `6px solid ${RED}`, background: 'rgba(220,38,38,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        font: `500 110px ${MONO}`, color: '#fff', opacity: Math.min(1, cell * 1.5), transform: `scale(${0.9 + 0.1 * Math.min(1, cell)})` }}>480</div>
-    </Paper>
+        font: `500 110px ${MONO}`, color: '#fff', opacity: Math.min(1, cell * 1.5), transform: `scale(${0.9 + 0.1 * Math.min(1, cell)})` }}>637</div>
+    </AbsoluteFill>
   );
 };
 // 3. The red beam lands on what a sheet never gives: the buyer.
@@ -232,7 +225,7 @@ const AppBeat = ({ lang, views, word, pre, tag, children }) => {
       <Dots x={640} y={236} cols={9} rows={4} />
       <In at={0.02} y={20} style={{ left: 70, top: 232 }}><Label>{pre}</Label></In>
       <In at={0.12} y={40} style={{ left: 64, top: 280, font: `italic 900 ${word.length > 9 ? 150 : 176}px/1 ${SERIF}`, color: RED, letterSpacing: -5 }}>{word}</In>
-      {tag && <In at={1.0} y={20} style={{ left: 70, top: 478 }}><span style={{ display: 'inline-block', background: INK, color: '#fff', font: `500 30px ${MONO}`, padding: '10px 20px', borderRadius: 8 }}>{tag}</span></In>}
+      {tag && <In at={0.3} y={20} style={{ left: 70, top: 478 }}><span style={{ display: 'inline-block', background: /^PREMIUM/.test(tag) ? RED : INK, color: '#fff', font: `500 30px ${MONO}`, letterSpacing: 1, padding: '10px 20px', borderRadius: 8 }}>{tag}</span></In>}
       <Drift from={1.025} style={{ transformOrigin: '50% 80%' }}>
         <Monitor view={view} lang={lang} x={40} y={570} w={980}>{children}</Monitor>
       </Drift>
@@ -252,7 +245,7 @@ const Rebate = ({ lang }) => {
   const C = COPY[lang].rebate; const R = DESK[`rebate-${lang}`];
   const pill = { x: R.ncd.x + R.ncd.w * 0.725, y: R.ncd.y + 2, w: R.ncd.w * 0.125, h: R.ncd.h - 4 };
   return (
-    <AppBeat lang={lang} views={[[0, 'free9'], [1.0, 'rebate1'], [2.0, 'rebate']]} pre={C.pre} word={C.word}>
+    <AppBeat lang={lang} views={[[0, 'free9'], [1.0, 'rebate1'], [2.0, 'rebate']]} pre={C.pre} word={C.word} tag={C.tag}>
       {(k) => (<><Ring r={R.reb} k={k} at={1.0} pad={2} /><Ring r={pill} k={k} at={2.0} pad={1} /></>)}
     </AppBeat>
   );
@@ -261,7 +254,11 @@ const Viewer = ({ lang }) => {
   const C = COPY[lang].viewer;
   return <AppBeat lang={lang} views={[[0, 'viewer0'], [1.3, 'viewer']]} pre={C.pre} word={C.word} tag={C.tag} />;
 };
-// 7. End card: the road and the name.
+const Budget = ({ lang }) => {
+  const C = COPY[lang].budget;
+  return <AppBeat lang={lang} views={[[0, 'budget']]} pre={C.pre} word={C.word} tag={C.tag} />;
+};
+// 8. End card: the road, the name, and the owner's CTA (2026-11-10): DM for a free setup + the 7-day trial.
 const Cta = ({ lang }) => {
   const C = COPY[lang].cta;
   const f = useCurrentFrame();
@@ -274,17 +271,13 @@ const Cta = ({ lang }) => {
       </svg>
       <Barcode x={70} y={236} />
       <In at={0.1} y={30} style={{ left: 0, right: 0, top: 380, display: 'flex', justifyContent: 'center' }}><Img src={staticFile('drevo-logo-dark.png')} style={{ width: 620, height: 108 }} /></In>
-      <In at={0.45} y={30} style={{ left: 60, right: 60, top: 560, textAlign: 'center', font: `500 38px/1.5 ${MONO}`, color: INK }}>{C.a}<br />{C.b}</In>
-      <In at={0.8} y={40} style={{ left: 0, right: 0, top: 700, textAlign: 'center', font: `italic 900 210px/1 ${SERIF}`, color: RED, letterSpacing: -6 }}>{C.word}</In>
-      <In at={1.2} y={30} style={{ left: 0, right: 0, top: 990, display: 'flex', justifyContent: 'center' }}>
-        <span style={{ background: INK, color: '#fff', font: `500 54px ${MONO}`, padding: '22px 46px', borderRadius: 14 }}>drevo.my</span>
-      </In>
-      <In at={1.5} y={20} style={{ left: 60, right: 60, top: 1130, textAlign: 'center', font: `500 26px ${MONO}`, color: 'rgba(14,12,11,0.65)' }}>{C.fine}</In>
+      <In at={0.45} y={40} style={{ left: 0, right: 0, top: 560, textAlign: 'center', font: `italic 900 ${C.word.length > 7 ? 190 : 230}px/1 ${SERIF}`, color: RED, letterSpacing: -6 }}>{C.word}</In>
+      <In at={0.9} y={30} style={{ left: 60, right: 60, top: 850, textAlign: 'center', font: `500 37px/1.6 ${MONO}`, color: INK, whiteSpace: 'nowrap' }}>{C.a}<br />{C.b}</In>
     </Paper>
   );
 };
 
-const SCENES = { live: Live, excel: Excel, lead: Lead, free: Free, rebate: Rebate, viewer: Viewer, cta: Cta };
+const SCENES = { live: Live, excel: Excel, lead: Lead, free: Free, rebate: Rebate, viewer: Viewer, budget: Budget, cta: Cta };
 export const LiveStory = ({ lang = 'ms', audio = false }) => (
   <AbsoluteFill style={{ background: PAPER }}>
     {audio && <Audio src={staticFile(`audio/story-${lang}.wav`)} />}

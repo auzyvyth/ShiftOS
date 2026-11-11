@@ -46,6 +46,8 @@ const RECTS = {};
     await snap(p, 'viewer0');                                         // name typed, pay still empty
     await p.locator('.lp-money input').first().fill('3000');
     await snap(p, 'viewer');
+    await p.locator('.lp-bview button').nth(0).click();               // List: every car by budget
+    await snap(p, 'budget');
     await ctx.close();
   }
   fs.writeFileSync('src/live/desk-rects.json', JSON.stringify(RECTS, null, 1));

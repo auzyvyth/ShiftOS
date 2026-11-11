@@ -17,11 +17,12 @@ for (const lang of ['ms', 'en']) {
   e(S.free.at + 0.12, 'pop', { g: 0.8 }); e(S.free.at + 1.0, 'pop', { g: 0.6 }); e(S.free.at + 1.5, 'click'); e(S.free.at + 1.52, 'tick');
   e(S.rebate.at + 0.12, 'pop', { g: 0.8 }); e(S.rebate.at + 1.0, 'click'); e(S.rebate.at + 1.02, 'tick'); e(S.rebate.at + 2.0, 'click'); e(S.rebate.at + 2.02, 'tick');
   e(S.viewer.at + 0.12, 'pop', { g: 0.8 }); e(S.viewer.at + 1.3, 'chime'); e(S.viewer.at + 1.0, 'pop', { g: 0.6 });
+  e(S.budget.at + 0.12, 'pop', { g: 0.8 }); e(S.budget.at + 0.3, 'tick');
   e(S.cta.at + 0.45, 'pop', { g: 0.6 }); e(S.cta.at + 0.8, 'pop', { g: 1 }); e(S.cta.at + 1.2, 'pop', { g: 0.8 });
   const data = { dur: T.dur, ev: ev.sort((a, b) => a.t - b.t), silence: [S.cta.at - 0.3, S.cta.at], cta: S.cta.at,
     risers: [[S.lead.at - 1.2, 1.2], [S.free.at - 1.0, 1.0], [S.cta.at - 1.8, 1.5]],
     breath: [S.excel.at, S.excel.end], ducks: [],
-    arps: [[S.free.at, S.rebate.at], [S.rebate.at, S.viewer.at], [S.viewer.at, S.cta.at - 0.4]] };
+    arps: [[S.free.at, S.rebate.at], [S.rebate.at, S.viewer.at], [S.viewer.at, S.budget.at], [S.budget.at, S.cta.at - 0.4]] };
   fs.writeFileSync(`public/audio/story-events-${lang}.json`, JSON.stringify(data));
   execFileSync('python3', ['score.py', `public/audio/story-events-${lang}.json`, `public/audio/story-${lang}.wav`], { stdio: 'inherit' });
 }

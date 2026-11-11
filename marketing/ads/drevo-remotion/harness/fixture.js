@@ -24,9 +24,9 @@ const fresh = (id, model, variant, price, cc, body) => ({
   stock_photos: false, status: 'available', state: 'Selangor', city: 'Shah Alam', images: ['/photos/placeholder.svg'],
 });
 export const PROTON = [
+  fresh('11111111-0000-4000-8000-000000000003', 'S70', '1.5 Lite', 59800, 1499, 'Sedan'),   // #1: the base S70 (owner, 2026-11-10)
   fresh('11111111-0000-4000-8000-000000000001', 'Saga', '1.5 Executive', 44990, 1499, 'Sedan'),
   fresh('11111111-0000-4000-8000-000000000002', 'Persona', '1.6 Standard', 47800, 1597, 'Sedan'),
-  fresh('11111111-0000-4000-8000-000000000003', 'S70', '1.5 Lite', 59800, 1499, 'Sedan'),
   fresh('11111111-0000-4000-8000-000000000004', 'X50', '1.5TD Executive', 89800, 1499, 'SUV'),
   fresh('11111111-0000-4000-8000-000000000005', 'X70', '1.5TD Executive', 106800, 1499, 'SUV'),
 ];
