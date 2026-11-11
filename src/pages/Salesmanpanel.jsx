@@ -16,6 +16,7 @@ import { hasFeature } from "../lib/permissions";
 import OutreachHub from "../components/crm/OutreachHub";
 import ChatSheet from "../components/chat/ChatSheet";
 import { useChatThreads } from "../hooks/useChat";
+import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import CustomersTab from "../components/crm/CustomersTab";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import { usePresence } from "../hooks/usePresence";
@@ -37,6 +38,7 @@ import {
  Check,
  Eye,
  MessageSquare,
+ Star,
  ShoppingBag,
  Clock,
  AlertCircle,
@@ -140,6 +142,8 @@ const chatOpener = (notes) => (notes || "").replace(/^Started an in-app chat:\s*
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
+const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
+const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 
 // helpers 
@@ -242,7 +246,7 @@ export default function SalesmanPanel() {
  // assigned to this rep had no reachable channel at all. chat_threads.lead_id
  // is written by the DB trigger on the buyer's first message; the map lets the
  // pipeline show which leads have a live conversation.
- const { threads: chatThreads } = useChatThreads({ salesmanId: userId });
+ const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
  const threadByLead = new Map();
  // One lead can have MORE than one thread — a buyer who chats about a second
  // car gets a second thread that dedups onto the same lead. These rows arrive
@@ -271,6 +275,8 @@ export default function SalesmanPanel() {
 
  // my listings
  const [myListings, setMyListings] = useState(seed.listings);
+ // Buyer questions, reviews and saves on my cars (the same hook Lite/Premium use).
+ const feedback = useSellerFeedback(userId, myListings.map((c) => c.id));
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
 
  // shared dealer inventory (browse + add to deals)
@@ -7584,6 +7590,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }
 
  const MORE_ITEMS = [
+ { tab: "chat", label: "Messages", icon: <MessageSquare size={18} /> },
+ { tab: "feedback", label: "Ratings", icon: <Star size={18} /> },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "enquiries", label: "Bookings", icon: <Calendar size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
@@ -7670,7 +7678,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  },
  ].map(({ tab, label, icon, badge }) => {
  const isMore = tab === "__more";
- const moreTabs = ["analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
+ const moreTabs = ["chat", "feedback", "analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
  const isActive = isMore ? moreTabs.includes(activeTab) : activeTab === tab;
  const moreIcon = isMore ? <Plus size={18} /> : icon;
  return (
@@ -7853,6 +7861,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  label: "Leads",
  icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />,
  badge: null,
+ },
+ {
+ tab: "chat",
+ label: "Messages",
+ icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: chatUnread || null,
+ },
+ {
+ tab: "feedback",
+ label: "Ratings & Q&A",
+ icon: <Star style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: feedback.unanswered || null,
  },
  {
  tab: "analytics",
@@ -8373,6 +8393,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "listings" && renderListings()}
  {activeTab === "incoming" && renderIncoming()}
  {activeTab === "leads" && renderLeads()}
+ {activeTab === "chat" && (
+ <React.Suspense fallback={null}>
+ <SellerInbox salesmanId={userId} theme="dark" aiAssist={false} fullHeight bottomInset={isMobile ? 80 : 24} />
+ </React.Suspense>
+ )}
+ {activeTab === "feedback" && (
+ <React.Suspense fallback={null}>
+ <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="dark" />
+ </React.Suspense>
+ )}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "enquiries" && renderEnquiries()}
  {activeTab === "loans" && renderLoans()}
