@@ -1661,14 +1661,21 @@ export default function CarDetailPage() {
       if (!entry.isIntersecting || simFetched.current) return;
       simFetched.current = true;
 
-      const base = () => supabase
-        .from("public_car_listings")
-        .select(SIM_FIELDS)
-        .in("status", ["available", "reserved"])
-        .eq("is_model_card", false)
-        .neq("id", car.id)
-        .order("created_at", { ascending: false })
-        .limit(12);
+      // On a dealer's own site these rails may only show THAT dealer's cars (a
+      // foreign car bounces the buyer off the storefront). The page already
+      // redirects any car that is not the tenant's, so car.dealer_id is the tenant.
+      const base = () => {
+        let q = supabase
+          .from("public_car_listings")
+          .select(SIM_FIELDS)
+          .in("status", ["available", "reserved"])
+          .eq("is_model_card", false)
+          .neq("id", car.id)
+          .order("created_at", { ascending: false })
+          .limit(12);
+        if (!isXdrive && car.dealer_id) q = q.eq("dealer_id", car.dealer_id);
+        return q;
+      };
 
       const price = Number(car.selling_price) || 0;
       const queries = {

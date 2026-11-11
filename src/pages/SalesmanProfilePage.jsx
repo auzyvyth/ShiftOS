@@ -10,7 +10,7 @@ import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
-import { captureRef } from '../utils/refTracking';
+import { captureRef, setRef } from '../utils/refTracking';
 import { agentPageTitle, agentPageDescription, agentShareImage, agentCardVersion } from '../utils/agentSeo';
 import { SITE_URL } from '../config/site';
 import { useAgentTrust } from '../hooks/useAgentTrust';
@@ -289,7 +289,7 @@ export default function SalesmanProfilePage() {
   // Detect the arrival platform (Instagram/Facebook/TikTok/WhatsApp… via the
   // in-app browser UA or referrer) and stash it so every footprint we log below
   // carries a channel. Runs first, before any trackEvent fires.
-  useEffect(() => { captureRef(); }, []);
+  useEffect(() => { captureRef(); setRef(slug); }, [slug]);
 
   // A card tap is a footprint even though it navigates away — fire-and-forget so
   // navigation isn't blocked. Slug-keyed so it lands in the agent's own analytics;

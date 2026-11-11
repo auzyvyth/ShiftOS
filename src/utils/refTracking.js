@@ -21,6 +21,18 @@ export function captureRef() {
   }
 }
 
+// A seller's mini page (/s/<slug>) has the slug in the PATH, not in ?ref=, so
+// captureRef() never saw it and every car opened from a mini page lost its
+// seller. The mini page stores its own slug here; the resolver
+// (resolve_lead_salesman) still checks the slug is a real salesman of the car's dealer.
+export function setRef(slug) {
+  if (!slug) return;
+  try {
+    sessionStorage.setItem('ref_slug', String(slug).slice(0, 80));
+    sessionStorage.setItem('ref_captured_at', Date.now());
+  } catch { /* storage blocked */ }
+}
+
 // The share channel the visitor arrived through (24h window), or null.
 export function getShareChannel() {
   const src = sessionStorage.getItem('share_src');
