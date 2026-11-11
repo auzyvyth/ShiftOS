@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateKey, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
+  maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
   dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
@@ -190,14 +190,14 @@ is('clamp: 6.5 untouched', clampRateInput('6.5'), '6.5');
 is('clamp: partial "6." untouched', clampRateInput('6.'), '6.');
 is('clamp: empty untouched', clampRateInput(''), '');
 
-// Saved rebates last the month, Malaysia time.
+// Month helpers (kept for the report); saved rebates no longer expire with the month.
 is('month: MYT, not UTC', myMonth('2026-10-31T17:00:00Z'), '2026-11');
 is('month: same month', myMonth('2026-10-31T15:59:00Z'), '2026-10');
 is('month end: October', monthEnd('2026-10').toISOString().slice(0, 10), '2026-10-31');
 is('month end: February', monthEnd('2028-02').toISOString().slice(0, 10), '2028-02-29');
-is('saved: this month kept', rebatesForMonth({ month: '2026-10', rebates: { a: '3000', b: 0, c: 'x' } }, '2026-10'), { a: '3000' });
-is('saved: last month dropped', rebatesForMonth({ month: '2026-09', rebates: { a: '3000' } }, '2026-10'), {});
-is('saved: junk is empty', [rebatesForMonth(null, '2026-10'), rebatesForMonth({ month: '2026-10' }, '2026-10')], [{}, {}]);
+is('saved: positive amounts kept, junk dropped', savedRebates({ rebates: { a: '3000', b: 0, c: 'x', 'm:v1': 1500 } }), { a: '3000', 'm:v1': '1500' });
+is('saved: an older month is kept too (until changed)', savedRebates({ month: '2026-09', rebates: { a: '3000' } }), { a: '3000' });
+is('saved: junk is empty', [savedRebates(null), savedRebates({ month: '2026-10' })], [{}, {}]);
 
 // Variant options on a model card's Budget row.
 const vcard = [
