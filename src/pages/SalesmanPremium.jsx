@@ -211,6 +211,7 @@ import {
  ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
 const PANEL_CACHE_KEY = "sp";
@@ -1158,11 +1159,20 @@ export default function SalesmanPremium() {
  }
  rememberPanelUid(PANEL_CACHE_KEY, uid);
 
- const { data: profileData, error: profileErr } = await supabase
- .from("profiles")
- .select("*")
- .eq("id", uid)
- .maybeSingle();
+ const readOwnProfile = () => supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+ let { data: profileData, error: profileErr } = await readOwnProfile();
+ // A 401 means the saved login is dead (expired token never refreshed), not that
+ // the database stalled: refresh it once, else clear it and sign in again.
+ // "Try again" on the error screen could never fix this (2026-11-11, Yazeed).
+ if (profileErr && isAuthRejected(profileErr)) {
+ if (await recoverRejectedSession() === "retry") {
+ ({ data: profileData, error: profileErr } = await readOwnProfile());
+ } else {
+ setLoading(false);
+ navigate("/login");
+ return;
+ }
+ }
 
  // A timeout / server error is the database stalling, not a missing account:
  // the session is fine, so never bounce to /login for it (2026-10-30).
