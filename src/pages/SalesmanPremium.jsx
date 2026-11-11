@@ -187,7 +187,7 @@ import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip
 import { compareFollowUp, followUpStatus, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
-import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { isPremiumSalesman, linkedPremiumOptedIn } from "../utils/salesmanPlan";
 import {
   readCache,
   writeCache,
@@ -368,6 +368,9 @@ export default function SalesmanPremium() {
  // background so their first tap is instant and works offline.
  useEffect(() => (loading ? undefined : warmChunks(WARM_TABS)), [loading]);
  const [pendingPay, setPendingPay] = useState(false);
+ // LINKED-PREMIUM: true for a salesman under a dealer (opt-in, see salesmanPlan.js). A ref so
+ // the bootstrap closures and refreshSales read the current value without re-creating.
+ const linkedRef = useRef(false);
  const isPremium = isPremiumSalesman(profile);
  // Premium ends by itself when plan_expires_at passes (PREM-LAPSE). The plan
  // check in the bootstrap runs once, so a dashboard left open stayed on Premium
@@ -998,13 +1001,15 @@ export default function SalesmanPremium() {
  const refreshCustomers = useCallback(async () => {
  const custDealerId = getDealerIdFromProfile(profile);
  if (!custDealerId) return;
- const { data, error: custErr } = await supabase
- .from("customers").select("*").eq("dealer_id", custDealerId)
- .order("created_at", { ascending: false });
+ // Linked: the dealer's customers table, narrowed to buyers from MY deals (through the lead).
+ const linked = !!profile?.dealer_id;
+ let custQ = supabase.from("customers").select(linked ? "*, leads!inner(salesman_id)" : "*").eq("dealer_id", custDealerId);
+ if (linked) custQ = custQ.eq("leads.salesman_id", userId);
+ const { data, error: custErr } = await custQ.order("created_at", { ascending: false });
  if (custErr) { console.error("refreshCustomers:", custErr); return; }
  setCustomers(data || []);
  setCustomersLoading(false);
- }, [profile]);
+ }, [profile, userId]);
 
  // Everything the Analytics tab says about sales. This used to be an anonymous
  // .then() buried in the bootstrap effect, so it ran once and never again:
@@ -1033,7 +1038,8 @@ export default function SalesmanPremium() {
  // with no assignee" is unambiguously mine.
  const { data, error: cErr } = await supabase
  .from("car_listings").select("commission_amount, brand, model, year, sold_at")
- .or(`assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
+ // A linked salesman owns no cars: only what they closed counts (the dealer's unassigned sold cars are not theirs).
+ .or(linkedRef.current ? `assigned_to.eq.${sid}` : `assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
  .eq("status", "sold");
  if (cErr) { console.error("refreshSales:", cErr); toast.error(i18n.t("salesmanPremium.errors.loadCommission")); return; }
  const rows = data || [];
@@ -1200,10 +1206,13 @@ export default function SalesmanPremium() {
  // Premium is for SOLO full salesmen only. Linked salesmen (dealer_id set) go
  // to the dealer SalesmanPanel; solo non-full plans go to Lite.
  if (profileData.dealer_id) {
+ // LINKED-PREMIUM: only when this device opted in AND the dealer gave them the full plan.
+ if (!linkedPremiumOptedIn() || !isPremiumSalesman(profileData)) {
  navigate("/salesman", { replace: true });
  return;
  }
- if (!isPremiumSalesman(profileData)) {
+ linkedRef.current = true;
+ } else if (!isPremiumSalesman(profileData)) {
  navigate("/salesman-lite", { replace: true });
  return;
  }
@@ -1218,7 +1227,7 @@ export default function SalesmanPremium() {
  // Payment gate: a premium salesman awaiting payment confirmation sees the
  // pending-approval screen (same manual DuitNow QR flow as dealers) until an
  // admin marks payment_status != 'pending'. Grandfathered rows (null) pass.
- if (profileData.payment_status === "pending") {
+ if (profileData.payment_status === "pending" && !profileData.dealer_id) {
  setProfile(profileData);
  setPendingPay(true);
  setLoading(false);
@@ -1426,7 +1435,9 @@ export default function SalesmanPremium() {
  // premium — customers (post-sale buyer records) + their service packages.
  // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
  const custDealerId = getDealerIdFromProfile(profileData);
- supabase.from("customers").select("*").eq("dealer_id", custDealerId)
+ (linkedRef.current
+ ? supabase.from("customers").select("*, leads!inner(salesman_id)").eq("dealer_id", custDealerId).eq("leads.salesman_id", uid)
+ : supabase.from("customers").select("*").eq("dealer_id", custDealerId))
  .order("created_at", { ascending: false })
  .then(async ({ data, error }) => {
  if (error) { console.error("fetchCustomers:", error); toast.error(i18n.t("salesmanPremium.errors.loadCustomers")); }
@@ -1445,7 +1456,17 @@ export default function SalesmanPremium() {
  .from("car_listings")
  .select(LISTING_SELECT)
  .eq("assigned_to", uid).neq("status", "archived"),
- supabase
+ // Solo: cars I own. Linked: dealer cars I featured (salesman_listings), the same
+ // "my deals" the dealer panel uses; cars assigned to me come in through r1.
+ linkedRef.current
+ ? supabase.from("salesman_listings").select("listing_id").eq("salesman_id", uid)
+ .then(async ({ data: feat, error: featErr }) => {
+ if (featErr) return { data: [], error: featErr };
+ const ids = (feat || []).map((f) => f.listing_id).filter(Boolean);
+ if (!ids.length) return { data: [], error: null };
+ return supabase.from("car_listings").select(LISTING_SELECT).in("id", ids).neq("status", "archived");
+ })
+ : supabase
  .from("car_listings")
  .select(LISTING_SELECT)
  .eq("dealer_id", uid).neq("status", "archived"),
@@ -1462,6 +1483,24 @@ export default function SalesmanPremium() {
  setListingsLoaded(true);
  setMyListings(merged);
  writeCache(`sp_listings_${uid}`, merged);
+ // LINKED-PREMIUM: views/taps are counted by the salesman's own slug (the dealer's
+ // marketplace history must not count as theirs), per car I sell.
+ if (linkedRef.current && profileData.slug && merged.length) {
+ supabase.rpc("get_salesman_slug_analytics", { p_car_ids: merged.map((c) => c.id), p_slug: profileData.slug })
+ .then(({ data: rows, error: anErr }) => {
+ if (anErr) { console.error("fetchLinkedAnalytics:", anErr); return; }
+ const map = {};
+ (rows || []).forEach((row) => {
+ map[row.car_id] = {
+ views: Number(row.views) || 0,
+ enquiries: Number(row.enquiries) || 0,
+ daily: [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ waDaily: [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
+ };
+ });
+ setCarStatsMap(map);
+ });
+ }
  });
 
  // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser.
@@ -1471,7 +1510,7 @@ export default function SalesmanPremium() {
  // placeholders forever.
  const trafficTimer = setTimeout(() => setTrafficFetched(true), 12000);
  const trafficDone = () => { clearTimeout(trafficTimer); setTrafficFetched(true); };
- supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
+ (linkedRef.current ? Promise.resolve({ data: [], error: null }) : supabase.rpc("get_salesman_analytics", { p_dealer_id: uid }))
  .then(({ data, error }) => {
  if (error) console.error("fetchAnalytics:", error);
  const map = {};
@@ -1486,7 +1525,7 @@ export default function SalesmanPremium() {
  waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
- setCarStatsMap(map);
+ if (!linkedRef.current) setCarStatsMap(map); // linked: filled from the slug RPC once the cars are known
 
  // Share-channel breakdown (which platform each view/enquiry came from),
  // scoped to this salesman's own slug. Untagged/organic → 'direct'.
@@ -1680,7 +1719,7 @@ export default function SalesmanPremium() {
  .select(
  "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
  )
- .eq("dealer_id", uid)
+ .eq(linkedRef.current ? "salesman_id" : "dealer_id", uid)
  .order("created_at", { ascending: false })
  .then(({ data: enqs }) => {
  setEnquiries(enqs || []);
