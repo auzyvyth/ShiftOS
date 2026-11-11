@@ -9,7 +9,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
-  netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, rebateKey, carLabel, isLocalNew, LOCAL_NEW_EIR, savedRebates, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
   tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT, revealPick, viewerHandle, HANDLE_MAX,
 } from '../../utils/liveMaths';
 import {
@@ -297,14 +297,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // car's rebate is remembered on this device until the month ends, Malaysia
   // time (owner, 2026-10-22; it was model cards only), so the seller types
   // this month's numbers once in Adjust > Rebates, not every live.
-  const [rebates, setRebates] = useState(() => (embedded ? {} : initialLiveRebates(rebatesForMonth)));
+  const [rebates, setRebates] = useState(() => (embedded ? {} : initialLiveRebates(savedRebates)));
   const listingIds = listings.map((c) => c.id).join(',');
   useEffect(() => {
     // No cars yet = nothing to compare against; saving now would wipe the list.
     if (embedded || !listingIds) return;
     const ids = new Set(listingIds.split(','));
-    const keep = Object.fromEntries(Object.entries(rebates).filter(([id, v]) => ids.has(id) && Number(v) > 0));
-    saveLiveRebates(keep, myMonth());
+    // A key is "<listing>" or "<listing>:<variant>": keep it while its car is in the list.
+    const keep = Object.fromEntries(Object.entries(rebates).filter(([k, v]) => ids.has(k.split(':')[0]) && Number(v) > 0));
+    saveLiveRebates(keep);
   }, [rebates, listingIds, embedded]);
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
   // The first deposit chip is typed into, in place.
@@ -314,6 +315,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // seller found opening Adjust for one car's rebate slower than the old way).
   // Adjust > Rebates stays for setting every car before a live.
   const [rebateEdit, setRebateEdit] = useState(false);
+  // Adjust > Rebates: which car's boxes are showing (null = the car on screen).
+  const [rebCar, setRebCar] = useState(null);
+  useEffect(() => { if (!adjustOpen) setRebCar(null); }, [adjustOpen]);
   // Adjust > "Fit a monthly": a target monthly works out the deposit it needs.
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
@@ -492,12 +496,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const carInfo = rawInfo && car && rawInfo.brand === car.brand && rawInfo.model === car.model ? rawInfo : null;
   const { variants, current: variant, choose: chooseVariant } = useNewCarVariant(car?.id, carInfo);
   // Every model card's variants, for the Budget tab (budgetCars, below).
-  const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
+  // Also read while Adjust > Rebates is open: it lists one box per variant.
+  const needInfos = mode === 'budget' || (adjustOpen && adjustTab === 'rebates');
+  const cardInfos = useNewCarInfos(needInfos ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
-    ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
+    ? { ...car, _variantId: variant.model_id, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
-  // One rebate box per listing: a model card's covers every variant.
-  const rk = car?.id;
+  // One rebate box per car, and per VARIANT on a model card (rebateKey).
+  const rk = rebateKey(shown);
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
@@ -975,8 +981,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   };
   const anyHighValue = allRows.some((m) => m.status !== 'over' && m.price > HIGH_VALUE_THRESHOLD);
   // Adjust > Rebates: how many cars have one, and the day the saved list clears.
-  const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
-  const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const rebateCount = Object.entries(rebates)
+    .filter(([k, v]) => Number(v) > 0 && listings.some((c) => c.id === k.split(':')[0])).length;
 
   // Jump to a car. Only with 3+ cars (with 2, Next already is the list).
   // Desktop with room in the margin: the list sits there, outside the stage.
@@ -1341,6 +1347,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-rebs { display: flex; flex-direction: column; }
         .lp-rebs-h { margin: 0 0 6px; font-size: 12px; color: #4b5563; line-height: 1.45; }
         .lp-rebs-h b { display: block; margin-bottom: 2px; font-size: 15px; color: #0f1115; }
+        .lp-rebchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+        .lp-rebchip { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 11px; border-radius: 999px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .lp-rebchip b { font-weight: 800; color: #6b7280; }
+        .lp-rebchip i { font-style: normal; font-size: 11px; font-weight: 800; min-width: 18px; padding: 1px 5px; border-radius: 999px; background: rgba(4,120,87,.12); color: #047857; text-align: center; }
+        .lp-rebchip[aria-pressed="true"] { background: #111827; border-color: #111827; color: #fff; }
+        .lp-rebchip[aria-pressed="true"] b { color: rgba(255,255,255,.7); }
+        .lp-rebcar { margin: 0 0 2px; font-size: 15px; font-weight: 800; color: #0f1115; }
         .lp-reb { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #EFEEEC; }
         .lp-badge { flex-shrink: 0; min-width: 34px; padding: 5px 5px 3px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: 19px; line-height: 1; text-align: center; }
         .lp-adjust .lp-reb-car { flex: 1; gap: 1px; min-width: 0; }
@@ -2119,31 +2132,52 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
             {!basic && adjustTab === 'rebates' && (
               <div className="lp-wide lp-rebs">
-                <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
-                {listings.map((c, i) => {
-                  const v = rebates[c.id] ?? '';
-                  const on = Number(v) > 0;
-                  const kind = c.is_model_card ? t.allVariants
-                    : c.condition === 'new' ? t.newTag : c.condition === 'recon' ? t.recon : t.used;
-                  return (
-                    <div className="lp-reb" key={c.id}>
-                      <span className="lp-badge">#{i + 1}</span>
-                      <label className="lp-reb-car" htmlFor={`lp-reb-${c.id}`}>
-                        <b>{carLabel(c)}</b>
-                        <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
-                      </label>
-                      <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
-                        <span>- RM</span>
-                        <input id={`lp-reb-${c.id}`} type="text" inputMode="numeric" placeholder="0" value={v}
-                          onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [c.id]: d })); }} />
-                      </span>
-                      {on
-                        ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[c.id]; return n; })}
-                            aria-label={`${t.clear} ${carLabel(c)}`}><X size={15} /></button>
-                        : <span className="lp-reb-x" aria-hidden="true" />}
+                <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint}</p>
+                {/* Step 1: pick the car. Step 2: a box per variant (a model card) or one box (any other car). */}
+                {(() => {
+                  const sel = listings.find((c) => c.id === rebCar) || car || listings[0];
+                  if (!sel) return null;
+                  const setFor = (c) => Object.entries(rebates).filter(([k, v]) => Number(v) > 0 && k.split(':')[0] === c.id).length;
+                  const vs = sel.is_model_card ? (cardInfos[sel.id]?.variants || []).filter((x) => x.price != null) : [];
+                  const rows = vs.length
+                    ? vs.map((x) => ({ key: `${sel.id}:${x.model_id}`, label: x.variant || carLabel(sel), price: x.price }))
+                    : sel.is_model_card ? [] : [{ key: sel.id, label: t.rebateOne, price: Number(sel.selling_price) || 0 }];
+                  return (<>
+                    <div className="lp-rebchips" role="group" aria-label={t.rebatesTitle}>
+                      {listings.map((c, i) => {
+                        const n = setFor(c);
+                        return (
+                          <button key={c.id} type="button" className="lp-rebchip" aria-pressed={c.id === sel.id} onClick={() => setRebCar(c.id)}>
+                            <b>#{i + 1}</b> {[c.brand, c.model].filter(Boolean).join(' ') || carLabel(c)}{n > 0 ? <i>{n}</i> : null}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                    <p className="lp-rebcar">{[sel.year, sel.brand, sel.model].filter(Boolean).join(' ')}</p>
+                    {sel.is_model_card && !rows.length && <p className="lp-hint">{t.rebateLoading}</p>}
+                    {rows.map((row) => {
+                      const v = rebates[row.key] ?? '';
+                      const on = Number(v) > 0;
+                      return (
+                        <div className="lp-reb" key={row.key}>
+                          <label className="lp-reb-car" htmlFor={`lp-reb-${row.key}`}>
+                            <b>{row.label}</b>
+                            {row.price > 0 && <small>RM {fmt(row.price)}</small>}
+                          </label>
+                          <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
+                            <span>- RM</span>
+                            <input id={`lp-reb-${row.key}`} type="text" inputMode="numeric" placeholder="0" value={v}
+                              onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [row.key]: d })); }} />
+                          </span>
+                          {on
+                            ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[row.key]; return n; })}
+                                aria-label={`${t.clear} ${row.label}`}><X size={15} /></button>
+                            : <span className="lp-reb-x" aria-hidden="true" />}
+                        </div>
+                      );
+                    })}
+                  </>);
+                })()}
                 <p className="lp-hint">{t.rebateModelNote}</p>
               </div>
             )}
