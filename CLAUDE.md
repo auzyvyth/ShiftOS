@@ -1505,6 +1505,22 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
 
+## Salesman under a dealer = Premium + dealer connections (LINKED-PREMIUM, owner 2026-11-11)
+Owner: "replace the heart, keep the veins". The linked salesman gets the Salesman Premium panel
+(`SalesmanPremium.jsx`, linked mode = `isLinked` / `linkedRef`), with the dealer connections from the
+old `Salesmanpanel.jsx` moved into `src/components/linked/` (IncomingLeads, DealerInventory, TeamBoard).
+The old panel is deleted only AFTER the owner has tested linked mode on staging; until then
+`/salesman` stays the default and linked mode is opt-in per device (`/salesman-premium?linked=1`,
+`linkedPremiumOptedIn` in `src/utils/salesmanPlan.js`; `?linked=0` turns it off). Rules in linked mode:
+- Data is the dealer's, scoped to the salesman: cars = assigned_to me + featured (`salesman_listings`);
+  views by MY slug (`get_salesman_slug_analytics`); sold/commission = `assigned_to` me; customers through
+  my leads (`leads!inner(salesman_id)`). Never `dealer_id = me` (that is the solo rule).
+- A Won goes through `close_deal_at_price` (agreed price, dealer approval over the limit). Car status,
+  "Sold elsewhere", edit and the add-on catalogue are the dealer's: refused/hidden. Delete = unfeature.
+- Commission shows only with the dealer's `view_commission` (usePermissions). No billing, referral,
+  join-a-dealer or new-car cards. Any new Premium feature must answer "what does it do for a linked
+  salesman?" before it ships.
+
 ## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
 `_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
 `gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
