@@ -332,8 +332,11 @@ export function monthEnd(month) {
   const [y, m] = String(month).split('-').map(Number);
   return new Date(Date.UTC(y, m, 0));
 }
-export function rebatesForMonth(saved, month = myMonth()) {
-  if (!saved || saved.month !== month || typeof saved.rebates !== 'object' || !saved.rebates) return {};
+// Saved rebates now last until the seller changes them (owner, 2026-11-11: "it
+// should save each input until changed"); the month-end wipe is gone. Keys are
+// "<listing>" or "<listing>:<variantId>"; only positive amounts are kept.
+export function savedRebates(saved) {
+  if (!saved || typeof saved.rebates !== 'object' || !saved.rebates) return {};
   const out = {};
   for (const [id, v] of Object.entries(saved.rebates)) {
     const n = Number(v);

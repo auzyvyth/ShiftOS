@@ -1659,7 +1659,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   deposit, loan, rate), NCD pills, bank notes, contact, language. **Rebate + insurance/NCD are
   FREE again (owner, 2026-11-10):** the ad says the free presenter does what a paid spreadsheet
   calculator does, so it must; both are typed on their own line (Adjust > Rebates, the
-  every-car list, stays Premium, so on Lite a used car has no rebate line). Everything else is
+  car picker + variant boxes, stays Premium, so on Lite a used car has no rebate line). Everything else is
   Premium: Budget + Viewer, Docs, totals, salary guide, offer, variant extras, car list /
   typed #N, colour, comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
   it). Every seller still sees the button; `set_live_listing` has no plan check. Copy:
@@ -1724,7 +1724,7 @@ change re-syncs every card still on stock photos. Only models with photos are of
 Photos must be ones the owner took or has the brand's written permission to use
 (Copyright Act 1987 s.36). Settings > New cars is otherwise a brand picker + READ-ONLY
 price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
-file had); the presenter's rebate box is where a current one goes (kept on the device to month end). Never copy a new car into `car_listings`: it blows the listing cap,
+file had); the presenter's rebate box is where a current one goes (kept on the device until changed). Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
@@ -2060,9 +2060,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Esc / Back close it (it registers `useModalHistory`). Not portalled: the presenter already is.
 - **Rebate = money off the price, per car** (`netPrice`, liveMaths.js). Typed in Adjust >
   Rebates (one list, every car, one box each), never saved to the listing or the server.
-  EVERY car's rebate is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
-  (`xd_live_rebates`, `rebatesForMonth`, `monthEnd`; owner 2026-10-22, it was model cards
-  only). On a new-car model card each VARIANT has its own rebate (owner, 2026-11-11: Perodua's differ per variant; key `<listing>:<variantId>`, `rebateKey` in liveMaths.js; the Adjust > Rebates list shows one box per variant).
+  EVERY car's rebate is REMEMBERED ON THE DEVICE until the seller changes it (`xd_live_rebates`,
+  `savedRebates`; owner 2026-11-11: "save each input until changed"; the month-end wipe of
+  2026-10-22 is gone, so a stale promo stays until retyped or cleared). On a new-car model card each VARIANT has its own rebate (owner, 2026-11-11: Perodua's differ per variant; key `<listing>:<variantId>`, `rebateKey` in liveMaths.js). Adjust > Rebates is pick a car (chips, a count of rebates set on each), then one box per variant of that car (one box for a used/recon car).
   On another device the list starts empty (device storage, by design). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
