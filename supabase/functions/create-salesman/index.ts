@@ -167,6 +167,26 @@ async function sendSetupEmail(
   }
 }
 
+// Handover = the setup email goes out. Whoever set the account up (the platform
+// owner adding cars) was signed in AS the seller, so the dashboard tour, the
+// per-tab intros and the starter checklist already played for them and were
+// marked done on the account (Yazeed, 2026-10-17). Put the account back to a
+// fresh signup so the seller's first sign-in, by the setup link, Forgot
+// password or the emailed credentials, starts with the tour.
+// Only while setup_complete is not true: a seller who already took the account
+// over and just asks for another link must not have their progress wiped.
+async function freshFirstRun(adminClient: any, userId: string): Promise<void> {
+  try {
+    await adminClient
+      .from("profiles")
+      .update({ onboarding_tour_done: false, starter_tasks: {} })
+      .eq("id", userId)
+      .not("setup_complete", "is", true);
+  } catch (e) {
+    console.error("[create-salesman] fresh first run failed:", e);
+  }
+}
+
 // The set-password page lives on xdrive.my. A staging preview gets links back
 // to itself so the flow can be tested before it ships; a dealer subdomain does
 // not (the salesman panel is on xdrive.my).
@@ -260,6 +280,7 @@ serve(async (req) => {
         const { data: full } = await adminClient.from("profiles").select(DETAIL_COLUMNS).eq("id", target.id).maybeSingle();
         if (full) details = setupDetails(full, setPasswordBaseFor(origin));
       }
+      await freshFirstRun(adminClient, target.id);
       const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id, setPasswordBase, details);
       return json({ success: true, email_sent: sent });
     }

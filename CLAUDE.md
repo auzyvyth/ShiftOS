@@ -1789,7 +1789,10 @@ and the won-trigger marks it sold on the first deal.
 - **A console-made account starts like a fresh signup.** The owner signs in as the
   seller to add cars, so every intro plays for the owner and is marked done on the
   account. Saving the password on `/salesman-setup` resets `onboarding_tour_done` and
-  `starter_tasks`. Any NEW first-run flag must be reset there too.
+  `starter_tasks`, and so does every setup email the console sends (`freshFirstRun` in
+  `create-salesman`, only while `setup_complete` is not true), so a seller who signs in with the
+  emailed credentials or "Forgot password" without opening the link still gets the tour.
+  Any NEW first-run flag must be reset in BOTH places.
 - The Premium tour's "seen" backup is `sessionStorage` (`sp_tour_seen_<uid>`), never
   `localStorage`: a persistent copy made every DB reset invisible on that device.
 - **A console-made account answers what signup answers** (2026-10-19). `CreateSellerModal` asks
