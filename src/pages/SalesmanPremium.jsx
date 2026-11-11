@@ -193,6 +193,7 @@ import { compareFollowUp, followUpStatus, isLeadStale, lastTouch } from "../lib/
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman, linkedPremiumOptedIn } from "../utils/salesmanPlan";
+import { usePermissions } from "../hooks/usePermissions";
 import {
   readCache,
   writeCache,
@@ -378,6 +379,10 @@ export default function SalesmanPremium() {
  const linkedRef = useRef(false);
  const isLinked = !!profile?.dealer_id; // the gate only lets a linked salesman in when opted in
  const [incomingCount, setIncomingCount] = useState(0);
+ // The dealer decides whether a linked salesman sees commission (view_commission),
+ // as in the old dealer panel. A solo seller always does.
+ const { can: canPerm } = usePermissions(isLinked ? profile : null);
+ const canSeeCommission = !isLinked || canPerm("view_commission");
  const isPremium = isPremiumSalesman(profile);
  // Premium ends by itself when plan_expires_at passes (PREM-LAPSE). The plan
  // check in the bootstrap runs once, so a dashboard left open stayed on Premium
@@ -5552,7 +5557,13 @@ export default function SalesmanPremium() {
  // that sit right under it). The menu on a phone keeps it: there it is the
  // only hint at what is inside.
  const nav = (settingsNav === "verify" ? "profile" : settingsNav) || "profile";
- const navItem = SETTINGS_GROUPS.flatMap((g) => g.items).find((i) => i.key === nav);
+ // LINKED-PREMIUM: refer-a-seller (it pays in Premium months the dealer gives), join a
+ // dealership (already joined) and new-car price cards (solo listings) are hidden.
+ const LINKED_HIDDEN = new Set(["refer", "dealership", "newcars"]);
+ const settingsGroups = isLinked
+ ? SETTINGS_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !LINKED_HIDDEN.has(i.key)) })).filter((g) => g.items.length)
+ : SETTINGS_GROUPS;
+ const navItem = settingsGroups.flatMap((g) => g.items).find((i) => i.key === nav);
 
  const card = { padding: 18, background: PD.card, borderRadius: PD.radius.card };
  const lbl = { fontSize: 11, color: PD.textMuted, display: "block", marginBottom: 6 };
@@ -5895,9 +5906,9 @@ export default function SalesmanPremium() {
  </div>
  )}
  {nav === "password" && <ChangePasswordCard theme="premium" />}
- {nav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
- {nav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
- {nav === "dealership" && (
+ {nav === "refer" && !isLinked && <ReferralCard slug={profile?.slug} theme="premium" />}
+ {nav === "newcars" && !isLinked && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
+ {nav === "dealership" && !isLinked && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
@@ -5946,7 +5957,7 @@ export default function SalesmanPremium() {
     the content does not fit a phone. */
  !settingsNav ? (
  <div style={{ paddingBottom: 8 }}>
- {SETTINGS_GROUPS.map(({ group, items }) => (
+ {settingsGroups.map(({ group, items }) => (
  <div key={group} style={{ marginBottom: 18 }}>
  <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: PD.textMuted, margin: "0 0 8px", paddingLeft: 6 }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  <div style={{ background: PD.card, borderRadius: PD.radius.card, overflow: "hidden" }}>
@@ -5998,8 +6009,8 @@ export default function SalesmanPremium() {
     The page it sits in is already capped at 1180px wide. */
  <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
  <nav style={{ width: 200, flexShrink: 0, background: PD.card, borderRadius: PD.radius.card, padding: "16px 10px", position: "sticky", top: 16 }}>
- {SETTINGS_GROUPS.map(({ group, items }, gi) => (
- <div key={group} style={{ marginBottom: gi < SETTINGS_GROUPS.length - 1 ? 16 : 0 }}>
+ {settingsGroups.map(({ group, items }, gi) => (
+ <div key={group} style={{ marginBottom: gi < settingsGroups.length - 1 ? 16 : 0 }}>
  <p style={{ fontSize: 10.5, letterSpacing: "0.1em", color: PD.textMuted, fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  {items.map((item) => {
  const { key, icon: Icon } = item;
@@ -7362,7 +7373,7 @@ export default function SalesmanPremium() {
  />}
  {/* Paid-through date, from 7 days out. Dashboard only, one line, closes
      until tomorrow (owner: "make it not annoying"). */}
- {activeTab === "dashboard" && <PremiumDueBanner profile={profile} />}
+ {activeTab === "dashboard" && !isLinked && <PremiumDueBanner profile={profile} />}
 
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
@@ -7497,8 +7508,8 @@ export default function SalesmanPremium() {
  <Suspense fallback={<TabLoadingFallback />}>
  <AnalyticsTab
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
- commission={commission} soldCount={soldCount} myListings={myListings}
- channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
+ commission={canSeeCommission ? commission : null} soldCount={soldCount} myListings={myListings}
+ channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
