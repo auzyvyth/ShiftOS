@@ -69,6 +69,7 @@ const SellerFeedbackTab = React.lazy(() => import("../components/feedback/Seller
 // LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
 const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
 const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
+const TeamBoard = React.lazy(() => import("../components/linked/TeamBoard"));
 import {
  LogOut,
  Copy,
@@ -239,7 +240,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory", "team"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -1955,7 +1956,7 @@ export default function SalesmanPremium() {
  clearTimeout(pendingStageRef.current[lead.id].timer);
  delete pendingStageRef.current[lead.id];
  }
- setWonPrompt({ lead });
+ setWonPrompt({ lead, price: lead.car_listings?.selling_price ? String(lead.car_listings.selling_price) : "" });
  return;
  }
  // Intercept a seller-initiated move into the booking stage → ask for the
@@ -2538,7 +2539,8 @@ export default function SalesmanPremium() {
  const { data } = await supabase
  .from("car_listings")
  .select("commission_amount, selling_price, sold_at")
- .eq("dealer_id", userId)
+ // Linked: the dealer owns the cars, so "mine" is what I closed (assigned_to).
+ .eq(isLinked ? "assigned_to" : "dealer_id", userId)
  .eq("status", "sold")
  .gte("sold_at", monthStart);
  const rows = data || [];
@@ -2561,21 +2563,50 @@ export default function SalesmanPremium() {
  const now = new Date().toISOString();
  setWonSaving(true);
 
- const writeWon = () => supabase
+ // LINKED-PREMIUM: a salesman under a dealer closes at an AGREED price through
+ // close_deal_at_price, which files a dealer approval when the discount is over the
+ // dealer's limit (same as the old dealer panel's "Agreed price" sheet). A solo seller
+ // keeps the one-tap win.
+ const agreed = Number(wonPrompt.price) || null;
+ if (isLinked && (!agreed || agreed <= 0)) {
+ toast.error("Enter the price agreed with the buyer");
+ setWonSaving(false);
+ return;
+ }
+ const plainWon = () => supabase
  .from("leads")
  .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
  .eq("id", leadId);
- let { error: leadErr } = await writeWon();
+ const writeWon = !isLinked ? plainWon : async () => {
+ if (wonPrompt.variantId) await supabase.from("leads").update({ new_car_model_id: wonPrompt.variantId }).eq("id", leadId);
+ const { data: res, error } = await supabase.rpc("close_deal_at_price", { p_lead: leadId, p_agreed: agreed });
+ if (error && error.code === "PGRST202") return plainWon(); // function not on this database yet
+ if (!error && res?.status === "pending") return { error: null, pending: true };
+ return { error };
+ };
+ let won = await writeWon();
+ let leadErr = won.error;
  // A busy DB cancels the statement (57014) and the seller saw "failed" after
  // ~17s, then the same tap worked (2026-11-02). Setting won twice is harmless
  // (the won trigger is idempotent), so retry once before giving up.
  if (leadErr && (leadErr.code === "57014" || /timeout/i.test(leadErr.message || ""))) {
- ({ error: leadErr } = await writeWon());
+ won = await writeWon();
+ leadErr = won.error;
  }
  if (leadErr) {
  console.error("handleMarkWon lead:", leadErr);
- toast.error(t("salesmanPremium.errors.markWon"));
+ const m = String(leadErr.message || "");
+ toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
+ : m.includes("forbidden") ? "This lead is not yours to close."
+ : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
+ return;
+ }
+ if (won.pending) {
+ // Over the dealer's discount limit: nothing is sold until the dealer approves.
+ toast.success("Sent to your dealer to approve the price. You'll get a notification when they answer.");
+ setWonSaving(false);
+ setWonPrompt(null);
  return;
  }
 
@@ -3079,6 +3110,7 @@ export default function SalesmanPremium() {
  ...(isLinked ? [
  { tab: "incoming", label: "Incoming", icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
  { tab: "inventory", label: "Dealer cars", icon: <Store style={{ width: 16, height: 16 }} /> },
+ { tab: "team", label: "Team", icon: <Users style={{ width: 16, height: 16 }} /> },
  ] : []),
  {
  tab: "enquiries",
@@ -7389,6 +7421,11 @@ export default function SalesmanPremium() {
  />
  </Suspense>
  )}
+ {activeTab === "team" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <TeamBoard dealerId={profile.dealer_id} userId={userId} />
+ </Suspense>
+ )}
  {activeTab === "inventory" && isLinked && (
  <Suspense fallback={<TabLoadingFallback />}>
  <DealerInventory
@@ -7738,7 +7775,7 @@ export default function SalesmanPremium() {
  car={soldPickCar}
  leads={openLeadsOnCar(leads, soldPickCar.id)}
  onClose={() => setSoldPickCar(null)}
- onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+ onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l, price: l.car_listings?.selling_price ? String(l.car_listings.selling_price) : "" }); }}
  onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
  onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
  />
@@ -7771,6 +7808,25 @@ export default function SalesmanPremium() {
  ? t("salesmanPremium.wonPrompt.withCar")
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
+ {isLinked && (() => {
+ const ask = Number(wonPrompt.lead.car_listings?.selling_price) || 0;
+ const off = ask - (Number(wonPrompt.price) || 0);
+ return (
+ <div style={{ margin: "0 0 16px" }}>
+ <label htmlFor="won-agreed" style={{ display: "block", fontSize: 12, fontWeight: 600, color: PD.textSec, margin: "0 0 6px" }}>Agreed price (RM)</label>
+ <input id="won-agreed" type="number" inputMode="numeric" min="1" value={wonPrompt.price || ""}
+ onChange={(e) => setWonPrompt((p) => (p ? { ...p, price: e.target.value } : p))}
+ style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: PD.radius.row, background: PD.raised, border: "none", color: PD.text, fontSize: 16, outline: "none", fontFamily: "inherit" }} />
+ {ask > 0 && (
+ <p style={{ margin: "8px 0 0", fontSize: 12, color: PD.textMuted, lineHeight: 1.5 }}>
+ {off > 0
+ ? `RM ${off.toLocaleString("en-MY")} off the asking price of RM ${ask.toLocaleString("en-MY")}. Over your dealer's limit, it goes to them to approve first.`
+ : `Asking price RM ${ask.toLocaleString("en-MY")}.`}
+ </p>
+ )}
+ </div>
+ );
+ })()}
  {(() => {
  const others = openLeadsOnCar(leads, wonPrompt.lead.car_listing_id, wonPrompt.lead.id).length;
  return others > 0 ? <p style={{ margin: "-6px 0 18px", fontSize: 13, color: PD.text, background: PD.raised, borderRadius: PD.radius.row, padding: "10px 12px", lineHeight: 1.5 }}>{t("soldPick.others", { count: others })}</p> : null;
