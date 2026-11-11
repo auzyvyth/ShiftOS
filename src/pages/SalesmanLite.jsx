@@ -133,6 +133,7 @@ import {
 import { refreshListingFromNotice } from "../utils/listingNotice";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
@@ -1475,11 +1476,22 @@ export default function SalesmanLite() {
       }
       rememberPanelUid(PANEL_CACHE_KEY, uid);
 
-      const { data: profileData, error: profileErr } = await supabase
+      const readOwnProfile = () => supabase
         .from("profiles")
         .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, job_title, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done, seller_type, new_car_brand")
         .eq("id", uid)
         .maybeSingle();
+      let { data: profileData, error: profileErr } = await readOwnProfile();
+      // A 401 = dead saved login, not a DB stall: refresh once, else sign in again.
+      if (profileErr && isAuthRejected(profileErr)) {
+        if (await recoverRejectedSession() === "retry") {
+          ({ data: profileData, error: profileErr } = await readOwnProfile());
+        } else {
+          setLoading(false);
+          navigate("/login");
+          return;
+        }
+      }
 
       // A timeout / server error is the database stalling, not a missing
       // account: the session is fine, so never bounce to /login for it.
