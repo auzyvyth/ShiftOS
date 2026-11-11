@@ -496,6 +496,12 @@ export default function SalesmanPremium() {
  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
+ // LINKED-PREMIUM: a salesman under a dealer does not list cars of their own; every
+ // "Add car" entry point opens the dealer's cars to feature instead (as the old panel did).
+ useEffect(() => {
+ if (isLinked && showAddForm) { setShowAddForm(false); switchTab("inventory"); }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [isLinked, showAddForm]);
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);
@@ -818,6 +824,10 @@ export default function SalesmanPremium() {
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
  const [editListing, setEditListing] = useState(null);
+ // LINKED-PREMIUM: a dealer car is edited by the dealer, not the salesman.
+ useEffect(() => {
+ if (isLinked && editListing) { setEditListing(null); toast.error("Only your dealer can edit this car. Ask them to update it."); }
+ }, [isLinked, editListing]);
 
  // tour
  const [tourStep, setTourStep] = useState(null);
@@ -2803,6 +2813,13 @@ export default function SalesmanPremium() {
  // SOLD-1: a status-only "sold" left the sale with no customer, handover or
  // renewals. Ask who bought it; only "Sold elsewhere" comes back with direct.
  if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
+ // LINKED-PREMIUM: the dealer owns the car. A salesman sells it through a won lead
+ // (above); every other status, and "Sold elsewhere", is the dealer's call. The
+ // write would silently change nothing (update_listing_status checks the owner).
+ if (isLinked) {
+ toast.error("Only your dealer can change this car's status. Sell it by marking the buyer's lead Won.");
+ return;
+ }
  const prevStatus = car.status;
  const prevSoldAt = car.sold_at ?? null;
  // Optimistically stamp sold_at so commission/goal figures pick the deal up
@@ -2856,6 +2873,19 @@ export default function SalesmanPremium() {
  const [deletingId, setDeletingId] = useState(null);
  const handleDeleteListing = async (carId) => {
  if (deletingId) return;
+ // LINKED-PREMIUM: "Delete" on a dealer car only takes it off MY listings.
+ if (isLinked) {
+ const car = myListings.find((c) => c.id === carId);
+ if (car?.assigned_to === userId) { toast.error("Your dealer assigned this car to you. Ask them to unassign it."); return; }
+ setDeletingId(carId);
+ const { data: gone, error: unErr } = await supabase.from("salesman_listings").delete()
+ .eq("salesman_id", userId).eq("listing_id", carId).select("listing_id");
+ setDeletingId(null);
+ if (unErr || !gone?.length) { toast.error("Could not remove this car from your listings"); return; }
+ setMyListings((p) => p.filter((c) => c.id !== carId));
+ toast.success("Removed from your listings");
+ return;
+ }
  setDeletingId(carId);
  // .select() returns the rows actually changed. RLS turns a refused update
  // into "0 rows, no error", and the car then came back on the next load
@@ -7378,10 +7408,11 @@ export default function SalesmanPremium() {
     onChange={setListingsSubTab}
     items={[
      { key: "cars", label: t("salesmanPremium.listings.cars"), badge: myListings.length },
-     { key: "addons", label: t("salesmanPremium.drawer.addons") },
+     // The add-on catalogue is the dealer's (with its cost prices) when linked: hidden.
+     ...(isLinked ? [] : [{ key: "addons", label: t("salesmanPremium.drawer.addons") }]),
     ]}
    />
-   {listingsSubTab === "addons" ? (
+   {listingsSubTab === "addons" && !isLinked ? (
     <Suspense fallback={<TabLoadingFallback />}>
      <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
     </Suspense>
