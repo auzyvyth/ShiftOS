@@ -49,7 +49,7 @@ async function sendTeamSetupEmail(
     const { data: linkData } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo: "https://xdrive.my/reset-password" },
+      options: { redirectTo: "https://drevo.my/reset-password" },
     });
     const actionLink = linkData?.properties?.action_link;
     if (!actionLink) return false;

@@ -18,6 +18,10 @@ const INTERNAL_PATHS = [
   "/api/wa",
 ];
 
+// AI search / answer crawlers, named so they are allowed on purpose, not only by
+// falling through to "*". Same private paths stay closed to them.
+const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended"];
+
 export default function handler(req, res) {
   const host = (req.headers.host ?? ROOT_DOMAIN).split(":")[0];
   // The canonical domain, whichever of ours was asked (see api/sitemap.js).
@@ -25,6 +29,8 @@ export default function handler(req, res) {
   const baseUrl = sub ? `https://${sub}.${ROOT_DOMAIN}` : `https://${ROOT_DOMAIN}`;
 
   const disallowLines = INTERNAL_PATHS.map((p) => `Disallow: ${p}`).join("\n");
+
+  const aiBlocks = AI_BOTS.map((b) => `User-agent: ${b}\nAllow: /\n${disallowLines}\n`).join("\n");
 
   const body = `User-agent: Googlebot
 Allow: /
@@ -34,6 +40,7 @@ User-agent: Bingbot
 Allow: /
 ${disallowLines}
 
+${aiBlocks}
 User-agent: *
 ${disallowLines}
 
