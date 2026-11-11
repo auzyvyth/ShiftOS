@@ -9,7 +9,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
-  netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, rebateKey, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
   tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT, revealPick, viewerHandle, HANDLE_MAX,
 } from '../../utils/liveMaths';
 import {
@@ -303,7 +303,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     // No cars yet = nothing to compare against; saving now would wipe the list.
     if (embedded || !listingIds) return;
     const ids = new Set(listingIds.split(','));
-    const keep = Object.fromEntries(Object.entries(rebates).filter(([id, v]) => ids.has(id) && Number(v) > 0));
+    // A key is "<listing>" or "<listing>:<variant>": keep it while its car is in the list.
+    const keep = Object.fromEntries(Object.entries(rebates).filter(([k, v]) => ids.has(k.split(':')[0]) && Number(v) > 0));
     saveLiveRebates(keep, myMonth());
   }, [rebates, listingIds, embedded]);
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
@@ -492,12 +493,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const carInfo = rawInfo && car && rawInfo.brand === car.brand && rawInfo.model === car.model ? rawInfo : null;
   const { variants, current: variant, choose: chooseVariant } = useNewCarVariant(car?.id, carInfo);
   // Every model card's variants, for the Budget tab (budgetCars, below).
-  const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
+  // Also read while Adjust > Rebates is open: it lists one box per variant.
+  const needInfos = mode === 'budget' || (adjustOpen && adjustTab === 'rebates');
+  const cardInfos = useNewCarInfos(needInfos ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
-    ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
+    ? { ...car, _variantId: variant.model_id, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
-  // One rebate box per listing: a model card's covers every variant.
-  const rk = car?.id;
+  // One rebate box per car, and per VARIANT on a model card (rebateKey).
+  const rk = rebateKey(shown);
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
@@ -975,7 +978,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   };
   const anyHighValue = allRows.some((m) => m.status !== 'over' && m.price > HIGH_VALUE_THRESHOLD);
   // Adjust > Rebates: how many cars have one, and the day the saved list clears.
-  const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
+  const rebateCount = Object.entries(rebates)
+    .filter(([k, v]) => Number(v) > 0 && listings.some((c) => c.id === k.split(':')[0])).length;
   const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
   // Jump to a car. Only with 3+ cars (with 2, Next already is the list).
@@ -2120,29 +2124,36 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {!basic && adjustTab === 'rebates' && (
               <div className="lp-wide lp-rebs">
                 <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
-                {listings.map((c, i) => {
-                  const v = rebates[c.id] ?? '';
-                  const on = Number(v) > 0;
-                  const kind = c.is_model_card ? t.allVariants
+                {/* One row per car; a model card gets one row per VARIANT (rebates differ by variant). */}
+                {listings.flatMap((c, i) => {
+                  const vs = c.is_model_card ? (cardInfos[c.id]?.variants || []).filter((x) => x.price != null) : [];
+                  const kind = c.is_model_card ? t.newTag
                     : c.condition === 'new' ? t.newTag : c.condition === 'recon' ? t.recon : t.used;
-                  return (
-                    <div className="lp-reb" key={c.id}>
-                      <span className="lp-badge">#{i + 1}</span>
-                      <label className="lp-reb-car" htmlFor={`lp-reb-${c.id}`}>
-                        <b>{carLabel(c)}</b>
-                        <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
-                      </label>
-                      <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
-                        <span>- RM</span>
-                        <input id={`lp-reb-${c.id}`} type="text" inputMode="numeric" placeholder="0" value={v}
-                          onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [c.id]: d })); }} />
-                      </span>
-                      {on
-                        ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[c.id]; return n; })}
-                            aria-label={`${t.clear} ${carLabel(c)}`}><X size={15} /></button>
-                        : <span className="lp-reb-x" aria-hidden="true" />}
-                    </div>
-                  );
+                  const rows = vs.length
+                    ? vs.map((x) => ({ key: `${c.id}:${x.model_id}`, label: carLabel({ ...c, variant: x.variant }) }))
+                    : [{ key: c.id, label: carLabel(c) }];
+                  return rows.map((row) => {
+                    const v = rebates[row.key] ?? '';
+                    const on = Number(v) > 0;
+                    return (
+                      <div className="lp-reb" key={row.key}>
+                        <span className="lp-badge">#{i + 1}</span>
+                        <label className="lp-reb-car" htmlFor={`lp-reb-${row.key}`}>
+                          <b>{row.label}</b>
+                          <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
+                        </label>
+                        <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
+                          <span>- RM</span>
+                          <input id={`lp-reb-${row.key}`} type="text" inputMode="numeric" placeholder="0" value={v}
+                            onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [row.key]: d })); }} />
+                        </span>
+                        {on
+                          ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[row.key]; return n; })}
+                              aria-label={`${t.clear} ${row.label}`}><X size={15} /></button>
+                          : <span className="lp-reb-x" aria-hidden="true" />}
+                      </div>
+                    );
+                  });
                 })}
                 <p className="lp-hint">{t.rebateModelNote}</p>
               </div>

@@ -2062,7 +2062,7 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Rebates (one list, every car, one box each), never saved to the listing or the server.
   EVERY car's rebate is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
   (`xd_live_rebates`, `rebatesForMonth`, `monthEnd`; owner 2026-10-22, it was model cards
-  only). On a new-car model card ONE rebate covers every variant (keyed by the listing).
+  only). On a new-car model card each VARIANT has its own rebate (owner, 2026-11-11: Perodua's differ per variant; key `<listing>:<variantId>`, `rebateKey` in liveMaths.js; the Adjust > Rebates list shows one box per variant).
   On another device the list starts empty (device storage, by design). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
