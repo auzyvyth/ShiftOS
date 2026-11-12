@@ -220,7 +220,7 @@ import {
   Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
-import { effectiveRecon } from "../utils/reconCost";
+import { carPnl } from "../utils/carPnl";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -5854,21 +5854,19 @@ function stockNetProfitParts(u, ctx = {}) {
   const revenue = isSold ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(c.selling_price) || 0);
   if (revenue === 0 && cost === 0) return null;
   if (isSold && !u.sold_price && cost === 0) return null;
-  const recon = Number(u.recon_cost) || 0;
-  const services = Number(c.included_services_cost) || 0;
-  const commission = Number(c.commission_amount) || 0;
-  const adSpend = ads[u.id] || 0;
-  const hc = handover[u.listing_id] || 0;
+  // The ONE profit engine (src/utils/carPnl.js); recon jobs are not loaded per row, so the
+  // estimate stands in (effectiveRecon never goes below it).
+  const p = carPnl({
+    purchase: cost, reconEstimate: u.recon_cost, servicesCost: c.included_services_cost,
+    commission: c.commission_amount, adSpend: ads[u.id] || 0,
+    handoverCost: handover[u.listing_id] ?? null,
+    asking: Number(u.asking_price) || Number(c.selling_price) || 0, soldPrice: u.sold_price, isSold,
+    startDate: u.purchase_date || u.created_at, soldDate: u.sold_date,
+    engineCc: u.engine_cc || c.engine_cc, warrantyMonths: c.warranty_months, cfg,
+  });
+  const front = p.front;
   const aR = addRev[u.listing_id] || 0;
   const aC = addCost[u.listing_id] || 0;
-  let dailyHold = 0;
-  if (Number(cfg.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cfg.floor_plan_rate) / 100) / 365;
-  else if (Number(cfg.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
-  const start = u.purchase_date || u.created_at;
-  const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
-  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
-  const holding = Math.round(dailyHold * days);
-  const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
   return { front, addonRevenue: aR, addonCost: aC, addonNet: aR - aC };
 }
 function stockNetProfit(u, ctx = {}) {
@@ -6427,41 +6425,31 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       addons = dp || [];
       handoverTasks = pst || [];
     }
-    const purchasePrice  = Number(unit.purchase_price) || 0;
-    const reconEst       = Number(unit.recon_cost) || 0;
-    const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    // One rule with the stored profit (stock_recon_effective): the larger of the two.
-    const reconCost      = effectiveRecon(reconEst, reconJobsList);
-    const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
-    const commission     = Number(unit.car_listings?.commission_amount) || 0;
-    const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
-    const adSpend        = adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-    const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
-    const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
-    const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
-
-    // Holding cost: floor-plan interest (priority) or overhead/fleet, × days held
-    const cc = costCfg || {};
-    let dailyHold = 0;
-    if (Number(cc.floor_plan_rate) > 0 && purchasePrice > 0) {
-      dailyHold = purchasePrice * (Number(cc.floor_plan_rate) / 100) / 365;
-    } else if (Number(cc.monthly_overhead) > 0) {
-      dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
-    }
-    let holdingDays = 0;
-    const startDate = unit.purchase_date || unit.created_at;
-    if (startDate) {
-      const end = unit.status === 'sold' && unit.sold_date ? new Date(unit.sold_date) : new Date();
-      holdingDays = Math.max(0, Math.floor((end - new Date(startDate)) / 86400000));
-    }
-    const holdingCost = Math.round(dailyHold * holdingDays);
-
-    const vehicleCosts   = purchasePrice + reconCost + servicesCost + commission + handoverCost + holdingCost + adSpend;
-    const frontGross     = revenue - vehicleCosts;
-    const backGross      = addonRevenue - addonCost;
-    const totalCosts     = vehicleCosts + addonCost;
-    const netPnl         = frontGross + backGross;
-    setPnlData({ purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    // The ONE profit engine (src/utils/carPnl.js): same numbers as the car pop-up's Owner button.
+    const cl = unit.car_listings || {};
+    const e = carPnl({
+      purchase: unit.purchase_price, reconEstimate: unit.recon_cost, reconJobs: reconJobsList,
+      servicesCost: cl.included_services_cost, commission: cl.commission_amount,
+      handoverCost: handoverTasks.length ? handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0) : null,
+      adSpend: adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0),
+      addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0),
+      addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      asking: Number(unit.asking_price) || Number(cl.selling_price) || 0, soldPrice: unit.sold_price,
+      isSold: unit.status === 'sold', startDate: unit.purchase_date || unit.created_at, soldDate: unit.sold_date,
+      engineCc: unit.engine_cc || cl.engine_cc, warrantyMonths: cl.warranty_months, cfg: costCfg || {},
+    });
+    const line = (k) => e.lines.find((l) => l.key === k)?.val || 0;
+    setPnlData({
+      purchasePrice: line('purchase'), reconCost: line('recon'),
+      reconEst: Number(unit.recon_cost) || 0, reconActual: reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0),
+      servicesCost: line('services'), commission: line('commission'),
+      // Shown as one "Handover processing" line here: transfer (estimated until the deal), admin, warranty reserve.
+      handoverCost: line('transfer') + line('admin') + line('warranty'),
+      holdingCost: e.holding, holdingDays: e.days || 0, dailyHold: e.perDay.total, adSpend: line('ads'),
+      addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0), addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      revenue: e.revenue, frontGross: e.front, backGross: e.back, totalCosts: e.costTotal + addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      netPnl: e.net, addons, isSold: e.isSold,
+    });
     setPnlLoading(false);
   };
 

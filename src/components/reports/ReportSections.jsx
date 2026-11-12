@@ -2,6 +2,7 @@
 // question belongs: GoalTracker + RevenueBreakdown in Reports > Revenue (RevOpsPage),
 // AuditTrail in Team. The "Eyes Here" exceptions are on Overview's alert list.
 import React, { useEffect, useState, useMemo } from 'react';
+import { carPnl } from '../../utils/carPnl';
 import { supabase } from '../../supabaseClient';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { Target, ChevronRight } from 'lucide-react';
@@ -246,21 +247,24 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
 // holding + ad spend, plus F&I back-end). Assembled client-side from a handful of
 // dealer-scoped, grouped queries (no N+1) rather than a fragile SQL RPC.
 function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost) {
-  const purchase = Number(stock?.purchase_price) || Number(l.purchase_price) || 0;
-  const recon = Number(stock?.recon_cost) || Number(l.recon_cost) || 0;
-  const services = Number(l.included_services_cost) || 0;
-  const commission = Number(l.commission_amount) || 0;
-  const revenue = Number(l.sold_price) || Number(l.selling_price) || 0;
-  let dailyHold = 0;
-  if (Number(cfg?.floor_plan_rate) > 0 && purchase > 0) dailyHold = purchase * (Number(cfg.floor_plan_rate) / 100) / 365;
-  else if (Number(cfg?.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
-  const start = stock?.purchase_date || stock?.created_at || l.created_at;
-  const end = l.sold_date ? new Date(l.sold_date) : (l.sold_at ? new Date(l.sold_at) : new Date());
-  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : null;
-  const holding = Math.round(dailyHold * (days || 0));
-  const front = revenue - (purchase + recon + services + commission + handover + holding + adSpend);
-  const gross = front + (addonRev - addonCost);
-  return { revenue, purchase, recon, services, commission, handover, holding, adSpend, addonRev, addonCost, gross, days };
+  // The ONE profit engine (src/utils/carPnl.js). "handover" here carries transfer + admin +
+  // warranty reserve, so the drill-down rows still add up to the gross.
+  const sold = !!(l.sold_date || l.sold_at || l.status === 'sold');
+  const e = carPnl({
+    purchase: Number(stock?.purchase_price) || Number(l.purchase_price) || 0,
+    reconEstimate: Number(stock?.recon_cost) || Number(l.recon_cost) || 0,
+    servicesCost: l.included_services_cost, commission: l.commission_amount, adSpend,
+    handoverCost: sold ? handover : null, addonRevenue: addonRev, addonCost,
+    asking: l.selling_price, soldPrice: l.sold_price, isSold: sold,
+    startDate: stock?.purchase_date || stock?.created_at || l.created_at, soldDate: l.sold_date || l.sold_at,
+    engineCc: l.engine_cc || stock?.engine_cc, warrantyMonths: l.warranty_months, cfg: cfg || {},
+  });
+  const line = (k) => e.lines.find((x) => x.key === k)?.val || 0;
+  return {
+    revenue: e.revenue, purchase: line('purchase'), recon: line('recon'), services: line('services'),
+    commission: line('commission'), handover: line('transfer') + line('admin') + line('warranty'),
+    holding: e.holding, adSpend: line('ads'), addonRev, addonCost, gross: e.net, days: e.days,
+  };
 }
 
 const PERIODS = [
