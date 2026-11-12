@@ -10,6 +10,21 @@ staging or prod yet. Read part B before touching anything.
 
 ---
 
+## STATUS at end of session 2 (2026-11-09 evening) - read this first
+Branch `claude/new-session-xem5pv` (18 commits over `origin/main` 1d8aded), all pushed; the same work is on
+`origin/staging` (tip 0d70266, merged on top of the other sessions' staging commits, `main`'s side kept on conflicts).
+- DONE: step 1 (dead links + dead code), step 2 (one add-on catalogue), step 3a (GM Oversight split: alerts -> Overview,
+  targets + what drove revenue -> Revenue, activity trail -> Team), page titles said once (`OWN_HEADING_TABS`),
+  Revenue no longer paints RM 0 when a read fails.
+- NEXT: step 4 (Cars = Inventory + Stock + one Add; Sold = Handover + Customers + Documents), then AI Manager as a card on
+  Overview, then step 5 (Reports, every number once). Also: same "failed read writes zeros" pattern may exist in other
+  tabs (check `setX(... || 0)` after an unchecked `error`).
+- NOT DONE: nothing is on prod; `20261110a_team_health.sql` not applied (needs the owner's "ship tonight").
+- Not seen in a browser by me: every page except Revenue (only mock-rendered), the Overview alert deep-links, the
+  "Make deposit receipt" buttons, the Team activity trail. Owner should click these on staging.
+
+---
+
 ## PART A: THE PLAN
 
 ### The problem in one line
