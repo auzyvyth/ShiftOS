@@ -260,6 +260,14 @@ for another year.
   project; code accepts both (`OWN_DOMAINS` in `src/config/site.js`, both CORS files,
   storefront detection in api/og.js + api/sitemap.js; sitemap + robots always print the
   canonical domain). Canonical stays xdrive.my until switch night.
+  **Step 2 (the switch) SHIPPED 2026-11-05 02:45 MYT, #578 (b74b8c5).** `ROOT_DOMAIN =
+  "drevo.my"`; `vercel.json` `redirects` 301 xdrive.my, www.xdrive.my and `<sub>.xdrive.my`
+  to the same path + query on drevo.my (`/api/*` not redirected); www.drevo.my -> drevo.my;
+  XDrive -> Drevo in copy. The 8 browser-called edge functions were redeployed with drevo.my
+  CORS on 2026-11-04 (deployed code kept as-is). Still open: owner does Search Console
+  Change of Address + submits https://drevo.my/sitemap.xml, Supabase Site URL + redirect
+  URLs, Google OAuth origins; emails still @xdrive.my; edge-function email links still
+  say xdrive.my (they 301); logo files (AI-search thread).
   DONE 2026-11-02: Vercel DNS zone on, Resend records added (DKIM, rsend, send, DMARC), owner did Supabase redirect URLs, Turnstile, Google origins, Resend. `https://drevo.my` added to `ID_TOKEN_ORIGINS` default.
   Owner, before testing on drevo.my (done, kept for reference): Supabase Auth > URL Configuration, add
   `https://drevo.my/**`, `https://www.drevo.my/**`, `https://*.drevo.my/**` to Redirect
