@@ -6,7 +6,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 
-const TTL = 10 * 60 * 1000;
+// A "yes" is kept 10 minutes; a "no" only 30 seconds, so adding the secret on the server shows up
+// on the next refresh instead of ten minutes later (2026-11-12: a cached "no" hid the button).
+const TTL_YES = 10 * 60 * 1000;
+const TTL_NO = 30 * 1000;
 const key = (uid) => `xd_zp_access_${uid}`;
 const NO = { allowed: false, accounts: [] };
 
@@ -15,7 +18,7 @@ function readCached(uid) {
     const raw = sessionStorage.getItem(key(uid));
     if (!raw) return null;
     const { v, at } = JSON.parse(raw);
-    return Date.now() - at < TTL ? v : null;
+    return Date.now() - at < (v?.allowed ? TTL_YES : TTL_NO) ? v : null;
   } catch { return null; }
 }
 

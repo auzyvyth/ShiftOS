@@ -91,7 +91,12 @@ serve(async (req) => {
     const action = String(body.action || "");
 
     // `status` answers politely for everyone so the app can hide the button.
-    if (action === "status" && !allowed) return json({ allowed: false }, 200, origin);
+    if (action === "status" && !allowed) {
+      // Counts and booleans only, never an id or a key: tells the owner (in the function
+      // logs) whether the secrets reached this function at all.
+      console.log(`zernio-post status denied uid=${user.id.slice(0, 8)} ids_listed=${allow.length} key_set=${!!Deno.env.get("ZERNIO_API_KEY")}`);
+      return json({ allowed: false, configured: allow.length > 0 }, 200, origin);
+    }
     if (!allowed) return json({ error: "forbidden" }, 403, origin);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
