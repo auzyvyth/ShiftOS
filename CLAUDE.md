@@ -364,6 +364,17 @@ Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add
     `CustomersTab handover`: Customers used to query `post_sale_tasks` itself for the same %. Do not split
     the three back into separate nav items. Next: one dealer-sale tab plan in `docs/DEALER_DASHBOARD_PLAN.md`.
 
+## Dealer numbers: one engine per number, every tab sums up into Overview (owner, 2026-11-12)
+"Like a commit tree, every source must go to one." A dealer number is computed ONCE, at the
+leaf (one car, one lead), by one engine; tabs show those or SUM them; Overview is the sum of all.
+Never recompute a number with a local formula, in JS or SQL. Map + table of every number and its
+source: `docs/ARCHITECTURE.md` section 8. What still drifts and the fix: `docs/DEALER_NUMBERS_AUDIT.md`.
+- Car profit = `carPnl()` (`src/utils/carPnl.js`, `npm run test:carpnl`): buy, recon (one rule),
+  holding (floor-plan interest + overhead share, daily from the day the car is added), ads,
+  services, commission, transfer (estimated until the handover checklist exists), admin, warranty
+  reserve, add-ons net. A SQL copy must mirror it with the same test cases.
+- Days on lot = `daysHeld()` in the same file. Sold = `car_listings.status='sold'` + `sold_at`.
+
 ## Won = sold: one trigger does everything (DO NOT split this brain again)
 A lead reaching `won`/`closed_won` is the SINGLE source of truth for a closed deal.
 The DB trigger `auto_create_customer_on_won` (on leads) is what fans it out — it must
