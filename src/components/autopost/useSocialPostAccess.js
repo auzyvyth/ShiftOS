@@ -22,6 +22,27 @@ function readCached(uid) {
   } catch { return null; }
 }
 
+const SERVER_ERRORS = {
+  not_connected: 'That account is not connected in Zernio.',
+  car_not_live: 'Only a live (Available) car can be posted.',
+  car_not_found: 'That car was not found on your account.',
+  needs_photo: 'Instagram needs at least one photo.',
+  link_missing: 'The text must keep this car\'s link.',
+  foreign_link: 'Only drevo.my links are allowed in a post.',
+  forbidden: 'This login is not allowed to post.',
+  not_configured: 'The Zernio key is not set on the server yet.',
+  network: 'Could not reach the server. Try again.',
+  unknown_action: 'The server does not know this action. Redeploy the function.',
+  publish_unconfirmed: 'Zernio did not confirm the post. Check the Recent tab before trying again.',
+  daily_limit: 'You have reached today\'s limit of 10 posts. Try again tomorrow.',
+  already_posted: 'This car is already posted there in the last 24 hours. Take that post down first (Recent tab) if you want to post it again.',
+  post_not_found: 'That post is not on your account, or it is older than 30 days.',
+  not_published: 'That post is not live on this network, so there is nothing to take down.',
+  not_a_draft: 'Only a draft can be deleted here.',
+};
+export const explain = (e) => (e?.message && e.error === 'text_rejected') ? e.message
+  : (e?.error === 'zernio_failed' ? `Zernio said no${e.message ? `: ${e.message}` : ` (${e.status || 'error'})`}.` : SERVER_ERRORS[e?.error] || 'Something went wrong. Nothing was posted.');
+
 // Shared by the sheet: turns an edge-function failure into one plain sentence.
 export async function callZernioPost(body) {
   const { data, error } = await supabase.functions.invoke('zernio-post', { body });

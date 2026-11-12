@@ -43,14 +43,14 @@ function json(data: unknown, status = 200, origin: string | null = null) {
   });
 }
 
-async function zernio(method: string, path: string, body?: unknown) {
+async function zernio(method: string, path: string, body?: unknown, timeoutMs = 25000) {
   const key = Deno.env.get("ZERNIO_API_KEY");
   if (!key) throw new Error("zernio_key_missing");
   const res = await fetch(ZERNIO + path, {
     method,
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   let data: any = null;
@@ -258,7 +258,21 @@ serve(async (req) => {
         mediaItems: photos.map((url: string) => ({ type: "image", url })),
         ...(draft ? { isDraft: true } : { publishNow: true }),
       };
-      const r = await zernio("POST", "/posts", payload);
+      // Zernio holds this call open until every network has finished publishing, which can pass
+      // 25s. A timeout here does NOT mean "not posted" (2026-11-12: the post went out and the
+      // seller was told it had not). So wait longer, and if it still times out, look the post up
+      // by our tag + this car instead of reporting a failure.
+      let r: { ok: boolean; status: number; data: any };
+      try {
+        r = await zernio("POST", "/posts", payload, 70000);
+      } catch (e) {
+        const name = e instanceof Error ? e.name : "";
+        if (name !== "TimeoutError" && name !== "AbortError") throw e;
+        console.error("zernio publish timed out, looking the post up");
+        const found = (await listMine()).find((p: any) => p.slug === car.slug && new Date(p.when).getTime() >= Date.now() - 5 * 60000);
+        if (!found) return json({ error: "publish_unconfirmed" }, 504, origin);
+        return json({ ok: true, post_id: found.post_id, status: found.status, platforms: found.platforms }, 200, origin);
+      }
       if (!r.ok) {
         console.error("zernio publish failed", r.status, JSON.stringify(r.data).slice(0, 300));
         return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);

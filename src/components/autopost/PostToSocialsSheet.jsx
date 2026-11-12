@@ -21,7 +21,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import {
   buildPost, validateText, carLink, carTitle, money, ERROR_TEXT,
 } from '../../../supabase/functions/_shared/postCaption.js';
-import { callZernioPost } from './useSocialPostAccess';
+import { callZernioPost, explain } from './useSocialPostAccess';
 
 const NETWORK = {
   facebook:  { label: 'Facebook Page', canTakeDown: true,  note: 'Clickable link, up to 8 photos.' },
@@ -29,25 +29,6 @@ const NETWORK = {
   instagram: { label: 'Instagram',     canTakeDown: false, note: 'Links are not clickable, so it says "link in bio". Cannot be taken down from here.' },
 };
 
-const SERVER_ERRORS = {
-  not_connected: 'That account is not connected in Zernio.',
-  car_not_live: 'Only a live (Available) car can be posted.',
-  car_not_found: 'That car was not found on your account.',
-  needs_photo: 'Instagram needs at least one photo.',
-  link_missing: 'The text must keep this car\'s link.',
-  foreign_link: 'Only drevo.my links are allowed in a post.',
-  forbidden: 'This login is not allowed to post.',
-  not_configured: 'The Zernio key is not set on the server yet.',
-  network: 'Could not reach the server. Try again.',
-  unknown_action: 'The server does not know this action. Redeploy the function.',
-  daily_limit: 'You have reached today\'s limit of 10 posts. Try again tomorrow.',
-  already_posted: 'This car is already posted there in the last 24 hours. Take that post down first (Recent tab) if you want to post it again.',
-  post_not_found: 'That post is not on your account, or it is older than 30 days.',
-  not_published: 'That post is not live on this network, so there is nothing to take down.',
-  not_a_draft: 'Only a draft can be deleted here.',
-};
-const explain = (e) => (e?.message && e.error === 'text_rejected') ? e.message
-  : (e?.error === 'zernio_failed' ? `Zernio said no${e.message ? `: ${e.message}` : ` (${e.status || 'error'})`}.` : SERVER_ERRORS[e?.error] || 'Something went wrong. Nothing was posted.');
 
 const isDone = (s) => ['published', 'failed', 'error', 'removed', 'cancelled'].includes(String(s || '').toLowerCase());
 const isGood = (s) => String(s || '').toLowerCase() === 'published';
@@ -168,7 +149,7 @@ function GrowBox({ value, ...rest }) {
   return <textarea ref={ref} value={value} {...rest} />;
 }
 
-export default function PostToSocialsSheet({ car, seller, access, onClose }) {
+export default function PostToSocialsSheet({ car, seller, access, onClose, onPost }) {
   useModalHistory(true, onClose);
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -382,7 +363,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPhase('edit')} style={{ ...ghost, flex: 1 }}>Back</button>
-                <button className="lk-red" onClick={() => send(false)} style={{ flex: 2, height: 44, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Yes, post it</button>
+                <button className="lk-red" onClick={() => { if (onPost) { onPost({ car, items: chosen.map((n) => ({ platform: n.platform, text: texts[n.platform] })) }); onClose(); } else send(false); }} style={{ flex: 2, height: 44, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Yes, post it</button>
               </div>
             </>
           )}
