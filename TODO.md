@@ -3051,6 +3051,14 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   per-seller connect is not built (test rig posts to the owner's accounts only, allowlist
   `ZERNIO_TEST_USER_IDS`), a plan needs a `plan_config` row + entitlement helper (DB migration,
   after midnight), and a card on Zernio. Plan + findings: `docs/DREVO_ACTION_PLAN.md`.
+  **Scope draft (2026-11-12, owner asked "what else"):** four networks (Facebook, Instagram, Threads,
+  TikTok; TikTok approve-each-post, photo title 90 chars, no link). Automation: post when a car goes
+  live, new "price drop" post, take down on sold (FB/Threads only), one-tap repost of a SILENT car
+  (`pickSilentCar`, `src/utils/carCoach.js`), schedule the week. Sales: comments/DMs on posts become
+  pipeline leads (needs `leads.lead_source` CHECK + 'social'; AI drafts, a human sends), per-network
+  `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
+  at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
+  line before any inbox work.
 - **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
   inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
   gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked
