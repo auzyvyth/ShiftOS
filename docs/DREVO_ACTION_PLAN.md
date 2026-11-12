@@ -132,3 +132,46 @@ Their examples: 10 accounts = $48/mo, 20 = $78/mo, 100 = $318/mo, 1,000 = $1,218
 2. Is auto-post a separate paid tier or an add-on to Premium? (RM300 is still only a proposal.)
 3. Which two platforms first? I suggest Facebook Page + Instagram, because used-car buyers in Malaysia already live there.
 4. Approval default: ask before every post (recommended), or auto after the first 5 approved?
+
+## PART 4: Connect flow + the caption adjuster (owner asked 2026-11-12)
+
+### Keys: ONE for Drevo, none for sellers
+- **One Zernio API key for the whole platform**, created in the Zernio dashboard (zernio.com/signup, then API keys). It lives only in a Supabase edge-function secret (`ZERNIO_API_KEY`), set by the owner in the Supabase dashboard, never in chat, the repo or the browser. Zernio keys appear to be limitable by area (publishing, messages, billing... the spec talks about "resource groups" and "full-scope keys"): create ours with publishing + profiles/accounts ONLY, so a leak cannot read DMs or spend ad money. Confirm in the dashboard.
+- **Sellers never see or type a key.** They tap "Connect Facebook", log in on Facebook's own page, and approve. Their password goes to Facebook/TikTok, never to us or Zernio. Zernio keeps the login token; we keep only ids.
+- **We do NOT need our own Meta, TikTok or Google developer app.** Zernio's own apps do the platform approvals and token refresh. Cost of that: the consent screen is co-branded with Zernio (we can set `brandName` for the heading). Using our own OAuth app is possible later, but means Meta App Review and business verification: weeks, not now.
+
+### Flow
+1. Settings > Auto-post > "Connect Facebook Page" (button calls edge function `zernio-connect`; owner id comes from the login, never from the request).
+2. Function finds or creates the seller's Zernio profile (`POST /v1/profiles`, `externalId` = owner id, saved in `social_profiles`), then calls `GET /v1/connect/facebook?profileId=&redirect_url=https://drevo.my/...?connected=facebook` and returns `authUrl`.
+3. Seller goes to Facebook, picks the Page, approves, returns to us. (Facebook has an extra "select page" step; test whether Zernio's hosted page handles it.)
+4. Webhook `account.connected` (signature checked, deduped on `X-Zernio-Event-Id`) writes `social_accounts`. We do not trust the redirect URL; we confirm with `GET /v1/accounts?profileId=`.
+5. Posting-only: ads and inbox are separate Zernio connects (`/connect/{platform}/ads`) that we never call. Check the consent screen at test time shows posting permissions only.
+6. `account.disconnected` marks the row "Reconnect" and pauses that platform's queue.
+7. Delete account / seller leaves: disconnect every account, then delete the Zernio profile (Zernio refuses to delete a profile that still has accounts).
+
+### Smart adjuster = one pure function, `buildPost(car, seller, platform)`
+One file used by the app preview AND the publisher, with unit tests (same pattern as `npm run test:live`). Input: the car row only. Output per platform: `{ text, images, warnings }`. The seller sees the result with a live count ("412 / 500") and can edit before approving.
+Always: no phone number (CDP-3); no invented figure; price, year, model come from the row; link built with the existing canonical-car-URL helper (`api/og.js:146`), never hand-typed; `?src=autopost_<platform>&ref=<slug>` so visits are counted (add the new `src` values to `src/utils/detectChannel.js`).
+
+| Platform | Rule | Source |
+|---|---|---|
+| Facebook Page | Long text fine, link on its own line (clickable). Up to 10 photos | Zernio spec |
+| Instagram | Link in a caption is NOT clickable: end with "All my cars: link in bio" (our BIOLINK-1 wording). Up to 20 photos; Business account only. Caption cap about 2,200 (Instagram's rule, test) | Zernio spec + Instagram |
+| TikTok | Photo title cut to 90 chars with links/hashtags stripped; description up to 4,000. So: title = "2021 Honda City RM68,000", description = details + "link in bio", NO url. Up to 35 photos, 15 photo posts a day. Always approve-first (TikTok needs consent per post) | Zernio spec |
+| Threads | Hard cap about 500 characters (Threads' rule, test). Link counts. | Threads |
+| Google Business | Short post, link as the button if Zernio exposes it; about 1,500 chars (Google's rule, test) | Google |
+| YouTube Shorts | Needs a video. Not in v1 | Zernio spec |
+
+**Fitting text (all platforms):** build the full text, then if too long drop pieces in this order: description, location, mileage, variant. NEVER cut: year + model, price, the link (or "link in bio"), the word SOLD. If even the shortest form does not fit, do not send; show a warning. Free text is cut only at a word boundary with "...". A number is never cut in half.
+
+**After posting:** price drop = a NEW post ("Price drop"), using only a price the car really had live. Sold = unpublish on Facebook, Threads, Google; Instagram/TikTok stay up and the link shows Sold.
+
+### Where to get what (owner)
+| Need | Where | Business registration? |
+|---|---|---|
+| Zernio API key | zernio.com/signup, then dashboard, API keys. Card needed once past 2 accounts | Not stated in their pricing; check at signup |
+| Facebook | Seller makes a free Facebook Page (posting goes to Pages, not personal profiles) | No |
+| Instagram | Switch the account to Business/Creator in the Instagram app (free) | No |
+| TikTok | A normal TikTok account; Zernio connects through the "TikTok for Business" app | Expected no, confirm at test |
+| Threads | Threads account (tied to Instagram) | No |
+| Google Business | A verified Business Profile (Google's rule; many individual agents will not have one) | Google verifies the location, not a company |
