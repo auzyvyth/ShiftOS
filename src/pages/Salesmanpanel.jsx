@@ -16,6 +16,7 @@ import { hasFeature } from "../lib/permissions";
 import OutreachHub from "../components/crm/OutreachHub";
 import ChatSheet from "../components/chat/ChatSheet";
 import { useChatThreads } from "../hooks/useChat";
+import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import CustomersTab from "../components/crm/CustomersTab";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import { usePresence } from "../hooks/usePresence";
@@ -37,6 +38,7 @@ import {
  Check,
  Eye,
  MessageSquare,
+ Star,
  ShoppingBag,
  Clock,
  AlertCircle,
@@ -97,7 +99,7 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
-import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { isPremiumSalesman, linkedPremiumOptedIn } from "../utils/salesmanPlan";
 import PhoneInput from "../components/ui/PhoneInput";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import {
@@ -140,6 +142,8 @@ const chatOpener = (notes) => (notes || "").replace(/^Started an in-app chat:\s*
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
+const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
+const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 
 // helpers 
@@ -242,7 +246,7 @@ export default function SalesmanPanel() {
  // assigned to this rep had no reachable channel at all. chat_threads.lead_id
  // is written by the DB trigger on the buyer's first message; the map lets the
  // pipeline show which leads have a live conversation.
- const { threads: chatThreads } = useChatThreads({ salesmanId: userId });
+ const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
  const threadByLead = new Map();
  // One lead can have MORE than one thread — a buyer who chats about a second
  // car gets a second thread that dedups onto the same lead. These rows arrive
@@ -269,8 +273,13 @@ export default function SalesmanPanel() {
  // commission strip (null = still loading)
  const [commission, setCommission] = useState(homeSeed.commission ?? null);
 
+ // mini-page footprint: { visits, cardClicks, byChannel, daily }
+ const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [], daily: [] });
+
  // my listings
  const [myListings, setMyListings] = useState(seed.listings);
+ // Buyer questions, reviews and saves on my cars (the same hook Lite/Premium use).
+ const feedback = useSellerFeedback(userId, myListings.map((c) => c.id));
  const [listingCopied, setListingCopied] = useState({}); // { [carId]: 'link' | 'wa' | null }
 
  // shared dealer inventory (browse + add to deals)
@@ -714,6 +723,12 @@ export default function SalesmanPanel() {
  navigate(isPremiumSalesman(profileData) ? '/salesman-premium' : '/salesman-lite', { replace: true });
  return;
  }
+ // LINKED-PREMIUM: a device that opted in (/salesman?linked=1 or /salesman-premium?linked=1)
+ // gets the new Premium panel; it stays opted in until ?linked=0.
+ if (linkedPremiumOptedIn() && isPremiumSalesman(profileData)) {
+ navigate('/salesman-premium', { replace: true });
+ return;
+ }
 
  setProfile(profileData);
  setLoading(false);
@@ -742,6 +757,27 @@ export default function SalesmanPanel() {
    ...(assignedCars || []).map((c) => c.id),
    ...(featuredCars || []).map((c) => c.listing_id),
  ])];
+
+ // Mini-page (/s/<slug>) visits + card clicks, by arrival platform and per day:
+ // the same two functions the Premium dashboard reads. Independent of any car.
+ if (profileData.slug) {
+ supabase.rpc("get_salesman_minipage_stats", { p_slug: profileData.slug }).then(({ data: mpRows, error: mpErr }) => {
+ if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
+ const rows = mpRows || [];
+ setMinipageStats((prev) => ({
+ ...prev,
+ visits: rows.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+ cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
+ byChannel: rows,
+ }));
+ });
+ supabase.rpc("get_salesman_minipage_daily", { p_slug: profileData.slug }).then(({ data: mpDaily, error: mpdErr }) => {
+ if (mpdErr) { console.error("fetchMinipageDaily:", mpdErr); return; }
+ const r = (mpDaily || [])[0];
+ if (!r) return;
+ setMinipageStats((prev) => ({ ...prev, daily: [r.d0, r.d1, r.d2, r.d3, r.d4, r.d5, r.d6].map((v) => Number(v) || 0) }));
+ });
+ }
 
  if (myCarIds.length > 0) {
  // Analytics MUST be scoped to THIS salesman's own attribution (their ref-link /
@@ -1848,7 +1884,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  .update({ stage, updated_at: new Date().toISOString() })
  .eq("id", leadId);
  setStageSavingId(null);
- if (stageErr) { console.error("updateLeadStage:", stageErr); toast.error("Failed to update lead stage"); return; }
+ if (stageErr) {
+ console.error("updateLeadStage:", stageErr);
+ // The database can refuse a win (car_already_won, car_has_deposit): say why in plain words.
+ toast.error(/car_already_won/.test(stageErr.message || "") ? "This car already has a won deal" : /car_has_deposit/.test(stageErr.message || "") ? "This car already has a deposit" : "Failed to update lead stage");
+ return false;
+ }
  await supabase.from("lead_activities").insert({
  lead_id: leadId,
  activity_type: "stage_changed",
@@ -1858,6 +1899,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  dealer_id: dealerId,
  });
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
+ return true;
  };
 
  const advanceLeadStage = (lead, newStage, force = false, skipPrice = false) => {
@@ -1878,8 +1920,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    return;
  }
  // Persist immediately so a refresh never loses the move. Undo writes the old stage back.
+ const prevCar = carId ? myListings.find((c) => c.id === carId) : null;
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: newStage } : l)));
- updateLeadStage(leadId, newStage);
+ // If the database refuses, put the lead (and the car, for a win) back exactly as it was.
+ updateLeadStage(leadId, newStage).then((ok) => {
+ if (ok !== false) return;
+ setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, stage: oldStage } : l)));
+ if (isWin && prevCar) setMyListings((p) => p.map((c) => (c.id === carId ? prevCar : c)));
+ });
  // Winning a lead flips its car to sold server-side (auto_create_customer_on_won
  // trigger). Mirror that locally so the Listings card + commission reflect it
  // without a reload — the single source of truth is the DB, this is just UI sync.
@@ -1891,7 +1939,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
    ? { ...c, status: "sold", sold_at: soldAt, assigned_to: c.assigned_to || userId }
    : c)));
  }
- toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+ // No Undo on a win: writing the old stage back leaves the car sold with a
+ // customer and handover rows but no won deal. A sale is reversed only through
+ // undo_car_sale (see CLAUDE.md "Won = sold").
+ toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, isWin ? { duration: 4500 } : {
  action: {
  label: "Undo",
  onClick: () => {
@@ -2471,11 +2522,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ ...CARD, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center", marginBottom: 16 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your mini page</p>
- <p style={{ margin: "3px 0 0", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>drevo.my/s/{profile.slug}</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{SITE_URL.replace(/^https?:\/\//, "")}/s/{profile.slug}</p>
  </div>
  <div style={{ display: "flex", gap: 8 }}>
  <button
- onClick={() => { navigator.clipboard.writeText(`https://drevo.my/s/${profile.slug}`); toast.success("Mini page link copied — share it with buyers!"); }}
+ onClick={() => { navigator.clipboard.writeText(`${SITE_URL}/s/${profile.slug}`); toast.success("Mini page link copied — share it with buyers!"); }}
  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
  >
  <Copy size={12} /> Copy
@@ -5198,8 +5249,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const searchedLeads = leadSearch.trim()
 ? leads.filter((l) => {
  const q = leadSearch.toLowerCase();
+ // Phones are stored as 60xxxxxxxxx; people type 01x… or +60… so compare digits without the 0 / 60 prefix.
+ const qDigits = q.replace(/\D/g, "").replace(/^(60|0)/, "");
  return (
  (l.buyer_name || "").toLowerCase().includes(q) ||
+ (qDigits.length >= 3 && (l.phone || "").replace(/\D/g, "").includes(qDigits)) ||
  (l.phone || "").includes(q) ||
  (l.notes || "").toLowerCase().includes(q)
  );
@@ -6237,9 +6291,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  return new Date(base.getTime() + (mins[key] ?? -60) * 60000);
  };
  const byDate = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date);
- const byBooked = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+ const bySoonest = (a, b) => new Date(a.appointment_date) - new Date(b.appointment_date); // upcoming: next visit first, not newest booking first
  const todayApts = appointments.filter(a => aptIsToday(a.appointment_date) && a.status !== "cancelled").sort(byDate);
- const upcomingApts = appointments.filter(a => { if (!a.appointment_date) return false; const d = new Date(a.appointment_date); return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date(); }).sort(byBooked);
+ const upcomingApts = appointments.filter(a => { if (!a.appointment_date) return false; const d = new Date(a.appointment_date); return !isNaN(d) && !aptIsToday(a.appointment_date) && d > new Date(); }).sort(bySoonest);
  const pastApts = appointments.filter(a => { if (!a.appointment_date) return false; const d = new Date(a.appointment_date); return !isNaN(d) && !aptIsToday(a.appointment_date) && d < new Date(); }).sort((a,b) => new Date(b.appointment_date)-new Date(a.appointment_date));
 
  const renderApptCard = (apt) => {
@@ -6666,7 +6720,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
     {/* Sparkline KPI grid */}
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
-     <KPI label="Total Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
+     <KPI label="Mini Page Visits" value={minipageStats.visits || 0} data={Array.from({ length: 7 }, (_, i) => Number(minipageStats.daily?.[i]) || 0)} color="#fbbf24" sub="Your /s/ page, all time" />
+ <KPI label="Mini Page Card Taps" value={minipageStats.cardClicks || 0} data={Array(7).fill(0)} color="#c084fc" sub="Cars opened from it" />
+ <KPI label="Total Views" value={totalViews} data={viewsD} color="#93c5fd" sub="All time" />
      <KPI label="WA Taps" value={totalWA} data={waD} color="#4ade80" sub="All time" />
      <KPI label="CVR" value={`${cvr}%`} data={cvrD} color={cvrColor} sub="WA / Views" />
      <KPI label="Enquiries" value={enquiries.length} data={enqD} color="#c084fc" sub="All messages" />
@@ -6896,7 +6952,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const saveStatus = async (id) => {
  const updates = { status: loanEditStatus };
- await supabase.from("loan_applications").update(updates).eq("id", id);
+ const { data: saved, error: saveErr } = await supabase.from("loan_applications").update(updates).eq("id", id).select("id");
+ if (saveErr || !saved?.length) { toast.error("Could not update the status"); return; }
  setLoanApplications((prev) =>
  prev.map((a) => a.id === id? { ...a, ...updates } : a)
  );
@@ -6907,7 +6964,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const deleteLoan = async (id) => {
  if (!window.confirm("Delete this loan application?")) return;
- await supabase.from("loan_applications").delete().eq("id", id);
+ const { data: gone, error: delErr } = await supabase.from("loan_applications").delete().eq("id", id).select("id");
+ if (delErr || !gone?.length) { toast.error("Could not delete this application"); return; }
  setLoanApplications((prev) => prev.filter((a) => a.id!== id));
  };
 
@@ -7324,7 +7382,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  // Same rule as Premium: a tag still sitting in the input when Save is pressed
  // is the user's answer, not something to throw away.
  const specializations = mergePendingTag(profileSettings.specializations, tagInput);
- const { error } = await supabase.from('profiles').update({
+ const { data, error } = await supabase.from('profiles').update({
  full_name: profileSettings.full_name,
  job_title: profileSettings.job_title,
  whatsapp_number: toPlus60(profileSettings.whatsapp_number),
@@ -7334,9 +7392,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  bio: profileSettings.bio || null,
  specializations: specializations.length > 0 ? specializations : null,
  telegram_chat_id: profileSettings.telegram_chat_id || null,
- monthly_target: Number(profileSettings.monthly_target) || 5,
- }).eq('id', profile.id);
+ monthly_target: Math.min(999, Math.max(1, Math.round(Number(profileSettings.monthly_target)) || 5)),
+ }).eq('id', profile.id).select('id');
  setSettingsSaving(false);
+ // RLS refuses as "0 rows, no error": a save that changed nothing must not say Saved.
+ if (!error && (!data || data.length === 0)) {
+ setSettingsError('Not saved. Please sign in again and retry.');
+ return;
+ }
  if (error) {
  setSettingsError('Failed to save. Please try again.');
  } else {
@@ -7584,6 +7647,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }
 
  const MORE_ITEMS = [
+ { tab: "chat", label: "Messages", icon: <MessageSquare size={18} /> },
+ { tab: "feedback", label: "Ratings", icon: <Star size={18} /> },
  { tab: "analytics", label: "Analytics", icon: <TrendingUp size={18} /> },
  { tab: "enquiries", label: "Bookings", icon: <Calendar size={18} /> },
  { tab: "loans", label: "Loans", icon: <Banknote size={18} /> },
@@ -7670,9 +7735,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  },
  ].map(({ tab, label, icon, badge }) => {
  const isMore = tab === "__more";
- const moreTabs = ["analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
+ const moreTabs = ["chat", "feedback", "analytics", "enquiries", "loans", "handover", "outreach", "customers", "team", "settings", "help"];
  const isActive = isMore ? moreTabs.includes(activeTab) : activeTab === tab;
- const moreIcon = isMore ? <Plus size={18} /> : icon;
+ const moreIcon = icon; // the More button keeps its grid icon: a "+" next to Listings read as "add"
  return (
  <button
  key={tab}
@@ -7853,6 +7918,18 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  label: "Leads",
  icon: <User style={{ width: 14, height: 14, flexShrink: 0 }} />,
  badge: null,
+ },
+ {
+ tab: "chat",
+ label: "Messages",
+ icon: <MessageSquare style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: chatUnread || null,
+ },
+ {
+ tab: "feedback",
+ label: "Ratings & Q&A",
+ icon: <Star style={{ width: 14, height: 14, flexShrink: 0 }} />,
+ badge: feedback.unanswered || null,
  },
  {
  tab: "analytics",
@@ -8373,6 +8450,16 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "listings" && renderListings()}
  {activeTab === "incoming" && renderIncoming()}
  {activeTab === "leads" && renderLeads()}
+ {activeTab === "chat" && (
+ <React.Suspense fallback={null}>
+ <SellerInbox salesmanId={userId} theme="dark" aiAssist={false} fullHeight bottomInset={isMobile ? 80 : 24} />
+ </React.Suspense>
+ )}
+ {activeTab === "feedback" && (
+ <React.Suspense fallback={null}>
+ <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="dark" />
+ </React.Suspense>
+ )}
  {activeTab === "analytics" && renderAnalytics()}
  {activeTab === "enquiries" && renderEnquiries()}
  {activeTab === "loans" && renderLoans()}
@@ -8404,8 +8491,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </React.Suspense>
  )}
 
- {/* FAB — mobile only */}
- {isMobile && (
+ {/* FAB — mobile, Leads tab only. It used to float over every tab (Listings
+     included) and a "+" there reads as "add a car", not "add a lead". */}
+ {isMobile && activeTab === "leads" && (
  <button
  onClick={() => setShowAddLead(true)}
  style={{

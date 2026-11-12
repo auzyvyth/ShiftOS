@@ -93,14 +93,14 @@ serve(async (req) => {
   const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
     type: "magiclink",
     email: target.email,
-    options: { redirectTo: "https://xdrive.my/auth/confirm" },
+    options: { redirectTo: "https://drevo.my/auth/confirm" },
   });
   const hashedToken = linkData?.properties?.hashed_token;
   if (linkErr || !hashedToken) {
     console.error("[send-signup-reminder] generateLink error:", linkErr);
     return json({ error: "Could not generate a continue link" }, 500, origin);
   }
-  const continueUrl = `https://xdrive.my/auth/confirm?token_hash=${hashedToken}&type=magiclink`;
+  const continueUrl = `https://drevo.my/auth/confirm?token_hash=${hashedToken}&type=magiclink`;
 
   const html = buildHtml(target.full_name || "there", continueUrl);
 

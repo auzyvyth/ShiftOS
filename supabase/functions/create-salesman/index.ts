@@ -100,7 +100,7 @@ async function sendSetupEmail(
       // Route through /reset-password (a known-allowlisted redirect URL) with a
       // flow marker; ResetPasswordPage hands a first-time salesman off to the
       // /salesman-setup welcome page once the recovery session is established.
-      options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
+      options: { redirectTo: "https://drevo.my/reset-password?flow=setup" },
     });
     // The new link carries the hashed token to OUR page, which verifies it
     // only when the seller presses "Set password". Supabase's own action link
@@ -167,16 +167,36 @@ async function sendSetupEmail(
   }
 }
 
-// The set-password page lives on xdrive.my. A staging preview gets links back
+// Handover = the setup email goes out. Whoever set the account up (the platform
+// owner adding cars) was signed in AS the seller, so the dashboard tour, the
+// per-tab intros and the starter checklist already played for them and were
+// marked done on the account (Yazeed, 2026-10-17). Put the account back to a
+// fresh signup so the seller's first sign-in, by the setup link, Forgot
+// password or the emailed credentials, starts with the tour.
+// Only while setup_complete is not true: a seller who already took the account
+// over and just asks for another link must not have their progress wiped.
+async function freshFirstRun(adminClient: any, userId: string): Promise<void> {
+  try {
+    await adminClient
+      .from("profiles")
+      .update({ onboarding_tour_done: false, starter_tasks: {} })
+      .eq("id", userId)
+      .not("setup_complete", "is", true);
+  } catch (e) {
+    console.error("[create-salesman] fresh first run failed:", e);
+  }
+}
+
+// The set-password page lives on drevo.my. A staging preview gets links back
 // to itself so the flow can be tested before it ships; a dealer subdomain does
-// not (the salesman panel is on xdrive.my).
+// not (the salesman panel is on drevo.my).
 function setPasswordBaseFor(origin: string | null): string {
   if (origin && /^https:\/\/shift-[a-z0-9-]+-shift-os\.vercel\.app$/.test(origin)) return origin;
-  return "https://xdrive.my";
+  return "https://drevo.my";
 }
 
 serve(async (req) => {
-  // Echo the caller's real origin so dealer subdomains (*.xdrive.my) pass the
+  // Echo the caller's real origin so dealer subdomains (*.drevo.my) pass the
   // browser CORS check. Reusing a null-origin header set here hardcoded the
   // allow-origin to https://xdrive.my, so every request from a dealer
   // storefront subdomain was blocked pre-flight -> "Server unreachable".
@@ -260,6 +280,7 @@ serve(async (req) => {
         const { data: full } = await adminClient.from("profiles").select(DETAIL_COLUMNS).eq("id", target.id).maybeSingle();
         if (full) details = setupDetails(full, setPasswordBaseFor(origin));
       }
+      await freshFirstRun(adminClient, target.id);
       const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id, setPasswordBase, details);
       return json({ success: true, email_sent: sent });
     }

@@ -66,6 +66,10 @@ const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
 const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
+// LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
+const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
+const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
+const TeamBoard = React.lazy(() => import("../components/linked/TeamBoard"));
 import {
  LogOut,
  Copy,
@@ -134,6 +138,7 @@ import {
  Download,
  Star,
  Move,
+ Inbox,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
@@ -187,7 +192,8 @@ import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip
 import { compareFollowUp, followUpStatus, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
-import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { isPremiumSalesman, linkedPremiumOptedIn } from "../utils/salesmanPlan";
+import { usePermissions } from "../hooks/usePermissions";
 import {
   readCache,
   writeCache,
@@ -211,6 +217,7 @@ import {
  ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
 const PANEL_CACHE_KEY = "sp";
@@ -234,7 +241,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory", "team"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -367,6 +374,15 @@ export default function SalesmanPremium() {
  // background so their first tap is instant and works offline.
  useEffect(() => (loading ? undefined : warmChunks(WARM_TABS)), [loading]);
  const [pendingPay, setPendingPay] = useState(false);
+ // LINKED-PREMIUM: true for a salesman under a dealer (opt-in, see salesmanPlan.js). A ref so
+ // the bootstrap closures and refreshSales read the current value without re-creating.
+ const linkedRef = useRef(false);
+ const isLinked = !!profile?.dealer_id; // the gate only lets a linked salesman in when opted in
+ const [incomingCount, setIncomingCount] = useState(0);
+ // The dealer decides whether a linked salesman sees commission (view_commission),
+ // as in the old dealer panel. A solo seller always does.
+ const { can: canPerm } = usePermissions(isLinked ? profile : null);
+ const canSeeCommission = !isLinked || canPerm("view_commission");
  const isPremium = isPremiumSalesman(profile);
  // Premium ends by itself when plan_expires_at passes (PREM-LAPSE). The plan
  // check in the bootstrap runs once, so a dashboard left open stayed on Premium
@@ -485,6 +501,12 @@ export default function SalesmanPremium() {
  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
+ // LINKED-PREMIUM: a salesman under a dealer does not list cars of their own; every
+ // "Add car" entry point opens the dealer's cars to feature instead (as the old panel did).
+ useEffect(() => {
+ if (isLinked && showAddForm) { setShowAddForm(false); switchTab("inventory"); }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [isLinked, showAddForm]);
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);
@@ -807,6 +829,10 @@ export default function SalesmanPremium() {
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
  const [editListing, setEditListing] = useState(null);
+ // LINKED-PREMIUM: a dealer car is edited by the dealer, not the salesman.
+ useEffect(() => {
+ if (isLinked && editListing) { setEditListing(null); toast.error("Only your dealer can edit this car. Ask them to update it."); }
+ }, [isLinked, editListing]);
 
  // tour
  const [tourStep, setTourStep] = useState(null);
@@ -997,13 +1023,15 @@ export default function SalesmanPremium() {
  const refreshCustomers = useCallback(async () => {
  const custDealerId = getDealerIdFromProfile(profile);
  if (!custDealerId) return;
- const { data, error: custErr } = await supabase
- .from("customers").select("*").eq("dealer_id", custDealerId)
- .order("created_at", { ascending: false });
+ // Linked: the dealer's customers table, narrowed to buyers from MY deals (through the lead).
+ const linked = !!profile?.dealer_id;
+ let custQ = supabase.from("customers").select(linked ? "*, leads!inner(salesman_id)" : "*").eq("dealer_id", custDealerId);
+ if (linked) custQ = custQ.eq("leads.salesman_id", userId);
+ const { data, error: custErr } = await custQ.order("created_at", { ascending: false });
  if (custErr) { console.error("refreshCustomers:", custErr); return; }
  setCustomers(data || []);
  setCustomersLoading(false);
- }, [profile]);
+ }, [profile, userId]);
 
  // Everything the Analytics tab says about sales. This used to be an anonymous
  // .then() buried in the bootstrap effect, so it ran once and never again:
@@ -1032,7 +1060,8 @@ export default function SalesmanPremium() {
  // with no assignee" is unambiguously mine.
  const { data, error: cErr } = await supabase
  .from("car_listings").select("commission_amount, brand, model, year, sold_at")
- .or(`assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
+ // A linked salesman owns no cars: only what they closed counts (the dealer's unassigned sold cars are not theirs).
+ .or(linkedRef.current ? `assigned_to.eq.${sid}` : `assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
  .eq("status", "sold");
  if (cErr) { console.error("refreshSales:", cErr); toast.error(i18n.t("salesmanPremium.errors.loadCommission")); return; }
  const rows = data || [];
@@ -1158,11 +1187,20 @@ export default function SalesmanPremium() {
  }
  rememberPanelUid(PANEL_CACHE_KEY, uid);
 
- const { data: profileData, error: profileErr } = await supabase
- .from("profiles")
- .select("*")
- .eq("id", uid)
- .maybeSingle();
+ const readOwnProfile = () => supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+ let { data: profileData, error: profileErr } = await readOwnProfile();
+ // A 401 means the saved login is dead (expired token never refreshed), not that
+ // the database stalled: refresh it once, else clear it and sign in again.
+ // "Try again" on the error screen could never fix this (2026-11-11, Yazeed).
+ if (profileErr && isAuthRejected(profileErr)) {
+ if (await recoverRejectedSession() === "retry") {
+ ({ data: profileData, error: profileErr } = await readOwnProfile());
+ } else {
+ setLoading(false);
+ navigate("/login");
+ return;
+ }
+ }
 
  // A timeout / server error is the database stalling, not a missing account:
  // the session is fine, so never bounce to /login for it (2026-10-30).
@@ -1190,10 +1228,13 @@ export default function SalesmanPremium() {
  // Premium is for SOLO full salesmen only. Linked salesmen (dealer_id set) go
  // to the dealer SalesmanPanel; solo non-full plans go to Lite.
  if (profileData.dealer_id) {
+ // LINKED-PREMIUM: only when this device opted in AND the dealer gave them the full plan.
+ if (!linkedPremiumOptedIn() || !isPremiumSalesman(profileData)) {
  navigate("/salesman", { replace: true });
  return;
  }
- if (!isPremiumSalesman(profileData)) {
+ linkedRef.current = true;
+ } else if (!isPremiumSalesman(profileData)) {
  navigate("/salesman-lite", { replace: true });
  return;
  }
@@ -1208,7 +1249,7 @@ export default function SalesmanPremium() {
  // Payment gate: a premium salesman awaiting payment confirmation sees the
  // pending-approval screen (same manual DuitNow QR flow as dealers) until an
  // admin marks payment_status != 'pending'. Grandfathered rows (null) pass.
- if (profileData.payment_status === "pending") {
+ if (profileData.payment_status === "pending" && !profileData.dealer_id) {
  setProfile(profileData);
  setPendingPay(true);
  setLoading(false);
@@ -1416,7 +1457,9 @@ export default function SalesmanPremium() {
  // premium — customers (post-sale buyer records) + their service packages.
  // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
  const custDealerId = getDealerIdFromProfile(profileData);
- supabase.from("customers").select("*").eq("dealer_id", custDealerId)
+ (linkedRef.current
+ ? supabase.from("customers").select("*, leads!inner(salesman_id)").eq("dealer_id", custDealerId).eq("leads.salesman_id", uid)
+ : supabase.from("customers").select("*").eq("dealer_id", custDealerId))
  .order("created_at", { ascending: false })
  .then(async ({ data, error }) => {
  if (error) { console.error("fetchCustomers:", error); toast.error(i18n.t("salesmanPremium.errors.loadCustomers")); }
@@ -1435,7 +1478,17 @@ export default function SalesmanPremium() {
  .from("car_listings")
  .select(LISTING_SELECT)
  .eq("assigned_to", uid).neq("status", "archived"),
- supabase
+ // Solo: cars I own. Linked: dealer cars I featured (salesman_listings), the same
+ // "my deals" the dealer panel uses; cars assigned to me come in through r1.
+ linkedRef.current
+ ? supabase.from("salesman_listings").select("listing_id").eq("salesman_id", uid)
+ .then(async ({ data: feat, error: featErr }) => {
+ if (featErr) return { data: [], error: featErr };
+ const ids = (feat || []).map((f) => f.listing_id).filter(Boolean);
+ if (!ids.length) return { data: [], error: null };
+ return supabase.from("car_listings").select(LISTING_SELECT).in("id", ids).neq("status", "archived");
+ })
+ : supabase
  .from("car_listings")
  .select(LISTING_SELECT)
  .eq("dealer_id", uid).neq("status", "archived"),
@@ -1452,6 +1505,24 @@ export default function SalesmanPremium() {
  setListingsLoaded(true);
  setMyListings(merged);
  writeCache(`sp_listings_${uid}`, merged);
+ // LINKED-PREMIUM: views/taps are counted by the salesman's own slug (the dealer's
+ // marketplace history must not count as theirs), per car I sell.
+ if (linkedRef.current && profileData.slug && merged.length) {
+ supabase.rpc("get_salesman_slug_analytics", { p_car_ids: merged.map((c) => c.id), p_slug: profileData.slug })
+ .then(({ data: rows, error: anErr }) => {
+ if (anErr) { console.error("fetchLinkedAnalytics:", anErr); return; }
+ const map = {};
+ (rows || []).forEach((row) => {
+ map[row.car_id] = {
+ views: Number(row.views) || 0,
+ enquiries: Number(row.enquiries) || 0,
+ daily: [row.d0, row.d1, row.d2, row.d3, row.d4, row.d5, row.d6],
+ waDaily: [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
+ };
+ });
+ setCarStatsMap(map);
+ });
+ }
  });
 
  // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser.
@@ -1461,7 +1532,7 @@ export default function SalesmanPremium() {
  // placeholders forever.
  const trafficTimer = setTimeout(() => setTrafficFetched(true), 12000);
  const trafficDone = () => { clearTimeout(trafficTimer); setTrafficFetched(true); };
- supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
+ (linkedRef.current ? Promise.resolve({ data: [], error: null }) : supabase.rpc("get_salesman_analytics", { p_dealer_id: uid }))
  .then(({ data, error }) => {
  if (error) console.error("fetchAnalytics:", error);
  const map = {};
@@ -1476,7 +1547,7 @@ export default function SalesmanPremium() {
  waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
- setCarStatsMap(map);
+ if (!linkedRef.current) setCarStatsMap(map); // linked: filled from the slug RPC once the cars are known
 
  // Share-channel breakdown (which platform each view/enquiry came from),
  // scoped to this salesman's own slug. Untagged/organic → 'direct'.
@@ -1670,7 +1741,7 @@ export default function SalesmanPremium() {
  .select(
  "id, buyer_name, buyer_phone, buyer_message, status, created_at, updated_at, listing_id, car_listings(brand, model, year)",
  )
- .eq("dealer_id", uid)
+ .eq(linkedRef.current ? "salesman_id" : "dealer_id", uid)
  .order("created_at", { ascending: false })
  .then(({ data: enqs }) => {
  setEnquiries(enqs || []);
@@ -1900,7 +1971,7 @@ export default function SalesmanPremium() {
  clearTimeout(pendingStageRef.current[lead.id].timer);
  delete pendingStageRef.current[lead.id];
  }
- setWonPrompt({ lead });
+ setWonPrompt({ lead, price: lead.car_listings?.selling_price ? String(lead.car_listings.selling_price) : "" });
  return;
  }
  // Intercept a seller-initiated move into the booking stage → ask for the
@@ -2483,7 +2554,8 @@ export default function SalesmanPremium() {
  const { data } = await supabase
  .from("car_listings")
  .select("commission_amount, selling_price, sold_at")
- .eq("dealer_id", userId)
+ // Linked: the dealer owns the cars, so "mine" is what I closed (assigned_to).
+ .eq(isLinked ? "assigned_to" : "dealer_id", userId)
  .eq("status", "sold")
  .gte("sold_at", monthStart);
  const rows = data || [];
@@ -2506,21 +2578,50 @@ export default function SalesmanPremium() {
  const now = new Date().toISOString();
  setWonSaving(true);
 
- const writeWon = () => supabase
+ // LINKED-PREMIUM: a salesman under a dealer closes at an AGREED price through
+ // close_deal_at_price, which files a dealer approval when the discount is over the
+ // dealer's limit (same as the old dealer panel's "Agreed price" sheet). A solo seller
+ // keeps the one-tap win.
+ const agreed = Number(wonPrompt.price) || null;
+ if (isLinked && (!agreed || agreed <= 0)) {
+ toast.error("Enter the price agreed with the buyer");
+ setWonSaving(false);
+ return;
+ }
+ const plainWon = () => supabase
  .from("leads")
  .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
  .eq("id", leadId);
- let { error: leadErr } = await writeWon();
+ const writeWon = !isLinked ? plainWon : async () => {
+ if (wonPrompt.variantId) await supabase.from("leads").update({ new_car_model_id: wonPrompt.variantId }).eq("id", leadId);
+ const { data: res, error } = await supabase.rpc("close_deal_at_price", { p_lead: leadId, p_agreed: agreed });
+ if (error && error.code === "PGRST202") return plainWon(); // function not on this database yet
+ if (!error && res?.status === "pending") return { error: null, pending: true };
+ return { error };
+ };
+ let won = await writeWon();
+ let leadErr = won.error;
  // A busy DB cancels the statement (57014) and the seller saw "failed" after
  // ~17s, then the same tap worked (2026-11-02). Setting won twice is harmless
  // (the won trigger is idempotent), so retry once before giving up.
  if (leadErr && (leadErr.code === "57014" || /timeout/i.test(leadErr.message || ""))) {
- ({ error: leadErr } = await writeWon());
+ won = await writeWon();
+ leadErr = won.error;
  }
  if (leadErr) {
  console.error("handleMarkWon lead:", leadErr);
- toast.error(t("salesmanPremium.errors.markWon"));
+ const m = String(leadErr.message || "");
+ toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
+ : m.includes("forbidden") ? "This lead is not yours to close."
+ : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
+ return;
+ }
+ if (won.pending) {
+ // Over the dealer's discount limit: nothing is sold until the dealer approves.
+ toast.success("Sent to your dealer to approve the price. You'll get a notification when they answer.");
+ setWonSaving(false);
+ setWonPrompt(null);
  return;
  }
 
@@ -2717,6 +2818,13 @@ export default function SalesmanPremium() {
  // SOLD-1: a status-only "sold" left the sale with no customer, handover or
  // renewals. Ask who bought it; only "Sold elsewhere" comes back with direct.
  if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
+ // LINKED-PREMIUM: the dealer owns the car. A salesman sells it through a won lead
+ // (above); every other status, and "Sold elsewhere", is the dealer's call. The
+ // write would silently change nothing (update_listing_status checks the owner).
+ if (isLinked) {
+ toast.error("Only your dealer can change this car's status. Sell it by marking the buyer's lead Won.");
+ return;
+ }
  const prevStatus = car.status;
  const prevSoldAt = car.sold_at ?? null;
  // Optimistically stamp sold_at so commission/goal figures pick the deal up
@@ -2770,6 +2878,19 @@ export default function SalesmanPremium() {
  const [deletingId, setDeletingId] = useState(null);
  const handleDeleteListing = async (carId) => {
  if (deletingId) return;
+ // LINKED-PREMIUM: "Delete" on a dealer car only takes it off MY listings.
+ if (isLinked) {
+ const car = myListings.find((c) => c.id === carId);
+ if (car?.assigned_to === userId) { toast.error("Your dealer assigned this car to you. Ask them to unassign it."); return; }
+ setDeletingId(carId);
+ const { data: gone, error: unErr } = await supabase.from("salesman_listings").delete()
+ .eq("salesman_id", userId).eq("listing_id", carId).select("listing_id");
+ setDeletingId(null);
+ if (unErr || !gone?.length) { toast.error("Could not remove this car from your listings"); return; }
+ setMyListings((p) => p.filter((c) => c.id !== carId));
+ toast.success("Removed from your listings");
+ return;
+ }
  setDeletingId(carId);
  // .select() returns the rows actually changed. RLS turns a refused update
  // into "0 rows, no error", and the car then came back on the next load
@@ -3020,6 +3141,12 @@ export default function SalesmanPremium() {
  icon: <User style={{ width: 16, height: 16 }} />,
  badge: leadsNeedingFollowUp || null,
  },
+ // Dealer connections, only for a salesman under a dealer (LINKED-PREMIUM).
+ ...(isLinked ? [
+ { tab: "incoming", label: "Incoming", icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
+ { tab: "inventory", label: "Dealer cars", icon: <Store style={{ width: 16, height: 16 }} /> },
+ { tab: "team", label: "Team", icon: <Users style={{ width: 16, height: 16 }} /> },
+ ] : []),
  {
  tab: "enquiries",
  label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
@@ -5430,7 +5557,13 @@ export default function SalesmanPremium() {
  // that sit right under it). The menu on a phone keeps it: there it is the
  // only hint at what is inside.
  const nav = (settingsNav === "verify" ? "profile" : settingsNav) || "profile";
- const navItem = SETTINGS_GROUPS.flatMap((g) => g.items).find((i) => i.key === nav);
+ // LINKED-PREMIUM: refer-a-seller (it pays in Premium months the dealer gives), join a
+ // dealership (already joined) and new-car price cards (solo listings) are hidden.
+ const LINKED_HIDDEN = new Set(["refer", "dealership", "newcars"]);
+ const settingsGroups = isLinked
+ ? SETTINGS_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !LINKED_HIDDEN.has(i.key)) })).filter((g) => g.items.length)
+ : SETTINGS_GROUPS;
+ const navItem = settingsGroups.flatMap((g) => g.items).find((i) => i.key === nav);
 
  const card = { padding: 18, background: PD.card, borderRadius: PD.radius.card };
  const lbl = { fontSize: 11, color: PD.textMuted, display: "block", marginBottom: 6 };
@@ -5773,9 +5906,9 @@ export default function SalesmanPremium() {
  </div>
  )}
  {nav === "password" && <ChangePasswordCard theme="premium" />}
- {nav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
- {nav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
- {nav === "dealership" && (
+ {nav === "refer" && !isLinked && <ReferralCard slug={profile?.slug} theme="premium" />}
+ {nav === "newcars" && !isLinked && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
+ {nav === "dealership" && !isLinked && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
@@ -5824,7 +5957,7 @@ export default function SalesmanPremium() {
     the content does not fit a phone. */
  !settingsNav ? (
  <div style={{ paddingBottom: 8 }}>
- {SETTINGS_GROUPS.map(({ group, items }) => (
+ {settingsGroups.map(({ group, items }) => (
  <div key={group} style={{ marginBottom: 18 }}>
  <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: PD.textMuted, margin: "0 0 8px", paddingLeft: 6 }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  <div style={{ background: PD.card, borderRadius: PD.radius.card, overflow: "hidden" }}>
@@ -5876,8 +6009,8 @@ export default function SalesmanPremium() {
     The page it sits in is already capped at 1180px wide. */
  <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
  <nav style={{ width: 200, flexShrink: 0, background: PD.card, borderRadius: PD.radius.card, padding: "16px 10px", position: "sticky", top: 16 }}>
- {SETTINGS_GROUPS.map(({ group, items }, gi) => (
- <div key={group} style={{ marginBottom: gi < SETTINGS_GROUPS.length - 1 ? 16 : 0 }}>
+ {settingsGroups.map(({ group, items }, gi) => (
+ <div key={group} style={{ marginBottom: gi < settingsGroups.length - 1 ? 16 : 0 }}>
  <p style={{ fontSize: 10.5, letterSpacing: "0.1em", color: PD.textMuted, fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  {items.map((item) => {
  const { key, icon: Icon } = item;
@@ -7240,7 +7373,7 @@ export default function SalesmanPremium() {
  />}
  {/* Paid-through date, from 7 days out. Dashboard only, one line, closes
      until tomorrow (owner: "make it not annoying"). */}
- {activeTab === "dashboard" && <PremiumDueBanner profile={profile} />}
+ {activeTab === "dashboard" && !isLinked && <PremiumDueBanner profile={profile} />}
 
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
@@ -7286,10 +7419,11 @@ export default function SalesmanPremium() {
     onChange={setListingsSubTab}
     items={[
      { key: "cars", label: t("salesmanPremium.listings.cars"), badge: myListings.length },
-     { key: "addons", label: t("salesmanPremium.drawer.addons") },
+     // The add-on catalogue is the dealer's (with its cost prices) when linked: hidden.
+     ...(isLinked ? [] : [{ key: "addons", label: t("salesmanPremium.drawer.addons") }]),
     ]}
    />
-   {listingsSubTab === "addons" ? (
+   {listingsSubTab === "addons" && !isLinked ? (
     <Suspense fallback={<TabLoadingFallback />}>
      <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
     </Suspense>
@@ -7319,6 +7453,35 @@ export default function SalesmanPremium() {
   </div>
  )}
  {activeTab === "leads" && renderLeads()}
+ {activeTab === "incoming" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <IncomingLeads
+ dealerId={profile.dealer_id}
+ onCount={setIncomingCount}
+ onOpenChat={setChatSheet}
+ onClaimed={(lead) => { hydrateLeadInto(setLeads, lead.id, LEAD_SELECT); switchTab("leads"); }}
+ />
+ </Suspense>
+ )}
+ {activeTab === "team" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <TeamBoard dealerId={profile.dealer_id} userId={userId} />
+ </Suspense>
+ )}
+ {activeTab === "inventory" && isLinked && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <DealerInventory
+ dealerId={profile.dealer_id}
+ userId={userId}
+ myCarIds={new Set(myListings.map((c) => c.id))}
+ onFeatured={async (car) => {
+ const { data: full } = await supabase.from("car_listings").select("*").eq("id", car.id).maybeSingle();
+ setMyListings((p) => (p.some((c) => c.id === car.id) ? p : [full || car, ...p]));
+ }}
+ onUnfeatured={(car) => setMyListings((p) => p.filter((c) => c.id !== car.id || c.assigned_to === userId))}
+ />
+ </Suspense>
+ )}
  {activeTab === "enquiries" && (
   <div>
    {/* Bookings and Lead History are two views of the same inbox, so they share
@@ -7345,8 +7508,8 @@ export default function SalesmanPremium() {
  <Suspense fallback={<TabLoadingFallback />}>
  <AnalyticsTab
  carStatsMap={carStatsMap} enquiries={enquiries} thisMonthSales={thisMonthSales}
- commission={commission} soldCount={soldCount} myListings={myListings}
- channelMap={channelMap} commissionDetails={commissionDetails} isMobile={isMobile}
+ commission={canSeeCommission ? commission : null} soldCount={soldCount} myListings={myListings}
+ channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
@@ -7654,7 +7817,7 @@ export default function SalesmanPremium() {
  car={soldPickCar}
  leads={openLeadsOnCar(leads, soldPickCar.id)}
  onClose={() => setSoldPickCar(null)}
- onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+ onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l, price: l.car_listings?.selling_price ? String(l.car_listings.selling_price) : "" }); }}
  onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
  onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
  />
@@ -7687,6 +7850,25 @@ export default function SalesmanPremium() {
  ? t("salesmanPremium.wonPrompt.withCar")
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
+ {isLinked && (() => {
+ const ask = Number(wonPrompt.lead.car_listings?.selling_price) || 0;
+ const off = ask - (Number(wonPrompt.price) || 0);
+ return (
+ <div style={{ margin: "0 0 16px" }}>
+ <label htmlFor="won-agreed" style={{ display: "block", fontSize: 12, fontWeight: 600, color: PD.textSec, margin: "0 0 6px" }}>Agreed price (RM)</label>
+ <input id="won-agreed" type="number" inputMode="numeric" min="1" value={wonPrompt.price || ""}
+ onChange={(e) => setWonPrompt((p) => (p ? { ...p, price: e.target.value } : p))}
+ style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: PD.radius.row, background: PD.raised, border: "none", color: PD.text, fontSize: 16, outline: "none", fontFamily: "inherit" }} />
+ {ask > 0 && (
+ <p style={{ margin: "8px 0 0", fontSize: 12, color: PD.textMuted, lineHeight: 1.5 }}>
+ {off > 0
+ ? `RM ${off.toLocaleString("en-MY")} off the asking price of RM ${ask.toLocaleString("en-MY")}. Over your dealer's limit, it goes to them to approve first.`
+ : `Asking price RM ${ask.toLocaleString("en-MY")}.`}
+ </p>
+ )}
+ </div>
+ );
+ })()}
  {(() => {
  const others = openLeadsOnCar(leads, wonPrompt.lead.car_listing_id, wonPrompt.lead.id).length;
  return others > 0 ? <p style={{ margin: "-6px 0 18px", fontSize: 13, color: PD.text, background: PD.raised, borderRadius: PD.radius.row, padding: "10px 12px", lineHeight: 1.5 }}>{t("soldPick.others", { count: others })}</p> : null;
@@ -8137,6 +8319,8 @@ export default function SalesmanPremium() {
  theme="premium"
  aiAssist={isPremium}
  aiUpgrade={!isPremium}
+ // An unclaimed lead is read-only: two reps must not answer one buyer (claim it first).
+ readOnly={!!chatSheet.previewLead}
  onClose={() => setChatSheet(null)}
  />
  </Suspense>

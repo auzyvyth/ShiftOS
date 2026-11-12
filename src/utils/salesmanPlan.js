@@ -34,3 +34,19 @@ export function isPremiumSalesman(profile) {
 export function isLiteSalesman(profile) {
   return profile?.role === 'salesman' && !isPremiumSalesman(profile);
 }
+
+/**
+ * LINKED-PREMIUM (owner, 2026-11-11): a salesman under a dealer should get the
+ * Salesman Premium panel, with the data shared to the dealer's DMS. It is built as a
+ * "linked mode" inside SalesmanPremium.jsx and stays OFF until switched on per device
+ * (open /salesman-premium?linked=1 once; ?linked=0 turns it off) so the dealer
+ * SalesmanPanel stays the default until the owner has click-tested it on staging.
+ */
+export function linkedPremiumOptedIn() {
+  try {
+    const q = new URLSearchParams(window.location.search).get('linked');
+    if (q === '1') localStorage.setItem('xd_linked_premium', '1');
+    if (q === '0') localStorage.removeItem('xd_linked_premium');
+    return localStorage.getItem('xd_linked_premium') === '1';
+  } catch { return false; }
+}

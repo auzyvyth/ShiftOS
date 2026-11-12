@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NEW_CAR_BRANDS } from '../utils/newCars';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
-import StarterModelPicker, { useStarterModels } from '../components/newcar/StarterModelPicker';
+import { useStarterModels } from '../components/newcar/StarterModelPicker';
 import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -609,10 +609,12 @@ export default function SalesmanOnboarding() {
         const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
         if (icErr) throw icErr;
       }
-      // NEWCAR-2: the ticked models become cards now that state/city are saved
-      // (the price is per area). A failure here never blocks the signup: the
+      // NEWCAR-2 / NEWCAR-3: every model of the chosen brand becomes a card now
+      // that state/city are saved (the price is per area), so nobody fills their
+      // page by hand. Models with no photos or no price for the area are skipped
+      // by the function itself. A failure here never blocks the signup: the
       // seller can add them from Settings > New cars.
-      const ticked = form.sells.includes('new_car') ? (form.newCarModels || []) : [];
+      const ticked = form.sells.includes('new_car') ? (starterModels || []).map((m) => m.model) : [];
       if (ticked.length) {
         try { await supabase.rpc('new_car_add_cards', { p_models: ticked }); } catch { /* added later from Settings */ }
       }
@@ -911,14 +913,9 @@ export default function SalesmanOnboarding() {
                       })}
                     </div>
                     {starterModels?.length ? (
-                      <>
-                        <label className="eo-label" style={{ marginTop: 14 }}>WHICH MODELS DO YOU SELL?</label>
-                        <StarterModelPicker brand={form.newCarBrand} models={starterModels}
-                          value={form.newCarModels} onChange={upd('newCarModels')} />
-                        <p className="eo-hint" style={{ marginTop: 6 }}>
-                          The ones you tick go on your page with photos, ready to share. The official price for your area fills in by itself. Add your own photos any time.
-                        </p>
-                      </>
+                      <p className="eo-hint" style={{ marginTop: 10 }}>
+                        Every {form.newCarBrand} model ({starterModels.length}) goes on your page with photos, ready to share. The official price for your area fills in by itself. Take off any you don't sell, or add your own photos, any time from Settings.
+                      </p>
                     ) : (
                       <p className="eo-hint" style={{ marginTop: 6 }}>
                         You add the {form.newCarBrand || 'brand'} models you sell from Add car. The official price for your area fills in by itself.

@@ -1,4 +1,4 @@
-import { getShareChannel } from "./refTracking";
+import { getShareChannel, getRef } from "./refTracking";
 import { hasConsent } from "./consent";
 import { shouldSkipTracking } from "./internalTraffic";
 import { apiUrl } from "./apiUrl";
@@ -15,7 +15,9 @@ export function getOrCreateSessionId() {
 }
 
 export function getSlugFromURL() {
-  return new URLSearchParams(window.location.search).get("ref") || null;
+  // The URL's ?ref= first, else the ref remembered for this visit (24h): a buyer
+  // who walked from a seller's page to a car no longer has ?ref= in the address bar.
+  return new URLSearchParams(window.location.search).get("ref") || getRef() || null;
 }
 
 /**

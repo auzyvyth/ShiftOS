@@ -81,7 +81,7 @@ may include the owner's own test accounts):
 |---|---|---|
 | Salesman Premium | `SalesmanPremium.jsx` 7,539 lines + `salesmanPremium/` | 6 |
 | Salesman Lite | `SalesmanLite.jsx` 8,353 lines | 3 |
-| Salesman under a dealer | `Salesmanpanel.jsx` 9,111 lines | 1 |
+| Salesman under a dealer | `Salesmanpanel.jsx` 9,111 lines; being replaced by Premium linked mode (`components/linked/`, LINKED-PREMIUM) | 1 |
 | Dealer dashboard | `DashboardPage.jsx` 12,161 lines | 1 dealer |
 | Manager / accountant / F&I / admin panels | separate pages | 0 |
 | Buyers (signed in + guests) | marketplace pages | 3 |
@@ -198,7 +198,7 @@ flowchart LR
 flowchart TD
   S[Sign in] --> RR{"role (profiles.role)"}
   RR -->|dealer / owner| D["/dashboard"]
-  RR -->|salesman with dealer| SM["/salesman"]
+  RR -->|salesman with dealer| SM["/salesman<br/>(old panel; Premium linked mode<br/>/salesman-premium?linked=1 is opt-in)"]
   RR -->|solo, plan salesman_full| SP["/salesman-premium"]
   RR -->|solo, otherwise| SLt["/salesman-lite"]
   RR -->|manager / accountant / fi_officer / admin| O["/manager /accountant /fi /admin"]

@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateKey, carLabel,
+  maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
   dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
@@ -173,15 +173,16 @@ is('rate: 16.5 over 7 yrs is above cap', rateWarning(16.5, 'eir', 7), 'aboveCap'
 is('rate: 16.5 over 5 yrs is legal', rateWarning(16.5, 'eir', 5), null);
 is('rate: empty is no warning', rateWarning('', 'eir', 7), null);
 
-// Rebate per MODEL: one box covers every variant of a card.
-const rbs = { m: 2000 };
-is('rebate: covers a variant', netPrice({ id: 'm', _variantId: 'v2', selling_price: 45000 }, rbs).net, 43000);
-is('rebate: covers the other variant too', netPrice({ id: 'm', _variantId: 'v1', selling_price: 40000 }, rbs).net, 38000);
+// Rebate per VARIANT: each variant of a model card has its own box.
+const rbs = { 'm:v2': 2000 };
+is('rebate: applies to its own variant', netPrice({ id: 'm', _variantId: 'v2', selling_price: 45000 }, rbs).net, 43000);
+is('rebate: the other variant is untouched', netPrice({ id: 'm', _variantId: 'v1', selling_price: 40000 }, rbs).net, 40000);
+is('rebate: a plain car still keys on its id', rebateKey({ id: 'a' }), 'a');
 const rvb = budgetMatches([
   { id: 'm', _n: 1, _variantId: 'v1', variant: 'Standard', selling_price: 40000 },
   { id: 'm', _n: 1, _variantId: 'v2', variant: 'Executive', selling_price: 45000 },
-], { maxMonthly: 100000, years: 7, rate: 6.5, basis: 'eir', rebates: { m: 5000 } });
-is('rebate: Budget takes it off every variant', rvb.fits[0].options.map((o) => o.price), [35000, 40000]);
+], { maxMonthly: 100000, years: 7, rate: 6.5, basis: 'eir', rebates: { 'm:v1': 5000, 'm:v2': 1000 } });
+is('rebate: Budget takes each variant its own', rvb.fits[0].options.map((o) => o.price), [35000, 44000]);
 
 // The rate box stops at the legal ceiling; partial input passes through.
 is('clamp: 65 becomes 17', clampRateInput('65'), '17');
@@ -189,14 +190,14 @@ is('clamp: 6.5 untouched', clampRateInput('6.5'), '6.5');
 is('clamp: partial "6." untouched', clampRateInput('6.'), '6.');
 is('clamp: empty untouched', clampRateInput(''), '');
 
-// Saved rebates last the month, Malaysia time.
+// Month helpers (kept for the report); saved rebates no longer expire with the month.
 is('month: MYT, not UTC', myMonth('2026-10-31T17:00:00Z'), '2026-11');
 is('month: same month', myMonth('2026-10-31T15:59:00Z'), '2026-10');
 is('month end: October', monthEnd('2026-10').toISOString().slice(0, 10), '2026-10-31');
 is('month end: February', monthEnd('2028-02').toISOString().slice(0, 10), '2028-02-29');
-is('saved: this month kept', rebatesForMonth({ month: '2026-10', rebates: { a: '3000', b: 0, c: 'x' } }, '2026-10'), { a: '3000' });
-is('saved: last month dropped', rebatesForMonth({ month: '2026-09', rebates: { a: '3000' } }, '2026-10'), {});
-is('saved: junk is empty', [rebatesForMonth(null, '2026-10'), rebatesForMonth({ month: '2026-10' }, '2026-10')], [{}, {}]);
+is('saved: positive amounts kept, junk dropped', savedRebates({ rebates: { a: '3000', b: 0, c: 'x', 'm:v1': 1500 } }), { a: '3000', 'm:v1': '1500' });
+is('saved: an older month is kept too (until changed)', savedRebates({ month: '2026-09', rebates: { a: '3000' } }), { a: '3000' });
+is('saved: junk is empty', [savedRebates(null), savedRebates({ month: '2026-10' })], [{}, {}]);
 
 // Variant options on a model card's Budget row.
 const vcard = [

@@ -89,8 +89,9 @@ ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${d
 - Dealer Group — RM2,999/month: unlimited listings and seats (multi-branch).
 
 ## About
+- Drevo was called XDrive (xdrive.my) until November 2026; every xdrive.my address now redirects to the same page on drevo.my. Drevo is not related to BMW or its xDrive all-wheel-drive system.
 - Drevo is based in Malaysia and built for the Malaysian used-car market.
-- The marketplace lives at ${SITE}; each dealer also gets a storefront at <dealer>.xdrive.my.
+- The marketplace lives at ${SITE}; each dealer also gets a storefront at <dealer>.drevo.my.
 - ShiftOS is the dealer/salesman software product; Drevo is the consumer marketplace brand.
 `;
 

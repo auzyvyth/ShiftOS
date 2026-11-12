@@ -47,8 +47,10 @@ Full plan and status: `TODO.md` BRAND-1.
   text is renamed in one go on switch day, not piecemeal.
 - **Never hardcode a domain in new code.** Use `SITE_URL` / `ROOT_DOMAIN` /
   `isOwnHost` from `src/config/site.js`, or a relative link (`/showroom`). That
-  file is the one place the domain lives; it still says `xdrive.my` until the
-  switch, and flipping it is the switch.
+  file is the one place the domain lives. The switch shipped 2026-11-05 (#578):
+  `ROOT_DOMAIN` is `drevo.my`, xdrive.my stays in `OWN_DOMAINS` and every xdrive.my
+  host 301s to the same path on drevo.my (`vercel.json` `redirects`). Never remove
+  those redirects while xdrive.my is renewed.
 - "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
   becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
@@ -800,6 +802,10 @@ local (main) → staging branch → production (main on GitHub)
 ```
 - **local main**: all development happens here, commits stay local until staged
 - **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **Test staging on its FIXED address, `shift-os-git-staging-shift-os.vercel.app`** (`STAGING_HOST`,
+  `src/config/site.js`), never the per-push `shift-<random>-shift-os.vercel.app`: sign-in needs
+  Cloudflare Turnstile, which only runs on hostnames listed on the widget (error 110200 otherwise),
+  and only the fixed one can be listed once (owner, 2026-11-12).
 - **Before EVERY force-push to staging, `git fetch origin staging` and run
   `git log --oneline HEAD..origin/staging`.** Any commit listed is someone else's
   unshipped work (another session builds on the same staging) and a force-push deletes it
@@ -1200,6 +1206,12 @@ across all sections, one state each).
   (migration `20260926c`) — never re-do them client-side. Messaging is a human
   `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
   s.43 makes a "stop" final).
+  **Facebook / TikTok prospects (PROSPECT-IMPORT, 2026-11-04, migration `20261104a`):** a
+  prospect may have a `profile_url` instead of a phone; it is cleaned by `prospect_clean_url`
+  (mirrored in `src/utils/prospectImport.js cleanProfileUrl`, `npm run test:prospects`) and
+  UNIQUE, so one person is one row. "Paste a list" imports up to 100 hand-collected rows and
+  never re-adds a do-not-contact person. A DM is copy + open their profile + "I sent it": the
+  owner sends from their own account, never automated.
 - **Account state is answered ONCE: `src/utils/accountState.js`** (`accessState`,
   `reviewState`, `billingState`, `headlineState`, `isPlatformAccount`). Never read
   `approval_status` / `is_active` / `subscription_status` raw in a console tab and
@@ -1505,6 +1517,22 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
 
+## Salesman under a dealer = Premium + dealer connections (LINKED-PREMIUM, owner 2026-11-11)
+Owner: "replace the heart, keep the veins". The linked salesman gets the Salesman Premium panel
+(`SalesmanPremium.jsx`, linked mode = `isLinked` / `linkedRef`), with the dealer connections from the
+old `Salesmanpanel.jsx` moved into `src/components/linked/` (IncomingLeads, DealerInventory, TeamBoard).
+The old panel is deleted only AFTER the owner has tested linked mode on staging; until then
+`/salesman` stays the default and linked mode is opt-in per device (`/salesman-premium?linked=1`,
+`linkedPremiumOptedIn` in `src/utils/salesmanPlan.js`; `?linked=0` turns it off). Rules in linked mode:
+- Data is the dealer's, scoped to the salesman: cars = assigned_to me + featured (`salesman_listings`);
+  views by MY slug (`get_salesman_slug_analytics`); sold/commission = `assigned_to` me; customers through
+  my leads (`leads!inner(salesman_id)`). Never `dealer_id = me` (that is the solo rule).
+- A Won goes through `close_deal_at_price` (agreed price, dealer approval over the limit). Car status,
+  "Sold elsewhere", edit and the add-on catalogue are the dealer's: refused/hidden. Delete = unfeature.
+- Commission shows only with the dealer's `view_commission` (usePermissions). No billing, referral,
+  join-a-dealer or new-car cards. Any new Premium feature must answer "what does it do for a linked
+  salesman?" before it ships.
+
 ## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
 `_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
 `gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
@@ -1659,7 +1687,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   deposit, loan, rate), NCD pills, bank notes, contact, language. **Rebate + insurance/NCD are
   FREE again (owner, 2026-11-10):** the ad says the free presenter does what a paid spreadsheet
   calculator does, so it must; both are typed on their own line (Adjust > Rebates, the
-  every-car list, stays Premium, so on Lite a used car has no rebate line). Everything else is
+  car picker + variant boxes, stays Premium, so on Lite a used car has no rebate line). Everything else is
   Premium: Budget + Viewer, Docs, totals, salary guide, offer, variant extras, car list /
   typed #N, colour, comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
   it). Every seller still sees the button; `set_live_listing` has no plan check. Copy:
@@ -1709,7 +1737,10 @@ variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-
 console > Marketplace > New car prices). Only CARDS ever show on an advisor's page, never
 an automatic price list (built twice, rejected twice as clutter). **Since NEWCAR-2 (owner,
 2026-10-22, migration 20261022e, reverses "the page starts EMPTY") the advisor TICKS the
-models they sell** (`StarterModelPicker`, at signup and in Settings > New cars) and
+models they sell** (`StarterModelPicker` in Settings > New cars; **NEWCAR-3, owner 2026-11-11: signup
+no longer asks, it adds EVERY eligible model of the chosen brand**, `SalesmanOnboarding.jsx`
+`new_car_add_cards(starterModels)`; console-made accounts do not get this, the function needs the
+seller's own session) and
 `new_car_add_cards()` makes a card each, carrying the platform's photos from
 `new_car_model_media` (uploaded per model in the console price tab). Such a card has
 `stock_photos = true`. **No model card (`is_model_card`) is ever in a used/recon surface,
@@ -1724,7 +1755,7 @@ change re-syncs every card still on stock photos. Only models with photos are of
 Photos must be ones the owner took or has the brand's written permission to use
 (Copyright Act 1987 s.36). Settings > New cars is otherwise a brand picker + READ-ONLY
 price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
-file had); the presenter's rebate box is where a current one goes (kept on the device to month end). Never copy a new car into `car_listings`: it blows the listing cap,
+file had); the presenter's rebate box is where a current one goes (kept on the device until changed). Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
@@ -1786,7 +1817,10 @@ and the won-trigger marks it sold on the first deal.
 - **A console-made account starts like a fresh signup.** The owner signs in as the
   seller to add cars, so every intro plays for the owner and is marked done on the
   account. Saving the password on `/salesman-setup` resets `onboarding_tour_done` and
-  `starter_tasks`. Any NEW first-run flag must be reset there too.
+  `starter_tasks`, and so does every setup email the console sends (`freshFirstRun` in
+  `create-salesman`, only while `setup_complete` is not true), so a seller who signs in with the
+  emailed credentials or "Forgot password" without opening the link still gets the tour.
+  Any NEW first-run flag must be reset in BOTH places.
 - The Premium tour's "seen" backup is `sessionStorage` (`sp_tour_seen_<uid>`), never
   `localStorage`: a persistent copy made every DB reset invisible on that device.
 - **A console-made account answers what signup answers** (2026-10-19). `CreateSellerModal` asks
@@ -2060,9 +2094,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Esc / Back close it (it registers `useModalHistory`). Not portalled: the presenter already is.
 - **Rebate = money off the price, per car** (`netPrice`, liveMaths.js). Typed in Adjust >
   Rebates (one list, every car, one box each), never saved to the listing or the server.
-  EVERY car's rebate is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
-  (`xd_live_rebates`, `rebatesForMonth`, `monthEnd`; owner 2026-10-22, it was model cards
-  only). On a new-car model card ONE rebate covers every variant (keyed by the listing).
+  EVERY car's rebate is REMEMBERED ON THE DEVICE until the seller changes it (`xd_live_rebates`,
+  `savedRebates`; owner 2026-11-11: "save each input until changed"; the month-end wipe of
+  2026-10-22 is gone, so a stale promo stays until retyped or cleared). On a new-car model card each VARIANT has its own rebate (owner, 2026-11-11: Perodua's differ per variant; key `<listing>:<variantId>`, `rebateKey` in liveMaths.js). Adjust > Rebates is pick a car (chips, a count of rebates set on each), then one box per variant of that car (one box for a used/recon car).
   On another device the list starts empty (device storage, by design). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
@@ -2302,6 +2336,9 @@ views and no taps > saved but no taps > under 10 views this week.
   and `ShareTour` rings that car's button (`data-share-car="<id>"`: Premium's round Share, Lite's
   Link) and waits for the seller's own tap, then says where to post. It never presses or posts
   anything for them. Card and lines wait for `trafficReady`: before that every car reads unseen.
+  While the ring shows, taps OFF the button are blocked (four panes around the hole): a stray
+  tap opened the car pop-up over the button and left the ring on nothing. The bubble is placed
+  by `placeTourCard` from its measured size, never a fixed guess.
 - Never invent a number or a promise in coach copy. Views need the buyer's analytics consent,
   so they undercount; say only what was counted.
 

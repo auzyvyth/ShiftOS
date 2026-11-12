@@ -18,6 +18,7 @@ export const CAR_DATA = {
     "Saga",
     "Persona",
     "Iriz",
+    "S70",
     "X50",
     "X70",
     "X90",

@@ -165,6 +165,27 @@ production, or sign-in pages lose the throttle (they fail open, sign-in still wo
 - [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 
+## LINKED-PREMIUM: salesman under a dealer gets Premium + dealer connections (owner, 2026-11-11)
+Rules: CLAUDE.md "Salesman under a dealer = Premium + dealer connections". All on branch
+`claude/fervent-edison-jgyfd2`, NOT on staging, not click-tested (no linked test account in the session).
+- [x] Opt-in linked mode in SalesmanPremium (`/salesman-premium?linked=1`), dealer-scoped data,
+      Incoming (claim), Dealer cars (feature/unfeature), Team, agreed price + approval on a Won,
+      dealer cars protected (status/edit/delete/add-ons), solo-only settings hidden, view_commission.
+- [ ] Owner: sign in as a linked salesman with the full plan on staging, open
+      `/salesman-premium?linked=1`, walk every tab; send screenshots of anything wrong.
+- [ ] Then: route linked salesmen to Premium by default (`postAuthRoute`, `push_home_path` in the DB,
+      Premium gate), then delete `Salesmanpanel.jsx` and its help page. Not before the test above.
+- [ ] Still in the old panel only: the Loans calculator/applications flow (Premium uses Loan check),
+      the per-lead deal sheet link. Decide keep or drop when testing.
+- [ ] Chat ref: `supabase/parked/chat_thread_ref_slug.sql`, then pass `p_ref_slug: getRef()` in
+      `src/hooks/useChat.js:254`. Order matters (see the file).
+- [ ] Owner call: a `?ref=` beats the dealer's exclusivity lock in `resolve_lead_salesman` (rule 1
+      before rule 2), so rep B's link can take a lead on a car locked to rep A. Keep or swap the order?
+- [ ] Owner call: "Read chat" on an unclaimed Incoming lead shows the buyer's messages and phone to
+      every rep before anyone claims. Keep, or show the car + time only until claimed?
+- [ ] Owner call (needs a lawyer, see chat 2026-11-11): count window-sticker scans without the
+      analytics cookie? Today only visitors who accept the banner are counted (0 so far).
+
 ## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,
   yours for as long as you stay. After that, RM49" (EN + BM).
@@ -239,6 +260,14 @@ for another year.
   project; code accepts both (`OWN_DOMAINS` in `src/config/site.js`, both CORS files,
   storefront detection in api/og.js + api/sitemap.js; sitemap + robots always print the
   canonical domain). Canonical stays xdrive.my until switch night.
+  **Step 2 (the switch) SHIPPED 2026-11-05 02:45 MYT, #578 (b74b8c5).** `ROOT_DOMAIN =
+  "drevo.my"`; `vercel.json` `redirects` 301 xdrive.my, www.xdrive.my and `<sub>.xdrive.my`
+  to the same path + query on drevo.my (`/api/*` not redirected); www.drevo.my -> drevo.my;
+  XDrive -> Drevo in copy. The 8 browser-called edge functions were redeployed with drevo.my
+  CORS on 2026-11-04 (deployed code kept as-is). Still open: owner does Search Console
+  Change of Address + submits https://drevo.my/sitemap.xml, Supabase Site URL + redirect
+  URLs, Google OAuth origins; emails still @xdrive.my; edge-function email links still
+  say xdrive.my (they 301); logo files (AI-search thread).
   DONE 2026-11-02: Vercel DNS zone on, Resend records added (DKIM, rsend, send, DMARC), owner did Supabase redirect URLs, Turnstile, Google origins, Resend. `https://drevo.my` added to `ID_TOKEN_ORIGINS` default.
   Owner, before testing on drevo.my (done, kept for reference): Supabase Auth > URL Configuration, add
   `https://drevo.my/**`, `https://www.drevo.my/**`, `https://*.drevo.my/**` to Redirect
@@ -334,8 +363,9 @@ photo rule for now ("leave it at that").
 - [x] Premium's quick add removed from Lite/Premium (owner, 2026-11-02: not safe for solo
   sellers; it saved straight to `available`, skipping review). Every seller car goes
   through CarForm (always review). `CarFormFast.jsx` stays only on the dealer dashboard.
-  Optional: a DB rule forcing a salesman's new car into review whatever form saved it
-  (must skip new-car model cards, which `new_car_add_cards` inserts as available).
+  DB lock LIVE 2026-11-03 (`20261102c`, `trg_zzz_seller_car_review`; owner ran it in the SQL
+  Editor): a salesman's car going live becomes `pending_approval` on insert and on
+  pending/rejected/private -> live. Probed both paths as airymotors (rolled back).
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
@@ -3012,6 +3042,14 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
+  inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
+  gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked
+  2026-11-09; GiCheck app is consumer-only). Their "Pendaftaran Vendor" post is procurement
+  (tenders/RFQ to SELL them goods and services), not developer access. Only route is a direct
+  data-sharing / partner agreement with Puspakom (DRB-HICOM group), which needs a company,
+  traffic numbers and PDPA terms first. Revisit once there is revenue.
+
 - **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
   "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
   already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
@@ -3785,6 +3823,23 @@ until these are done:**
 ## Dev tasks
 
 ---
+
+### THREADS-1 — Threads auto-posting: AI drafts, owner approves, posts on schedule (started 2026-10-31)
+
+Runbook: `tools/threads/README.md`. Script: `tools/threads/threads.mjs` (official
+Threads API, dry run unless `--live`). Queue: `tools/threads/queue.json`.
+
+- [x] Posting script + queue + rules test (`npm run test:threads`).
+- [ ] **Owner: which account** (personal or a Drevo brand account).
+- [ ] **Owner: one-time Meta setup** (README "One-time setup"), token saved as an
+  environment secret. Blocks everything below.
+- [ ] Run `threads.mjs whoami` to prove the token, then post ONE approved test post.
+- [ ] Voice: read the owner's last ~14 days of posts (needs `threads_basic`), write the
+  pillars (topics) and a short voice guide into the README.
+- [ ] First weekly batch of 5-7 drafts for the owner to approve.
+- [ ] Scheduled tasks: publish due posts (a few times a day) + weekly insights + draft.
+  Publishing writes `queue.json` back, so the task must commit and push it.
+- [ ] Decide if drafts should leave the public repo (README "Gotcha").
 
 ### SESSION 2026-09-26 — WhatsApp into the CRM + owner prospecting CRM (scoped, nothing built)
 

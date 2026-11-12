@@ -139,12 +139,14 @@ export function rateWarning(rate, basis, years) {
 // seller typed for it on this live. A rebate is money off the price, nothing
 // else: never a deposit, never shown as a crossed-out "was" price.
 //   rebates: { [listingId]: number | string } — presenter state, never saved
-// Keyed by the listing, so a new-car model card's rebate covers EVERY variant:
-// brands run one promo per model, and the seller types it once (owner,
-// 2026-10-22). Budget's variant rows carry the card's id, so they share it.
+// Keyed by rebateKey: the listing, and on a new-car model card the VARIANT too
+// ("<listing>:<variantId>"). Perodua's rebate differs per variant (a Perodua
+// advisor told the owner, 2026-11-11), so each variant carries its own; the
+// old one-box-per-card rule (2026-10-22) is gone.
+export const rebateKey = (car) => (car?._variantId ? `${car.id}:${car._variantId}` : car?.id);
 export function netPrice(car, rebates) {
   const price = Number(car?.selling_price) || 0;
-  const rebate = Math.min(price, Math.max(0, Number(rebates?.[car?.id]) || 0));
+  const rebate = Math.min(price, Math.max(0, Number(rebates?.[rebateKey(car)]) || 0));
   return { price, rebate, net: price - rebate };
 }
 
@@ -330,8 +332,11 @@ export function monthEnd(month) {
   const [y, m] = String(month).split('-').map(Number);
   return new Date(Date.UTC(y, m, 0));
 }
-export function rebatesForMonth(saved, month = myMonth()) {
-  if (!saved || saved.month !== month || typeof saved.rebates !== 'object' || !saved.rebates) return {};
+// Saved rebates now last until the seller changes them (owner, 2026-11-11: "it
+// should save each input until changed"); the month-end wipe is gone. Keys are
+// "<listing>" or "<listing>:<variantId>"; only positive amounts are kept.
+export function savedRebates(saved) {
+  if (!saved || typeof saved.rebates !== 'object' || !saved.rebates) return {};
   const out = {};
   for (const [id, v] of Object.entries(saved.rebates)) {
     const n = Number(v);

@@ -51,12 +51,13 @@ const en = {
   endYes: 'End live',
   endKeep: 'Keep presenting',
   rebateEdit: 'Set the rebate for this car',
-  rebatesTitle: 'Rebates this month',
-  rebatesHint: (d) => `Money off the price. Saved on this device until ${d}.`,
-  rebatesHintDemo: 'Money off the price, per car.',
-  savedUntil: (d) => `saved until ${d}`,
+  rebatesTitle: 'Rebates',
+  rebatesHint: 'Pick a car, then type the rebate for each variant. Saved on this device until you change it.',
+  rebatesHintDemo: 'Pick a car, then type the rebate for each variant.',
+  rebateOne: 'Rebate',
+  rebateLoading: 'Loading variants...',
   clear: 'Clear',
-  rebateModelNote: "A model card's rebate covers every variant. Viewers see it as a line under the price.",
+  rebateModelNote: 'Each variant of a new-car model has its own rebate. Viewers see it as a line under the price.',
   allVariants: 'New · every variant',
   used: 'Used',
   recon: 'Recon',
@@ -247,12 +248,13 @@ const ms = {
   endYes: 'Tamat live',
   endKeep: 'Teruskan',
   rebateEdit: 'Tetapkan rebat kereta ini',
-  rebatesTitle: 'Rebat bulan ini',
-  rebatesHint: (d) => `Potongan harga. Disimpan pada peranti ini hingga ${d}.`,
-  rebatesHintDemo: 'Potongan harga, setiap kereta.',
-  savedUntil: (d) => `disimpan hingga ${d}`,
+  rebatesTitle: 'Rebat',
+  rebatesHint: 'Pilih kereta, kemudian taip rebat setiap varian. Disimpan pada peranti ini sehingga anda ubah.',
+  rebatesHintDemo: 'Pilih kereta, kemudian taip rebat setiap varian.',
+  rebateOne: 'Rebat',
+  rebateLoading: 'Memuatkan varian...',
   clear: 'Padam',
-  rebateModelNote: 'Rebat kad model meliputi semua varian. Penonton nampak sebagai satu baris di bawah harga.',
+  rebateModelNote: 'Setiap varian kereta baru ada rebat sendiri. Penonton nampak sebagai satu baris di bawah harga.',
   allVariants: 'Baru · semua varian',
   used: 'Terpakai',
   recon: 'Rekon',
@@ -446,18 +448,19 @@ export function saveLiveOffer(text) {
 }
 
 // Rebates, every car (owner, 2026-10-22; it was new-car model cards only),
-// remembered per device until the month ends (liveMaths.rebatesForMonth):
-// the seller types this month's numbers once in Adjust > Rebates, not every
-// live. Never saved to the listing, and never to the server.
+// remembered per device until the seller changes them (liveMaths.savedRebates;
+// owner, 2026-11-11, it used to clear at month end): typed once in Adjust >
+// Rebates or on the sheet's Rebate line, not every live. A new-car model card
+// keeps one per variant. Never saved to the listing, and never to the server.
 export const LIVE_REBATES_KEY = 'xd_live_rebates';
 
-export function initialLiveRebates(rebatesForMonth) {
-  try { return rebatesForMonth(JSON.parse(window.localStorage.getItem(LIVE_REBATES_KEY) || 'null')); } catch { return {}; }
+export function initialLiveRebates(savedRebates) {
+  try { return savedRebates(JSON.parse(window.localStorage.getItem(LIVE_REBATES_KEY) || 'null')); } catch { return {}; }
 }
 
-export function saveLiveRebates(rebates, month) {
+export function saveLiveRebates(rebates) {
   try {
-    if (Object.keys(rebates).length) window.localStorage.setItem(LIVE_REBATES_KEY, JSON.stringify({ month, rebates }));
+    if (Object.keys(rebates).length) window.localStorage.setItem(LIVE_REBATES_KEY, JSON.stringify({ rebates }));
     else window.localStorage.removeItem(LIVE_REBATES_KEY);
   } catch { /* storage blocked */ }
 }
