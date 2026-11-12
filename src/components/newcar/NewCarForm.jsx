@@ -125,7 +125,19 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
     }));
   };
 
-  const canSave = (editing ? editLoaded : chosen?.price != null) && photos.length > 0 && uploading === 0 && !saving;
+  // The platform's photos for this model (new_car_model_media, set in the console).
+  // Used when the advisor adds none of their own, so a card never needs an upload.
+  const [stock, setStock] = useState([]);
+  useEffect(() => {
+    if (editing || !brand || !model) { setStock([]); return undefined; }
+    let alive = true;
+    supabase.from("new_car_model_media").select("images").eq("brand", brand).eq("model", model).maybeSingle()
+      .then(({ data }) => { if (alive) setStock((data?.images || []).filter(Boolean)); });
+    return () => { alive = false; };
+  }, [brand, model, editing]);
+  const useStock = !editing && photos.length === 0 && stock.length > 0;
+
+  const canSave = (editing ? editLoaded : chosen?.price != null) && (photos.length > 0 || useStock) && uploading === 0 && !saving;
 
   const save = async () => {
     if (!canSave) return;
@@ -133,7 +145,22 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
     setError("");
     const fields = { images: photos, colour: colour.trim() || null, description: desc.trim() || null };
     try {
-      if (editing) {
+      if (useStock) {
+        // new_car_add_cards is the only thing allowed to mark a card as stock-photo
+        // (it follows later console photo changes). It makes the card; we add the words.
+        const { data: res, error: re } = await supabase.rpc("new_car_add_cards", { p_models: [model] });
+        if (re) throw re;
+        const result = res?.[0]?.result;
+        if (result === "no_price_for_area") throw new Error("new_car_no_price_for_zone");
+        if (result !== "added") throw new Error(`add_cards_${result || "failed"}`);
+        let q = supabase.from("car_listings")
+          .update({ colour: fields.colour, description: fields.description })
+          .eq("dealer_id", getDealerIdFromProfile(profile)).eq("brand", brand).eq("model", model)
+          .eq("new_car_unit", false).not("new_car_model_id", "is", null).not("status", "in", "(sold,archived)");
+        const { data: card, error: ce } = await q.select("*").limit(1);
+        if (ce) throw ce;
+        onCreate?.(card?.[0]);
+      } else if (editing) {
         const { data, error: e } = await supabase.from("car_listings").update(fields).eq("id", listing.id).select("*").single();
         if (e) throw e;
         onUpdate?.(data);
@@ -243,11 +270,19 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       {/* 2. Their own photos. Required: a card without one is the "no photo" problem. */}
       {(editing || chosen) && (
         <div style={{ ...box, padding: 14 }}>
-          <p style={h}>Your photos of this car</p>
+          <p style={h}>{useStock ? "Photos" : "Your photos of this car"}</p>
           <p style={{ ...sub, marginBottom: 10 }}>
-            Use your own: the car in your showroom, a customer handover, a test drive. Real photos from you get more replies than brochure pictures, and {brand}'s brochure images belong to {brand}.
+            {useStock
+              ? "Drevo's photos of this model are already filled in. Add your own and they replace these: real photos from you get more replies."
+              : "Use your own: the car in your showroom, a customer handover, a test drive. Real photos from you get more replies than brochure pictures."}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))", gap: 8 }}>
+            {useStock && stock.slice(0, 6).map((u, i) => (
+              <div key={u} style={{ position: "relative", aspectRatio: "4 / 3", borderRadius: 8, overflow: "hidden", background: th.soft }}>
+                <img src={u} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "#fff" }}>Cover</span>}
+              </div>
+            ))}
             {photos.map((u, i) => (
               <div key={u} style={{ position: "relative", aspectRatio: "4 / 3", borderRadius: 8, overflow: "hidden", background: th.soft }}>
                 <img src={u} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -263,9 +298,9 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
             ))}
             {photos.length + uploading < MAX_PHOTOS && (
               <button type="button" onClick={() => fileRef.current?.click()}
-                style={{ aspectRatio: "4 / 3", borderRadius: 8, border: `1.5px dashed ${photos.length ? th.line : "#dc2626"}`, background: "transparent", color: photos.length ? th.sub : "#dc2626", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 600 }}>
+                style={{ aspectRatio: "4 / 3", borderRadius: 8, border: `1.5px dashed ${photos.length || useStock ? th.line : "#dc2626"}`, background: "transparent", color: photos.length || useStock ? th.sub : "#dc2626", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 600 }}>
                 {photos.length ? <ImagePlus size={18} /> : <Camera size={18} />}
-                {photos.length ? "Add more" : "Add your photo"}
+                {photos.length ? "Add more" : useStock ? "Use my own" : "Add your photo"}
               </button>
             )}
           </div>
@@ -293,7 +328,7 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       {(editing || chosen) && (
         <button type="button" onClick={save} disabled={!canSave}
           style={{ height: 46, borderRadius: 12, border: "none", background: canSave ? "#dc2626" : th.soft, color: canSave ? "#fff" : th.sub, fontSize: 15, fontWeight: 700, cursor: canSave ? "pointer" : "default", fontFamily: "inherit" }}>
-          {saving ? "Saving..." : editing ? "Save changes" : photos.length ? "Put it on my page" : "Add a photo to continue"}
+          {saving ? "Saving..." : editing ? "Save changes" : photos.length || useStock ? "Put it on my page" : "Add a photo to continue"}
         </button>
       )}
 
