@@ -415,7 +415,7 @@ export default function ListingsTab({
  {/* Meta + add-on marker. minHeight is load-bearing: a listing with no
      mileage/engine/transmission/colour would otherwise collapse this line to
      zero and everything below it would sit higher than on its neighbours. */}
- <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, minHeight: 17 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, minHeight: 17, position: "relative" }}>
  <p style={{ margin: 0, fontSize: 12, color: P.textMuted, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {[
  car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
@@ -424,7 +424,10 @@ export default function ListingsTab({
  car.colour,
  ].filter(Boolean).join(" · ")}
  </p>
- {postJob?.carId === car.id && postJob.state !== "error" && <PostStatusMark state={postJob.state} />}
+ {/* Floats over the row, 20px in from the right and 20px above the specs line (owner's mark, 2026-11-12). */}
+ {postJob?.carId === car.id && postJob.state !== "error" && (
+ <span style={{ position: "absolute", right: 20, top: -21, lineHeight: 0 }}><PostStatusMark state={postJob.state} /></span>
+ )}
  {addOns.length > 0 && (
  <span
  title={t("salesmanPremium.lst.included", { list: addOns.map(a => a?.name).filter(Boolean).join(", ") })}
