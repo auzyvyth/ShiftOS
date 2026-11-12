@@ -5509,7 +5509,7 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker,
+  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker, initialTab = 'specs',
 }) {
   useModalHistory(true, onClose);
   const { can } = usePermissions(profile);
@@ -5517,7 +5517,7 @@ function ListingDetailDrawer({
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
   useModalHistory(lbOpen, () => setLbOpen(false));
-  const [drawerTab, setDrawerTab] = useState('specs');
+  const [drawerTab, setDrawerTab] = useState(initialTab === 'owner' && !canViewCosts ? 'specs' : initialTab);
   const [ownerTool, setOwnerTool] = useState(null);
   useEffect(() => { if (drawerTab !== 'owner') setOwnerTool(null); }, [drawerTab]);
   const [showAssign, setShowAssign] = useState(false);
@@ -5609,6 +5609,7 @@ function ListingDetailDrawer({
                       ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
                       ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
                       ['Compliance', Shield, () => setOwnerTool('compliance')],
+                      ['Condition', ShieldCheck, () => setOwnerTool('appraisal')],
                       ['Activity', Clock, () => setOwnerTool('activity')],
                     ].map(([label, Icon, onClick]) => (
                       <button key={label} onClick={onClick} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
@@ -5966,7 +5967,7 @@ function StockStatsStrip({ dealerId }) {
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false, onAdd }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false, onAdd, onOpenListing }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   // Persisted so the stock table paints last-known units instantly (no IC or
@@ -6820,7 +6821,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   return (
                     <div
                       key={u.id}
-                      onClick={() => setDetailUnit(u)}
+                      onClick={() => {
+                        // A stock car with a listing opens the SAME pop-up as Inventory (Owner button first);
+                        // only a stock car with no listing keeps this older stock pop-up.
+                        const l = u.listing_id && onOpenListing ? listings.find(x => x.id === u.listing_id) : null;
+                        if (l) onOpenListing(l); else setDetailUnit(u);
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px',
                         borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer',
@@ -8819,6 +8825,9 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Which button the car pop-up opens on: 'owner' from a Stock & costs row, else Details. Resets when it closes.
+  const [detailInitialTab, setDetailInitialTab] = useState('specs');
+  useEffect(() => { if (!detailListing) setDetailInitialTab('specs'); }, [detailListing]);
   // Net F&I add-on gross per listing (sold_price − cost) so the Listings table
   // Gross column reflects what a sold car actually earned, add-ons included.
   const [addonNetByListing, setAddonNetByListing] = useState({});
@@ -11052,6 +11061,7 @@ export default function DashboardPage() {
                   summary cards repeated them, so it is told to skip them. */}
               <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
               <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen} hideSummary onAdd={() => setAddCarOpen(true)}
+                onOpenListing={(l) => { setDetailInitialTab('owner'); setDetailListing(l); }}
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
                 onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
               />
@@ -11088,6 +11098,8 @@ export default function DashboardPage() {
 
       {detailListing && (
         <ListingDetailDrawer
+          key={detailListing.id}
+          initialTab={detailInitialTab}
           listing={detailListing}
           salesmen={salesmen}
           salesmenById={salesmenById}

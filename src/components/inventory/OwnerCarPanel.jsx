@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../supabaseClient';
 import { toast } from 'sonner';
 import {
-  Wrench, Megaphone, ShieldCheck,
+  Wrench, Megaphone, ShieldCheck, ClipboardCheck,
   X, Plus, Trash2, UserCheck, Clock,
 } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { carPnl } from '../../utils/carPnl';
 import { premiumLight as PL } from '../../theme/tokens';
+import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
@@ -76,6 +77,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '' });
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState(null);
+  const [apprDraft, setApprDraft] = useState(null);
 
   const close = () => setTool && setTool(null);
 
@@ -113,6 +115,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     if (!unit) return;
     if (tool === 'prices') setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || '') });
     if (tool === 'compliance') setCompForm({ puspakom_b5_date: unit.puspakom_b5_date || '', puspakom_b7_date: unit.puspakom_b7_date || '', encumbrance_status: unit.encumbrance_status || 'unknown' });
+    if (tool === 'appraisal') setApprDraft(unit.appraisal || null);
     if (tool === 'activity') {
       setActivity(null);
       // Merge the stock_unit's and the linked car_listing's events so the timeline
@@ -182,6 +185,16 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     if (error) { toast.error('Failed to save'); return; }
     setUnit((p) => ({ ...p, ...patch }));
     toast.success('Compliance updated'); close();
+  };
+
+  const saveAppraisal = async () => {
+    setSaving(true);
+    const payload = apprDraft ? { ...apprDraft, appraised_at: new Date().toISOString(), appraised_by: userId } : null;
+    const { data: saved, error } = await supabase.from('stock_units').update({ appraisal: payload }).eq('id', unit.id).eq('dealer_id', userId).select('id');
+    setSaving(false);
+    if (error || !saved?.length) { toast.error('Could not save appraisal'); return; }
+    setUnit((p) => ({ ...p, appraisal: payload }));
+    toast.success('Appraisal saved'); close();
   };
 
   const addRecon = async () => {
@@ -390,6 +403,12 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         </div>
       </Section>
 
+      <Section icon={ClipboardCheck} title="Condition">
+        <p style={{ fontSize: 12, color: summarizeAppraisal(unit.appraisal) ? PL.text : '#9ca3af', margin: 0 }}>
+          {summarizeAppraisal(unit.appraisal) || 'No condition appraisal yet.'}
+        </p>
+      </Section>
+
       {/* ---------- TOOL MODALS (opened from the side panel) ---------- */}
       {tool === 'prices' && (
         <ToolModal title="Edit Costs" onClose={close} footer={
@@ -429,6 +448,17 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
               {ENC_OPTS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
             </select>
           </div>
+        </ToolModal>
+      )}
+
+      {tool === 'appraisal' && (
+        <ToolModal title="Condition appraisal" onClose={close} footer={
+          <>
+            <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={saveAppraisal} disabled={saving} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#111827', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+          </>
+        }>
+          <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
         </ToolModal>
       )}
 
