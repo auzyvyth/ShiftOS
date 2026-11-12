@@ -1206,6 +1206,12 @@ across all sections, one state each).
   (migration `20260926c`) — never re-do them client-side. Messaging is a human
   `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
   s.43 makes a "stop" final).
+  **Facebook / TikTok prospects (PROSPECT-IMPORT, 2026-11-04, migration `20261104a`):** a
+  prospect may have a `profile_url` instead of a phone; it is cleaned by `prospect_clean_url`
+  (mirrored in `src/utils/prospectImport.js cleanProfileUrl`, `npm run test:prospects`) and
+  UNIQUE, so one person is one row. "Paste a list" imports up to 100 hand-collected rows and
+  never re-adds a do-not-contact person. A DM is copy + open their profile + "I sent it": the
+  owner sends from their own account, never automated.
 - **Account state is answered ONCE: `src/utils/accountState.js`** (`accessState`,
   `reviewState`, `billingState`, `headlineState`, `isPlatformAccount`). Never read
   `approval_status` / `is_active` / `subscription_status` raw in a console tab and
