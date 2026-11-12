@@ -175,3 +175,11 @@ Always: no phone number (CDP-3); no invented figure; price, year, model come fro
 | TikTok | A normal TikTok account; Zernio connects through the "TikTok for Business" app | Expected no, confirm at test |
 | Threads | Threads account (tied to Instagram) | No |
 | Google Business | A verified Business Profile (Google's rule; many individual agents will not have one) | Google verifies the location, not a company |
+
+## PART 5: First live test against the real API (2026-11-12) - findings
+Key works (read, create, delete). Nothing published; two far-future test posts were created and deleted; no profile created.
+- Owner's Zernio workspace: one profile "Default" with Threads @airyauzy_ and Facebook Page "Xdrive Service" (rename the Page to Drevo before real sellers see it).
+- **Free tier blocks a second profile.** `POST /v1/profiles` returned 402 `PAYMENT_REQUIRED` (`free_tier_exceeded`) because 2 accounts exist and no card is on file. A card must be added in Zernio billing before the Premium + dealer two-profile test. Cost still starts only past 2 accounts.
+- **Zernio does not enforce the Threads length cap when scheduling** (501 characters accepted). Our `buildPost` must enforce every platform cap; do not rely on Zernio to reject.
+- **Default connect is NOT posting-only.** The Facebook connection holds `ads_management`, `business_management`, `pages_messaging`, `leads_retrieval`, `pages_manage_posts`, ...; Threads holds replies/insights/delete as well. `scopes` can only narrow inside our OWN OAuth app (`oauthAppId`), which needs Meta App Review. Plan: pilot on Zernio's app with plain disclosure on the connect screen and `/privacy` ("Drevo only posts; the connection technically allows more, which we do not use"); own app when the seller count justifies the review. Use `expectedPlatformUserId` so a seller can only connect the account they meant to.
+- No webhooks registered yet; register after the edge function has a public URL, then test the signature with `webhook.test`.
