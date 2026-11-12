@@ -123,6 +123,7 @@ import PhoneInput from "../components/ui/PhoneInput";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CarDetailsPanel, { CarSheetTabs } from "../components/inventory/CarDetailsPanel";
+import InterestCell from "../components/inventory/InterestCell";
 import CustomersTab from "../components/crm/CustomersTab";
 import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
@@ -5483,26 +5484,6 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 // ─── Helpers shared by ListingDetailDrawer ────────────────────────────────────
 // Listings row: counted views + enquiry taps (WhatsApp, call, booking), last 30 days.
 // null = still loading: a placeholder, never a 0.
-function InterestCell({ stats, compact, scans }) {
-  if (!stats) {
-    return <span aria-label="Loading" style={{ display: 'inline-block', width: compact ? 70 : 54, height: compact ? 12 : 28, borderRadius: 6, background: premiumLight.raised }} />;
-  }
-  const none = !stats.views && !stats.enq;
-  if (compact) {
-    return (
-      <span style={{ fontSize: 11, color: none ? premiumLight.textMuted : premiumLight.textSec, fontWeight: 500 }}>
-        {none ? 'No views yet' : `${stats.views} views · ${stats.enq} enq.`}{scans ? ` · ${scans} scan${scans === 1 ? '' : 's'}` : ''}
-      </span>
-    );
-  }
-  return (
-    <div title="Last 30 days. Views count only buyers who allowed analytics, so the real number is higher.">
-      <p style={{ fontSize: 13, color: none ? premiumLight.textMuted : premiumLight.text, fontWeight: 600, margin: 0 }}>{stats.views} views</p>
-      <p style={{ fontSize: 11, color: stats.enq ? premiumLight.up : premiumLight.textMuted, margin: '2px 0 0', fontWeight: stats.enq ? 600 : 400 }}>{stats.enq} enquir{stats.enq === 1 ? 'y' : 'ies'}</p>
-      {scans ? <p style={{ fontSize: 11, color: premiumLight.textSec, margin: '2px 0 0' }}>{scans} sticker scan{scans === 1 ? '' : 's'}</p> : null}
-    </div>
-  );
-}
 
 function SelectTick({ on }) {
   return (
@@ -9337,7 +9318,7 @@ export default function DashboardPage() {
       if (off || error) return; // a failed read keeps what is on the device
       const m = {};
       (data || []).forEach(r => {
-        m[r.car_id] = { views: Number(r.views) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
+        m[r.car_id] = { views: Number(r.views) || 0, wa: Number(r.whatsapp) || 0, calls: Number(r.calls) || 0, bookings: Number(r.bookings) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
       });
       setCarInterest(m);
     });
@@ -10608,7 +10589,7 @@ export default function DashboardPage() {
                       <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: `1px solid ${premiumLight.line}` }}>
-                            {['', 'Vehicle', 'Price', 'Interest (30d)', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
+                            {['', 'Vehicle', 'Price', 'Last 30 days', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ ...INV_MICRO, padding: '11px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
@@ -10794,7 +10775,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
                               {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
-                              <InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
+                              <div style={{ flexBasis: 'calc(100% + 92px)', margin: '4px 0 0 -92px' }}><InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} /></div>
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               {(() => {
                                 const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
