@@ -99,7 +99,7 @@ import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
-import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { isPremiumSalesman, linkedPremiumOptedIn } from "../utils/salesmanPlan";
 import PhoneInput from "../components/ui/PhoneInput";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import {
@@ -721,6 +721,12 @@ export default function SalesmanPanel() {
  // one account never sees both surfaces.
  if (!profileData.dealer_id) {
  navigate(isPremiumSalesman(profileData) ? '/salesman-premium' : '/salesman-lite', { replace: true });
+ return;
+ }
+ // LINKED-PREMIUM: a device that opted in (/salesman?linked=1 or /salesman-premium?linked=1)
+ // gets the new Premium panel; it stays opted in until ?linked=0.
+ if (linkedPremiumOptedIn() && isPremiumSalesman(profileData)) {
+ navigate('/salesman-premium', { replace: true });
  return;
  }
 
