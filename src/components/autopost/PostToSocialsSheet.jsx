@@ -8,7 +8,7 @@
 // a text that passes here passes there. The seller can edit every text before sending.
 //
 // Zernio cannot edit a published post, so afterwards the only controls are "Open post" and
-// (Facebook, Threads) "Take it down". Instagram / TikTok posts cannot be removed through it.
+// (Facebook, Threads) "Take it down", here and in the Recent tab (the last 30 days of this login's posts). Instagram / TikTok posts cannot be removed through it.
 //
 // Portalled to document.body with body scroll locked and Back wired (overlay rules 1, 2, 5).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -40,6 +40,11 @@ const SERVER_ERRORS = {
   not_configured: 'The Zernio key is not set on the server yet.',
   network: 'Could not reach the server. Try again.',
   unknown_action: 'The server does not know this action. Redeploy the function.',
+  daily_limit: 'You have reached today\'s limit of 10 posts. Try again tomorrow.',
+  already_posted: 'This car is already posted there in the last 24 hours. Take that post down first (Recent tab) if you want to post it again.',
+  post_not_found: 'That post is not on your account, or it is older than 30 days.',
+  not_published: 'That post is not live on this network, so there is nothing to take down.',
+  not_a_draft: 'Only a draft can be deleted here.',
 };
 const explain = (e) => (e?.message && e.error === 'text_rejected') ? e.message
   : (e?.error === 'zernio_failed' ? `Zernio said no${e.message ? `: ${e.message}` : ` (${e.status || 'error'})`}.` : SERVER_ERRORS[e?.error] || 'Something went wrong. Nothing was posted.');
@@ -47,6 +52,108 @@ const explain = (e) => (e?.message && e.error === 'text_rejected') ? e.message
 const isDone = (s) => ['published', 'failed', 'error', 'removed', 'cancelled'].includes(String(s || '').toLowerCase());
 const isGood = (s) => String(s || '').toLowerCase() === 'published';
 const isBad = (s) => ['failed', 'error'].includes(String(s || '').toLowerCase());
+
+function ago(iso) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+// "Recent" tab: the posts THIS login sent in the last 30 days (the server finds them by a
+// tag on every post, so nothing is stored on our side). Take it down asks twice; a draft can
+// be deleted; Instagram posts can only be opened.
+function RecentPosts({ font, ghost }) {
+  const [rows, setRows] = useState(null);
+  const [limit, setLimit] = useState(10);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState('');
+  const [ask, setAsk] = useState('');
+  const load = useCallback(async () => {
+    setErr('');
+    const { data, err: e } = await callZernioPost({ action: 'recent' });
+    if (e) { setErr(explain(e)); setRows((r) => r || []); return; }
+    setRows(data.posts || []); setLimit(data.day_limit || 10);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (key, body, after) => {
+    setBusy(key); setErr(''); setAsk('');
+    const { err: e } = await callZernioPost(body);
+    setBusy('');
+    if (e) { setErr(explain(e)); return; }
+    after();
+  };
+  const markRemoved = (id, platform) => setRows((rs) => rs.map((r) => (r.post_id !== id ? r
+    : { ...r, platforms: r.platforms.map((p) => (p.platform === platform ? { ...p, status: 'removed', url: null } : p)) })));
+
+  if (rows === null) return <p style={{ color: P.textSec, fontSize: 14 }}>Loading your posts...</p>;
+  const today = rows.filter((r) => r.status !== 'draft' && Date.now() - new Date(r.when).getTime() < 86400000).length;
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: P.textMuted, margin: '2px 0 10px' }}>
+        Posts you sent in the last 30 days. {today} of {limit} used in the last 24 hours.
+      </div>
+      {rows.length === 0 && !err && <p style={{ color: P.textSec, fontSize: 14 }}>Nothing posted yet.</p>}
+      {rows.map((r) => (
+        <div key={r.post_id} style={{ background: P.raised, borderRadius: P.radius.row, padding: 14, marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title || 'Car post'}</div>
+          <div style={{ fontSize: 12.5, color: P.textMuted, marginBottom: 8 }}>{ago(r.when)}{r.status === 'draft' ? ' · Draft, not published' : ''}</div>
+          {r.platforms.map((p) => {
+            const meta = NETWORK[p.platform] || { label: p.platform, canTakeDown: false };
+            const st = String(p.status || 'pending').toLowerCase();
+            const key = `${r.post_id}:${p.platform}`;
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{meta.label}</div>
+                  <div style={{ fontSize: 12.5, color: isGood(st) ? P.up : isBad(st) ? P.accentText : P.textSec }}>
+                    {r.status === 'draft' ? 'Draft' : isGood(st) ? 'Published' : isBad(st) ? 'Failed' : st === 'removed' ? 'Taken down' : 'Publishing...'}
+                  </div>
+                </div>
+                {p.url && isGood(st) && (
+                  <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ ...ghost, height: 34, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13 }}>
+                    Open <ExternalLink size={13} />
+                  </a>
+                )}
+                {(isGood(st) && meta.canTakeDown) && (
+                  <div style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {ask !== key && busy !== key && (
+                      <button onClick={() => setAsk(key)} disabled={!!busy} style={{ ...ghost, height: 34, fontSize: 13 }}>Take it down</button>
+                    )}
+                    {ask === key && (
+                      <>
+                        <span style={{ fontSize: 12.5, color: P.textSec, flex: '1 1 100%' }}>Remove this post from {meta.label}?</span>
+                        <button onClick={() => setAsk('')} style={{ ...ghost, height: 34, fontSize: 13 }}>No</button>
+                        <button className="lk-red" onClick={() => act(key, { action: 'takedown', post_id: r.post_id, platform: p.platform }, () => markRemoved(r.post_id, p.platform))}
+                          style={{ height: 34, padding: '0 14px', borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Yes, remove</button>
+                      </>
+                    )}
+                    {busy === key && <span style={{ fontSize: 12.5, color: P.textSec }}>Removing...</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {r.status === 'draft' && (
+            <button onClick={() => act(r.post_id, { action: 'discard', post_id: r.post_id }, () => setRows((rs) => rs.filter((x) => x.post_id !== r.post_id)))}
+              disabled={!!busy} style={{ ...ghost, height: 34, fontSize: 13, marginTop: 4 }}>{busy === r.post_id ? 'Deleting...' : 'Delete draft'}</button>
+          )}
+          {r.platforms.some((p) => p.platform === 'instagram') && (
+            <div style={{ fontSize: 12, color: P.textMuted, marginTop: 4 }}>Instagram posts can only be removed in Instagram.</div>
+          )}
+        </div>
+      ))}
+      {err && <div role="alert" style={{ marginTop: 6, padding: '10px 12px', borderRadius: P.radius.row, background: P.raised, color: P.accentText, fontSize: 13.5 }}>{err}</div>}
+      <button onClick={load} style={{ ...ghost, height: 34, fontSize: 13, marginTop: 4 }}>Refresh</button>
+    </div>
+  );
+}
 
 // A text box that grows to show ALL its text (max 340px, then it scrolls): the car's link is
 // the last line, and a box that hides it hides the one thing the seller must keep.
@@ -80,6 +187,8 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
   const [picked, setPicked] = useState(() => Object.fromEntries(networks.map((n) => [n.platform, true])));
   const [texts, setTexts] = useState(() => Object.fromEntries(networks.map((n) => [n.platform, built[n.platform].text])));
   const [phase, setPhase] = useState('edit'); // edit | confirm | sending | result
+  const [tab, setTab] = useState('new'); // new | recent
+  const showNew = tab === 'new';
   const [error, setError] = useState('');
   const [result, setResult] = useState(null); // { post_id, platforms[], draft }
   const [busy, setBusy] = useState('');
@@ -156,12 +265,20 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
           </button>
         </div>
 
+        {phase !== 'sending' && phase !== 'result' && (
+          <div style={{ display: 'flex', gap: 8, padding: '0 18px 8px' }}>
+            <button type="button" onClick={() => setTab('new')} aria-pressed={showNew} style={pill(showNew)}>New post</button>
+            <button type="button" onClick={() => setTab('recent')} aria-pressed={!showNew} style={pill(!showNew)}>Recent</button>
+          </div>
+        )}
+
         <div style={{ overflowY: 'auto', padding: '4px 18px 12px', flex: 1, minHeight: 0 }}>
-          {phase !== 'result' && networks.length === 0 && (
+          {!showNew && <RecentPosts font={font} ghost={ghost} />}
+          {showNew && phase !== 'result' && networks.length === 0 && (
             <p style={{ color: P.textSec, fontSize: 14 }}>No social account is connected yet.</p>
           )}
 
-          {phase !== 'result' && networks.map((n) => {
+          {showNew && phase !== 'result' && networks.map((n) => {
             const b = built[n.platform];
             const text = texts[n.platform];
             const count = Array.from(text).length;
@@ -245,7 +362,8 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
         </div>
 
         <div style={{ padding: '10px 18px calc(14px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {phase === 'edit' && (
+          {!showNew && <button onClick={onClose} style={{ ...ghost, height: 46 }}>Done</button>}
+          {showNew && phase === 'edit' && (
             <>
               <button className="lk-red" onClick={() => setPhase('confirm')} disabled={!allValid}
                 style={{ height: 48, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: allValid ? 'pointer' : 'not-allowed', opacity: allValid ? 1 : 0.45, fontFamily: font }}>
@@ -256,7 +374,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
               </button>
             </>
           )}
-          {phase === 'confirm' && (
+          {showNew && phase === 'confirm' && (
             <>
               <div style={{ fontSize: 14, lineHeight: 1.45, color: P.text }}>
                 This goes <b>public right now</b> on {chosen.map((n) => `${NETWORK[n.platform].label} (${n.name})`).join(' and ')}.

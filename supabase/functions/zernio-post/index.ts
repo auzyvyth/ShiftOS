@@ -19,6 +19,11 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 //   check {post_id}                     per-network status + link of a post
 //   takedown {post_id, platform}        Facebook / Threads only (Zernio cannot remove
 //                                       an Instagram or TikTok post)
+//   recent                              this login's posts of the last 30 days (max 20)
+//   discard {post_id}                   delete a DRAFT (never a published post)
+// Limits (no DB table: counted from Zernio itself, by a tag put on every post we send):
+//   10 live posts per login per 24h; a car goes to a network once per 24h (unless taken
+//   down); check / takedown / discard only touch posts THIS login sent, within 30 days.
 // Zernio cannot edit a published post, so there is no "update".
 
 const ZERNIO = "https://zernio.com/api/v1";
@@ -26,6 +31,9 @@ const SITE_URL = "https://drevo.my";
 const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram"]; // TikTok needs its consent flow: not yet
 const TAKEDOWN_PLATFORMS = ["facebook", "threads"];
 const MAX_PHOTOS = 8;
+const DAY_LIMIT = 10;                 // live posts per login per 24h
+const RECENT_DAYS = 30;               // history shown, and how old a post may be taken down
+const RECENT_MAX = 20;
 const PUBLIC_PHOTO = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/car-images\//;
 
 function json(data: unknown, status = 200, origin: string | null = null) {
@@ -71,6 +79,39 @@ function shape(post: any) {
   };
 }
 
+// Every post we send carries this tag, so a login's posts can be found again without a table.
+// A hash, not the user id: the tag is visible inside the owner's Zernio dashboard.
+async function ownerTag(uid: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("drevo-autopost:" + uid));
+  return "u-" + Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
+}
+
+// Mine = carries my tag, or (posts sent before tagging existed) our autopost link with my slug.
+function isMine(post: any, tag: string, slug: string | null) {
+  if (Array.isArray(post?.tags) && post.tags.includes(tag)) return true;
+  const c = String(post?.content || "");
+  return !!slug && c.includes("src=autopost") && c.includes(`ref=${slug}`);
+}
+
+const LIVE_STATES = ["published", "pending", "scheduled", "publishing", "partial"];
+
+function row(post: any) {
+  const c = String(post?.content || "");
+  return {
+    post_id: post._id,
+    when: post.scheduledFor || post.createdAt || null,
+    status: post.status,
+    title: c.split("\n")[0].slice(0, 80),
+    slug: (c.match(/\/showroom\/([^?\s]+)/) || [])[1] || null,
+    platforms: (post.platforms || []).map((p: any) => ({
+      platform: p.platform,
+      status: p.status,
+      url: p.platformPostUrl || p.postUrl || p.url || null,
+      error: p.errorMessage || p.error || null,
+    })),
+  };
+}
+
 serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
@@ -100,6 +141,29 @@ serve(async (req) => {
     if (!allowed) return json({ error: "forbidden" }, 403, origin);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const tag = await ownerTag(user.id);
+    const { data: me } = await admin.from("profiles").select("slug").eq("id", user.id).maybeSingle();
+    const slug: string | null = me?.slug || null;
+
+    // This login's posts of the last 30 days, newest first.
+    const listMine = async () => {
+      const r = await zernio("GET", "/posts?limit=100&fields=content,platforms,status,tags,scheduledFor,createdAt");
+      if (!r.ok) throw new Error("zernio_posts_" + r.status);
+      const since = Date.now() - RECENT_DAYS * 86400000;
+      return (r.data?.posts || [])
+        .filter((p: any) => isMine(p, tag, slug) && new Date(p.scheduledFor || p.createdAt || 0).getTime() >= since)
+        .map(row)
+        .sort((a: any, b: any) => String(b.when).localeCompare(String(a.when)))
+        .slice(0, RECENT_MAX);
+    };
+    // One post, only if it is mine and inside the window. Anything else reads as "not found".
+    const getMine = async (id: string) => {
+      const r = await zernio("GET", `/posts/${id}`);
+      const post = r.data?.post;
+      if (!r.ok || !post || !isMine(post, tag, slug)) return null;
+      if (Date.now() - new Date(post.scheduledFor || post.createdAt || 0).getTime() > RECENT_DAYS * 86400000) return null;
+      return post;
+    };
 
     // Which networks are connected (no avatars, ids or tokens leave this function except
     // the account id the next call needs).
@@ -176,9 +240,20 @@ serve(async (req) => {
       }
 
       const draft = body.draft === true;
+      if (!draft) {
+        const mine = await listMine();
+        const dayAgo = Date.now() - 86400000;
+        const recentLive = mine.filter((p: any) => p.status !== "draft" && new Date(p.when).getTime() >= dayAgo);
+        if (recentLive.length >= DAY_LIMIT) return json({ error: "daily_limit", limit: DAY_LIMIT }, 429, origin);
+        for (const it of items) {
+          const dup = recentLive.find((p: any) => p.slug === car.slug && p.platforms.some((x: any) => x.platform === it.platform && LIVE_STATES.includes(String(x.status).toLowerCase())));
+          if (dup) return json({ error: "already_posted", platform: it.platform }, 409, origin);
+        }
+      }
       const payload: Record<string, unknown> = {
         content: items[0].text,
         timezone: "Asia/Kuala_Lumpur",
+        tags: [tag],
         platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.text })),
         mediaItems: photos.map((url: string) => ({ type: "image", url })),
         ...(draft ? { isDraft: true } : { publishNow: true }),
@@ -194,9 +269,9 @@ serve(async (req) => {
     if (action === "check") {
       const id = String(body.post_id || "");
       if (!/^[a-f0-9]{24}$/i.test(id)) return json({ error: "bad_post" }, 400, origin);
-      const r = await zernio("GET", `/posts/${id}`);
-      if (!r.ok) return json({ error: "zernio_failed", status: r.status }, 502, origin);
-      return json({ ok: true, ...shape(r.data?.post) }, 200, origin);
+      const post = await getMine(id);
+      if (!post) return json({ error: "post_not_found" }, 404, origin);
+      return json({ ok: true, ...shape(post) }, 200, origin);
     }
 
     if (action === "takedown") {
@@ -204,9 +279,28 @@ serve(async (req) => {
       const platform = String(body.platform || "");
       if (!/^[a-f0-9]{24}$/i.test(id)) return json({ error: "bad_post" }, 400, origin);
       if (!TAKEDOWN_PLATFORMS.includes(platform)) return json({ error: "cannot_take_down", platform }, 400, origin);
+      const post = await getMine(id);
+      if (!post) return json({ error: "post_not_found" }, 404, origin);
+      const entry = (post.platforms || []).find((p: any) => p.platform === platform);
+      if (!entry || String(entry.status).toLowerCase() !== "published") return json({ error: "not_published", platform }, 409, origin);
       const acc = await loadAccounts();
       const r = await zernio("POST", `/posts/${id}/unpublish`, { platform, accountId: acc[platform]?.accountId });
       if (!r.ok) return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (action === "recent") {
+      return json({ ok: true, posts: await listMine(), day_limit: DAY_LIMIT }, 200, origin);
+    }
+
+    if (action === "discard") {
+      const id = String(body.post_id || "");
+      if (!/^[a-f0-9]{24}$/i.test(id)) return json({ error: "bad_post" }, 400, origin);
+      const post = await getMine(id);
+      if (!post) return json({ error: "post_not_found" }, 404, origin);
+      if (post.status !== "draft") return json({ error: "not_a_draft" }, 409, origin);
+      const r = await zernio("DELETE", `/posts/${id}`);
+      if (!r.ok) return json({ error: "zernio_failed", status: r.status }, 502, origin);
       return json({ ok: true }, 200, origin);
     }
 
