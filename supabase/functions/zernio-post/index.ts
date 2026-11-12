@@ -1,0 +1,214 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
+
+// Auto-post TEST rig (ZERNIO-1, 2026-11-12). Posts one of the caller's live cars to the
+// social accounts connected in the OWNER'S Zernio workspace. It is a prototype on purpose:
+//   - Every request uses ONE Zernio workspace (the owner's, free tier, 2 accounts).
+//   - So only user ids listed in the edge secret ZERNIO_TEST_USER_IDS may use it. Anyone
+//     else gets `allowed:false` from `status` and a 403 from everything else. Without this
+//     list ANY logged-in seller could post to the owner's Facebook Page.
+//   - Remove an id from the secret = switched off for that person, no deploy needed.
+// The real version (one Zernio profile per seller, accounts in a table, posting from the
+// database) is in docs/DREVO_ACTION_PLAN.md. The key never leaves this function.
+//
+// Actions (POST body `{action, ...}`):
+//   status                              who am I allowed, which accounts are connected
+//   publish {listing_id, items[], draft} items = [{platform, text, title?}]
+//   check {post_id}                     per-network status + link of a post
+//   takedown {post_id, platform}        Facebook / Threads only (Zernio cannot remove
+//                                       an Instagram or TikTok post)
+// Zernio cannot edit a published post, so there is no "update".
+
+const ZERNIO = "https://zernio.com/api/v1";
+const SITE_URL = "https://drevo.my";
+const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram"]; // TikTok needs its consent flow: not yet
+const TAKEDOWN_PLATFORMS = ["facebook", "threads"];
+const MAX_PHOTOS = 8;
+const PUBLIC_PHOTO = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/car-images\//;
+
+function json(data: unknown, status = 200, origin: string | null = null) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+  });
+}
+
+async function zernio(method: string, path: string, body?: unknown) {
+  const key = Deno.env.get("ZERNIO_API_KEY");
+  if (!key) throw new Error("zernio_key_missing");
+  const res = await fetch(ZERNIO + path, {
+    method,
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(25000),
+  });
+  const text = await res.text();
+  let data: any = null;
+  try { data = JSON.parse(text); } catch { /* not json */ }
+  return { ok: res.ok, status: res.status, data };
+}
+
+// Zernio reads media by URL. Our car photos can be WebP (see-through cut-outs), which
+// Zernio does not take (JPEG, PNG, GIF only), so each one goes through the same free
+// resizer the site uses, asked for JPEG on a grey studio background.
+function jpegUrl(url: string) {
+  const stripped = url.replace(/^https?:\/\//, "");
+  return `https://wsrv.nl/?url=${encodeURIComponent("ssl:" + stripped)}&w=1600&q=85&output=jpg&bg=e5e7eb&we`;
+}
+
+function shape(post: any) {
+  return {
+    post_id: post?._id,
+    status: post?.status,
+    platforms: (post?.platforms || []).map((p: any) => ({
+      platform: p.platform,
+      status: p.status,
+      url: p.platformPostUrl || p.postUrl || p.url || null,
+      error: p.errorMessage || p.error || null,
+    })),
+  };
+}
+
+serve(async (req) => {
+  const origin = req.headers.get("Origin");
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "unauthorized" }, 401, origin);
+    const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const { data: { user }, error: authErr } = await anon.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authErr || !user) return json({ error: "unauthorized" }, 401, origin);
+
+    const allow = (Deno.env.get("ZERNIO_TEST_USER_IDS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const allowed = allow.includes(user.id);
+
+    let body: any = {};
+    try { body = await req.json(); } catch { /* empty */ }
+    const action = String(body.action || "");
+
+    // `status` answers politely for everyone so the app can hide the button.
+    if (action === "status" && !allowed) return json({ allowed: false }, 200, origin);
+    if (!allowed) return json({ error: "forbidden" }, 403, origin);
+
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Which networks are connected (no avatars, ids or tokens leave this function except
+    // the account id the next call needs).
+    const loadAccounts = async () => {
+      const r = await zernio("GET", "/accounts");
+      if (!r.ok) throw new Error("zernio_accounts_" + r.status);
+      const out: Record<string, { accountId: string; name: string }> = {};
+      for (const a of r.data?.accounts || []) {
+        if (a.isActive === false || out[a.platform]) continue;
+        out[a.platform] = { accountId: a._id, name: a.displayName || a.username || a.platform };
+      }
+      return out;
+    };
+
+    if (action === "status") {
+      const acc = await loadAccounts();
+      return json({
+        allowed: true,
+        accounts: PUBLISH_PLATFORMS.filter((p) => acc[p]).map((p) => ({ platform: p, name: acc[p].name })),
+      }, 200, origin);
+    }
+
+    if (action === "publish") {
+      const items = Array.isArray(body.items) ? body.items : [];
+      if (!items.length || items.length > PUBLISH_PLATFORMS.length) return json({ error: "bad_items" }, 400, origin);
+      const seen = new Set<string>();
+      for (const it of items) {
+        if (!PUBLISH_PLATFORMS.includes(it?.platform) || seen.has(it.platform)) return json({ error: "bad_platform" }, 400, origin);
+        seen.add(it.platform);
+        const v = validateText(it.platform, it.text, {});
+        if (!v.ok) return json({ error: "text_rejected", platform: it.platform, errors: v.errors, message: v.errors.map((e: string) => (ERROR_TEXT as any)[e] || e).join(" ") }, 422, origin);
+      }
+
+      // The car must be the caller's own and live right now. Never trust the client's copy.
+      const { data: car } = await admin
+        .from("car_listings")
+        .select("id, slug, status, dealer_id, images, new_car_model_id")
+        .eq("id", String(body.listing_id || ""))
+        .eq("dealer_id", user.id)
+        .maybeSingle();
+      if (!car) return json({ error: "car_not_found" }, 404, origin);
+      if (car.status !== "available" || car.new_car_model_id) return json({ error: "car_not_live" }, 409, origin);
+
+      const originals: string[] = (Array.isArray(car.images) ? car.images : [])
+        .filter((u: unknown) => typeof u === "string" && PUBLIC_PHOTO.test(u as string))
+        .slice(0, MAX_PHOTOS);
+      // Ask the resizer for JPEGs; if its first answer is not a JPEG (service down), fall
+      // back to the originals minus WebP, which Zernio would refuse.
+      let photos = originals.map(jpegUrl);
+      if (photos.length) {
+        let good = false;
+        try {
+          const probe = await fetch(photos[0], { signal: AbortSignal.timeout(12000) });
+          good = probe.ok && (probe.headers.get("content-type") || "").includes("image/jpeg");
+          await probe.body?.cancel();
+        } catch { /* fall through */ }
+        if (!good) photos = originals.filter((u) => !/\.webp(\?|$)/i.test(u));
+      }
+
+      const acc = await loadAccounts();
+      for (const it of items) {
+        if (!acc[it.platform]) return json({ error: "not_connected", platform: it.platform }, 409, origin);
+        if (it.platform === "instagram" && !photos.length) return json({ error: "needs_photo", platform: it.platform }, 409, origin);
+      }
+
+      // The text must carry THIS car's link: a seller cannot post a link to somewhere else
+      // (Facebook and Threads only; Instagram says "link in bio").
+      for (const it of items) {
+        if (it.platform !== "instagram" && !String(it.text).includes(`${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`)) {
+          return json({ error: "link_missing", platform: it.platform }, 422, origin);
+        }
+        const urls = String(it.text).match(/https?:\/\/\S+/g) || [];
+        if (urls.some((u) => !u.startsWith(SITE_URL + "/"))) return json({ error: "foreign_link", platform: it.platform }, 422, origin);
+      }
+
+      const draft = body.draft === true;
+      const payload: Record<string, unknown> = {
+        content: items[0].text,
+        timezone: "Asia/Kuala_Lumpur",
+        platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.text })),
+        mediaItems: photos.map((url: string) => ({ type: "image", url })),
+        ...(draft ? { isDraft: true } : { publishNow: true }),
+      };
+      const r = await zernio("POST", "/posts", payload);
+      if (!r.ok) {
+        console.error("zernio publish failed", r.status, JSON.stringify(r.data).slice(0, 300));
+        return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);
+      }
+      return json({ ok: true, ...shape(r.data?.post) }, 200, origin);
+    }
+
+    if (action === "check") {
+      const id = String(body.post_id || "");
+      if (!/^[a-f0-9]{24}$/i.test(id)) return json({ error: "bad_post" }, 400, origin);
+      const r = await zernio("GET", `/posts/${id}`);
+      if (!r.ok) return json({ error: "zernio_failed", status: r.status }, 502, origin);
+      return json({ ok: true, ...shape(r.data?.post) }, 200, origin);
+    }
+
+    if (action === "takedown") {
+      const id = String(body.post_id || "");
+      const platform = String(body.platform || "");
+      if (!/^[a-f0-9]{24}$/i.test(id)) return json({ error: "bad_post" }, 400, origin);
+      if (!TAKEDOWN_PLATFORMS.includes(platform)) return json({ error: "cannot_take_down", platform }, 400, origin);
+      const acc = await loadAccounts();
+      const r = await zernio("POST", `/posts/${id}/unpublish`, { platform, accountId: acc[platform]?.accountId });
+      if (!r.ok) return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);
+      return json({ ok: true }, 200, origin);
+    }
+
+    return json({ error: "unknown_action" }, 400, origin);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("zernio-post error", msg);
+    return json({ error: msg === "zernio_key_missing" ? "not_configured" : "server_error" }, 500, origin);
+  }
+});
