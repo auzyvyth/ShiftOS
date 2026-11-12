@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { TURNSTILE_SITE_KEY, loadTurnstileScript } from '../utils/turnstileScript';
+import { STAGING_HOST } from '../config/site';
 
 // ── AUTH-6 / ACT-10: proof-of-human on every Supabase auth call ──────────────
 //
@@ -90,6 +91,10 @@ export function captchaErrorMessage() {
     return `Sign-in can't be verified on ${host} — this build has no Turnstile site key (VITE_TURNSTILE_SITE_KEY). Use drevo.my.`;
   }
   if (lastErrorCode === '110200') {
+    // A one-off preview address (a new one per push): send the tester to the fixed one.
+    if (host.endsWith('.vercel.app') && host !== STAGING_HOST) {
+      return `Sign-in can't run on this one-off preview address. Open ${STAGING_HOST}/login instead: it always shows the latest staging build.`;
+    }
     return `Sign-in is blocked on ${host} — this address isn't on the Turnstile domain list, so the check can't run (not an ad blocker). Use drevo.my, or add this hostname to the widget in Cloudflare.`;
   }
   if (lastErrorCode && lastErrorCode.startsWith('1101')) {

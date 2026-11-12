@@ -15,6 +15,12 @@
 export const ROOT_DOMAIN = "drevo.my";
 export const SITE_URL = `https://${ROOT_DOMAIN}`;
 
+// The staging preview's FIXED address (Vercel's branch alias for `staging`). Every push also
+// gets a random one-off address (shift-<random>-shift-os.vercel.app); sign-in cannot work on
+// those, because Cloudflare Turnstile only runs on hostnames listed on the widget. List THIS
+// one once in Cloudflare and always test staging here.
+export const STAGING_HOST = "shift-os-git-staging-shift-os.vercel.app";
+
 // Every domain we serve (or redirect) from. ROOT_DOMAIN first.
 export const OWN_DOMAINS = [...new Set([ROOT_DOMAIN, "drevo.my", "xdrive.my"])];
 

@@ -800,6 +800,10 @@ local (main) → staging branch → production (main on GitHub)
 ```
 - **local main**: all development happens here, commits stay local until staged
 - **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **Test staging on its FIXED address, `shift-os-git-staging-shift-os.vercel.app`** (`STAGING_HOST`,
+  `src/config/site.js`), never the per-push `shift-<random>-shift-os.vercel.app`: sign-in needs
+  Cloudflare Turnstile, which only runs on hostnames listed on the widget (error 110200 otherwise),
+  and only the fixed one can be listed once (owner, 2026-11-12).
 - **Before EVERY force-push to staging, `git fetch origin staging` and run
   `git log --oneline HEAD..origin/staging`.** Any commit listed is someone else's
   unshipped work (another session builds on the same staging) and a force-push deletes it
