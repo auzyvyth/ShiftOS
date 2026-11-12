@@ -356,12 +356,12 @@ html:has(.modal-overlay) {
    Uploads keep transparency only for these, and only these are stored as .webp
    or .png (src/utils/compressImage.js: every other photo becomes .jpg), so the
    file name finds them in both the raw storage URL and the resized wsrv URL.
-   Without this a cut-out sits on whatever is behind it: a white car vanishes in
-   the Live presenter's white photo box, a black car in its dark full view and
-   the dark seller panels. A mid-grey studio wall-and-floor backdrop: dark enough that a white car
-   shows, light enough for a black one.
+   Without this a cut-out sits on whatever is behind it (black in the Live
+   presenter's full view and the car page's dark photo frame). WHITE, owner
+   2026-11-12 (was a studio grey). The frames that hold a photo also turn white
+   for one (isSeeThroughPhoto, src/utils/img.js), for photos hosted elsewhere.
    Opaque photos are untouched (no rule matches .jpg). */
 img[src*="car-images"][src*=".webp"],
 img[src*="car-images"][src*=".png"] {
-  background: linear-gradient(180deg, #e4e7eb 0%, #d3d7dc 60%, #bfc4ca 100%);
+  background: #fff;
 }

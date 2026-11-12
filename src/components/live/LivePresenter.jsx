@@ -22,7 +22,7 @@ import { ACCENT_PRESETS, DEFAULT_ACCENT, accentTheme, initialLiveAccent, saveLiv
 import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
-import { cdnImg, imgFallback } from '../../utils/img';
+import { cdnImg, imgFallback, isSeeThroughPhoto } from '../../utils/img';
 import { SITE_URL } from '../../config/site';
 import { runInviteShare } from '../referral/InviteStrip';
 
@@ -2034,7 +2034,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <span>#{idx + 1} {carLabel(shown)}</span>
             <button type="button" className="lp-iconbtn" onClick={() => setPhotoFull(false)} aria-label={t.closePhoto}><X size={18} /></button>
           </div>
-          <div className="lp-full-img">
+          <div className="lp-full-img" style={isSeeThroughPhoto(images[imgIdx]) ? { background: '#fff' } : undefined}>
             <img key={images[imgIdx]} src={photoUrl(images[imgIdx])} alt={carLabel(shown)}
               decoding="async" onError={imgFallback(images[imgIdx])} />
             {images.length > 1 && (<>
