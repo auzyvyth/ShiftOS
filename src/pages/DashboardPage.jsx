@@ -122,11 +122,11 @@ import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import PhoneInput from "../components/ui/PhoneInput";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
+import CarDetailsPanel, { CarSheetTabs } from "../components/inventory/CarDetailsPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
-import DamageMap from "../components/DamageMap";
 import PushPromptStrip from "../components/chat/PushPromptStrip";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
@@ -192,13 +192,9 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronDown,
-  Palette,
   Inbox,
   Gauge,
-  Droplets,
-  MapPin,
   ChevronLeft,
-  ZoomIn,
   Calculator,
   Bell,
   Package,
@@ -5485,14 +5481,6 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 }
 
 // ─── Helpers shared by ListingDetailDrawer ────────────────────────────────────
-function parseTags(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
-}
-
-const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
-
 // Listings row: counted views + enquiry taps (WhatsApp, call, booking), last 30 days.
 // null = still loading: a placeholder, never a 0.
 function InterestCell({ stats, compact, scans }) {
@@ -5550,16 +5538,7 @@ function ListingDetailDrawer({
   }, []);
   const images = Array.isArray(listing.images) && listing.images.length > 0 ? listing.images : ['/placeholder-car.jpg'];
   const sp = listing.selling_price || listing.price || 0;
-  const op = listing.original_price || listing.previous_price || null;
-  const saving = op && op > sp ? op - sp : 0;
   const monthly = calcMonthly(sp);
-  const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
-  const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
-  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#93c5fd' }[listing.interior_grade] || '#9ca3af';
-  let damageMap = [];
-  try { if (listing.damage_map) damageMap = typeof listing.damage_map === 'string' ? JSON.parse(listing.damage_map) : listing.damage_map; } catch {}
-  const features = parseTags(listing.features);
-  const options  = parseTags(listing.options);
   const isSold   = listing.status === 'sold';
   const age      = getListingAge(listing.created_at);
   const sCfg = ({ available: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'available'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
@@ -5571,19 +5550,7 @@ function ListingDetailDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [lbOpen, onClose]);
 
-  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
-  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
-
   const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "system-ui, sans-serif", color: '#374151' };
-
-  const specRows = [
-    { k: 'Year',              v: listing.year || '—' },
-    { k: 'Registration Date', v: listing.registration_date || '—' },
-    { k: 'VIN',               v: listing.vin_number || '—' },
-    { k: 'Condition',         v: listing.condition || '—' },
-    { k: 'Chassis Status',    v: listing.chassis_status || '—', dot: true },
-    { k: 'Location',          v: [listing.city, listing.state].filter(Boolean).join(', ') || '—' },
-  ];
 
   return (
     <>
@@ -5610,19 +5577,13 @@ function ListingDetailDrawer({
             {/* LEFT */}
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
-              {/* Public ↔ Owner toggle (like the Sold/Available switch) */}
+              {/* One pop-up, three buttons (owner, 2026-11-12): Details | Owner | Analytics. Owner needs view_cost. */}
               {canViewCosts && (
-                <div style={{ display: 'flex', gap: 6, background: '#f3f4f6', borderRadius: 10, padding: 4, marginBottom: 16 }}>
-                  {[['public', 'Public Details'], ['owner', 'Owner · P&L']].map(([key, label]) => {
-                    const on = key === 'owner' ? drawerTab === 'owner' : drawerTab !== 'owner';
-                    return (
-                      <button key={key} onClick={() => setDrawerTab(key === 'owner' ? 'owner' : 'specs')}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "system-ui,sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <CarSheetTabs
+                  tabs={[{ id: 'specs', label: 'Details' }, { id: 'owner', label: 'Owner · P&L' }]}
+                  value={drawerTab === 'owner' ? 'owner' : 'specs'}
+                  onChange={setDrawerTab}
+                />
               )}
 
               {drawerTab === 'owner' && canViewCosts ? (
@@ -5634,178 +5595,11 @@ function ListingDetailDrawer({
                   onMarkSold={() => setMarkSoldListing(listing)}
                 />
               ) : (
-              <>
-              {/* Gallery */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Thumb strip */}
-                <div style={{ width: 64, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: isMobile ? 200 : 320, overflowY: 'auto' }}>
-                  {images.map((img, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#f3f4f6', border: i === imgIdx ? '1px solid #3b82f6' : '1px solid #e5e7eb', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
-                    </div>
-                  ))}
-                </div>
-                {/* Main image */}
-                <div style={{ flex: 1, position: 'relative', background: '#0f1117', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img
-                    src={images[imgIdx]}
-                    alt=""
-                    onClick={() => setLbOpen(true)}
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in', display: 'block' }}
-                  />
-                  {images.length > 1 && (
-                    <>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronLeft style={{ width: 14, height: 14 }} />
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronRight style={{ width: 14, height: 14 }} />
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => setLbOpen(true)} style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ZoomIn style={{ width: 13, height: 13 }} />
-                  </button>
-                  {images.length > 1 && (
-                    <span style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, color: '#fff', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 7px' }}>{imgIdx + 1} / {images.length}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Car header */}
-              <div style={{ marginTop: 20 }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.15em', margin: 0 }}>{listing.brand}</p>
-                <p style={{ fontSize: 22, fontWeight: 300, color: '#111827', margin: '4px 0 0', lineHeight: 1.2 }}>{listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: '6px 0 0' }}>
-                  {[listing.year, listing.body_type, listing.transmission, listing.fuel_type].filter(Boolean).join(' · ')}
-                </p>
-                {(listing.city || listing.state) && (
-                  <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <MapPin style={{ width: 11, height: 11 }} />
-                    {[listing.city, listing.state].filter(Boolean).join(', ')}
-                  </p>
-                )}
-              </div>
-
-              {/* Price row */}
-              <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#111827', margin: 0, lineHeight: 1 }}>RM {sp.toLocaleString()}</p>
-                {saving > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                    <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
-                  </div>
-                )}
-                {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · {DEFAULT_EIR}% EIR</p>}
-              </div>
-
-              {/* Specs strip */}
-              <div style={{ display: 'flex', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', margin: '16px 0', padding: '12px 0', gap: 0, overflowX: 'auto' }}>
-                {[
-                  { Icon: Gauge,    label: 'Mileage',       value: listing.mileage ? `${Number(listing.mileage).toLocaleString()} km` : '—' },
-                  { Icon: Settings, label: 'Engine',        value: listing.engine_cc ? `${Number(listing.engine_cc).toLocaleString()} cc` : '—' },
-                  { Icon: ChevronRight, label: 'Transmission', value: listing.transmission || '—' },
-                  { Icon: Droplets, label: 'Fuel',          value: listing.fuel_type || '—' },
-                  { Icon: Palette,  label: 'Colour',        value: listing.colour || '—' },
-                ].map(({ Icon, label, value }, i, arr) => (
-                  <div key={label} style={{ flex: '1 0 80px', textAlign: 'center', padding: '0 12px', borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <Icon style={{ width: 13, height: 13, color: '#6b7280', marginBottom: 4 }} />
-                    <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', marginBottom: 3 }}>{label}</p>
-                    <p style={{ fontSize: 13, color: '#111827' }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
-                {tabs.map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setDrawerTab(tab)}
-                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "system-ui, sans-serif", transition: 'color 0.15s' }}
-                  >
-                    {tabLabel[tab]}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab: Specifications */}
-              {drawerTab === 'specs' && (
-                <div>
-                  {specRows.map(({ k, v, dot }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
-                      <span style={{ fontSize: 13, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {dot && v !== '—' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />}
-                        {v}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Features */}
-              {drawerTab === 'features' && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {features.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No features listed.</p> : features.map((f, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{f}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Options */}
-              {drawerTab === 'options' && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {options.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No options listed.</p> : options.map((o, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{o}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Recon */}
-              {drawerTab === 'recon' && listing.is_recon && (
-                <div>
-                  {gradeMeta && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#f9fafb', border: `1px solid ${gradeMeta}25`, borderRadius: 6, padding: '10px 16px', marginBottom: 20 }}>
-                      <div>
-                        <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Ext. Grade</p>
-                        <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: gradeMeta, lineHeight: 1 }}>{listing.auction_grade}</p>
-                      </div>
-                      {listing.interior_grade && (
-                        <>
-                          <div style={{ width: 1, height: 40, background: '#e5e7eb' }} />
-                          <div>
-                            <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
-                            <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {[
-                    { k: 'Import Country', v: listing.import_country },
-                    { k: 'Auction House',  v: listing.auction_house },
-                    { k: 'Exterior Grade', v: listing.auction_grade },
-                    { k: 'Interior Grade', v: listing.interior_grade },
-                  ].filter(r => r.v).map(({ k, v }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
-                      <span style={{ fontSize: 13, color: '#9ca3af' }}>{v}</span>
-                    </div>
-                  ))}
-                  <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 20, marginBottom: 0 }}>Condition Map</p>
-                  {Array.isArray(damageMap) && damageMap.length > 0 ? (
-                    <div style={{ marginTop: 16 }}><DamageMap value={damageMap} readOnly theme="light" /></div>
-                  ) : (
-                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 10 }}>No damage marked on this car.</p>
-                  )}
-                </div>
-              )}
-              </>
+              <CarDetailsPanel
+                listing={listing} images={images} imgIdx={imgIdx} setImgIdx={setImgIdx}
+                onOpenLightbox={() => setLbOpen(true)} isMobile={isMobile}
+                monthlyText={monthly ? `Est. RM ${monthly.toLocaleString()}/mo · 90% loan · 7yr · ${DEFAULT_EIR}% EIR` : null}
+              />
               )}
             </div>
 
@@ -9233,7 +9027,7 @@ export default function DashboardPage() {
       const [{ data: cars, error: carsError }, { data: sm, error: smError }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
-          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
+          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at,acceleration,top_speed,boot_size,co2_emissions,safety_rating,insurance_group,geran_status,docs_verified,docs_verified_at")
           .eq("dealer_id", dealerId)
           .neq("status", "archived")
           .order("created_at", { ascending: false }),
