@@ -3042,6 +3042,14 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-35: AI-generated "one to one" photos for the new-car models (owner, 2026-11-12)** — the 13
+  Toyota/Honda models in `new_car_models` have 0 photos (`new_car_model_media`); idea is to generate
+  them with AI instead of sourcing real ones. Why it is parked, not built: the owner's own worry is
+  that AI makes an off-brand car (wrong grille, badge, lamps, wheels per trim), and a price list
+  shows a car AS the variant being sold. CUTOUT-1 already rules AI out of drawing the car. Rights
+  rule for any photo: owner took it or has the brand's written permission. Safer routes: ask Honda
+  Malaysia / UMW Toyota marketing for press images in writing, or shoot in a showroom. If tried
+  anyway: one model, side by side with an official photo, reject on any badge/grille/lamp/wheel miss.
 - **IDEA-34: A "Pro" tier above Premium, with Post to socials in it (owner, 2026-11-12)** — Post to
   socials (ZERNIO-1, Zernio) goes in a new Pro tier, not Premium. Why: Zernio charges per connected
   account across the whole team (2 free, then $6 each for 3-10, $3 each for 11-100, card required),

@@ -11,6 +11,15 @@ export function cdnImg(url, w = 1280, q = 70) {
   return `https://wsrv.nl/?url=${encodeURIComponent('ssl:' + stripped)}&w=${w}&q=${q}&output=webp&we`;
 }
 
+// A see-through photo (a cut-out): only these are stored as .png / .webp
+// (src/utils/compressImage.js turns every opaque photo into .jpg). Pass the
+// ORIGINAL storage URL, not the cdnImg one. Frames that hold such a photo paint
+// white behind it (owner, 2026-11-12), or it sits on the frame's dark colour.
+export function isSeeThroughPhoto(url) {
+  if (!url || typeof url !== 'string') return false;
+  return /\.(png|webp)$/i.test(url.split(/[?#]/)[0]);
+}
+
 // Responsive srcset for the same weserv resizer. A single fixed src (w=640)
 // over-fetches on phones — marketplace cards render ~180-380px CSS wide, so a
 // 640px image is ~1.8x oversized on a 2x mobile screen. Emitting a srcset lets
