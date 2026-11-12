@@ -1,4 +1,4 @@
--- NOT APPLIED YET: the owner declined it at 00:27 MYT on 2026-11-13. Apply only on their go-ahead, inside the 00:00-09:00 MYT window, nobody live.
+-- PARKED: the owner declined applying this at 00:27 MYT on 2026-11-13. Apply only on their go-ahead, after midnight MYT, nobody live.
 
 -- NEWCAR-4 (owner, 2026-11-12): a brand's sales advisor gets every model of their brand on
 -- their page automatically, never by hand. Signup already added them from the browser
