@@ -124,6 +124,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CarDetailsPanel, { CarSheetTabs } from "../components/inventory/CarDetailsPanel";
 import InterestCell from "../components/inventory/InterestCell";
+import CarAnalyticsPanel from "../components/inventory/CarAnalyticsPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
@@ -5559,13 +5560,11 @@ function ListingDetailDrawer({
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
               {/* One pop-up, three buttons (owner, 2026-11-12): Details | Owner | Analytics. Owner needs view_cost. */}
-              {canViewCosts && (
-                <CarSheetTabs
-                  tabs={[{ id: 'specs', label: 'Details' }, { id: 'owner', label: 'Owner · P&L' }]}
-                  value={drawerTab === 'owner' ? 'owner' : 'specs'}
-                  onChange={setDrawerTab}
-                />
-              )}
+              <CarSheetTabs
+                tabs={[{ id: 'specs', label: 'Details' }, ...(canViewCosts ? [{ id: 'owner', label: 'Owner · P&L' }] : []), { id: 'analytics', label: 'Analytics' }]}
+                value={drawerTab === 'owner' || drawerTab === 'analytics' ? drawerTab : 'specs'}
+                onChange={setDrawerTab}
+              />
 
               {drawerTab === 'owner' && canViewCosts ? (
                 <OwnerCarPanel
@@ -5575,6 +5574,8 @@ function ListingDetailDrawer({
                   statusUpdating={updatingStatus === listing.id}
                   onMarkSold={() => setMarkSoldListing(listing)}
                 />
+              ) : drawerTab === 'analytics' ? (
+                <CarAnalyticsPanel listing={listing} dealerId={getDealerIdFromProfile(profile)} />
               ) : (
               <CarDetailsPanel
                 listing={listing} images={images} imgIdx={imgIdx} setImgIdx={setImgIdx}
