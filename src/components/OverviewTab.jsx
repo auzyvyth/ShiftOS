@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
@@ -293,7 +294,21 @@ const EMPTY_SNAPSHOT = {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function OverviewTab({ dealerId, onNavigate }) {
+export default function OverviewTab({ dealerId, onNavigate, role, can }) {
+  // Owner and manager see the SAME numbers in a different order (src/config/dealerRoles.js).
+  // An owner can preview the manager's view; a manager cannot switch to the owner's.
+  const realView = overviewRoleFor(role);
+  const [preview, setPreview] = useState(null);
+  const viewKey = realView === 'owner' && preview ? preview : realView;
+  const view = OVERVIEW_ROLES[viewKey];
+  const previewing = viewKey !== realView;
+  // A previewed manager view hides what a manager would not see by default (their switches).
+  const allowed = (key) => {
+    const need = NEEDS[key];
+    if (!need) return true;
+    if (previewing) return true; // manager defaults have view_cost / view_gross ON
+    return can ? can(need) : true;
+  };
   // Keys end in the dealer id (per-account, and purged on logout via the
   // `cf:v1:` prefix in panelCache). ttlMs 0 = always refetch behind the paint.
   const { data: pnl } = useCachedFetch(
@@ -373,23 +388,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
     .sort((a, b) => (a.isActive !== b.isActive ? (a.isActive ? -1 : 1) : b.active - a.active));
   const onlineCount = teamRows.filter(r => r.isActive).length;
 
-  return (
-    <div style={{ fontFamily: "system-ui, sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
-          .ov-rev-stock  { grid-template-columns: 1fr !important; }
-          .ov-pipe-src   { grid-template-columns: 1fr !important; }
-          .ov-team-conv  { grid-template-columns: 1fr !important; }
-          .ov-attn-grid  { grid-template-columns: 1fr !important; }
-        }
-        @media (max-width: 480px) {
-          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
-          .ov-conv-table { font-size: 11px !important; }
-          .ov-conv-col-hide { display: none !important; }
-        }
-      `}</style>
-
+  const SECTIONS = {
+    alerts: (<>
       {/* ── Needs Attention strip ── */}
       {(() => {
         const alerts = [];
@@ -442,7 +442,10 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           label: `${snapshot.aptsToday} appointment${snapshot.aptsToday === 1 ? '' : 's'} today`,
           detail: 'check the bookings board', go: 'crm', query: { sub: 'bookings' },
         });
-        if (alerts.length === 0) return (
+        const shown = alerts
+          .filter((x) => view.alerts.includes(x.key) && allowed(x.key))
+          .sort((x, y) => view.alerts.indexOf(x.key) - view.alerts.indexOf(y.key));
+        if (shown.length === 0) return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 18px' }}>
             <CheckCircle2 style={{ width: 16, height: 16, color: PL.up }} />
             <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. Nothing needs you right now.</p>
@@ -450,7 +453,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         );
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-            {alerts.map(a => (
+            {shown.map(a => (
               <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go, a.query)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
@@ -467,14 +470,25 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         );
       })()}
 
+    </>),
+    kpis: (<>
       {/* ── KPI Row ── */}
       <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-        <KpiCard label="Open leads"       value={snapshot.activeLeads}    sub="active pipeline" />
-        <KpiCard label="Active listings"  value={snapshot.activeListings} sub={snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days'} />
-        <KpiCard label="Sold this month"  value={mtd.units ?? 0}          sub="vs last month" trend={unitTrend} />
-        <KpiCard label="Gross this month" value={fmt(mtd.gross_profit)}   sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'no sales yet'} trend={gpTrend} />
+        {view.kpis.filter(allowed).map((id) => {
+          const K = {
+            open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline' },
+            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days' },
+            sold_month:      { label: 'Sold this month',  value: mtd.units ?? 0, sub: 'vs last month', trend: unitTrend },
+            gross_month:     { label: 'Gross this month', value: fmt(mtd.gross_profit), sub: mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'no sales yet', trend: gpTrend },
+            appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
+            money_tied:      { label: 'Money tied up',    value: fmt(pnl?.inventory?.capital_tied), sub: 'buy + recon, cars in stock' },
+          }[id];
+          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} /> : null;
+        })}
       </div>
 
+    </>),
+    money: (<>
       {/* ── Revenue + Stock ── */}
       <div className="ov-rev-stock" style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
         {sparkData.length > 0 && (
@@ -509,6 +523,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         </Panel>
       </div>
 
+    </>),
+    pipeline: (<>
       {/* ── Pipeline + Sources ── */}
       <div className="ov-pipe-src" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <Panel>
@@ -563,6 +579,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         </Panel>
       </div>
 
+    </>),
+    team: (<>
       {/* ── Team on Duty + Recent Conversations ── */}
       <div className="ov-team-conv" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14 }}>
 
@@ -655,6 +673,43 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           )}
         </Panel>
       </div>
+    </>),
+  };
+
+  return (
+    <div style={{ fontFamily: "system-ui, sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-rev-stock  { grid-template-columns: 1fr !important; }
+          .ov-pipe-src   { grid-template-columns: 1fr !important; }
+          .ov-team-conv  { grid-template-columns: 1fr !important; }
+          .ov-attn-grid  { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-conv-table { font-size: 11px !important; }
+          .ov-conv-col-hide { display: none !important; }
+        }
+      `}</style>
+
+      {/* Owner only: preview what a manager sees (same numbers, their order). */}
+      {realView === 'owner' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+          <span style={{ fontSize: 12, color: PL.textMuted }}>View as</span>
+          <div role="group" aria-label="View as" style={{ display: 'inline-flex', background: PL.raised, borderRadius: PL.radius.pill, padding: 3 }}>
+            {['owner', 'manager'].map((r) => (
+              <button key={r} type="button" aria-pressed={viewKey === r} onClick={() => setPreview(r === 'owner' ? null : r)}
+                style={{ height: 30, padding: '0 14px', borderRadius: PL.radius.pill, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                  background: viewKey === r ? PL.card : 'transparent', color: viewKey === r ? PL.text : PL.textMuted, boxShadow: viewKey === r ? '0 1px 3px rgba(17,24,39,0.12)' : 'none' }}>
+                {OVERVIEW_ROLES[r].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view.sections.filter(allowed).map((sec) => <Fragment key={sec}>{SECTIONS[sec]}</Fragment>)}
     </div>
   );
 }

@@ -55,11 +55,13 @@ export const CAPABILITIES = [
     label: 'View commission amounts',
     description: 'Show the commission strip, breakdown and per-deal commission figures.',
     roles: ['salesman'],
+    group: 'money',
     default: true,
     enforced: true,
   },
   {
     key: 'view_all_leads',
+    group: 'people',
     label: 'View all team leads',
     description: 'See every lead in the dealership, not only leads assigned to them.',
     roles: ['salesman'],
@@ -68,6 +70,7 @@ export const CAPABILITIES = [
   },
   {
     key: 'view_cost',
+    group: 'money',
     label: 'View stock cost & purchase price',
     description: 'Show purchase price, recon cost, and cost basis columns in the Stock tab.',
     roles: ['manager', 'admin'],
@@ -76,6 +79,7 @@ export const CAPABILITIES = [
   },
   {
     key: 'view_gross',
+    group: 'money',
     label: 'View gross profit figures',
     description: 'Show gross profit column in Stock tab and P&L breakdown.',
     roles: ['manager', 'admin'],
@@ -84,12 +88,33 @@ export const CAPABILITIES = [
   },
   {
     key: 'export_data',
+    group: 'money',
     label: 'Export CSV / download reports',
     description: 'Access the Export CSV button on the Analytics tab.',
     roles: ['manager', 'admin'],
     default: true,
     enforced: true,
   },
+  // ── Manager authority (research 2026-11-12, docs/DEALER_ROLES_RESEARCH.md). Defaults are the
+  // proposal; the dealer interviews may change them. `enforced: false` = the switch is saved but the
+  // app does not check it yet: the matrix says so, and nothing may rely on it until it is wired AND
+  // backed by a database rule (a hidden button protects nothing).
+  { key: 'assign_leads',    group: 'people', label: 'Assign and reassign leads', description: 'Give a lead to a salesman or move it to another.', roles: ['manager'], default: true,  enforced: false },
+  { key: 'assign_cars',     group: 'people', label: 'Lock a car to a salesman',  description: 'Make a car exclusive to one salesman.', roles: ['manager'], default: true,  enforced: false },
+  { key: 'invite_staff',    group: 'people', label: 'Invite or remove staff',    description: 'Add salesmen and other staff, or remove them.', roles: ['manager'], default: false, enforced: false },
+  { key: 'approve_listings',group: 'stock',  label: 'Approve listings',          description: "Publish a salesman's car to the marketplace.", roles: ['manager'], default: true,  enforced: false },
+  { key: 'change_price',    group: 'stock',  label: 'Change asking price',       description: 'Within the discount limit set in Settings.', roles: ['manager'], default: true,  enforced: false },
+  { key: 'delete_car',      group: 'stock',  label: 'Remove a car',              description: 'Take a car out of stock.', roles: ['manager'], default: false, enforced: false },
+  { key: 'approve_deals',   group: 'deals',  label: 'Approve deals up to the discount limit', description: 'Above the limit it still goes to the owner.', roles: ['manager'], default: true, enforced: false },
+  { key: 'edit_settings',   group: 'deals',  label: 'Change cost settings and commission rates', description: 'Holding costs, fees, commission. Usually owner only.', roles: ['manager'], default: false, enforced: false },
+];
+
+// Matrix headings, in order (each capability has a `group`).
+export const CAPABILITY_GROUPS = [
+  { id: 'money',  label: 'Money' },
+  { id: 'people', label: 'People' },
+  { id: 'stock',  label: 'Stock' },
+  { id: 'deals',  label: 'Deals and settings' },
 ];
 
 // Roles that implicitly have every capability (owners). Not configurable.

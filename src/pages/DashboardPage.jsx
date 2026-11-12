@@ -28,7 +28,7 @@ import {
 } from "../utils/panelCache";
 import { getStorefrontUrl as buildStorefrontUrl } from "../hooks/useTenant";
 import { usePermissions } from "../hooks/usePermissions";
-import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
+import { CONFIGURABLE_ROLES, CAPABILITY_GROUPS, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
@@ -652,17 +652,28 @@ function PermissionsMatrix({ dealerId, actor }) {
               <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{label}</span>
               <SaveBtn sectionKey={`perm_${value}`} onClick={() => saveRole(value)} saving={{ [`perm_${value}`]: savingRole === value }} saved={{}} />
             </div>
-            <div className="space-y-2">
-              {caps.map(cap => (
-                <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
-                  <span>
-                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
-                    <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
+            {/* Grouped by what each switch protects (src/lib/permissions.js CAPABILITY_GROUPS). */}
+            {CAPABILITY_GROUPS.map(g => {
+              const inGroup = caps.filter(c => (c.group || 'money') === g.id);
+              if (!inGroup.length) return null;
+              return (
+                <div key={g.id} style={{ marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '6px 0 6px' }}>{g.label}</p>
+                  <div className="space-y-2">
+                    {inGroup.map(cap => (
+                      <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
+                        <span>
+                          <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
+                          {cap.enforced === false && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: '#6b7280', background: '#eceef1', borderRadius: 999, padding: '1px 7px' }}>Saved, not active yet</span>}
+                          <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             {/* Grantable extras — dealer-dashboard features lent to this role */}
             {roleExtras(value).length > 0 && (
               <>
@@ -10386,7 +10397,7 @@ export default function DashboardPage() {
                   <ChevronRight size={16} color="#6b7280" />
                 </button>
               )}
-              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} />
             </div>
           )}
 
