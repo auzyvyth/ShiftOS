@@ -3042,6 +3042,15 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-34: A "Pro" tier above Premium, with Post to socials in it (owner, 2026-11-12)** — Post to
+  socials (ZERNIO-1, Zernio) goes in a new Pro tier, not Premium. Why: Zernio charges per connected
+  account across the whole team (2 free, then $6 each for 3-10, $3 each for 11-100, card required),
+  so every seller who connects Facebook + Threads costs us money, and Premium is RM35. Open: Pro price
+  (must cover ~$6-12/seller/month plus margin), what else Pro holds, and where the Lite/Premium locked
+  rows point (today the Lite row says "Premium": `src/pages/salesmanLite/ListingsTab.jsx`). Blockers:
+  per-seller connect is not built (test rig posts to the owner's accounts only, allowlist
+  `ZERNIO_TEST_USER_IDS`), a plan needs a `plan_config` row + entitlement helper (DB migration,
+  after midnight), and a card on Zernio. Plan + findings: `docs/DREVO_ACTION_PLAN.md`.
 - **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
   inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
   gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked
