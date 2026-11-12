@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
   Calculator, Car, Check, ChevronDown, ClipboardPen, Download, FileText,
-  Film, Link as LinkIcon, Lock, Pencil, Play, Plus, Trash2,
+  Film, Link as LinkIcon, Lock, Pencil, Play, Plus, Send, Trash2,
 } from "lucide-react";
 import { premiumDark as P } from "../../theme/tokens";
 import "./keys.css";
@@ -343,6 +343,14 @@ export default function ListingsTab({
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Play size={13} />
                                 <span style={{ flex: 1 }}>Moving poster</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
+                                  <Lock size={9} strokeWidth={2.5} /> Premium
+                                </span>
+                              </button>
+                              {/* Post to socials (ZERNIO-1) is Premium: shown locked here, the tap goes to the one upgrade screen. */}
+                              <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
+                                <Send size={13} />
+                                <span style={{ flex: 1 }}>Post to socials</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
                                   <Lock size={9} strokeWidth={2.5} /> Premium
                                 </span>

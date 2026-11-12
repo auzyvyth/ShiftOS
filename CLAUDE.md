@@ -268,6 +268,14 @@ Project ID: lemdkdizdlcirhbzqlos
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
   The switches live on the device only (`xd_autopost_preview_<dealerId>`). Going real = Zernio: its key in an
   edge function secret, never the browser; posting fires from the DB when a car goes live, not from a screen.
+  **TEST rig (2026-11-12, Premium Listings `···` > "Post to socials"):** `supabase/functions/zernio-post` posts a
+  live car to the OWNER's one Zernio workspace (free tier, Threads + Facebook Page). Only user ids in the edge
+  secret `ZERNIO_TEST_USER_IDS` may use it (else any seller could post to the owner's Page); key in
+  `ZERNIO_API_KEY`. Text rules for every network live in ONE file, `supabase/functions/_shared/postCaption.js`
+  (`npm run test:postcaption`), shared by the sheet and the server. Zernio cannot edit a published post and does
+  not check lengths. The sheet's Recent tab lists the login's own posts of the last 30 days (found by a hashed
+  owner tag on each post, no table); take-down/discard/check refuse anything not tagged to the caller; limits: 10 live
+  posts per 24h, one post per car per network per 24h. Full plan + findings: `docs/DREVO_ACTION_PLAN.md`. No DB tables yet, on purpose.
 - **Listings tools (owner 2026-11-10):** each row shows views + enquiry taps, last 30 days
   (`InterestCell`, `get_dealer_car_analytics(p_days 30)`, kept on the device, placeholder until loaded).
   "Select" picks cars for `BulkBar` (`src/components/inventory/BulkBar.jsx`): status Available / Reserved /
