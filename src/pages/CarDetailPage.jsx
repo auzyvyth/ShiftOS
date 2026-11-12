@@ -79,7 +79,7 @@ import SellerFeedback from "../components/feedback/SellerFeedback";
 import BuyerChat from "../components/chat/BuyerChat";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import MarketplaceHeader from "../components/MarketplaceHeader";
-import { cdnImg, cdnSrcSet } from "../utils/img";
+import { cdnImg, cdnSrcSet, isSeeThroughPhoto } from "../utils/img";
 import { toast } from "sonner";
 import { DEPOSIT_POLICY_COPY } from "../utils/agentTrust";
 import PhoneInput from "../components/ui/PhoneInput";
@@ -2567,7 +2567,7 @@ export default function CarDetailPage() {
             edge — `contain` left dark letterbox bars beside any photo whose
             aspect ratio didn't match the frame. The full uncropped photo is
             one tap away in the lightbox. */}
-        <div ref={heroMobileRef} className="cdp-mobile-only" style={{ position:'relative', height:'clamp(260px,75vw,480px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
+        <div ref={heroMobileRef} className="cdp-mobile-only" style={{ position:'relative', height:'clamp(260px,75vw,480px)', overflow:'hidden', background: isSeeThroughPhoto(images[activeIdx]) ? '#fff' : '#080f18', cursor:'zoom-in' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
           onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setGridAt(activeIdx); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
@@ -2576,7 +2576,7 @@ export default function CarDetailPage() {
             srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
             sizes={HERO_SIZES}
             alt={carTitle} fetchPriority="high" decoding="async"
-            style={{ width:'100%', height:'100%', objectFit:'cover' }}
+            style={{ width:'100%', height:'100%', objectFit: isSeeThroughPhoto(images[activeIdx]) ? 'contain' : 'cover' }}
             onLoad={() => setImgLoaded(true)}
             onError={e => {
               if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
@@ -2585,7 +2585,10 @@ export default function CarDetailPage() {
               setImgLoaded(true);
             }}
           />
-          <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
+          {/* No dark fade under a see-through photo: it would turn its white backdrop grey. */}
+          {!isSeeThroughPhoto(images[activeIdx]) && (
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
+          )}
           {/* Tapping the photo (or this) opens every photo on one page. Swipe
               still steps through them here. */}
           <button type="button" onClick={(e) => { e.stopPropagation(); setGridAt(activeIdx); }}
@@ -3074,6 +3077,7 @@ export default function CarDetailPage() {
                   srcSet={i === 0 ? cdnSrcSet(src, HERO_WIDTHS, 72) : undefined}
                   sizes={i === 0 ? "(max-width: 900px) 100vw, 60vw" : undefined}
                   alt={i === 0 ? carTitle : `${carTitle} photo ${i + 1}`}
+                  style={isSeeThroughPhoto(src) ? { background: '#fff', objectFit: 'contain' } : undefined}
                   fetchPriority={i === 0 ? "high" : "auto"}
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding="async"
@@ -3913,7 +3917,7 @@ export default function CarDetailPage() {
               {/* Was the raw storage file (up to 3.9MB per swipe). Resized WebP
                   like every other photo; key resets the fallback flag per photo. */}
               <img key={activeIdx} className="cdp-lb-img" src={disp(images[activeIdx], 1600)} alt={carTitle} draggable={false}
-                style={{ transform: `translate(${lbPan.x}px,${lbPan.y}px) scale(${lbZoom})`, transformOrigin: 'center center', transition: lbDrag.current.active ? 'none' : 'transform 0.08s ease' }}
+                style={{ ...(isSeeThroughPhoto(images[activeIdx]) ? { background: '#fff' } : null), transform: `translate(${lbPan.x}px,${lbPan.y}px) scale(${lbZoom})`, transformOrigin: 'center center', transition: lbDrag.current.active ? 'none' : 'transform 0.08s ease' }}
                 onError={e => {
                   const el = e.currentTarget;
                   if (!el.dataset.fb && images[activeIdx]) { el.dataset.fb = '1'; el.src = images[activeIdx]; }
