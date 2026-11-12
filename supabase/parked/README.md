@@ -9,4 +9,5 @@ dated name, move it to `supabase/migrations/`, and apply it in the after-midnigh
 
 | File | What it does | Waiting for | Parked |
 |---|---|---|---|
+| `chat_thread_ref_slug.sql` | In-app chat passes the visit's `?ref=` to `resolve_lead_salesman`, so a chat started from a salesman's page goes to that salesman (WhatsApp, booking and enquiry already do). Replaces `start_chat_thread(uuid)` with `(uuid, text default null)`. Then the client passes `p_ref_slug: getRef()` in `useChat.js` (NOT before: the old function rejects the extra argument). | The owner's go-ahead for the after-midnight window. Used by live buyers + linked salesmen, so it is not "unused"; parked only because the owner asked for all DB changes to wait (2026-11-11). | 2026-11-11 |
 | `drop_dead_sql.sql` | Drops 20 unused functions + empty tables (car hunts, workshops, `broadcast_logs`, `dealer_products.workshop_id`). Re-verified 2026-10-28: no code or DB object uses any of it, all tables 0 rows. | Dealer dashboard in use (it unblocks a dealer's hard-delete of a car) or a DB cleanup round. | 2026-10-28 |

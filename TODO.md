@@ -165,6 +165,27 @@ production, or sign-in pages lose the throttle (they fail open, sign-in still wo
 - [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 
+## LINKED-PREMIUM: salesman under a dealer gets Premium + dealer connections (owner, 2026-11-11)
+Rules: CLAUDE.md "Salesman under a dealer = Premium + dealer connections". All on branch
+`claude/fervent-edison-jgyfd2`, NOT on staging, not click-tested (no linked test account in the session).
+- [x] Opt-in linked mode in SalesmanPremium (`/salesman-premium?linked=1`), dealer-scoped data,
+      Incoming (claim), Dealer cars (feature/unfeature), Team, agreed price + approval on a Won,
+      dealer cars protected (status/edit/delete/add-ons), solo-only settings hidden, view_commission.
+- [ ] Owner: sign in as a linked salesman with the full plan on staging, open
+      `/salesman-premium?linked=1`, walk every tab; send screenshots of anything wrong.
+- [ ] Then: route linked salesmen to Premium by default (`postAuthRoute`, `push_home_path` in the DB,
+      Premium gate), then delete `Salesmanpanel.jsx` and its help page. Not before the test above.
+- [ ] Still in the old panel only: the Loans calculator/applications flow (Premium uses Loan check),
+      the per-lead deal sheet link. Decide keep or drop when testing.
+- [ ] Chat ref: `supabase/parked/chat_thread_ref_slug.sql`, then pass `p_ref_slug: getRef()` in
+      `src/hooks/useChat.js:254`. Order matters (see the file).
+- [ ] Owner call: a `?ref=` beats the dealer's exclusivity lock in `resolve_lead_salesman` (rule 1
+      before rule 2), so rep B's link can take a lead on a car locked to rep A. Keep or swap the order?
+- [ ] Owner call: "Read chat" on an unclaimed Incoming lead shows the buyer's messages and phone to
+      every rep before anyone claims. Keep, or show the car + time only until claimed?
+- [ ] Owner call (needs a lawyer, see chat 2026-11-11): count window-sticker scans without the
+      analytics cookie? Today only visitors who accept the banner are counted (0 so far).
+
 ## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,
   yours for as long as you stay. After that, RM49" (EN + BM).
