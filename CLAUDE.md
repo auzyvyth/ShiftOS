@@ -47,8 +47,10 @@ Full plan and status: `TODO.md` BRAND-1.
   text is renamed in one go on switch day, not piecemeal.
 - **Never hardcode a domain in new code.** Use `SITE_URL` / `ROOT_DOMAIN` /
   `isOwnHost` from `src/config/site.js`, or a relative link (`/showroom`). That
-  file is the one place the domain lives; it still says `xdrive.my` until the
-  switch, and flipping it is the switch.
+  file is the one place the domain lives. The switch shipped 2026-11-05 (#578):
+  `ROOT_DOMAIN` is `drevo.my`, xdrive.my stays in `OWN_DOMAINS` and every xdrive.my
+  host 301s to the same path on drevo.my (`vercel.json` `redirects`). Never remove
+  those redirects while xdrive.my is renewed.
 - "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
   becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
@@ -800,6 +802,10 @@ local (main) → staging branch → production (main on GitHub)
 ```
 - **local main**: all development happens here, commits stay local until staged
 - **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **Test staging on its FIXED address, `shift-os-git-staging-shift-os.vercel.app`** (`STAGING_HOST`,
+  `src/config/site.js`), never the per-push `shift-<random>-shift-os.vercel.app`: sign-in needs
+  Cloudflare Turnstile, which only runs on hostnames listed on the widget (error 110200 otherwise),
+  and only the fixed one can be listed once (owner, 2026-11-12).
 - **Before EVERY force-push to staging, `git fetch origin staging` and run
   `git log --oneline HEAD..origin/staging`.** Any commit listed is someone else's
   unshipped work (another session builds on the same staging) and a force-push deletes it
@@ -1200,6 +1206,12 @@ across all sections, one state each).
   (migration `20260926c`) — never re-do them client-side. Messaging is a human
   `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
   s.43 makes a "stop" final).
+  **Facebook / TikTok prospects (PROSPECT-IMPORT, 2026-11-04, migration `20261104a`):** a
+  prospect may have a `profile_url` instead of a phone; it is cleaned by `prospect_clean_url`
+  (mirrored in `src/utils/prospectImport.js cleanProfileUrl`, `npm run test:prospects`) and
+  UNIQUE, so one person is one row. "Paste a list" imports up to 100 hand-collected rows and
+  never re-adds a do-not-contact person. A DM is copy + open their profile + "I sent it": the
+  owner sends from their own account, never automated.
 - **Account state is answered ONCE: `src/utils/accountState.js`** (`accessState`,
   `reviewState`, `billingState`, `headlineState`, `isPlatformAccount`). Never read
   `approval_status` / `is_active` / `subscription_status` raw in a console tab and
@@ -1504,6 +1516,22 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
 - No invented numbers in any draft (no price, instalment, discount, trade-in
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
+
+## Salesman under a dealer = Premium + dealer connections (LINKED-PREMIUM, owner 2026-11-11)
+Owner: "replace the heart, keep the veins". The linked salesman gets the Salesman Premium panel
+(`SalesmanPremium.jsx`, linked mode = `isLinked` / `linkedRef`), with the dealer connections from the
+old `Salesmanpanel.jsx` moved into `src/components/linked/` (IncomingLeads, DealerInventory, TeamBoard).
+The old panel is deleted only AFTER the owner has tested linked mode on staging; until then
+`/salesman` stays the default and linked mode is opt-in per device (`/salesman-premium?linked=1`,
+`linkedPremiumOptedIn` in `src/utils/salesmanPlan.js`; `?linked=0` turns it off). Rules in linked mode:
+- Data is the dealer's, scoped to the salesman: cars = assigned_to me + featured (`salesman_listings`);
+  views by MY slug (`get_salesman_slug_analytics`); sold/commission = `assigned_to` me; customers through
+  my leads (`leads!inner(salesman_id)`). Never `dealer_id = me` (that is the solo rule).
+- A Won goes through `close_deal_at_price` (agreed price, dealer approval over the limit). Car status,
+  "Sold elsewhere", edit and the add-on catalogue are the dealer's: refused/hidden. Delete = unfeature.
+- Commission shows only with the dealer's `view_commission` (usePermissions). No billing, referral,
+  join-a-dealer or new-car cards. Any new Premium feature must answer "what does it do for a linked
+  salesman?" before it ships.
 
 ## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
 `_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
@@ -2308,6 +2336,9 @@ views and no taps > saved but no taps > under 10 views this week.
   and `ShareTour` rings that car's button (`data-share-car="<id>"`: Premium's round Share, Lite's
   Link) and waits for the seller's own tap, then says where to post. It never presses or posts
   anything for them. Card and lines wait for `trafficReady`: before that every car reads unseen.
+  While the ring shows, taps OFF the button are blocked (four panes around the hole): a stray
+  tap opened the car pop-up over the button and left the ring on nothing. The bubble is placed
+  by `placeTourCard` from its measured size, never a fixed guess.
 - Never invent a number or a promise in coach copy. Views need the buyer's analytics consent,
   so they undercount; say only what was counted.
 

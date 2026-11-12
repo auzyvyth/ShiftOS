@@ -28,6 +28,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        # The ~35 pure-logic suites in tests/*.test.mjs (loan maths, phone rules,
+        # plan gates, ...). They existed but no CI job ran them.
+        run: npm test
+
       - name: Dependency audit
         # Non-blocking to start: surfaces high-severity advisories without failing CI.
         # Tighten to a hard failure once the existing backlog is triaged.

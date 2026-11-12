@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "../supabaseClient";
+import i18n from "i18next";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { calcMonthly } from "../utils/financing";
 import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYTES } from "../lib/cutout";
@@ -2067,11 +2068,18 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   // Back gesture: closes the open picker / sheet first, then the studio. Any
   // edit to the generated slides, or typed hook / AI text, asks before closing.
   const initialSlidesJson = useRef(null);
-  useModalHistory(true, onClose, {
-    isDirty: () =>
-      !!aiCmd.trim() ||
-      (initialSlidesJson.current !== null && JSON.stringify(slides) !== initialSlidesJson.current),
-  });
+  const studioIsDirty = () =>
+    !!aiCmd.trim() ||
+    (initialSlidesJson.current !== null && JSON.stringify(slides) !== initialSlidesJson.current);
+  useModalHistory(true, onClose, { isDirty: studioIsDirty });
+  // The X buttons, the backdrop and Esc used to call onClose directly, so only the
+  // Back gesture asked before throwing the design away. Every close asks now.
+  const requestClose = () => {
+    if (studioIsDirty() && !window.confirm(i18n.t("common.closeUnsaved", {
+      defaultValue: "Close this? What you have done here will be lost.",
+    }))) return;
+    onClose();
+  };
 
   function pushHistory(newSlides) {
     const trimmed = history.current.slice(0, historyIdx.current + 1);
@@ -2331,7 +2339,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
       const layerId = layerSelectedIds[0];
       if (e.key === "Escape") {
-        selectedId || layerId || photoSel ? clearSelectionAll() : onClose();
+        selectedId || layerId || photoSel ? clearSelectionAll() : requestClose();
       }
       if (e.key === "ArrowLeft") setActive((i) => Math.max(0, i - 1));
       if (e.key === "ArrowRight") setActive((i) => Math.min(total - 1, i + 1));
@@ -4226,7 +4234,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
         {/* Header: what never moves */}
         <div style={{ height: HEADER_H, flexShrink: 0, display: "flex", alignItems: "center", gap: 2, padding: "0 6px" }}>
-          <button aria-label="Close studio" onClick={onClose} style={iconBtn({ color: C.sec })}><X size={20} /></button>
+          <button aria-label="Close studio" onClick={requestClose} style={iconBtn({ color: C.sec })}><X size={20} /></button>
           <span style={{ flex: 1, fontSize: 16, fontWeight: 600, paddingLeft: 2 }}>Studio</span>
           <button aria-label="Undo" onClick={undo} disabled={!canUndo} style={iconBtn({ color: canUndo ? C.text : "#4b515c" })}><Undo2 size={19} /></button>
           <button aria-label="Redo" onClick={redo} disabled={!canRedo} style={iconBtn({ color: canRedo ? C.text : "#4b515c" })}><Redo2 size={19} /></button>
@@ -4385,7 +4393,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   return (
     <>
       {/* Backdrop dimmer */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.65)" }} />
+      <div onClick={requestClose} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.65)" }} />
 
       <div
         style={{
@@ -4404,7 +4412,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       >
         {/* Header: what never moves */}
         <div style={{ height: 56, flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderBottom: `1px solid ${C.line}` }}>
-          <button aria-label="Close studio" onClick={onClose} style={iconBtn({ color: C.sec, width: 40, height: 40 })}><X size={20} /></button>
+          <button aria-label="Close studio" onClick={requestClose} style={iconBtn({ color: C.sec, width: 40, height: 40 })}><X size={20} /></button>
           <span style={{ fontSize: 16, fontWeight: 600 }}>Studio</span>
           <span style={{ fontSize: 13, color: C.muted, marginLeft: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {[listing?.year, listing?.brand, listing?.model].filter(Boolean).join(" ")} · {canvasFormat} · {total} slide{total !== 1 ? "s" : ""}

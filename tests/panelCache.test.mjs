@@ -80,8 +80,12 @@ rememberPanelUid('slite', 'u1');
 // next morning must still paint from cache, not sit through a cold start.
 localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 20 * 60 * 60 * 1000, data: okProfile }));
 is('an overnight profile still seeds', seedPanelCache('slite').profile?.id, 'u1');
+// The seed window is 30 days (PANEL_SEED_TTL = the idle sign-out). This test said 8 days,
+// from when the window was 7, and nothing ran it until CI started running unit tests.
 localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 8 * 24 * 60 * 60 * 1000, data: okProfile }));
-is('an 8-day-old profile is past the seed window', seedPanelCache('slite').profile, null);
+is('an 8-day-old profile still seeds (window is 30 days)', !!seedPanelCache('slite').profile, true);
+localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 31 * 24 * 60 * 60 * 1000, data: okProfile }));
+is('a 31-day-old profile is past the seed window', seedPanelCache('slite').profile, null);
 
 // ── redaction: identity material never reaches disk ─────────────────────────
 const lead = { id: 'l1', buyer_name: 'A', buyer_ic: '900101-10-1234', buyer_address: '1 Jalan X', phone: '60123456789' };
