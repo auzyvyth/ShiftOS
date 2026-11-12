@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { coachCopy } from './coachCopy';
+import { placeTourCard } from '../../utils/tourPlacement';
 
 // "Show me how" (COACH-1, owner 2026-10-31): a car with no views for 2+ days.
 // The panel switches to Listings, then this rings that car's Share / Link
@@ -10,13 +11,21 @@ import { coachCopy } from './coachCopy';
 // post. It never presses anything for them, and never posts anything.
 // mode: 'share' = Premium's Share button (share sheet on a phone),
 //       'copy'  = Lite's Link button (copies the link).
+// Responsive (2026-11-01): taps outside the ringed button are BLOCKED (four
+// panes around the hole), so a stray tap on the dimmed card can no longer open
+// the car pop-up over the button and leave the ring pointing at nothing. The
+// bubble is measured and placed by the product tour's own `placeTourCard`, so
+// it sits beside the button and inside the screen on a phone and on desktop.
 const FIND_MS = 6000;
+const PAD = 6;
 
 export default function ShareTour({ carId, mode = 'share', lang, onClose }) {
   const copy = coachCopy(lang).tour;
   const [rect, setRect] = useState(null);
   const [step, setStep] = useState(1);
   const targetRef = useRef(null);
+  const bubbleRef = useRef(null);
+  const [bubble, setBubble] = useState({ w: 340, h: 110 });
   const sel = `[data-share-car="${carId}"]`;
 
   useModalHistory(true, onClose);
@@ -39,8 +48,16 @@ export default function ShareTour({ carId, mode = 'share', lang, onClose }) {
       el.scrollIntoView({ block: 'center', behavior: 'auto' });
       const track = () => {
         if (stop) return;
+        const el2 = targetRef.current;
+        // The list can re-render and swap the node: look it up again.
+        if (!el2 || !el2.isConnected) targetRef.current = document.querySelector(sel);
         const r = targetRef.current?.getBoundingClientRect();
-        if (r) setRect((p) => (p && p.top === r.top && p.left === r.left && p.width === r.width ? p : { top: r.top, left: r.left, width: r.width, height: r.height }));
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (r && r.width > 0) {
+          setRect((p) => (p && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height && p.vw === vw && p.vh === vh
+            ? p : { top: r.top, left: r.left, width: r.width, height: r.height, vw, vh }));
+        }
         raf = requestAnimationFrame(track);
       };
       track();
@@ -58,10 +75,30 @@ export default function ShareTour({ carId, mode = 'share', lang, onClose }) {
     return () => document.removeEventListener('click', onTap, true);
   }, [step, sel]);
 
+  // Measure the bubble after every render (its height follows the text and
+  // the screen width), then place it from the real size.
+  useEffect(() => {
+    const b = bubbleRef.current;
+    if (!b) return;
+    const w = b.offsetWidth;
+    const h = b.offsetHeight;
+    if (w !== bubble.w || h !== bubble.h) setBubble({ w, h });
+  });
+
   if (!rect && step === 1) return null;
-  const pad = 6;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const below = rect ? rect.top + rect.height + 150 < vh : true;
+  const pad = PAD;
+  const hole = rect && {
+    top: rect.top - pad, left: rect.left - pad,
+    width: rect.width + pad * 2, height: rect.height + pad * 2,
+  };
+  const bubbleW = rect ? Math.min(340, rect.vw - 32) : 340;
+  const placed = rect && placeTourCard(
+    { ...hole, right: hole.left + hole.width, bottom: hole.top + hole.height },
+    { w: bubbleW, h: bubble.h }, rect.vw, rect.vh,
+  );
+  // Four panes around the hole catch every tap that is not on the button.
+  const block = { position: 'fixed', pointerEvents: 'auto', background: 'transparent' };
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 10040, pointerEvents: 'none', fontFamily: "var(--xd-font-body, 'Outfit', system-ui, sans-serif)" }}>
@@ -71,18 +108,18 @@ export default function ShareTour({ carId, mode = 'share', lang, onClose }) {
             position: 'fixed', top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2,
             borderRadius: 14, boxShadow: '0 0 0 3px #dc2626, 0 0 0 9999px rgba(0,0,0,0.55)', pointerEvents: 'none',
           }} />
-          <div style={{
-            ...S.bubble, pointerEvents: 'auto',
-            top: below ? rect.top + rect.height + pad + 12 : undefined,
-            bottom: below ? undefined : vh - rect.top + pad + 12,
-          }}>
+          <div style={{ ...block, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onClick={stop} />
+          <div style={{ ...block, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onClick={stop} />
+          <div style={{ ...block, top: hole.top, height: hole.height, left: 0, width: Math.max(0, hole.left) }} onClick={stop} />
+          <div style={{ ...block, top: hole.top, height: hole.height, left: hole.left + hole.width, right: 0 }} onClick={stop} />
+          <div ref={bubbleRef} style={{ ...S.bubble, ...placed.style, width: bubbleW, transform: 'none', pointerEvents: 'auto' }}>
             <p style={S.text}>{mode === 'copy' ? copy.step1Copy : copy.step1Share}</p>
             <button type="button" style={S.ghost} onClick={onClose}>{copy.skip}</button>
           </div>
         </>
       )}
       {step === 2 && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', pointerEvents: 'auto', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 16 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', pointerEvents: 'auto', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))' }}>
           <div style={{ ...S.bubble, position: 'static', transform: 'none', marginBottom: 24 }}>
             <p style={S.text}>{copy.step2}</p>
             <button type="button" style={S.primary} onClick={onClose}>{copy.done}</button>

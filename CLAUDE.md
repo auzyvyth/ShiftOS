@@ -2336,6 +2336,9 @@ views and no taps > saved but no taps > under 10 views this week.
   and `ShareTour` rings that car's button (`data-share-car="<id>"`: Premium's round Share, Lite's
   Link) and waits for the seller's own tap, then says where to post. It never presses or posts
   anything for them. Card and lines wait for `trafficReady`: before that every car reads unseen.
+  While the ring shows, taps OFF the button are blocked (four panes around the hole): a stray
+  tap opened the car pop-up over the button and left the ring on nothing. The bubble is placed
+  by `placeTourCard` from its measured size, never a fixed guess.
 - Never invent a number or a promise in coach copy. Views need the buyer's analytics consent,
   so they undercount; say only what was counted.
 
