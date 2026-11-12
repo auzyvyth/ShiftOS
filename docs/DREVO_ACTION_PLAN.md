@@ -46,14 +46,39 @@ Not built in the DMS (no table found by name): consignment, reservation/deposit 
 
 ### My pushback first
 1. **Premium is RM35 (founding). Social posting has a per-account vendor cost.** Do not fold it into RM35 until Z0 gives real numbers. Likely shape: a separate paid tier or add-on. Do not show a card for it until it works (CPA 1999 s.10, already in CLAUDE.md).
-2. **The preview promises "edit the post to say SOLD / update price" on every platform.** Several networks do not let an API edit a published post (I expect Instagram and TikTok do not; unverified). Z0 must check each platform. Fallback: a new "SOLD" post, or delete the post.
+2. **The preview promises "edit the post to say SOLD / update price" on every platform. Zernio cannot do that for any platform** (verified in its API: published posts cannot be edited). Rules in `AutoPost.jsx` (`AUTOPOST_RULES`) must be reworded when this goes real: "Take the post down when sold" (Facebook, Threads, Google only) and "Post a price-drop update" (a new post).
 3. **Overlap:** Telegram auto-post already exists (`telegram_auto_post`, `supabase/functions/telegram-notify`). Telegram stays separate; do not add it to Zernio.
 4. **Dealer dashboard has no live users yet**, but it is the stated focus. Build the engine for Premium first (real users), and the dealer screen is the same component with a different owner id.
 5. Facebook publishing is for Pages, not personal profiles. Say so on the connect screen.
 
-### What the web search showed (vendor pages only, NOT verified)
-Base URL `https://zernio.com/api/v1`, bearer API key. Accounts are grouped in "profiles", one account per platform per profile. `GET /v1/connect/{platform}` takes a profile id and a redirect URL and returns an `authUrl`. Zernio says it handles token refresh, platform app approvals and rate limits. Pricing pages disagree with each other (free tier, a per-account figure, X pass-through). Webhook events and signing were not found.
-**Blocked: this session cannot reach zernio.com** (`getaddrinfo ENOTFOUND`). To verify, the owner must allow `zernio.com` and `docs.zernio.com` in the environment network settings (Settings, then Environment). Until then, nothing below that depends on Zernio is confirmed.
+### What Zernio's own files say (read 2026-11-12: `zernio.com/pricing.md`, `/llms.txt`, `/openapi.yaml`)
+`docs.zernio.com` still does not load from here; the OpenAPI file (6 MB) is the authoritative source and I used that. Still to test for real: everything marked "test" below.
+
+**Model:** base URL `https://zernio.com/api/v1`, bearer key. A *profile* groups accounts; Zernio's own multi-tenant advice is one profile per end customer, with `externalId` = our owner id (`GET /v1/profiles?externalId=`, duplicate returns 409). Posts are sent per `accountId`.
+
+**Connect:** `GET /v1/connect/{platform}?profileId=&redirect_url=` returns `authUrl` (twitter, instagram, facebook, youtube, linkedin, threads, tiktok, pinterest). Facebook then needs a "select page" step (`/v1/connect/facebook/select-page`). Google Business is listed as a posting platform. Disconnect: `DELETE`; a profile can only be deleted when it has no connected accounts.
+
+**Posting:** `POST /v1/posts` (`content`, `mediaItems[{type,url}]`, `platforms[{platform,accountId,customContent}]`, `publishNow` / `scheduledFor` / `isDraft`), `POST /v1/posts/{id}/retry`, media by public `url` or `POST /v1/media/presign`.
+
+**What this changes in the plan (the important part):**
+- **A published post cannot be edited.** `PUT /v1/posts/{id}`: published posts only allow a recycling config change. So "update when the price drops" and "edit the post to say SOLD" in the preview are impossible.
+- **Unpublish exists for Facebook, Threads, Google Business** (also X, LinkedIn, YouTube, Pinterest, Bluesky, Telegram) and **NOT for Instagram, TikTok, Snapchat.** So on a sale: Facebook/Threads/Google = take the post down; Instagram/TikTok = it stays up, and the link in it lands on our page, which shows Sold. A price drop = a NEW post ("Price drop"), never an edit.
+- **Instagram needs a Business account.** Sellers on a personal Instagram cannot connect; the connect screen must say so.
+- **TikTok:** photo carousels up to 35 images; the photo title is cut to 90 characters with hashtags/URLs stripped (a link in the caption will not survive); the API requires privacy choice, comment/duet/stitch flags and "confirm content preview and give express consent". So TikTok is **approve-each-post, never automatic.** Cap 15 photo posts a day per account.
+- **Image types: JPEG, PNG, GIF only.** Our see-through car photos are WebP (`ALPHA-1`), so the publisher must convert WebP to JPEG before sending.
+- Facebook: up to 10 images per post, cannot mix photos and video. Instagram carousel: up to 20, cannot mix. YouTube always needs a video.
+- **Webhooks:** `post.published`, `post.failed`, `post.partial` (a `post.failed` can arrive AFTER a `post.published`), `account.connected`, `account.disconnected`, `webhook.test`. Headers `X-Zernio-Event`, `X-Zernio-Event-Id` (dedupe on this), `X-Zernio-Signature` = HMAC-SHA256 when the subscription has a secret. Test: signature encoding (hex vs base64) is not stated in what I read; check it with a `webhook.test` event before relying on it.
+- **Rate limits:** 60 requests/min on the free tier, 600/min once paid. Posting volume itself is unlimited. A 15-minute queue is far below this.
+- Reddit is currently down (irrelevant to us).
+
+**Cost (from `pricing.md`; US dollars; check today's exchange rate):** you pay per CONNECTED ACCOUNT per month across the whole Drevo team. One Facebook Page = 1 account, one Instagram = 1, one TikTok = 1.
+| Connected accounts (all sellers together) | Price per account |
+|---|---|
+| 1-2 | free |
+| 3-10 | $6 |
+| 11-100 | $3 |
+| 101+ | $1 |
+Their examples: 10 accounts = $48/mo, 20 = $78/mo, 100 = $318/mo, 1,000 = $1,218/mo. Analytics, comments, inbox and unlimited posts are included. So a seller with Facebook + Instagram + TikTok costs about $9/mo at the 11-100 tier (about $3 at 101+). That is more than the whole RM35 Premium price at today's rates, so **auto-post cannot be inside RM35**. It also means RM300 is not forced by Zernio's cost; the price is a market question, not a cost question. Our other costs (storage, support, Meta/TikTok review work) are separate.
 
 ### Architecture (one engine, two screens)
 - **Tenant** = `getDealerIdFromProfile(profile)`. Premium solo seller: own id. Dealer/owner: own id. Linked salesmen do not connect accounts; the dealer does. One Zernio profile per tenant.
@@ -85,7 +110,7 @@ Base URL `https://zernio.com/api/v1`, bearer API key. Accounts are grouped in "p
 ### Phases
 | Step | Who | Output | Gate |
 |---|---|---|---|
-| Z0 verify | Owner allows hosts, Claude reads docs | One page: per-platform support (create/edit/delete/photo/video), webhook signing, real price per profile and per account, rate limits, TikTok/Meta app-review status, data location | Real unit cost per seller. If RM300 doesn't clear it, stop |
+| Z0 verify | DONE on paper 2026-11-12 (see above). Left to TEST: signature encoding, Facebook page-select, Instagram Business requirement, WebP to JPEG, TikTok consent flow | A free Zernio account (first 2 accounts free) connected to the owner's own Page + Instagram | Owner posts one real car through the API from a throwaway script |
 | Z1 connect + manual post | Claude | Migration, `zernio-connect`, `zernio-publish`, Premium Settings + "Post this car" (FB Page + IG) | Owner's own seller account posts one real car on staging |
 | Z2 rules + queue | Claude | Trigger, sweep cron, webhook, retries, caps, usage table | A price drop and a sale each produce exactly one action, none duplicated |
 | Pilot | Owner | 3 Premium sellers, free, asked what saved time | At least 2 keep it on after 2 weeks |
@@ -103,7 +128,7 @@ Base URL `https://zernio.com/api/v1`, bearer API key. Accounts are grouped in "p
 - Release: staging first; production only after midnight MYT with `seller_live_state` empty.
 
 ### Open owner calls
-1. Allow `zernio.com` + `docs.zernio.com` in the environment network settings (needed for Z0).
+1. Create the Zernio account and an API key (owner only; give it to Supabase as an edge-function secret, never in chat or the repo). `docs.zernio.com` is optional now.
 2. Is auto-post a separate paid tier or an add-on to Premium? (RM300 is still only a proposal.)
 3. Which two platforms first? I suggest Facebook Page + Instagram, because used-car buyers in Malaysia already live there.
 4. Approval default: ask before every post (recommended), or auto after the first 5 approved?
