@@ -17,6 +17,7 @@
     "test:plan": "node tests/salesmanPlan.test.mjs",
     "test:postauth": "node tests/postAuthRoute.test.mjs",
     "test:site": "node tests/site.test.mjs",
+    "test:postcaption": "node tests/postCaption.test.mjs",
     "test:chassis": "node tests/chassisDecode.test.mjs",
     "test:modelkey": "node tests/modelKey.test.mjs",
     "test:chassisspec": "node tests/chassisSpec.test.mjs",
