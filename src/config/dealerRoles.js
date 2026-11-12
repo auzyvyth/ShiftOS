@@ -11,8 +11,13 @@ export const OVERVIEW_ROLES = {
   // "Is my money growing, and where is it stuck?"
   owner: {
     label: 'Owner',
-    sections: ['alerts', 'kpis', 'money', 'pipeline', 'team'],
-    alerts: ['price', 'loss', 'hp', 'stale', 'unanswered', 'cold', 'b7', 'anomaly', 'appt'],
+    // 'finance' = the money-first block (src/components/overview/OwnerMoney.jsx, owner 2026-11-12).
+    // It replaces 'kpis' + 'money' for the owner: the same figures, summed from every car.
+    // Leads, bookings and Puspakom alerts are the manager's: the owner sees money alerts only.
+    sections: ['alerts', 'finance', 'team'],
+    // No 'loss' card: it uses price < buy + recon (gm_exception_alerts), while the money block's
+    // "Losing at asking price" uses carPnl (all costs). Two answers on one screen: audit #9.
+    alerts: ['price', 'hp', 'stale'],
     kpis: ['gross_month', 'sold_month', 'money_tied', 'open_leads'],
   },
   // "What do we push today?"
@@ -30,6 +35,7 @@ export const NEEDS = {
   money_tied: 'view_cost',
   loss: 'view_cost',
   money: 'view_cost',
+  finance: 'view_gross',
 };
 
 // Overview view for a signed-in role. Dealer / owner / superadmin = owner; manager and admin =

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
+import OwnerMoney from './overview/OwnerMoney';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
@@ -389,6 +390,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   const onlineCount = teamRows.filter(r => r.isActive).length;
 
   const SECTIONS = {
+    finance: <OwnerMoney dealerId={dealerId} onNavigate={onNavigate} />,
     alerts: (<>
       {/* ── Needs Attention strip ── */}
       {(() => {

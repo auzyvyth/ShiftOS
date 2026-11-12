@@ -74,5 +74,11 @@ calls the source; it never recomputes it.
 - Its own avg age, CVR and views (all time) duplicate the car pop-up and Inventory row.
   Delete with the pop-up merge.
 
+## 9. "Losing money" has two rules (MEDIUM)
+- `gm_exception_alerts.loss_makers` (Overview alert card, manager view): asking price < buy + recon.
+- Owner money block "Losing at asking price" (`src/utils/ownerMoney.js`): `carPnl().net < 0`, all
+  costs incl. holding, transfer, commission. The owner view dropped the alert card for this reason.
+- Fix: the SQL `car_pnl()` from #1 feeds `loss_makers`, so both say the same.
+
 ## Order
-1 + 2 first (they change money numbers), then 3 + 4 (one clock, one threshold), then 5, 6, 7.
+1 + 2 first (they change money numbers; the owner Overview already sums carPnl client-side since 2026-11-12), then 9, 3 + 4 (one clock, one threshold), then 5, 6, 7.
