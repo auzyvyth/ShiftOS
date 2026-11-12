@@ -40,7 +40,7 @@ export function isAllowedOrigin(origin: string | null): boolean {
 
 export function corsHeaders(origin: string | null, methods = "POST, OPTIONS"): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin! : "https://xdrive.my",
+    "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin! : "https://drevo.my",
     "Access-Control-Allow-Methods": methods,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
     "Access-Control-Max-Age": "86400",
