@@ -2,13 +2,14 @@ import React from "react";
 import { Clock } from "lucide-react";
 import { premiumLight } from "../../theme/tokens";
 import { getListingAge } from "./shared";
+import { AGEING_DAYS } from "../../utils/carPnl";
 
 // Small pieces shared by more than one dashboard tab.
 // premiumLight (owner, 2026-11-09): one grey pill; the days turn red from 30.
 export const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: premiumLight.raised, color: d >= 30 ? premiumLight.accentText : premiumLight.textSec }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: premiumLight.raised, color: d > AGEING_DAYS ? premiumLight.accentText : premiumLight.textSec }}>
       <Clock style={{ width: 12, height: 12 }} />
       {d === 0 ? "Today" : `${d}d`}
     </span>

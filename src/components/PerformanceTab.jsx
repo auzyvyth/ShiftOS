@@ -154,20 +154,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   );
   const scores = scoresRaw || [];
 
-  const { data: stockRaw, loading: stockLoading } = useCachedFetch(
-    dealerId ? `perf:stock:${dealerId}` : null,
-    async () => {
-      const { data, error } = await supabase
-        .from('stock_units')
-        .select('id, purchase_date, status, purchase_price, recon_cost, brand, model, year, asking_price')
-        .eq('dealer_id', dealerId)
-        .neq('status', 'sold');
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!dealerId },
-  );
-  const stock = useMemo(() => stockRaw || [], [stockRaw]);
 
   const { data: trafficRaw, loading: trafficLoading } = useCachedFetch(
     dealerId ? `perf:traffic:${dealerId}:${range}` : null,
@@ -203,28 +189,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   const carStats = useMemo(() => eng?.car || [], [eng]);
   const slugStats = useMemo(() => eng?.slug || [], [eng]);
   const daily = useMemo(() => eng?.daily || [], [eng]);
-
-  // ── Derived: listings metrics ──────────────────────────────────────────────
-  const listingMetrics = useMemo(() => {
-    const now = Date.now();
-    const active = listings.filter(l => l.status === 'available');
-    const avgDays = active.length
-      ? Math.round(active.reduce((s, l) => s + (now - new Date(l.created_at)) / 86_400_000, 0) / active.length)
-      : 0;
-    const stale30 = active.filter(l => (now - new Date(l.created_at)) / 86_400_000 > 30).length;
-    const stale60 = active.filter(l => (now - new Date(l.created_at)) / 86_400_000 > 60).length;
-    return { total: active.length, avgDays, stale30, stale60 };
-  }, [listings]);
-
-  // ── Derived: stock metrics ─────────────────────────────────────────────────
-  const stockMetrics = useMemo(() => {
-    const now = Date.now();
-    const daysIn = u => u.purchase_date ? (now - new Date(u.purchase_date)) / 86_400_000 : 0;
-    const capital = stock.reduce((s, u) => s + (Number(u.purchase_price) || 0) + (Number(u.recon_cost) || 0), 0);
-    const aged45 = stock.filter(u => daysIn(u) > 45);
-    const aged60 = stock.filter(u => daysIn(u) > 60);
-    return { total: stock.length, capital, aged45, aged60 };
-  }, [stock]);
 
   // ── Derived: traffic metrics ───────────────────────────────────────────────
   const traffic = useMemo(() => {
@@ -427,81 +391,9 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
       {openRep && <SalesmanHealthSheet person={openRep} onClose={() => setOpenRep(null)} />}
       <style>{`.perf-row:hover{background:#f9fafb}.perf-row:focus-visible{outline:2px solid #111827;outline-offset:-2px}`}</style>
 
-      {/* ── Listings & Inventory ──────────────────────────────────────────────── */}
-      <SectionShell>
-        <PerfSectionHeader
-          icon={Car}
-          label="Listings & Inventory"
-          desc="Active stock, days on lot, capital exposure & aged unit alerts"
-          right={
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>
-              {listingMetrics.total} active
-            </span>
-          }
-        />
-        {/* Listing health grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
-          <KpiTile label="Active Listings" value={listingMetrics.total} sub="available to sell" />
-          <KpiTile
-            label="Avg Days on Lot"
-            value={listingMetrics.avgDays}
-            sub="all active cars"
-            valueColor={listingMetrics.avgDays > 45 ? '#d97706' : '#111827'}
-            warn={listingMetrics.avgDays > 45}
-          />
-          <KpiTile
-            label="Stale 30d+"
-            value={listingMetrics.stale30}
-            sub="consider repricing"
-            valueColor={listingMetrics.stale30 > 0 ? '#d97706' : '#16a34a'}
-            warn={listingMetrics.stale30 > 0}
-          />
-          <KpiTile
-            label="Stale 60d+"
-            value={listingMetrics.stale60}
-            sub="urgent — price drop"
-            valueColor={listingMetrics.stale60 > 0 ? '#dc2626' : '#16a34a'}
-            warn={listingMetrics.stale60 > 0}
-          />
-        </div>
-        {/* Stock grid */}
-        {!stockLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            <KpiTile label="Units in Stock" value={stockMetrics.total} sub="unsold physical units" />
-            <KpiTile label="Capital Tied Up" value={fmtRM(stockMetrics.capital)} sub="purchase + recon cost" valueColor="#4f46e5" />
-            <KpiTile
-              label="Aged >45 Days"
-              value={stockMetrics.aged45.length}
-              sub={stockMetrics.aged60.length > 0 ? `${stockMetrics.aged60.length} critical >60d` : 'all under 60 days'}
-              valueColor={stockMetrics.aged45.length > 0 ? '#d97706' : '#16a34a'}
-              warn={stockMetrics.aged45.length > 0}
-            />
-          </div>
-        )}
-        {/* Aged units list */}
-        {!stockLoading && stockMetrics.aged60.length > 0 && (
-          <div style={{ marginTop: 14, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              <AlertTriangle size={11} style={{ display: 'inline', marginRight: 4 }} />
-              Aged Over 60 Days — Act Now
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {stockMetrics.aged60.map(u => {
-                const days = u.purchase_date ? Math.floor((Date.now() - new Date(u.purchase_date)) / 86_400_000) : null;
-                return (
-                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)', borderRadius: 8, borderLeft: '3px solid #ef4444' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{[u.year, u.brand, u.model].filter(Boolean).join(' ') || 'Unit'}</span>
-                    </div>
-                    <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600, whiteSpace: 'nowrap' }}>{days != null ? `${days}d` : '—'}</span>
-                    {u.asking_price && <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtRM(u.asking_price)}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </SectionShell>
+      {/* Listings & Inventory was here: days on lot, capital tied up and aged cars, on two clocks
+          of its own. Overview's stock block is the one place for those numbers (owner rule: each
+          fact once), on carPnl's clock. */}
 
       {/* ── Website & Traffic ─────────────────────────────────────────────────── */}
       <SectionShell>

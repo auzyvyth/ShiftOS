@@ -28,6 +28,10 @@ export function holdingPerDay(purchase, cfg = {}) {
   return { interest, overhead, total: interest + overhead };
 }
 
+// A car on the lot longer than this is AGEING, on every screen (Overview, Inventory, alerts).
+// There were three limits (30, 45, 60 days); the owner money block's 60 is the one kept.
+export const AGEING_DAYS = 60;
+
 // Whole days between the start and the sale (or `now`). null when the start is unknown.
 export function daysHeld(start, end, now = Date.now()) {
   if (!start) return null;

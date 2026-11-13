@@ -225,7 +225,7 @@ import {
   Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
-import { carPnl } from "../utils/carPnl";
+import { carPnl, daysHeld, AGEING_DAYS } from "../utils/carPnl";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -5145,11 +5145,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     return () => { cancelled = true; };
   }, [userId]);
 
+  // carPnl's one clock (daysHeld): from the purchase date, else the day the stock record was
+  // made, else the listing; stops on the sale. The stored days_in_stock was stale for most cars.
   const daysInStock = (u) => {
-    if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
-    const date = u.purchase_date || u.created_at;
-    if (!date) return '—';
-    return Math.floor((Date.now() - new Date(date)) / 86400000);
+    const d = daysHeld(u.purchase_date || u.created_at || u.car_listings?.created_at, u.status === 'sold' ? u.sold_date : null);
+    return d == null ? '—' : d;
   };
 
   const costBasis = (u) => {
@@ -5175,7 +5175,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     unpublished: u => !u.listing_id || u.car_listings?.status === 'unpublished',
     under_hp:    u => (u.encumbrance_status || 'unknown') === 'under_hp',
     enc_unknown: u => (u.encumbrance_status || 'unknown') === 'unknown',
-    aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > 60,
+    aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > AGEING_DAYS,
     loss:        u => { const g = netProfit(u); return g != null && g < 0; },
   };
   // Apply text search + active chip filters + sort to a list of units
@@ -5235,7 +5235,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     : 0;
   const agingUnits = activeUnits.filter(u => {
     const days = daysInStock(u);
-    return typeof days === 'number' && days > 60;
+    return typeof days === 'number' && days > AGEING_DAYS;
   });
   const gpSparkData = bucketGPByMonth(units);
 
@@ -5811,7 +5811,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   const gp = netProfit(u);
                   const days = daysInStock(u);
                   const daysNum = typeof days === 'number' ? days : 0;
-                  const isAging = u.status === 'in_stock' && daysNum > 60;
+                  const isAging = u.status === 'in_stock' && daysNum > AGEING_DAYS;
                   const carYear = car?.year ? Number(car.year) : null;
                   const carAge = carYear ? currentYear - carYear : null;
                   const plate = car.plate_number || u.registration_number;
@@ -5913,7 +5913,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
         const gp = netProfit(u);
         const days = daysInStock(u);
         const daysNum = typeof days === 'number' ? days : 0;
-        const isAging = u.status === 'in_stock' && daysNum > 60;
+        const isAging = u.status === 'in_stock' && daysNum > AGEING_DAYS;
         const ps  = puspakomStatus(u.puspakom_b7_date);
         const b5  = b5Status(u.puspakom_b5_date);
         const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
@@ -7799,7 +7799,7 @@ export default function DashboardPage() {
     team: { title: "Team", sub: "Manage salespeople" },
     analytics: ({
       revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
-      performance: { title: "Performance", sub: "Team, website traffic and stock health" },
+      performance: { title: "Performance", sub: "Team and website traffic" },
       listings:    { title: "Listings",    sub: "Per-car views, enquiries and days on lot" },
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },

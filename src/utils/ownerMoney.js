@@ -6,7 +6,7 @@
 // A car with no buy price is LEFT OUT of every profit total and counted instead (audit #2: 100 of
 // 142 stock cars had none, and a 0 cost reads as a free car). Revenue still counts it.
 // Not here on purpose: cash in the bank, bills, receivables. Nothing records them yet.
-import { carPnl } from './carPnl.js';
+import { carPnl, AGEING_DAYS } from './carPnl.js';
 
 const MY_OFFSET = 8 * 3600000; // Malaysia time, for month boundaries
 export const monthKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).toISOString().slice(0, 7) : null);
@@ -128,7 +128,7 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   const stuck = stock.map((r) => ({
     id: r.id, title: r.title, days: r.p.days, cost: r.costMissing ? null : r.cost,
     net: r.costMissing ? null : r.p.net, perDay: r.p.perDay.total,
-    flag: r.costMissing ? 'no_cost' : !(r.p.revenue > 0) ? 'no_price' : r.p.net < 0 ? 'losing' : (r.p.days || 0) > 60 ? 'ageing' : 'ok',
+    flag: r.costMissing ? 'no_cost' : !(r.p.revenue > 0) ? 'no_price' : r.p.net < 0 ? 'losing' : (r.p.days || 0) > AGEING_DAYS ? 'ageing' : 'ok',
   })).sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 
   return {
@@ -140,7 +140,7 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
       asking: stock.reduce((s, r) => s + r.p.revenue, 0),
       perDay: Math.round(stock.reduce((s, r) => s + r.p.perDay.total, 0)),
       avgDays: withDays.length ? Math.round(withDays.reduce((s, r) => s + r.p.days, 0) / withDays.length) : null,
-      over60: stock.filter((r) => (r.p.days || 0) > 60).length,
+      over60: stock.filter((r) => (r.p.days || 0) > AGEING_DAYS).length,
       losing: costedStock.filter((r) => r.p.revenue > 0 && r.p.net < 0).length,
       noCost: stock.length - costedStock.length,
     },
