@@ -3042,6 +3042,19 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-36: Live presentation that works offline (owner, 2026-11-13)** — a prospect said Excel works
+  offline, so he might switch if ours does. The maths already run on the device (`src/utils/financing.js`;
+  rates, rebates, offer and typed insurance are saved on the device). What needs the network today:
+  (1) opening `/s/:slug` (navigations are `NetworkOnly`, `vite.config.js:139`, so offline lands on
+  `offline.html`), (2) the cars, read from the DB (`SalesmanProfilePage.jsx:412`), (3) photos, which go
+  through `wsrv.nl` (`cdnImg`, `src/utils/img.js:7`) and the service worker only keeps the Supabase host
+  (`vite.config.js:169`), so photos would be blank offline, (4) new-car model cards: variants + prices come
+  from `useNewCarInfos`. Heartbeat and live report already fail silently. Likely shape: a "Save for offline"
+  button that stores the seller's cars + one 960px photo each + variant info on the device, plus a
+  precached `/live` page that reads it and says "saved 2 days ago". Open questions: does the prospect mean a
+  weak connection mid-live or a showroom/no-wifi meeting (a TikTok live itself needs internet)? stale prices
+  are the risk, so the saved-at stamp must show. Not scheduled until the owner decides.
+
 - **IDEA-35: AI-generated "one to one" photos for the new-car models (owner, 2026-11-12)** — the 13
   Toyota/Honda models in `new_car_models` have 0 photos (`new_car_model_media`); idea is to generate
   them with AI instead of sourcing real ones. Why it is parked, not built: the owner's own worry is
