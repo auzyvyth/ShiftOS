@@ -33,3 +33,7 @@ export const iCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 export const taCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
+
+export function getListingAge(createdAt) {
+  return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
+}
