@@ -125,9 +125,7 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    // Only the OWNER adds or removes staff (and the platform admin). Managers and admins used to
-    // be allowed, so a manager the owner keeps away from money could create an ACCOUNTANT account
-    // (which reads every money table) with a password of their own choosing, or delete other staff.
+    // Only the OWNER adds or removes staff (and the platform admin): owner-only by rule (owner, 2026-11-13).
     if (!callerProfile || !["dealer", "superadmin", "owner"].includes(callerProfile.role)) {
       return json({ error: "forbidden" }, 403, origin);
     }
