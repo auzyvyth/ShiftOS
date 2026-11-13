@@ -19,6 +19,13 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 //   check {post_id}                     per-network status + link of a post
 //   takedown {post_id, platform}        Facebook / Threads only (Zernio cannot remove
 //                                       an Instagram or TikTok post)
+//   tiktok_options                      the connected TikTok account's own choices: privacy
+//                                       levels, whether it can post now, the comment toggle
+// A TikTok item is {platform:'tiktok', title, text(description), privacy, allow_comment,
+//   consent, inbox}. TikTok's rules (Content Posting API): the poster must CHOOSE the privacy
+//   level (no default), choose comments, and confirm the preview + consent for each post, so
+//   the server refuses a public TikTok post without all of them. `inbox:true` sends the photos
+//   to the creator's TikTok inbox as a draft: nothing is published, they finish it in the app.
 //   recent                              this login's posts of the last 30 days (max 20)
 //   discard {post_id}                   delete a DRAFT (never a published post)
 // Limits (no DB table: counted from Zernio itself, by a tag put on every post we send):
@@ -28,7 +35,10 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 
 const ZERNIO = "https://zernio.com/api/v1";
 const SITE_URL = "https://drevo.my";
-const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram"]; // TikTok needs its consent flow: not yet
+const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram", "tiktok"];
+// Networks whose text carries no clickable link (Instagram, TikTok say "link in bio").
+const NO_LINK = ["instagram", "tiktok"];
+const NEEDS_PHOTO = ["instagram", "tiktok"];
 const TAKEDOWN_PLATFORMS = ["facebook", "threads"];
 const MAX_PHOTOS = 8;
 const DAY_LIMIT = 10;                 // live posts per login per 24h
@@ -102,7 +112,7 @@ function row(post: any) {
     when: post.scheduledFor || post.createdAt || null,
     status: post.status,
     title: c.split("\n")[0].slice(0, 80),
-    slug: (c.match(/\/showroom\/([^?\s]+)/) || [])[1] || null,
+    slug: (typeof post?.metadata?.slug === "string" ? post.metadata.slug : null) || (c.match(/\/showroom\/([^?\s]+)/) || [])[1] || null,
     platforms: (post.platforms || []).map((p: any) => ({
       platform: p.platform,
       status: p.status,
@@ -147,7 +157,7 @@ serve(async (req) => {
 
     // This login's posts of the last 30 days, newest first.
     const listMine = async () => {
-      const r = await zernio("GET", "/posts?limit=100&fields=content,platforms,status,tags,scheduledFor,createdAt");
+      const r = await zernio("GET", "/posts?limit=100&fields=content,platforms,status,tags,scheduledFor,createdAt,metadata");
       if (!r.ok) throw new Error("zernio_posts_" + r.status);
       const since = Date.now() - RECENT_DAYS * 86400000;
       return (r.data?.posts || [])
@@ -186,6 +196,21 @@ serve(async (req) => {
       }, 200, origin);
     }
 
+    if (action === "tiktok_options") {
+      const acc = await loadAccounts();
+      if (!acc.tiktok) return json({ error: "not_connected", platform: "tiktok" }, 409, origin);
+      const info = await zernio("GET", `/accounts/${acc.tiktok.accountId}/tiktok/creator-info?mediaType=photo`);
+      if (!info.ok) return json({ error: "tiktok_options_failed", status: info.status }, 502, origin);
+      const c = info.data?.postingLimits?.interactionSettings?.allow_comment;
+      return json({
+        ok: true,
+        nickname: String(info.data?.creator?.nickname || acc.tiktok.name).slice(0, 60),
+        can_post_more: info.data?.creator?.canPostMore !== false,
+        privacy: (info.data?.privacyLevels || []).map((l: any) => ({ value: String(l.value), label: String(l.label || l.value) })),
+        comment: { enabled: c?.enabled !== false, default: c?.default === true },
+      }, 200, origin);
+    }
+
     if (action === "publish") {
       const items = Array.isArray(body.items) ? body.items : [];
       if (!items.length || items.length > PUBLISH_PLATFORMS.length) return json({ error: "bad_items" }, 400, origin);
@@ -193,7 +218,7 @@ serve(async (req) => {
       for (const it of items) {
         if (!PUBLISH_PLATFORMS.includes(it?.platform) || seen.has(it.platform)) return json({ error: "bad_platform" }, 400, origin);
         seen.add(it.platform);
-        const v = validateText(it.platform, it.text, {});
+        const v = validateText(it.platform, it.text, it.platform === "tiktok" ? { title: it.title } : {});
         if (!v.ok) return json({ error: "text_rejected", platform: it.platform, errors: v.errors, message: v.errors.map((e: string) => (ERROR_TEXT as any)[e] || e).join(" ") }, 422, origin);
       }
 
@@ -226,20 +251,48 @@ serve(async (req) => {
       const acc = await loadAccounts();
       for (const it of items) {
         if (!acc[it.platform]) return json({ error: "not_connected", platform: it.platform }, 409, origin);
-        if (it.platform === "instagram" && !photos.length) return json({ error: "needs_photo", platform: it.platform }, 409, origin);
+        if (NEEDS_PHOTO.includes(it.platform) && !photos.length) return json({ error: "needs_photo", platform: it.platform }, 409, origin);
+      }
+
+      // TikTok: the account's own options decide what is allowed (privacy levels, can it post
+      // more today). Checked here, not trusted from the browser.
+      const draft = body.draft === true;
+      const tt = items.find((it: any) => it.platform === "tiktok");
+      let tiktokSettings: Record<string, unknown> | undefined;
+      if (tt) {
+        const info = await zernio("GET", `/accounts/${acc.tiktok.accountId}/tiktok/creator-info?mediaType=photo`);
+        if (!info.ok) return json({ error: "tiktok_options_failed", status: info.status }, 502, origin);
+        const inbox = tt.inbox === true;
+        const levels: string[] = (info.data?.privacyLevels || []).map((l: any) => l.value);
+        if (!draft) {
+          if (info.data?.creator?.canPostMore === false) return json({ error: "tiktok_cannot_post" }, 409, origin);
+          if (tt.consent !== true) return json({ error: "tiktok_consent" }, 422, origin);
+          if (!inbox && !levels.includes(String(tt.privacy))) return json({ error: "tiktok_privacy" }, 422, origin);
+        }
+        tiktokSettings = {
+          mediaType: "photo",
+          description: String(tt.text),
+          privacyLevel: levels.includes(String(tt.privacy)) ? String(tt.privacy) : (levels.includes("SELF_ONLY") ? "SELF_ONLY" : levels[0]),
+          allowComment: tt.allow_comment === true,
+          commercialContentType: "none",
+          autoAddMusic: false,
+          photoCoverIndex: 0,
+          contentPreviewConfirmed: tt.consent === true,
+          expressConsentGiven: tt.consent === true,
+          ...(inbox ? { draft: true } : {}),
+        };
       }
 
       // The text must carry THIS car's link: a seller cannot post a link to somewhere else
       // (Facebook and Threads only; Instagram says "link in bio").
       for (const it of items) {
-        if (it.platform !== "instagram" && !String(it.text).includes(`${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`)) {
+        if (!NO_LINK.includes(it.platform) && !String(it.text).includes(`${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`)) {
           return json({ error: "link_missing", platform: it.platform }, 422, origin);
         }
-        const urls = String(it.text).match(/https?:\/\/\S+/g) || [];
+        const urls = (String(it.text) + " " + String(it.title || "")).match(/https?:\/\/\S+/g) || [];
         if (urls.some((u) => !u.startsWith(SITE_URL + "/"))) return json({ error: "foreign_link", platform: it.platform }, 422, origin);
       }
 
-      const draft = body.draft === true;
       if (!draft) {
         const mine = await listMine();
         const dayAgo = Date.now() - 86400000;
@@ -250,11 +303,16 @@ serve(async (req) => {
           if (dup) return json({ error: "already_posted", platform: it.platform }, 409, origin);
         }
       }
+      // A TikTok photo post's "content" is its TITLE; the long text goes in tiktokSettings.description.
+      const lead = items.find((it: any) => it.platform !== "tiktok") || items[0];
       const payload: Record<string, unknown> = {
-        content: items[0].text,
+        content: lead.platform === "tiktok" ? lead.title : lead.text,
         timezone: "Asia/Kuala_Lumpur",
         tags: [tag],
-        platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.text })),
+        // Which car this post is about, for the one-post-per-car rule: a TikTok text has no link.
+        metadata: { slug: car.slug },
+        platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.platform === "tiktok" ? String(it.title) : it.text })),
+        ...(tiktokSettings ? { tiktokSettings } : {}),
         mediaItems: photos.map((url: string) => ({ type: "image", url })),
         ...(draft ? { isDraft: true } : { publishNow: true }),
       };

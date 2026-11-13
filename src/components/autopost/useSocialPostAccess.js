@@ -1,16 +1,16 @@
 // Auto-post TEST rig (ZERNIO-1, 2026-11-12): asks the edge function `zernio-post` whether
 // THIS login may post to the owner's social accounts, and which are connected. Everyone
 // else gets { allowed: false } and the "Post to socials" menu item never appears.
-// Runs once per tab session per user (10-minute copy in sessionStorage); no DB writes.
+// Runs once per tab session per user (2-minute copy in sessionStorage); no DB writes.
 // A failure of any kind means "not allowed": the button simply stays hidden.
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 
-// A "yes" is kept 10 minutes; a "no" only 30 seconds, so adding the secret on the server shows up
+// A "yes" is kept 2 minutes (was 10: switching Facebook for TikTok in Zernio looked ignored); a "no" only 30 seconds, so adding the secret on the server shows up
 // on the next refresh instead of ten minutes later (2026-11-12: a cached "no" hid the button).
-const TTL_YES = 10 * 60 * 1000;
+const TTL_YES = 2 * 60 * 1000;
 const TTL_NO = 30 * 1000;
-const key = (uid) => `xd_zp_access_${uid}`;
+const key = (uid) => `xd_zp_access2_${uid}`;
 const NO = { allowed: false, accounts: [] };
 
 function readCached(uid) {
