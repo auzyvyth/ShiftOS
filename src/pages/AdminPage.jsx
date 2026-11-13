@@ -261,7 +261,7 @@ function BillingTab({ dealers, salesmen, dealerStats }) {
 // URL carries only the tab (/platform/review) and the section follows from it.
 // Keep in step with NAV below: a tab missing here falls back to Home.
 const TAB_SECTION = {
-  home: "work", review: "work", reports: "work",
+  home: "work", review: "work", social: "work", reports: "work",
   accounts: "people", waitlist: "people", prospects: "people", sensus: "people",
   marketplace: "marketplace", funnel: "marketplace", engagement: "marketplace",
   buyers: "marketplace", newcars: "marketplace", broadcast: "marketplace", platform: "marketplace",
