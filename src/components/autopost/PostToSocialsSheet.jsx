@@ -136,7 +136,8 @@ export function RecentPosts({ font, ghost, client }) {
 
 // TikTok's own choices (its API rules: no defaults for who sees it or for comments, and a
 // confirmation for every post). Options come from the connected account itself.
-function TikTokChoices({ photoCount, opts, tt, setTt, disabled, font, pill }) {
+// `count` > 1 = the bulk screen: one consent covers every post the owner has just previewed.
+export function TikTokChoices({ photoCount, opts, tt, setTt, disabled, font, pill, count = 1 }) {
   const row = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 };
   const lbl = { fontSize: 12.5, color: P.textMuted, flex: '1 1 100%' };
   if (photoCount === 0) return <div style={{ marginTop: 8, fontSize: 12.5, color: P.accentText }}>TikTok needs at least one photo on this car.</div>;
@@ -172,7 +173,7 @@ function TikTokChoices({ photoCount, opts, tt, setTt, disabled, font, pill }) {
       {!tt.inbox && (
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 12, fontSize: 13, lineHeight: 1.4, color: P.text, cursor: 'pointer', fontFamily: font }}>
         <input type="checkbox" checked={tt.consent} disabled={disabled} onChange={(e) => setTt((t) => ({ ...t, consent: e.target.checked }))} style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: '#dc2626' }} />
-        <span>I previewed this post and agree to {tt.inbox ? 'send it to' : 'publish it on'} {opts.nickname ? `@${opts.nickname.replace(/^@/, '')}` : 'my TikTok'}. It is not paid or branded content. By posting, you agree to TikTok's Music Usage Confirmation.</span>
+        <span>I previewed {count > 1 ? `these ${count} posts` : 'this post'} and agree to {tt.inbox ? (count > 1 ? 'send them to' : 'send it to') : (count > 1 ? 'publish them on' : 'publish it on')} {opts.nickname ? `@${opts.nickname.replace(/^@/, '')}` : 'my TikTok'}. It is not paid or branded content. By posting, you agree to TikTok's Music Usage Confirmation.</span>
       </label>
       )}
     </div>

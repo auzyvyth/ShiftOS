@@ -10,6 +10,7 @@ import { carTitle, money } from '../../../supabase/functions/_shared/postCaption
 import { cdnImg } from '../../utils/img';
 
 const PostToSocialsSheet = React.lazy(() => import('../autopost/PostToSocialsSheet'));
+const BulkPostSheet = React.lazy(() => import('../autopost/BulkPostSheet'));
 const RecentPosts = React.lazy(() => import('../autopost/PostToSocialsSheet').then((m) => ({ default: m.RecentPosts })));
 
 // The console is dark and the cards are white, so the cards set their own dark text (the title inherited the console's light text and vanished).
@@ -27,6 +28,10 @@ export default function SocialQueueTab() {
   const [err, setErr] = useState('');
   const [active, setActive] = useState(null);
   const [busy, setBusy] = useState('');
+  // Cars ticked for "review and post together" (owner, 2026-11-13: check each, approve all at once).
+  const [sel, setSel] = useState(() => new Set());
+  const [bulk, setBulk] = useState(false);
+  const toggle = (id) => setSel((s0) => { const n = new Set(s0); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const load = useCallback(async () => {
     setErr('');
@@ -57,6 +62,8 @@ export default function SocialQueueTab() {
   const queue = (rows || []).filter((r) => r.kind === 'queue');
   const withdrawn = (rows || []).filter((r) => r.kind === 'withdrawn');
   const noAccounts = accounts !== null && accounts.length === 0;
+  const selected = queue.filter((r) => sel.has(r.id));
+  const allSelected = queue.length > 0 && selected.length === queue.length;
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -88,10 +95,22 @@ export default function SocialQueueTab() {
           {rows && queue.length === 0 && !err && (
             <p style={{ color: '#6b7280', fontSize: 14 }}>Nothing waiting. A car shows here once you approve it and the seller said yes.</p>
           )}
+          {queue.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '0 0 10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: '#e5e7eb', cursor: 'pointer' }}>
+                <input type="checkbox" checked={allSelected} onChange={() => setSel(allSelected ? new Set() : new Set(queue.map((r) => r.id)))} style={{ width: 20, height: 20, accentColor: '#dc2626' }} />
+                Select all ({queue.length})
+              </label>
+              <button style={{ ...btn(true), opacity: selected.length && !noAccounts && accounts !== null ? 1 : 0.45 }} disabled={!selected.length || noAccounts || accounts === null} onClick={() => setBulk(true)}>
+                Review and post {selected.length || ''} together
+              </button>
+            </div>
+          )}
           {queue.map((r) => {
             const img = Array.isArray(r.images) && r.images[0] ? cdnImg(r.images[0], 160, 70) : null;
             return (
               <div key={r.id} style={{ ...card, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                {queue.length > 1 && <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${carTitle(r)}`} style={{ width: 20, height: 20, accentColor: '#dc2626', flexShrink: 0 }} />}
                 {img && <img src={img} alt="" width="64" height="64" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', background: '#f3f4f6', flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div style={{ fontSize: 14.5, fontWeight: 700 }}>{carTitle(r)}</div>
@@ -115,6 +134,17 @@ export default function SocialQueueTab() {
           <div style={{ background: '#111318', color: '#fff', borderRadius: 12, padding: 14 }}>
             <RecentPosts font="inherit" ghost={{ ...ghost, background: '#181b21', color: '#fff', border: 'none' }} client={platformClient} />
           </div>
+        </React.Suspense>
+      )}
+
+      {bulk && (
+        <React.Suspense fallback={null}>
+          <BulkPostSheet
+            cars={selected}
+            accounts={accounts || []}
+            client={platformClient}
+            onClose={() => { setBulk(false); setSel(new Set()); load(); }}
+          />
         </React.Suspense>
       )}
 
