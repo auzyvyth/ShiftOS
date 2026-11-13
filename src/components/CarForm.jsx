@@ -1785,6 +1785,20 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return null;
   };
 
+  // Fast lane (new listings, not the dealer intake path): after a quick stage,
+  // go to the next stage that still has a REQUIRED gap, else straight to Review.
+  // Stages with nothing required left are not walked screen by screen. The data
+  // is the same as tapping Continue/Skip through every optional screen (payment
+  // "loan", encumbrance "unknown", no warranty, no services), so nothing is
+  // invented; the optional rows stay one tap away on each stage's summary and on
+  // Review's Edit buttons.
+  const fastLane = quickMode && !listing && !intakeDone;
+  const nextNeededStep = (from) => {
+    if (!fastLane) return from + 1;
+    for (let s = from + 1; s <= 5; s++) if (missingForStep(s).length) return s;
+    return 6;
+  };
+
   // Advance a step, or explain (via toast) exactly what's missing.
   const goNext = () => {
     const miss = missingFields();
@@ -3119,10 +3133,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       setForm={setForm}
       screens={screens}
       summaryRows={summaryRows}
-      landOnSummary={!!visitedStages[id]}
+      // Fast lane: a stage opens on its first required gap, then its summary,
+      // never on question one of a screen the seller has nothing to say to.
+      landOnSummary={!!visitedStages[id] || fastLane}
+      skipSummary={fastLane}
       contextLine={carLine}
       onExitBack={() => setStep(id - 1)}
-      onDone={() => setStep(id + 1)}
+      onDone={() => setStep(nextNeededStep(id))}
     />
   );
   const tiles = (options, current, onPick, cols = "grid-cols-2") => (
@@ -3241,7 +3258,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       ) },
     { key: "services", title: "Anything included with the car?", skip: svcEmpty || !!intakeDone, filled: form.included_services.length > 0,
       render: () => renderServices() },
+    // Required like publish requires it: a profile with no state/city otherwise
+    // reaches Review and gets bounced back here by the pre-flight check.
     { key: "pricing_more", title: "Location & deposit", enter: "pass", primaryLabel: "Done",
+      required: true, answered: !!form.state && !!form.city,
       render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
   ], [
     { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
@@ -3457,7 +3477,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           specsLocked={specsLocked}
           unlockSpecs={unlockSpecs}
           onExitBack={() => setStep(1)}
-          onDone={() => setStep(3)}
+          onDone={() => setStep(nextNeededStep(2))}
+          conditionChosen={!!defaultValues?.condition}
           renderExtras={renderQuickExtras}
         />
       ) : (

@@ -73,7 +73,10 @@ export function BigNumber({ inputRef, value, onChange, prefix, suffix, placehold
 
 // dark: Salesman Premium's premiumDark sheet (the rest follows .pd-form,
 // src/pages/salesmanPremium/premiumForm.css); only the inline footer needs it.
-export default function QuickSteps({ setForm, screens, summaryRows, landOnSummary, contextLine, onExitBack, onDone, dark }) {
+// skipSummary (CarForm's fast lane): after the last REQUIRED gap is answered, go
+// straight on instead of stopping at "Check and continue". The summary is still
+// shown when a seller comes back to the stage or taps a row to change it.
+export default function QuickSteps({ setForm, screens, summaryRows, landOnSummary, contextLine, onExitBack, onDone, dark, skipSummary }) {
   const live = screens.filter((s) => !s.skip);
   const byKey = (k) => screens.find((s) => s.key === k);
   const gaps = live.filter((s) => s.required && !s.answered);
@@ -130,7 +133,10 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
     if (from === "summary") { onDone(); return; }
     if (fromSummary) {
       const gap = gaps.find((s) => s.key !== from);
-      if (allRequired || !gap) { goto("summary"); return; }
+      if (allRequired || !gap) {
+        if (skipSummary && !editingRow) { onDone(); return; }
+        goto("summary"); return;
+      }
       setDir("fwd"); setKey(gap.key); return;
     }
     const i = screens.findIndex((s) => s.key === from);

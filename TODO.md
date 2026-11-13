@@ -70,6 +70,19 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## LISTING-60S: add a car in about 60 seconds (owner, 2026-11-13)
+**Step 1 DONE on branch `ccr-10a569de-elelji`, NOT on staging yet:** fast lane in `CarForm.jsx`
+(`fastLane`, `nextNeededStep`): after a stage the form jumps to the next stage with a REQUIRED gap,
+else Review; `QuickSteps skipSummary`; the Used/Recon/New answer is not asked twice
+(`QuickCarFlow conditionChosen`); "Location" is a required screen. Measured in a mocked run:
+22 -> 14 gestures, 18 -> 10 screens, saved payload identical (status `pending_approval` kept).
+Test on staging with a real phone first: stages 3 and 5 are no longer walked, only reachable from the step dots / Review Edit.
+**Step 2 (not built): AI reads the photos** (brand, model, colour, odometer, variant badge) and pre-fills the
+Car stage for the seller to confirm. Needs: a new `ai-proxy` feature key with image input (diff the
+DEPLOYED function against the repo first), photo URLs accepted only from the caller's own `car-images`
+folder, output validated against `CAR_DATA`, a per-seller daily cap. Do NOT send the geran to the model
+(owner name + IC): PDPA call is the owner's. Open owner call: make "What did it cost you?" optional at listing time.
+
 ## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
 **Restructure plan + 2026-11-09 handoff: `docs/DEALER_DASHBOARD_PLAN.md`** (15 tabs -> 6, duplicates, broken links; branch `ccr-10f2178f-k01t0b` not on staging; team-health migration `20261110a` queued).
 Full report stays OUT of this public repo until part 2 is fixed (it shows how to break in).
