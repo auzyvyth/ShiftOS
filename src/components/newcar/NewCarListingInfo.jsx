@@ -268,7 +268,9 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
                   {o.image && <img src={o.image} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 </span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: th.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {info.brand} {o.model} {o.variant}
+                  {/* other_cards carries no brand: this card's own brand (info.brand) is NOT theirs.
+                      A seller who switched brands showed Perodua cars as "Toyota Axia". */}
+                  {o.brand ? `${o.brand} ` : ""}{o.model} {o.variant}
                 </span>
                 <span style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 600, color: th.text, fontVariantNumeric: "tabular-nums", paddingRight: 6 }}>{rm(o.price)}</span>
               </Link>
