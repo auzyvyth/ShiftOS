@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useCarMoney } from "../hooks/useCarMoney";
 import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -175,7 +176,19 @@ export default function RevOpsPage({ userId }) {
   // Every section persists its last result, so the tab paints the numbers it
   // showed last time; "loading" only means "nothing to show yet" (usePersistentState).
   const ck = (name) => (userId ? `revops_${name}:${userId}` : null);
-  const [revData, setRevData] = usePersistentState(ck('rev'), null);
+  const [revCounts, setRevData] = usePersistentState(ck('rev'), null);
+  // ONE "gross this month": the same carPnl() sum Overview shows (useCarMoney).
+  const { money } = useCarMoney(userId);
+  const mo = money?.month;
+  const revData = revCounts && mo ? {
+    ...revCounts,
+    revMTD: mo.revenue,
+    gpMTD: mo.gross,
+    carsGross: mo.carsGross,
+    costedRevenue: mo.costedRevenue,
+    leftOut: mo.leftOut,
+    unitsSoldMTD: mo.units,
+  } : null;
   const [revFetching, setRevLoading] = useState(true);
   const revLoading = revFetching && !revData;
 
@@ -196,15 +209,9 @@ export default function RevOpsPage({ userId }) {
     const fetch = async () => {
       setRevLoading(true);
 
-      // H6: pull MTD revenue/GP/units from gm_pnl_snapshot (the same RPC
-      // Overview/Oversight use, backed by stock_units) instead of running a
-      // second, independently-computed query against car_listings — the two
-      // tables are synced via triggers but can drift, which previously made
-      // RevOps and Overview disagree on the same month's numbers.
-      // Three independent reads, run together (they were serial: three round
-      // trips to Sydney back to back before the first tile could fill).
-      const [{ data: pnl, error: pnlErr }, { count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
-        supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId }),
+      // Revenue / gross / units this month come from useCarMoney (the same sum of carPnl()
+      // as Overview), not here. These two counts are all this read still does.
+      const [{ count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
         // Active listings for stock turn
         supabase
           .from("car_listings")
@@ -218,16 +225,12 @@ export default function RevOpsPage({ userId }) {
           .eq("dealer_id", userId)
           .not("stage", "in", "(won,closed_won,lost,closed_lost)"),
       ]);
-      if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
       // A failed read keeps the numbers already on screen (saved copy); writing
       // zeros here showed "RM 0 this month" whenever the database was slow.
-      if (pnlErr || stockErr || leadsCountErr || !pnl) { setRevLoading(false); return; }
+      if (stockErr || leadsCountErr) { setRevLoading(false); return; }
 
       setRevData({
-        revMTD: Number(pnl?.mtd?.revenue) || 0,
-        gpMTD: Number(pnl?.mtd?.gross_profit) || 0,
         activeLeads: activeLeads ?? 0,
-        unitsSoldMTD: Number(pnl?.mtd?.units) || 0,
         activeCount: activeCount ?? 0,
       });
       setRevLoading(false);
@@ -400,7 +403,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Gross Profit This Month"
             value={revData ? fmtRM(revData.gpMTD) : null}
-            loading={revLoading}
+            sub={revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
+            loading={revLoading || !mo}
             icon={TrendingUp}
             accentColor="#34d399"
           />
@@ -433,7 +437,7 @@ export default function RevOpsPage({ userId }) {
           const addonRev = addonData?.totalRevenue || 0;
           const totalRev = vehicleRev + addonRev;
           const addonPct = totalRev > 0 ? Math.round((addonRev / totalRev) * 100) : 0;
-          const marginPct = vehicleRev > 0 ? Math.round((revData.gpMTD / vehicleRev) * 100) : 0;
+          const marginPct = revData.costedRevenue > 0 ? Math.round((revData.carsGross / revData.costedRevenue) * 100) : 0;
           return (
             <div
               className="grid grid-cols-3 gap-3 mt-3"
@@ -474,7 +478,7 @@ export default function RevOpsPage({ userId }) {
                   {marginPct}%
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                  {fmtRM(revData.gpMTD)} gross profit
+                  {fmtRM(revData.carsGross)} on the cars{revData.leftOut > 0 ? ` · ${revData.leftOut} left out, no buy price` : ''}
                 </span>
               </div>
             </div>

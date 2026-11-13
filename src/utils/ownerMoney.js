@@ -10,6 +10,7 @@ import { carPnl } from './carPnl.js';
 
 const MY_OFFSET = 8 * 3600000; // Malaysia time, for month boundaries
 export const monthKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).toISOString().slice(0, 7) : null);
+export const dayKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).toISOString().slice(0, 10) : null);
 const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const UNSOLD = ['available', 'reserved', 'unpublished', 'pending_approval', 'in_stock'];
 
@@ -53,6 +54,7 @@ export function carRow({ listing, unit }, ctx = {}, now = Date.now()) {
   return {
     id: listingId || u.id, title, status, isSold,
     soldMonth: isSold ? monthKey(l.sold_at || u.sold_date) : null,
+    soldDay: isSold ? dayKey(l.sold_at || u.sold_date) : null,
     costMissing: !(n(u.purchase_price) > 0),
     cost: n(u.purchase_price) + (p.lines.find((x) => x.key === 'recon')?.val || 0),
     p,
@@ -69,8 +71,9 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   const thisMonth = monthKey(now);
   const lastMonth = monthKey(new Date(new Date(now + MY_OFFSET).toISOString().slice(0, 7) + '-01T00:00:00Z').getTime() - MY_OFFSET - 1);
 
-  const monthTotals = (key) => {
-    const sold = rows.filter((r) => r.isSold && r.soldMonth === key);
+  // uptoDay: count only sales up to this day of the month (same-days comparison).
+  const monthTotals = (key, uptoDay = 31) => {
+    const sold = rows.filter((r) => r.isSold && r.soldMonth === key && Number(r.soldDay?.slice(8, 10)) <= uptoDay);
     const costed = sold.filter((r) => !r.costMissing);
     return {
       units: sold.length,
@@ -92,6 +95,9 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   // Overhead from Settings > Costs, counted to today (it is a monthly bill, not per car).
   const d = new Date(now + MY_OFFSET);
   const dayOfMonth = d.getUTCDate();
+  // Last month up to the same day: the fair "vs last month" while this month is still running
+  // (a whole last month against 12 days of this one reads as a crash every month).
+  const prevToDate = monthTotals(lastMonth, dayOfMonth);
   const daysInMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
   const overheadToDate = Math.round((n(ctx.cfg?.monthly_overhead) * dayOfMonth) / daysInMonth);
 
@@ -102,6 +108,13 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
     const key = t.toISOString().slice(0, 7);
     const m = i === 0 ? month : monthTotals(key);
     months.push({ key, label: t.toLocaleString('en-MY', { month: 'short', timeZone: 'UTC' }), revenue: m.revenue, gross: m.gross });
+  }
+
+  // Last 30 days, one row per Malaysia day (oldest first): sales revenue, for the Overview chart.
+  const daily = [];
+  for (let i = 29; i >= 0; i--) {
+    const key = dayKey(now - i * 86400000);
+    daily.push({ day: key, revenue: rows.filter((r) => r.soldDay === key).reduce((s, r) => s + r.p.revenue, 0) });
   }
 
   // Stock = money tied up right now.
@@ -115,7 +128,7 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   })).sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 
   return {
-    month, prev, months, overheadToDate,
+    month, prev, prevToDate, months, daily, overheadToDate,
     netAfterOverhead: month.gross - overheadToDate,
     stock: {
       count: stock.length,

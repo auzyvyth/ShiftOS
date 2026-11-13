@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
 import OwnerMoney from './overview/OwnerMoney';
+import { useCarMoney } from '../hooks/useCarMoney';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
@@ -138,12 +139,6 @@ function SectionHeader({ title, sub, live }) {
 // and revalidate behind it. This tab is the first thing an owner sees; it used
 // to show a skeleton until all five queries returned, which on a slow database
 // moment was the whole 15+ second wait.
-async function fetchPnl(dealerId) {
-  const { data, error } = await supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId });
-  if (error) throw error;
-  return data;
-}
-
 async function fetchOverview(dealerId) {
   const now = Date.now();
   const today = malaysiaDayBounds();
@@ -312,11 +307,9 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   };
   // Keys end in the dealer id (per-account, and purged on logout via the
   // `cf:v1:` prefix in panelCache). ttlMs 0 = always refetch behind the paint.
-  const { data: pnl } = useCachedFetch(
-    dealerId ? `overview_pnl:${dealerId}` : null,
-    () => fetchPnl(dealerId),
-    { enabled: !!dealerId, ttlMs: 0 },
-  );
+  // Money figures come from the same sum of carPnl() as the money section (useCarMoney),
+  // never the RPC gm_pnl_snapshot: the two used to disagree on "gross this month".
+  const { money } = useCarMoney(dealerId);
   const { data: cachedSnapshot, loading, refresh } = useCachedFetch(
     dealerId ? `overview:${dealerId}` : null,
     () => fetchOverview(dealerId),
@@ -340,10 +333,17 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   }, [dealerId]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const mtd  = pnl?.mtd  || {};
-  const lmtd = pnl?.lmtd || {};
-  const unitTrend = delta(Number(mtd.units || 0), Number(lmtd.units || 0));
-  const gpTrend   = delta(Number(mtd.gross_profit || 0), Number(lmtd.gross_profit || 0));
+  const mtd  = money?.month || null;
+  const lmtd = money?.prevToDate || null;
+  const unitTrend = mtd && lmtd ? delta(mtd.units, lmtd.units) : null;
+  const gpTrend   = mtd && lmtd ? delta(mtd.gross, lmtd.gross) : null;
+  // "N left out" when a sold car has no buy price: its profit is not invented.
+  const grossSub = !mtd ? 'counting...'
+    : mtd.leftOut > 0 ? `${mtd.leftOut} sold car${mtd.leftOut === 1 ? '' : 's'} left out, no buy price`
+    : mtd.margin != null ? `${mtd.margin.toFixed(1)}% margin` : 'no sales yet';
+  const tiedSub = money?.stock.noCost > 0
+    ? `${money.stock.noCost} car${money.stock.noCost === 1 ? '' : 's'} left out, no buy price`
+    : 'buy + recon, cars in stock';
 
   const pipelineData = snapshot
     ? ACTIVE_STAGES.map(s => ({ stage: stageLabel(s), count: snapshot.stageCounts[s] || 0, color: STAGE_CONFIG[s].headerBorder })).filter(d => d.count > 0)
@@ -356,8 +356,10 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
         .slice(0, 6)
     : [];
 
-  // gm_pnl_snapshot returns sparkline rows as { d: <date>, rev: <revenue> }
-  const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.d?.slice(5), rev: Number(d.rev || 0) }));
+  // Last 30 days of sales revenue, Malaysia days (ownerMoney().daily). Hidden when nothing sold.
+  const sparkData = (money?.daily || []).some(d => d.revenue > 0)
+    ? money.daily.map(d => ({ day: d.day.slice(5), rev: d.revenue }))
+    : [];
 
   if (loading) {
     return (
@@ -480,10 +482,10 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
           const K = {
             open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline' },
             active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days' },
-            sold_month:      { label: 'Sold this month',  value: mtd.units ?? 0, sub: 'vs last month', trend: unitTrend },
-            gross_month:     { label: 'Gross this month', value: fmt(mtd.gross_profit), sub: mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'no sales yet', trend: gpTrend },
+            sold_month:      { label: 'Sold this month',  value: mtd ? mtd.units : '-', sub: 'vs this day last month', trend: unitTrend },
+            gross_month:     { label: 'Gross this month', value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend },
             appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
-            money_tied:      { label: 'Money tied up',    value: fmt(pnl?.inventory?.capital_tied), sub: 'buy + recon, cars in stock' },
+            money_tied:      { label: 'Money tied up',    value: money ? fmt(money.stock.atCost) : '-', sub: tiedSub },
           }[id];
           return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} /> : null;
         })}
@@ -495,7 +497,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
       <div className="ov-rev-stock" style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
         {sparkData.length > 0 && (
           <Panel>
-            <SectionHeader title="Revenue — Last 30 Days" sub={`MTD ${fmt(mtd.revenue)}  ·  prev ${fmt(lmtd.revenue)}`} />
+            <SectionHeader title="Revenue, last 30 days" sub={`This month ${fmt(mtd?.revenue)}  ·  same days last month ${fmt(lmtd?.revenue)}`} />
             <ResponsiveContainer width="100%" height={130}>
               <LineChart data={sparkData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={PL.raised} />
@@ -514,7 +516,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
               { label: 'Average days on lot', value: `${snapshot.avgDays}d` },
               { label: 'On lot 30 days+',     value: snapshot.stale, warn: snapshot.stale > 0 },
               { label: 'Appointments today',  value: snapshot.aptsToday },
-              { label: 'Capital tied up',     value: fmt(pnl?.inventory?.capital_tied) },
+              { label: 'Capital tied up',     value: money ? fmt(money.stock.atCost) : '-' },
             ].map(({ label, value, warn }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: PL.raised, borderRadius: PL.radius.row, padding: '10px 12px' }}>
                 <span style={{ fontSize: 12, color: PL.textSec }}>{label}</span>

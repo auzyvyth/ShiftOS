@@ -2,11 +2,8 @@
 // everything about the money and revenue"). Every number is a sum of carPnl() over the cars
 // (src/utils/ownerMoney.js), so it always equals the cars underneath it. No cash balance, bills
 // or receivables: nothing records them yet, and an invented number is worse than none.
-import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { supabase } from '../../supabaseClient';
-import { usePersistentState } from '../../hooks/usePersistentState';
-import { mergeCars, ownerMoney } from '../../utils/ownerMoney';
+import { useCarMoney } from '../../hooks/useCarMoney';
 import { premiumLight as PL } from '../../theme/tokens';
 
 const rm = (v) => {
@@ -19,29 +16,6 @@ const pct = (a, b) => (b > 0 ? ((a - b) / b) * 100 : null);
 const SPEND_LABEL = { recon: 'Recon', holding: 'Holding (days on lot)', ads: 'Advertising', commission: 'Commission', transfer: 'Transfer and road tax', admin: 'Admin and documents', warranty: 'Warranty reserve', services: 'Included services' };
 const FLAG = { no_cost: ['Add buy price', PL.textMuted], no_price: ['No asking price', PL.textMuted], losing: ['Losing money', PL.accentText], ageing: ['Over 60 days', PL.accentText], ok: ['On track', PL.up] };
 
-async function load(dealerId) {
-  const [l, u, a, t, d, c] = await Promise.all([
-    supabase.from('car_listings').select('id, brand, model, variant, year, status, selling_price, sold_price, sold_at, created_at, commission_amount, included_services_cost, engine_cc, warranty_months').eq('dealer_id', dealerId).neq('status', 'archived'),
-    supabase.from('stock_units').select('id, listing_id, purchase_price, purchase_date, recon_cost, recon_actual, asking_price, sold_price, sold_date, status, created_at, engine_cc, brand, model, year').eq('dealer_id', dealerId),
-    supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
-    supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
-    supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
-    supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
-  ]);
-  if (l.error || u.error) throw new Error('read_failed');
-  const ads = {};
-  for (const r of a.data || []) ads[r.stock_unit_id] = (ads[r.stock_unit_id] || 0) + (Number(r.amount) || 0);
-  const handover = {};
-  for (const r of t.data || []) if (r.listing_id && r.status !== 'na') handover[r.listing_id] = (handover[r.listing_id] || 0) + (Number(r.cost) || 0);
-  const addons = {};
-  for (const r of d.data || []) {
-    if (!r.listing_id) continue;
-    const x = addons[r.listing_id] || (addons[r.listing_id] = { rev: 0, cost: 0 });
-    x.rev += Number(r.sold_price) || 0; x.cost += Number(r.dealer_products?.cost_price) || 0;
-  }
-  return { listings: l.data || [], units: u.data || [], ctx: { ads, handover, addons, cfg: c.data || {} } };
-}
-
 const card = { background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px', minWidth: 0 };
 const eyebrow = { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: PL.textMuted, margin: 0 };
 function Head({ title, sub }) {
@@ -53,8 +27,8 @@ function Head({ title, sub }) {
   );
 }
 function Trend({ v }) {
-  if (v == null || !Number.isFinite(v)) return <span style={{ fontSize: 11.5, color: PL.textMuted }}>no sales last month</span>;
-  return <span style={{ fontSize: 11.5, fontWeight: 700, color: v >= 0 ? PL.up : PL.accentText }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}% <span style={{ fontWeight: 400, color: PL.textMuted }}>vs last month</span></span>;
+  if (v == null || !Number.isFinite(v)) return <span style={{ fontSize: 11.5, color: PL.textMuted }}>none by this day last month</span>;
+  return <span style={{ fontSize: 11.5, fontWeight: 700, color: v >= 0 ? PL.up : PL.accentText }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}% <span style={{ fontWeight: 400, color: PL.textMuted }}>vs this day last month</span></span>;
 }
 function Kpi({ label, value, children, tone }) {
   return (
@@ -84,23 +58,15 @@ function Bars({ rows, total }) {
 }
 
 export default function OwnerMoney({ dealerId, onNavigate }) {
-  const [raw, setRaw, cached] = usePersistentState(dealerId ? `owner_money:${dealerId}` : null, null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!dealerId) return undefined;
-    let off = false;
-    load(dealerId).then((r) => { if (!off) { setRaw(r); setFailed(false); } }).catch(() => { if (!off) setFailed(true); });
-    return () => { off = true; };
-  }, [dealerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { money: m, failed, cached } = useCarMoney(dealerId);
 
-  if (!raw) {
+  if (!m) {
     return (
       <div style={{ ...card, color: PL.textMuted, fontSize: 13 }}>
         {failed && !cached ? 'Could not load the money numbers. Refresh to try again.' : 'Counting the money...'}
       </div>
     );
   }
-  const m = ownerMoney(mergeCars(raw.listings, raw.units), raw.ctx);
   const mo = m.month;
   const spendTotal = mo.spend.reduce((s, x) => s + x.val, 0) + m.overheadToDate;
 
@@ -116,10 +82,10 @@ export default function OwnerMoney({ dealerId, onNavigate }) {
       <Head title="Money this month" sub="RM · sold cars, counted from the day each car was added" />
       <div className="om-kpis">
         <Kpi label="Gross profit" value={rm(mo.gross)} tone={mo.gross < 0 ? PL.accentText : undefined}>
-          <Trend v={pct(mo.gross, m.prev.gross)} />{mo.margin != null && <div>{mo.margin.toFixed(1)}% margin</div>}
+          <Trend v={pct(mo.gross, m.prevToDate.gross)} />{mo.margin != null && <div>{mo.margin.toFixed(1)}% margin</div>}
         </Kpi>
         <Kpi label="Sales" value={rm(mo.revenue)}>
-          {mo.units} car{mo.units === 1 ? '' : 's'} sold · <Trend v={pct(mo.revenue, m.prev.revenue)} />
+          {mo.units} car{mo.units === 1 ? '' : 's'} sold · <Trend v={pct(mo.revenue, m.prevToDate.revenue)} />
         </Kpi>
         <Kpi label="After overhead" value={rm(m.netAfterOverhead)} tone={m.netAfterOverhead < 0 ? PL.accentText : undefined}>
           {m.overheadToDate > 0 ? `${rm(m.overheadToDate)} overhead so far (Settings, Costs)` : 'Set your monthly overhead in Settings, Costs'}

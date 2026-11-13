@@ -51,5 +51,12 @@ eq(m.stuck[0].flag, 'ageing', 'flagged ageing');
 eq(m.stuck.find((x) => x.id === 'd').flag, 'losing', 'flagged losing');
 eq(m.stock.atCost, 90000 + 1000 + 52000 + 30000, 'money tied up at cost');
 
+// Daily series (Overview's 30-day chart) sums the same rows as the month.
+eq(m.daily.length, 30, 'thirty days for the chart');
+eq(m.daily[29].day, '2026-11-12', 'last day is today, Malaysia time');
+eq(m.daily.find((x) => x.day === '2026-11-10').revenue, 118000, 'car a on its sale day');
+eq(m.daily.reduce((s, x) => s + x.revenue, 0), 118000 + 90000 + 80000, 'chart total = every car sold in 30 days');
+eq(m.prevToDate.units, 0, 'last month up to the 12th: car e sold on 23 Oct is not counted');
+eq(m.prev.units, 1, 'whole last month still has car e');
 if (fails.length) { console.error(fails.join('\n')); process.exit(1); }
 console.log(`ownerMoney: ${pass} checks passed`);
