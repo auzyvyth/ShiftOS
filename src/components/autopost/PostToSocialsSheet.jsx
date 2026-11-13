@@ -1,7 +1,7 @@
-// Post one live car to the connected social accounts (ZERNIO-1 TEST rig, 2026-11-12).
-// Opened from a car's ··· menu in Salesman Premium, and only for logins the edge function
-// `zernio-post` allows (useSocialPostAccess). Nothing is sent until the seller taps
-// "Post now" and then confirms; "Save as draft" sends it to Zernio without publishing.
+// Post one car to Drevo's OWN Facebook Page and TikTok (SOCIAL-1). Opened from the console's Social
+// queue (a car the seller agreed to share, after the owner approved it). Nothing is sent until the
+// owner taps "Post now" and then confirms; "Save as draft" sends it to Zernio without publishing.
+// TikTok needs a person to preview and consent to every post, which is what the tick box is.
 //
 // The words for each network come from the shared caption adjuster
 // (supabase/functions/_shared/postCaption.js): the same file the server re-checks with, so
@@ -21,33 +21,12 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import {
   buildPost, validateText, carLink, carTitle, money, ERROR_TEXT,
 } from '../../../supabase/functions/_shared/postCaption.js';
-import { callZernioPost } from './useSocialPostAccess';
+import { callZernioPost, explain } from './zernioApi';
 
 const NETWORK = {
   facebook:  { label: 'Facebook Page', canTakeDown: true,  note: 'Clickable link, up to 8 photos.' },
-  threads:   { label: 'Threads',       canTakeDown: true,  note: '500 characters. The link counts.' },
-  instagram: { label: 'Instagram',     canTakeDown: false, note: 'Links are not clickable, so it says "link in bio". Cannot be taken down from here.' },
+  tiktok:    { label: 'TikTok',        canTakeDown: false, note: 'Photo post. No clickable link, so it says "link in bio". Cannot be taken down from here.' },
 };
-
-const SERVER_ERRORS = {
-  not_connected: 'That account is not connected in Zernio.',
-  car_not_live: 'Only a live (Available) car can be posted.',
-  car_not_found: 'That car was not found on your account.',
-  needs_photo: 'Instagram needs at least one photo.',
-  link_missing: 'The text must keep this car\'s link.',
-  foreign_link: 'Only drevo.my links are allowed in a post.',
-  forbidden: 'This login is not allowed to post.',
-  not_configured: 'The Zernio key is not set on the server yet.',
-  network: 'Could not reach the server. Try again.',
-  unknown_action: 'The server does not know this action. Redeploy the function.',
-  daily_limit: 'You have reached today\'s limit of 10 posts. Try again tomorrow.',
-  already_posted: 'This car is already posted there in the last 24 hours. Take that post down first (Recent tab) if you want to post it again.',
-  post_not_found: 'That post is not on your account, or it is older than 30 days.',
-  not_published: 'That post is not live on this network, so there is nothing to take down.',
-  not_a_draft: 'Only a draft can be deleted here.',
-};
-const explain = (e) => (e?.message && e.error === 'text_rejected') ? e.message
-  : (e?.error === 'zernio_failed' ? `Zernio said no${e.message ? `: ${e.message}` : ` (${e.status || 'error'})`}.` : SERVER_ERRORS[e?.error] || 'Something went wrong. Nothing was posted.');
 
 const isDone = (s) => ['published', 'failed', 'error', 'removed', 'cancelled'].includes(String(s || '').toLowerCase());
 const isGood = (s) => String(s || '').toLowerCase() === 'published';
@@ -68,7 +47,7 @@ function ago(iso) {
 // "Recent" tab: the posts THIS login sent in the last 30 days (the server finds them by a
 // tag on every post, so nothing is stored on our side). Take it down asks twice; a draft can
 // be deleted; Instagram posts can only be opened.
-function RecentPosts({ font, ghost }) {
+export function RecentPosts({ font, ghost, client }) {
   const [rows, setRows] = useState(null);
   const [limit, setLimit] = useState(10);
   const [err, setErr] = useState('');
@@ -76,15 +55,15 @@ function RecentPosts({ font, ghost }) {
   const [ask, setAsk] = useState('');
   const load = useCallback(async () => {
     setErr('');
-    const { data, err: e } = await callZernioPost({ action: 'recent' });
+    const { data, err: e } = await callZernioPost({ action: 'recent' }, client);
     if (e) { setErr(explain(e)); setRows((r) => r || []); return; }
     setRows(data.posts || []); setLimit(data.day_limit || 10);
-  }, []);
+  }, [client]);
   useEffect(() => { load(); }, [load]);
 
   const act = async (key, body, after) => {
     setBusy(key); setErr(''); setAsk('');
-    const { err: e } = await callZernioPost(body);
+    const { err: e } = await callZernioPost(body, client);
     setBusy('');
     if (e) { setErr(explain(e)); return; }
     after();
@@ -144,13 +123,58 @@ function RecentPosts({ font, ghost }) {
             <button onClick={() => act(r.post_id, { action: 'discard', post_id: r.post_id }, () => setRows((rs) => rs.filter((x) => x.post_id !== r.post_id)))}
               disabled={!!busy} style={{ ...ghost, height: 34, fontSize: 13, marginTop: 4 }}>{busy === r.post_id ? 'Deleting...' : 'Delete draft'}</button>
           )}
-          {r.platforms.some((p) => p.platform === 'instagram') && (
-            <div style={{ fontSize: 12, color: P.textMuted, marginTop: 4 }}>Instagram posts can only be removed in Instagram.</div>
+          {r.platforms.some((p) => p.platform === 'instagram' || p.platform === 'tiktok') && (
+            <div style={{ fontSize: 12, color: P.textMuted, marginTop: 4 }}>Instagram and TikTok posts can only be removed in their own app.</div>
           )}
         </div>
       ))}
       {err && <div role="alert" style={{ marginTop: 6, padding: '10px 12px', borderRadius: P.radius.row, background: P.raised, color: P.accentText, fontSize: 13.5 }}>{err}</div>}
       <button onClick={load} style={{ ...ghost, height: 34, fontSize: 13, marginTop: 4 }}>Refresh</button>
+    </div>
+  );
+}
+
+// TikTok's own choices (its API rules: no defaults for who sees it or for comments, and a
+// confirmation for every post). Options come from the connected account itself.
+function TikTokChoices({ photoCount, opts, tt, setTt, disabled, font, pill }) {
+  const row = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 };
+  const lbl = { fontSize: 12.5, color: P.textMuted, flex: '1 1 100%' };
+  if (photoCount === 0) return <div style={{ marginTop: 8, fontSize: 12.5, color: P.accentText }}>TikTok needs at least one photo on this car.</div>;
+  if (opts === undefined) return <div style={{ marginTop: 8, fontSize: 12.5, color: P.textSec }}>Loading your TikTok options...</div>;
+  if (!opts) return <div style={{ marginTop: 8, fontSize: 12.5, color: P.accentText }}>Could not read your TikTok options. Close and reopen this sheet.</div>;
+  return (
+    <div>
+      <div style={row}>
+        <span style={lbl}>Send to</span>
+        <button type="button" disabled={disabled} aria-pressed={!tt.inbox} onClick={() => setTt((t) => ({ ...t, inbox: false }))} style={pill(!tt.inbox)}>Post to TikTok</button>
+        <button type="button" disabled={disabled} aria-pressed={tt.inbox} onClick={() => setTt((t) => ({ ...t, inbox: true }))} style={pill(tt.inbox)}>My TikTok inbox</button>
+        <span style={{ ...lbl, marginTop: 2 }}>{tt.inbox ? 'Nothing is published. You finish and post it in the TikTok app.' : 'Publishes from here.'}</span>
+      </div>
+      {!tt.inbox && (
+        <div style={row}>
+          <span style={lbl}>Who can see it (required)</span>
+          {opts.privacy.map((l) => (
+            <button key={l.value} type="button" disabled={disabled} aria-pressed={tt.privacy === l.value} onClick={() => setTt((t) => ({ ...t, privacy: l.value }))} style={pill(tt.privacy === l.value)}>{l.label}</button>
+          ))}
+        </div>
+      )}
+      {!tt.inbox && (
+        <div style={row}>
+          <span style={lbl}>Comments</span>
+          {opts.comment?.enabled === false
+            ? <span style={{ fontSize: 12.5, color: P.textSec }}>Switched off in your TikTok settings.</span>
+            : (<>
+              <button type="button" disabled={disabled} aria-pressed={tt.comment === true} onClick={() => setTt((t) => ({ ...t, comment: true }))} style={pill(tt.comment === true)}>Allowed</button>
+              <button type="button" disabled={disabled} aria-pressed={tt.comment === false} onClick={() => setTt((t) => ({ ...t, comment: false }))} style={pill(tt.comment === false)}>Off</button>
+            </>)}
+        </div>
+      )}
+      {!tt.inbox && (
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 12, fontSize: 13, lineHeight: 1.4, color: P.text, cursor: 'pointer', fontFamily: font }}>
+        <input type="checkbox" checked={tt.consent} disabled={disabled} onChange={(e) => setTt((t) => ({ ...t, consent: e.target.checked }))} style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: '#dc2626' }} />
+        <span>I previewed this post and agree to {tt.inbox ? 'send it to' : 'publish it on'} {opts.nickname ? `@${opts.nickname.replace(/^@/, '')}` : 'my TikTok'}. It is not paid or branded content. By posting, you agree to TikTok's Music Usage Confirmation.</span>
+      </label>
+      )}
     </div>
   );
 }
@@ -168,7 +192,7 @@ function GrowBox({ value, ...rest }) {
   return <textarea ref={ref} value={value} {...rest} />;
 }
 
-export default function PostToSocialsSheet({ car, seller, access, onClose }) {
+export default function PostToSocialsSheet({ car, seller, access, onClose, client }) {
   useModalHistory(true, onClose);
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -180,12 +204,28 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
   const url = useMemo(() => carLink(SITE_URL, car, seller?.slug), [car, seller?.slug]);
   const built = useMemo(() => {
     const out = {};
-    for (const n of networks) out[n.platform] = buildPost(n.platform, car, url);
+    for (const n of networks) out[n.platform] = buildPost(n.platform, car, url, { credit: seller?.name || '' });
     return out;
-  }, [networks, car, url]);
+  }, [networks, car, url, seller?.name]);
 
   const [picked, setPicked] = useState(() => Object.fromEntries(networks.map((n) => [n.platform, true])));
   const [texts, setTexts] = useState(() => Object.fromEntries(networks.map((n) => [n.platform, built[n.platform].text])));
+  // TikTok has its own fields: a title (90 chars), who may see it, comments, a consent tick, and
+  // "inbox" = send it to the TikTok app as a draft instead of publishing. TikTok's rules: the
+  // poster picks privacy + comments (no default) and confirms every post.
+  const hasTikTok = networks.some((n) => n.platform === 'tiktok');
+  const [ttTitle, setTtTitle] = useState(() => built.tiktok?.title || '');
+  const [tt, setTt] = useState({ privacy: '', comment: null, consent: false, inbox: false });
+  const [ttOpts, setTtOpts] = useState(hasTikTok ? undefined : null); // undefined = loading, null = none, false = failed
+  useEffect(() => {
+    if (!hasTikTok) return undefined;
+    let dead = false;
+    callZernioPost({ action: 'tiktok_options' }, client).then(({ data, err }) => {
+      if (dead) return;
+      setTtOpts(err || !data ? false : data);
+    });
+    return () => { dead = true; };
+  }, [hasTikTok]);
   const [phase, setPhase] = useState('edit'); // edit | confirm | sending | result
   const [tab, setTab] = useState('new'); // new | recent
   const showNew = tab === 'new';
@@ -195,28 +235,45 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
   const tries = useRef(0);
 
   const chosen = networks.filter((n) => picked[n.platform]);
-  const checks = Object.fromEntries(chosen.map((n) => [n.platform, validateText(n.platform, texts[n.platform])]));
-  const allValid = chosen.length > 0 && chosen.every((n) => checks[n.platform].ok)
-    && chosen.every((n) => n.platform === 'instagram' || texts[n.platform].includes(`/showroom/${encodeURIComponent(car.slug)}`));
+  const checks = Object.fromEntries(chosen.map((n) => [n.platform, validateText(n.platform, texts[n.platform], n.platform === 'tiktok' ? { title: ttTitle } : {})]));
+  const NO_LINK = ['instagram', 'tiktok'];
   const photoCount = Math.min(8, Array.isArray(car.images) ? car.images.length : 0);
+  const ttOn = chosen.some((n) => n.platform === 'tiktok');
+  // What TikTok still needs before the Post button works (a draft in Zernio needs none of it).
+  const ttMissing = !ttOn ? '' : photoCount === 0 ? 'TikTok needs at least one photo.'
+    : !ttOpts ? (ttOpts === false ? 'Could not read your TikTok options. Close and reopen this sheet.' : 'Loading your TikTok options...')
+    : !tt.inbox && !ttOpts.can_post_more ? 'TikTok says this account cannot post more right now.'
+    : !tt.inbox && !tt.privacy ? 'Pick who can see the TikTok post.'
+    : !tt.inbox && tt.comment === null && ttOpts.comment?.enabled !== false ? 'Choose whether people can comment on TikTok.'
+    : !tt.inbox && !tt.consent ? 'Tick the TikTok confirmation box.' : '';
+  const basicValid = chosen.length > 0 && chosen.every((n) => checks[n.platform].ok)
+    && chosen.every((n) => NO_LINK.includes(n.platform) || texts[n.platform].includes(`/showroom/${encodeURIComponent(car.slug)}`));
+  const allValid = basicValid && !ttMissing;
+  const draftValid = basicValid && !(ttOn && photoCount === 0);
+
+  // ONE place that turns the sheet into what the server needs. TikTok carries its title, privacy,
+  // comments, consent and inbox choice; leaving them out made the server refuse a ticked post.
+  const buildItems = () => chosen.map((n) => (n.platform === 'tiktok'
+    ? { platform: 'tiktok', text: texts.tiktok, title: ttTitle, privacy: tt.privacy, allow_comment: tt.comment === true, consent: tt.consent, inbox: tt.inbox }
+    : { platform: n.platform, text: texts[n.platform] }));
 
   const send = async (draft) => {
     setError(''); setPhase('sending');
     const { data, err } = await callZernioPost({
       action: 'publish', listing_id: car.id, draft,
-      items: chosen.map((n) => ({ platform: n.platform, text: texts[n.platform] })),
-    });
+      items: buildItems(),
+    }, client);
     if (err) { setError(explain(err)); setPhase('edit'); return; }
     tries.current = 0;
-    setResult({ post_id: data.post_id, platforms: data.platforms || [], draft });
+    setResult({ post_id: data.post_id, platforms: data.platforms || [], draft, ttInbox: ttOn && tt.inbox && !draft });
     setPhase('result');
   };
 
   const refresh = useCallback(async () => {
     if (!result?.post_id) return;
-    const { data, err } = await callZernioPost({ action: 'check', post_id: result.post_id });
+    const { data, err } = await callZernioPost({ action: 'check', post_id: result.post_id }, client);
     if (!err && data) setResult((r) => ({ ...r, platforms: data.platforms || r.platforms }));
-  }, [result?.post_id]);
+  }, [result?.post_id, client]);
 
   // Poll every 3 seconds (max ~1 minute) while a network is still publishing.
   useEffect(() => {
@@ -228,7 +285,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
 
   const takeDown = async (platform) => {
     setBusy(platform); setError('');
-    const { err } = await callZernioPost({ action: 'takedown', post_id: result.post_id, platform });
+    const { err } = await callZernioPost({ action: 'takedown', post_id: result.post_id, platform }, client);
     setBusy('');
     if (err) { setError(explain(err)); return; }
     setResult((r) => ({ ...r, platforms: r.platforms.map((p) => (p.platform === platform ? { ...p, status: 'removed', url: null } : p)) }));
@@ -273,7 +330,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
         )}
 
         <div style={{ overflowY: 'auto', padding: '4px 18px 12px', flex: 1, minHeight: 0 }}>
-          {!showNew && <RecentPosts font={font} ghost={ghost} />}
+          {!showNew && <RecentPosts font={font} ghost={ghost} client={client} />}
           {showNew && phase !== 'result' && networks.length === 0 && (
             <p style={{ color: P.textSec, fontSize: 14 }}>No social account is connected yet.</p>
           )}
@@ -297,6 +354,18 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
                 </div>
                 {on && (
                   <>
+                    {n.platform === 'tiktok' && (
+                      <div style={{ marginBottom: 10 }}>
+                        <label style={{ display: 'block', fontSize: 12.5, color: P.textMuted, marginBottom: 4 }}>Title (what shows on the photo post)</label>
+                        <input value={ttTitle} onChange={(e) => setTtTitle(e.target.value)} disabled={phase === 'sending'} aria-label="TikTok title"
+                          style={{ width: '100%', boxSizing: 'border-box', background: P.card, color: P.text, border: 'none', borderRadius: P.radius.row, padding: '11px 12px', fontSize: 16, fontFamily: font, outline: 'none' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 12.5 }}>
+                          <span style={{ color: P.textMuted }}>No links or hashtags in the title.</span>
+                          <span style={{ color: Array.from(ttTitle).length > 90 ? P.accentText : P.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: Array.from(ttTitle).length > 90 ? 700 : 400 }}>{Array.from(ttTitle).length} / 90</span>
+                        </div>
+                        <label style={{ display: 'block', fontSize: 12.5, color: P.textMuted, margin: '10px 0 4px' }}>Description</label>
+                      </div>
+                    )}
                     <GrowBox value={text} rows={3} disabled={phase === 'sending'} aria-label={`${NETWORK[n.platform].label} text`}
                       onChange={(e) => setTexts((t) => ({ ...t, [n.platform]: e.target.value }))}
                       style={{ width: '100%', boxSizing: 'border-box', resize: 'none', display: 'block', background: P.card, color: P.text, border: 'none', borderRadius: P.radius.row,
@@ -309,11 +378,14 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
                       <div style={{ marginTop: 4, fontSize: 12.5, color: P.textSec }}>Left out to fit: {b.dropped.join(', ')}.</div>
                     )}
                     {errs.map((e) => (<div key={e} style={{ marginTop: 4, fontSize: 12.5, color: P.accentText }}>{ERROR_TEXT[e] || e}</div>))}
-                    {n.platform !== 'instagram' && !text.includes(`/showroom/${encodeURIComponent(car.slug)}`) && (
+                    {!NO_LINK.includes(n.platform) && !text.includes(`/showroom/${encodeURIComponent(car.slug)}`) && (
                       <div style={{ marginTop: 4, fontSize: 12.5, color: P.accentText }}>The car's link is missing. Put it back or tap Reset.</div>
                     )}
-                    {text !== b.text && (
-                      <button type="button" onClick={() => setTexts((t) => ({ ...t, [n.platform]: b.text }))}
+                    {n.platform === 'tiktok' && (
+                      <TikTokChoices photoCount={photoCount} opts={ttOpts} tt={tt} setTt={setTt} disabled={phase === 'sending'} font={font} pill={pill} />
+                    )}
+                    {(text !== b.text || (n.platform === 'tiktok' && ttTitle !== (b.title || ''))) && (
+                      <button type="button" onClick={() => { setTexts((t) => ({ ...t, [n.platform]: b.text })); if (n.platform === 'tiktok') setTtTitle(b.title || ''); }}
                         style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, color: P.textSec, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: font }}>Reset text</button>
                     )}
                   </>
@@ -334,7 +406,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700 }}>{meta.label}</div>
                         <div style={{ fontSize: 13, color: isGood(st) ? P.up : isBad(st) ? P.accentText : P.textSec }}>
-                          {result.draft ? 'Draft' : isGood(st) ? 'Published' : isBad(st) ? 'Failed' : st === 'removed' ? 'Taken down' : 'Publishing...'}
+                          {result.draft ? 'Draft' : (p.platform === 'tiktok' && result.ttInbox && !isBad(st)) ? 'In your TikTok inbox. Open TikTok to finish and post it.' : isGood(st) ? 'Published' : isBad(st) ? 'Failed' : st === 'removed' ? 'Taken down' : 'Publishing...'}
                         </div>
                         {p.error && <div style={{ fontSize: 12.5, color: P.accentText, marginTop: 2 }}>{String(p.error).slice(0, 160)}</div>}
                       </div>
@@ -352,6 +424,9 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
                   </div>
                 );
               })}
+              {!result.draft && (result.platforms || []).some((p) => p.platform === 'tiktok') && (
+                <div style={{ fontSize: 12.5, color: P.textMuted, margin: '0 0 10px' }}>TikTok can take a few minutes to process a post. Check the Recent tab later.</div>
+              )}
               {!result.draft && (result.platforms || []).some((p) => !isDone(p.status)) && (
                 <button onClick={refresh} style={{ ...ghost, height: 36, fontSize: 13 }}>Check again</button>
               )}
@@ -365,11 +440,12 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
           {!showNew && <button onClick={onClose} style={{ ...ghost, height: 46 }}>Done</button>}
           {showNew && phase === 'edit' && (
             <>
+              {ttMissing && basicValid && <div style={{ fontSize: 13, color: P.textSec }}>{ttMissing}</div>}
               <button className="lk-red" onClick={() => setPhase('confirm')} disabled={!allValid}
                 style={{ height: 48, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: allValid ? 'pointer' : 'not-allowed', opacity: allValid ? 1 : 0.45, fontFamily: font }}>
                 {chosen.length ? `Post now to ${chosen.length} place${chosen.length > 1 ? 's' : ''}` : 'Turn a network on'}
               </button>
-              <button onClick={() => send(true)} disabled={!allValid} style={{ ...ghost, height: 40, fontSize: 13, opacity: allValid ? 1 : 0.45 }}>
+              <button onClick={() => send(true)} disabled={!draftValid} style={{ ...ghost, height: 40, fontSize: 13, opacity: draftValid ? 1 : 0.45 }}>
                 Save as draft in Zernio (does not publish)
               </button>
             </>
@@ -377,8 +453,12 @@ export default function PostToSocialsSheet({ car, seller, access, onClose }) {
           {showNew && phase === 'confirm' && (
             <>
               <div style={{ fontSize: 14, lineHeight: 1.45, color: P.text }}>
-                This goes <b>public right now</b> on {chosen.map((n) => `${NETWORK[n.platform].label} (${n.name})`).join(' and ')}.
-                {chosen.some((n) => !NETWORK[n.platform].canTakeDown) && ' Instagram posts cannot be taken down from here.'}
+                {chosen.filter((n) => !(n.platform === 'tiktok' && tt.inbox)).length > 0 && (
+                  <>This goes <b>public right now</b> on {chosen.filter((n) => !(n.platform === 'tiktok' && tt.inbox)).map((n) => `${NETWORK[n.platform].label} (${n.name})`).join(' and ')}
+                  {ttOn && !tt.inbox && ` (TikTok: ${(ttOpts?.privacy || []).find((l) => l.value === tt.privacy)?.label || tt.privacy})`}.</>
+                )}
+                {ttOn && tt.inbox && <> The photos go to your <b>TikTok inbox</b> ({chosen.find((n) => n.platform === 'tiktok')?.name}). Nothing is published until you finish it in the TikTok app.</>}
+                {chosen.some((n) => !NETWORK[n.platform].canTakeDown && !(n.platform === 'tiktok' && tt.inbox)) && ' Instagram and TikTok posts cannot be taken down from here.'}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPhase('edit')} style={{ ...ghost, flex: 1 }}>Back</button>

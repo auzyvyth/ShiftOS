@@ -54,7 +54,7 @@ flowchart TB
     MAIL[Resend email]
     AI[Anthropic AI]
     GOV[data.gov.my<br/>JPJ registrations]
-    ZN[Zernio<br/>social posting, TEST rig]
+    ZN[Zernio<br/>Drevo's own Facebook Page + TikTok]
   end
 
   B --> MK & MP & SF
@@ -72,7 +72,7 @@ flowchart TB
   DB -->|triggers call| EF
   CRON --> EF & DB
   EF --> PUSH & TG & MAIL & AI
-  EF -->|zernio-post, owner login only, ZERNIO-1| ZN
+  EF -->|zernio-post superadmin only SOCIAL-1| ZN
   CRON -->|weekly| GOV
 ```
 

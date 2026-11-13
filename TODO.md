@@ -3039,6 +3039,18 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **SOCIAL-1 follow-ups (shipped 2026-11-13: Drevo's own Facebook Page + TikTok, console Social queue)** — sellers are asked
+  once after submitting a car; the owner posts approved, consenting cars from Console > Work > Social (CLAUDE.md
+  "Drevo's OWN pages"). Still open: (1) an in-app switch for a seller to WITHDRAW consent (today: message us, the
+  sheet says so); (2) dealers' cars go live without owner approval, so they are never asked: decide whether to
+  include them; (3) a Malaysian lawyer should read Terms s5 (photo licence, moral rights) and the Privacy/DPA
+  additions (`src/legal/legalDocs.js`); (4) Instagram + Threads code is dormant, `PUBLISH_PLATFORMS` in
+  `supabase/functions/zernio-post/index.ts` switches them back on; (5) per-seller connect and a paid Pro tier are
+  PARKED (`supabase/parked/pro_tier.sql`): a Pro seller must never be let into `zernio-post` while it posts to the
+  OWNER's accounts, and do not take money for it before a seller's own accounts can really be connected (CPA 1999
+  s.10). Cost maths for Pro: Zernio $6/account for accounts 3-10, $3 for 11-100, $1 after; 2 accounts per seller
+  is about RM33/seller at 3 sellers, RM26 at 50 (USD about RM4.1).
+
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 

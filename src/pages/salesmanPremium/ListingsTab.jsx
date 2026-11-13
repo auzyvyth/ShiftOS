@@ -11,8 +11,6 @@ import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 // Auto-post TEST rig (ZERNIO-1): the sheet loads when it opens, and the menu item only
 // exists for logins the edge function `zernio-post` allows.
-import { useSocialPostAccess } from "../../components/autopost/useSocialPostAccess";
-const PostToSocialsSheet = React.lazy(() => import("../../components/autopost/PostToSocialsSheet"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import CarNextStep from "../../components/coach/CarNextStep";
 import { premiumDark as P } from "../../theme/tokens";
@@ -99,8 +97,6 @@ export default function ListingsTab({
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster, openMotionPoster,
 }) {
  const { t, i18n } = useTranslation();
- const social = useSocialPostAccess(profile?.id);
- const [socialCar, setSocialCar] = React.useState(null);
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
  const statusLabel = (st) => t(`salesmanPremium.lst.status.${st}`, { defaultValue: st });
  const enriched = myListings.map((car) => {
@@ -480,12 +476,6 @@ export default function ListingsTab({
  <Calculator size={13} /> {t("salesmanPremium.lst.loanPoster")}
  </button>
  )}
- {/* Auto-post test rig: only for logins zernio-post allows, and only a live car. */}
- {social.allowed && (car.status === "available" || car.status === "active") && !car.new_car_model_id && (
- <button onClick={() => { setSocialCar(car); setActionMenuCarId(null); }} style={menuItem}>
- <Share2 size={13} /> Post to socials
- </button>
- )}
  {/* Moving poster (IDEA-29): five animated designs from this car's photos. */}
  {openMotionPoster && (
  <button onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
@@ -527,11 +517,6 @@ export default function ListingsTab({
  );
  })}
  </div>
- )}
- {socialCar && (
- <React.Suspense fallback={null}>
- <PostToSocialsSheet car={socialCar} seller={profile} access={social} onClose={() => setSocialCar(null)} />
- </React.Suspense>
  )}
  </div>
  );
