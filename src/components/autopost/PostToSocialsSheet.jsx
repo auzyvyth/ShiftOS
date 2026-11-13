@@ -396,7 +396,13 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, clien
 
           {phase === 'result' && result && (
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 10px' }}>{result.draft ? 'Saved as a draft in Zernio. Nothing was published.' : 'Sent.'}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 10px' }}>{(() => {
+                if (result.draft) return 'Saved as a draft in Zernio. Nothing was published.';
+                const ps = result.platforms || [];
+                if (ps.length && ps.every((p) => isBad(p.status))) return 'Not posted.';
+                if (ps.some((p) => isBad(p.status))) return 'Partly posted.';
+                return 'Sent.';
+              })()}</div>
               {(result.platforms || []).map((p) => {
                 const meta = NETWORK[p.platform] || { label: p.platform };
                 const st = String(p.status || 'pending').toLowerCase();
@@ -424,7 +430,16 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, clien
                   </div>
                 );
               })}
-              {!result.draft && (result.platforms || []).some((p) => p.platform === 'tiktok') && (
+              {!result.draft && (result.platforms || []).some((p) => isBad(p.status)) && (
+                <div style={{ margin: '0 0 12px' }}>
+                  <div style={{ fontSize: 13, color: P.textSec, lineHeight: 1.45, marginBottom: 8 }}>
+                    Nothing was published on the network that failed. An &quot;Internal error&quot; comes from the network itself, so trying again often works.
+                  </div>
+                  <button onClick={() => { tries.current = 0; setResult(null); setError(''); setPhase('edit'); }}
+                    style={{ ...ghost, height: 40, fontSize: 14 }}>Try again</button>
+                </div>
+              )}
+              {!result.draft && (result.platforms || []).some((p) => p.platform === 'tiktok' && !isBad(p.status)) && (
                 <div style={{ fontSize: 12.5, color: P.textMuted, margin: '0 0 10px' }}>TikTok can take a few minutes to process a post. Check the Recent tab later.</div>
               )}
               {!result.draft && (result.platforms || []).some((p) => !isDone(p.status)) && (
