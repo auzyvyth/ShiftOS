@@ -519,7 +519,7 @@ export default function MarketDemandTab({ dealerId }) {
         </div>
 
         {/* Detail panel */}
-        <div ref={detailRef} style={{ flex: '1 1 320px', minWidth: 0, scrollMarginTop: 64 }}>
+        <div ref={detailRef} style={{ flex: '1 1 320px', maxWidth: 380, minWidth: 0, scrollMarginTop: 64 }}>
           <DetailPanel detail={detail} loading={detailLoading} />
         </div>
       </div>
