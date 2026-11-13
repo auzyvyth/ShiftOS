@@ -3067,6 +3067,10 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
   at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
   line before any inbox work.
+  **2026-11-13 later: the seller-facing Pro work was PARKED** when posting moved to the owner's console (SOCIAL-1,
+  CLAUDE.md "Drevo's OWN pages"): no seller posts any more, so nothing to gate. `supabase/parked/pro_tier.sql`
+  keeps the entitlement table; the lock screen, `proPlan.js` and the console Pro buttons were removed. The notes
+  below (price, margin, the shared-workspace danger) still apply the day per-seller connect is built.
   **Decided 2026-11-13 (owner): Pro is paid upfront, NO free trial, no pay = no use.** Built: lock screen +
   menu item always shown (`ProLockedSheet.jsx`), words + price in `src/utils/proPlan.js` (RM129/month
   PROPOSED, USD about RM4.1, Zernio $6/account for accounts 3-10, $3 for 11-100, $1 after: 4 accounts per seller

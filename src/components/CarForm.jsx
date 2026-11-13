@@ -57,6 +57,7 @@ import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { CAR_DOCS_BUCKET, openDoc, removeDocFile } from "../utils/carDocs";
 import { minPhotosFor, photosMissingLabel } from "../utils/listingRules";
+import { askSocialConsent } from "./social/askSocialConsent";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -2078,6 +2079,14 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         }
         cfClearDraft(profile?.id);
         onCreate(savedListing);
+        // Waiting for approval, and the car is the seller's own (not a linked salesman's, not a
+        // new-car card): ask once whether Drevo may feature it on its own pages once approved.
+        if (publishStatus === "pending_approval" && !profile?.dealer_id && !savedListing.new_car_model_id) {
+          askSocialConsent({
+            id: savedListing.id,
+            title: [savedListing.year, savedListing.brand, savedListing.model].filter(Boolean).join(" "),
+          });
+        }
         logCatalogueGaps(savedListing.id);
         // Sync services + encumbrance status to linked stock_unit (auto-created by trigger)
         if (savedListing?.id) {

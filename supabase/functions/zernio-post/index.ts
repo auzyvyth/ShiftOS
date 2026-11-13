@@ -3,15 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 
-// Auto-post TEST rig (ZERNIO-1, 2026-11-12). Posts one of the caller's live cars to the
-// social accounts connected in the OWNER'S Zernio workspace. It is a prototype on purpose:
-//   - Every request uses ONE Zernio workspace (the owner's, free tier, 2 accounts).
-//   - So only user ids listed in the edge secret ZERNIO_TEST_USER_IDS may use it. Anyone
-//     else gets `allowed:false` from `status` and a 403 from everything else. Without this
-//     list ANY logged-in seller could post to the owner's Facebook Page.
-//   - Remove an id from the secret = switched off for that person, no deploy needed.
-// The real version (one Zernio profile per seller, accounts in a table, posting from the
-// database) is in docs/DREVO_ACTION_PLAN.md. The key never leaves this function.
+// Drevo's OWN social pages (SOCIAL-1, 2026-11-13; was the ZERNIO-1 test rig). Posts a car to the
+// Facebook Page and TikTok connected in the OWNER'S Zernio workspace.
+//   - ONLY a superadmin may call it (profiles.role = 'superadmin', read here with the service role,
+//     never from the client). Sellers have no access: every post goes to the owner's pages.
+//   - A car may be posted only if the SELLER said yes (car_listings.social_consent, set through
+//     set_listing_social_consent) or it is the caller's own car. This is checked here, not in the app.
+//   - TikTok needs a human to preview and consent to every post, so this is a button the owner
+//     presses in the console's Social queue, not an automation.
+// The per-seller version (each seller's own accounts) is in docs/DREVO_ACTION_PLAN.md. The key never
+// leaves this function.
 //
 // Actions (POST body `{action, ...}`):
 //   status                              who am I allowed, which accounts are connected
@@ -35,7 +36,7 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 
 const ZERNIO = "https://zernio.com/api/v1";
 const SITE_URL = "https://drevo.my";
-const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram", "tiktok"];
+const PUBLISH_PLATFORMS = ["facebook", "tiktok"]; // owner: Facebook Page + TikTok for now
 // Networks whose text carries no clickable link (Instagram, TikTok say "link in bio").
 const NO_LINK = ["instagram", "tiktok"];
 const NEEDS_PHOTO = ["instagram", "tiktok"];
@@ -134,8 +135,11 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await anon.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authErr || !user) return json({ error: "unauthorized" }, 401, origin);
 
-    const allow = (Deno.env.get("ZERNIO_TEST_USER_IDS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-    const allowed = allow.includes(user.id);
+    // Who is this? Read with the service role: a browser can never claim to be a superadmin.
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: me } = await admin.from("profiles").select("slug, role").eq("id", user.id).maybeSingle();
+    const allowed = me?.role === "superadmin";
+    const slug: string | null = me?.slug || null;
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
@@ -145,15 +149,11 @@ serve(async (req) => {
     if (action === "status" && !allowed) {
       // Counts and booleans only, never an id or a key: tells the owner (in the function
       // logs) whether the secrets reached this function at all.
-      console.log(`zernio-post status denied uid=${user.id.slice(0, 8)} ids_listed=${allow.length} key_set=${!!Deno.env.get("ZERNIO_API_KEY")}`);
-      return json({ allowed: false, configured: allow.length > 0 }, 200, origin);
+      return json({ allowed: false }, 200, origin);
     }
     if (!allowed) return json({ error: "forbidden" }, 403, origin);
 
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const tag = await ownerTag(user.id);
-    const { data: me } = await admin.from("profiles").select("slug").eq("id", user.id).maybeSingle();
-    const slug: string | null = me?.slug || null;
 
     // This login's posts of the last 30 days, newest first.
     const listMine = async () => {
@@ -223,13 +223,19 @@ serve(async (req) => {
       }
 
       // The car must be the caller's own and live right now. Never trust the client's copy.
-      const { data: car } = await admin
-        .from("car_listings")
-        .select("id, slug, status, dealer_id, images, new_car_model_id")
-        .eq("id", String(body.listing_id || ""))
-        .eq("dealer_id", user.id)
-        .maybeSingle();
+      // The car must exist and either be the caller's own or carry its seller's "yes".
+      // (If the consent column is not there yet, the migration is not applied: nobody else's car.)
+      const cols = "id, slug, status, dealer_id, images, new_car_model_id";
+      let car: any = null;
+      {
+        const r = await admin.from("car_listings").select(cols + ", social_consent").eq("id", String(body.listing_id || "")).maybeSingle();
+        if (r.error && /social_consent/.test(r.error.message || "")) {
+          const r2 = await admin.from("car_listings").select(cols).eq("id", String(body.listing_id || "")).maybeSingle();
+          car = r2.data ? { ...r2.data, social_consent: null } : null;
+        } else car = r.data;
+      }
       if (!car) return json({ error: "car_not_found" }, 404, origin);
+      if (car.dealer_id !== user.id && car.social_consent !== true) return json({ error: "no_consent" }, 403, origin);
       if (car.status !== "available" || car.new_car_model_id) return json({ error: "car_not_live" }, 409, origin);
 
       const originals: string[] = (Array.isArray(car.images) ? car.images : [])
@@ -339,6 +345,12 @@ serve(async (req) => {
       if (!r.ok) {
         console.error("zernio publish failed", r.status, JSON.stringify(r.data).slice(0, 300));
         return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);
+      }
+      // A live post of a seller's car leaves the console's queue. Stamped here with the service
+      // role (a browser cannot write this column); a TikTok inbox draft or a Zernio draft is not a post.
+      const wentLive = !draft && items.some((it: any) => !(it.platform === "tiktok" && it.inbox === true));
+      if (wentLive && car.social_consent === true) {
+        await admin.from("car_listings").update({ social_posted_at: new Date().toISOString() }).eq("id", car.id);
       }
       return json({ ok: true, ...shape(r.data?.post) }, 200, origin);
     }

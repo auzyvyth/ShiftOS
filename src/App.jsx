@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Route, Routes, BrowserRouter as Router, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import SignInSheetHost from "./components/auth/SignInSheetHost";
+import SocialConsentHost from "./components/social/SocialConsentHost";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Sentry from "@sentry/react";
@@ -172,6 +173,8 @@ function App() {
       />
       {/* In-page sign-in for chat / save (lib/buyerAuth.js requestBuyerSignIn) */}
       <SignInSheetHost />
+      {/* One question after a seller submits a car: may Drevo feature it on its own pages? (SOCIAL-1) */}
+      <SocialConsentHost />
       <CompareBarGate />
       <ConsentBanner />
       <InstallPrompt />

@@ -23,6 +23,7 @@ import BuyersTab from "../components/platform/BuyersTab";
 import NewCarPricesTab from "../components/platform/NewCarPricesTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
+import SocialQueueTab from "../components/platform/SocialQueueTab";
 import ActivityLogTab from "../components/platform/ActivityLogTab";
 import SessionsTab from "../components/platform/SessionsTab";
 import PostureTab from "../components/platform/PostureTab";
@@ -879,6 +880,8 @@ export default function AdminPage() {
     { id: "work", label: "Work", sub: "Your queue", badge: reviewCount, tabs: [
       { id: "home",   label: "Home" },
       { id: "review", label: "Review", badge: reviewCount },
+      // Cars the seller agreed to share, approved by you, waiting to go on Drevo's own Facebook Page + TikTok.
+      { id: "social", label: "Social" },
       // Buyer-submitted listing reports. A queue you clear, so it sits with
       // Review rather than under Safety — but it is a separate queue because a
       // report is a claim about a LIVE listing, not an item awaiting approval.
@@ -1427,6 +1430,8 @@ export default function AdminPage() {
             <AlertsTab userId={meId} />
           ) : activeTab === "reports" ? (
             <ReportsTab />
+          ) : activeTab === "social" ? (
+            <SocialQueueTab />
           ) : activeTab === "home" ? (
             /* ── HOME ── the console opens on the work, not a directory (P3) */
             <>

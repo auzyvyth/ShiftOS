@@ -88,6 +88,19 @@ ok(validateText('tiktok', 'see https://drevo.my/x', { title: 'ok' }).errors.incl
 ok(validateText('tiktok', 'fine', { title: 'a'.repeat(91) }).errors.includes('title_too_long'), 'tiktok title 91');
 ok(validateText('tiktok', 'fine', { title: 'Honda #civic' }).errors.includes('title_hashtag'), 'tiktok hashtag');
 ok(validateText('threads', '   ').errors.includes('empty'), 'empty rejected');
+
+// Credit line (Drevo's own pages post a seller's car): present for Facebook + TikTok, kept when the text is tight.
+{
+  const carX = { year: 2021, brand: 'Honda', model: 'City', selling_price: 68000, mileage: 42000, state: 'Selangor', slug: 'honda-city-1', description: 'x'.repeat(900) };
+  const u = 'https://drevo.my/showroom/honda-city-1?src=autopost&ref=ali';
+  for (const pl of ['facebook', 'tiktok']) {
+    const r = buildPost(pl, carX, u, { credit: 'Ali Motors' });
+    ok(r.text.includes('Listed on Drevo by Ali Motors'), pl + ' carries the credit');
+    ok(r.fits, pl + ' still fits with the credit');
+  }
+  ok(!buildPost('facebook', carX, u).text.includes('Listed on Drevo by'), 'no credit line when none is given');
+  ok(buildPost('tiktok', carX, u, { credit: 'Ali Motors' }).text.includes('All my cars: link in bio'), 'tiktok keeps link in bio');
+}
 ok(!validateText('myspace', 'hi').ok, 'unknown platform rejected');
 
 if (fails.length) {

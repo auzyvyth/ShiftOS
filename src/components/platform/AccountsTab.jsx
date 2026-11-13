@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
-import { SOCIAL_PRO } from "../../utils/proPlan";
 import CreateSellerModal from "./CreateSellerModal";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles } from "../../utils/kycPurge";
@@ -463,17 +462,6 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       return r;
     }, `Trial extended by ${days} days.`);
 
-  // Drevo Pro (Post to socials): paid upfront, no trial. `record_pro_payment` / `revoke_pro` write
-  // `pro_subscriptions` (migration 20261114a, superadmin only). This only records the payment; it does
-  // not switch posting on (zernio-post still allows ZERNIO_TEST_USER_IDS until per-seller connect exists).
-  const markProPaid = (a) =>
-    run(a.id, "Logging Pro payment", () => supabase.rpc("record_pro_payment", { p_user: a.id, p_months: 1 }),
-      `Payment logged. ${SOCIAL_PRO.name} moved forward one month.`);
-  const revokePro = (a) => {
-    if (!window.confirm(`Take ${SOCIAL_PRO.name} away from this account now?`)) return;
-    run(a.id, "Revoking Pro", () => supabase.rpc("revoke_pro", { p_user: a.id }), `${SOCIAL_PRO.name} revoked.`);
-  };
-
   // One row per payment in subscription_payments (record_subscription_payment).
   // For a standalone seller it moves Premium forward a month instead of
   // flipping payment_status to 'received', which never expired. The second
@@ -873,12 +861,6 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                   </button>
                   <button disabled={busy === open.id} onClick={() => markPaid(open, { amount: PLAN_CONFIG.salesman_full.doneForYouPrice, months: 1, note: "done_for_you" })} style={btn(undefined, busy === open.id)}>
                     {busyText("Logging payment", `Log RM${PLAN_CONFIG.salesman_full.doneForYouPrice} Done for you (+1 month)`, "Logging...")}
-                  </button>
-                  <button disabled={busy === open.id} onClick={() => markProPaid(open)} style={btn(undefined, busy === open.id)}>
-                    {busyText("Logging Pro payment", `Log RM${SOCIAL_PRO.price} ${SOCIAL_PRO.name} (+1 month)`, "Logging...")}
-                  </button>
-                  <button disabled={busy === open.id} onClick={() => revokePro(open)} style={btn(undefined, busy === open.id)}>
-                    {busyText("Revoking Pro", `Revoke ${SOCIAL_PRO.name}`, "Revoking...")}
                   </button>
                 </>
               )}

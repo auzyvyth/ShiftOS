@@ -11,9 +11,6 @@ import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 // Auto-post TEST rig (ZERNIO-1): the sheet loads when it opens, and the menu item only
 // exists for logins the edge function `zernio-post` allows.
-import { useSocialPostAccess, callZernioPost, explain } from "../../components/autopost/useSocialPostAccess";
-import PostStatusMark from "../../components/autopost/PostStatusMark";
-const PostToSocialsSheet = React.lazy(() => import("../../components/autopost/PostToSocialsSheet"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import CarNextStep from "../../components/coach/CarNextStep";
 import { premiumDark as P } from "../../theme/tokens";
@@ -100,21 +97,6 @@ export default function ListingsTab({
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster, openMotionPoster,
 }) {
  const { t, i18n } = useTranslation();
- const social = useSocialPostAccess(profile?.id);
- const [socialCar, setSocialCar] = React.useState(null);
- // "Yes, post it" closes the sheet at once; the send carries on here and the car's card shows a
- // red ring, then a green tick (or the reason it failed). One post at a time.
- const [postJob, setPostJob] = React.useState(null); // { carId, state: sending|done|error, message }
- const alive = React.useRef(true);
- React.useEffect(() => () => { alive.current = false; }, []);
- const startPost = React.useCallback(async ({ car: c, items }) => {
- setPostJob({ carId: c.id, state: "sending" });
- const { err } = await callZernioPost({ action: "publish", listing_id: c.id, draft: false, items });
- if (!alive.current) return;
- if (err) { setPostJob({ carId: c.id, state: "error", message: explain(err) }); setTimeout(() => alive.current && setPostJob(null), 9000); return; }
- setPostJob({ carId: c.id, state: "done" });
- setTimeout(() => alive.current && setPostJob(null), 2200);
- }, []);
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
  const statusLabel = (st) => t(`salesmanPremium.lst.status.${st}`, { defaultValue: st });
  const enriched = myListings.map((car) => {
@@ -404,10 +386,6 @@ export default function ListingsTab({
 
  {/* Price + margin on one line */}
  <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 6, position: "relative" }}>
- {/* Posting ring / tick: on the price line, 20px in from the right (owner, 2026-11-12). */}
- {postJob?.carId === car.id && postJob.state !== "error" && (
- <span style={{ position: "absolute", right: 20, top: "50%", transform: "translateY(-50%)", lineHeight: 0 }}><PostStatusMark state={postJob.state} /></span>
- )}
  <span style={{ fontSize: 18, fontWeight: 700, color: isSold ? P.textSec : P.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{price}</span>
  {margin != null && (
  <span style={{ fontSize: 12, color: P.textMuted }}>
@@ -437,10 +415,6 @@ export default function ListingsTab({
  </span>
  )}
  </div>
-
- {postJob?.carId === car.id && postJob.state === "error" && (
- <div role="alert" style={{ marginBottom: 10, fontSize: 12.5, color: P.accentText }}>{postJob.message}</div>
- )}
 
  {/* Traffic: one line. Hidden for sold, and for cars buyers can't see. */}
  {!isSold && !isRejected && !isPending && (
@@ -502,15 +476,6 @@ export default function ListingsTab({
  <Calculator size={13} /> {t("salesmanPremium.lst.loanPoster")}
  </button>
  )}
- {/* Post to socials: ALWAYS in the menu for a live car (owner, 2026-11-13: it used to appear only
- after the access call came back, 3-4 s after opening the menu). The sheet itself decides:
- a seller without Drevo Pro sees the Pro offer there, never the posting tools. */}
- {(car.status === "available" || car.status === "active") && !car.new_car_model_id && (
- <button onClick={() => { setSocialCar(car); setActionMenuCarId(null); }} style={menuItem}>
- <Share2 size={13} /> Post to socials
- {social.ready && !social.allowed && <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", opacity: 0.6 }}>PRO</span>}
- </button>
- )}
  {/* Moving poster (IDEA-29): five animated designs from this car's photos. */}
  {openMotionPoster && (
  <button onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
@@ -552,11 +517,6 @@ export default function ListingsTab({
  );
  })}
  </div>
- )}
- {socialCar && (
- <React.Suspense fallback={null}>
- <PostToSocialsSheet car={socialCar} seller={profile} access={social} onClose={() => setSocialCar(null)} onPost={startPost} />
- </React.Suspense>
  )}
  </div>
  );
