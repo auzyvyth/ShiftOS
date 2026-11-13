@@ -65,6 +65,7 @@ const INVENTORY_VIEW_KEY = "xd_inventory_view";
 const INVENTORY_TABS = [
   { id: "listings", label: "Listings" },
   { id: "stock",    label: "Stock & costs" },
+  { id: "market",   label: "Market demand" },
 ];
 // Sold = what happens after the win: Handover | Customers | Documents, ONE nav
 // item (owner, 2026-11-10), same shape as Inventory. Routes stay
@@ -216,7 +217,6 @@ import {
   Mail,
   Film,
   ShieldCheck,
-  Activity,
   Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
@@ -8863,7 +8863,7 @@ export default function DashboardPage() {
     handleTabChangeRef.current?.(view);
   }, []);
   const lastInventoryView = () => {
-    try { return localStorage.getItem(INVENTORY_VIEW_KEY) === "stock" ? "stock" : "listings"; } catch { return "listings"; }
+    try { const v = localStorage.getItem(INVENTORY_VIEW_KEY); return v === "stock" || v === "market" ? v : "listings"; } catch { return "listings"; }
   };
   // ONE handover state for the Handover and Customers pills (CLAUDE.md "One post-sale
   // state"): Customers used to run its own post_sale_tasks query for the same %.
@@ -9786,7 +9786,6 @@ export default function DashboardPage() {
       id: "g_inventory", Icon: Package, label: "Inventory",
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
-        { id: "market",   Icon: Activity,   label: "Market Demand" },
       ],
     },
     {
@@ -10069,7 +10068,7 @@ export default function DashboardPage() {
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map(({ id, sub, Icon, label, badge }) => {
-                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock") || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
+                      const isActive = (activeTab === id || (id === "listings" && (activeTab === "stock" || activeTab === "market")) || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
@@ -11089,7 +11088,10 @@ export default function DashboardPage() {
             <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} theme="plight" />
           )}
           {activeTab === "market" && userId && (
-            <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
+            <>
+              <InventorySwitch tabs={INVENTORY_TABS} active="market" onChange={openInventory} />
+              <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
+            </>
           )}
           </React.Suspense>
           </TabErrorBoundary>
