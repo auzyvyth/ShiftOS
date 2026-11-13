@@ -251,13 +251,18 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, onPos
   const allValid = basicValid && !ttMissing;
   const draftValid = basicValid && !(ttOn && photoCount === 0);
 
+  // ONE place that turns the sheet into what the server needs, used by "Post now" here AND by the
+  // hand-off to the Listings tab (onPost). TikTok carries its title, privacy, comments, consent and
+  // inbox choice; leaving them out made the server refuse a ticked TikTok post (2026-11-13).
+  const buildItems = () => chosen.map((n) => (n.platform === 'tiktok'
+    ? { platform: 'tiktok', text: texts.tiktok, title: ttTitle, privacy: tt.privacy, allow_comment: tt.comment === true, consent: tt.consent, inbox: tt.inbox }
+    : { platform: n.platform, text: texts[n.platform] }));
+
   const send = async (draft) => {
     setError(''); setPhase('sending');
     const { data, err } = await callZernioPost({
       action: 'publish', listing_id: car.id, draft,
-      items: chosen.map((n) => (n.platform === 'tiktok'
-        ? { platform: 'tiktok', text: texts.tiktok, title: ttTitle, privacy: tt.privacy, allow_comment: tt.comment === true, consent: tt.consent, inbox: tt.inbox }
-        : { platform: n.platform, text: texts[n.platform] })),
+      items: buildItems(),
     });
     if (err) { setError(explain(err)); setPhase('edit'); return; }
     tries.current = 0;
@@ -458,7 +463,7 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, onPos
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPhase('edit')} style={{ ...ghost, flex: 1 }}>Back</button>
-                <button className="lk-red" onClick={() => { if (onPost) { onPost({ car, items: chosen.map((n) => ({ platform: n.platform, text: texts[n.platform] })) }); onClose(); } else send(false); }} style={{ flex: 2, height: 44, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Yes, post it</button>
+                <button className="lk-red" onClick={() => { if (onPost) { onPost({ car, items: buildItems() }); onClose(); } else send(false); }} style={{ flex: 2, height: 44, borderRadius: P.radius.pill, border: 'none', color: P.onAccent, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font }}>Yes, post it</button>
               </div>
             </>
           )}
