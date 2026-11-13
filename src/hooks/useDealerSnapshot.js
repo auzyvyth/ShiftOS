@@ -6,7 +6,7 @@ async function fetchSnapshot(userId) {
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
   yesterdayStart.setHours(0, 0, 0, 0);
 
-  const [listingsRes, enquiriesRes, appointmentsRes, stockRes, analyticsRes, activityRes] =
+  const [listingsRes, enquiriesRes, appointmentsRes, analyticsRes, activityRes] =
     await Promise.all([
       supabase
         .from('car_listings')
@@ -20,14 +20,14 @@ async function fetchSnapshot(userId) {
         .from('appointments')
         .select('id, appointment_date, status')
         .eq('dealer_id', userId),
-      supabase
-        .from('stock_units')
-        .select('id, purchase_price, recon_cost, sold_price, status, purchase_date')
-        .eq('dealer_id', userId),
+      // Only the number the briefing uses (WhatsApp taps, last 7 days). It read every event the
+      // dealer ever had, on every dashboard open, and stopped counting at the 1,000-row cap.
       supabase
         .from('analytics_events')
-        .select('event_type, created_at')
-        .eq('dealer_id', userId),
+        .select('id', { count: 'exact', head: true })
+        .eq('dealer_id', userId)
+        .eq('event_type', 'whatsapp_click')
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
       supabase
         .from('activity_log')
         .select('actor_id, actor_name, actor_role, summary, action, table_name, created_at')
@@ -40,8 +40,6 @@ async function fetchSnapshot(userId) {
   const listings = listingsRes.data || [];
   const enquiries = enquiriesRes.data || [];
   const appointments = appointmentsRes.data || [];
-  const stock = stockRes.data || [];
-  const events = analyticsRes.data || [];
   const activity = activityRes.data || [];
 
   const teamActivityMap = new Map();
@@ -99,29 +97,8 @@ async function fetchSnapshot(userId) {
     a => a.appointment_date && a.appointment_date.slice(0, 10) === todayStr,
   ).length;
 
-  const thisMonthStart = new Date();
-  thisMonthStart.setDate(1);
-  thisMonthStart.setHours(0, 0, 0, 0);
-
-  const soldUnits = stock.filter(u => u.status === 'sold');
-  const totalSold = soldUnits.length;
-
-  const totalGPThisMonth = soldUnits
-    .filter(u => u.purchase_date && new Date(u.purchase_date) >= thisMonthStart)
-    .reduce(
-      (sum, u) =>
-        sum + ((u.sold_price || 0) - (u.purchase_price || 0) - (u.recon_cost || 0)),
-      0,
-    );
-
-  const totalStockValue = stock
-    .filter(u => u.status !== 'sold')
-    .reduce((sum, u) => sum + (u.purchase_price || 0), 0);
-
-  const sevenDaysAgo = now - 7 * 86400000;
-  const topEvents = events.filter(
-    e => e.event_type === 'whatsapp_click' && new Date(e.created_at) >= sevenDaysAgo,
-  ).length;
+  // WhatsApp taps in the last 7 days (counted in the database, see the query).
+  const topEvents = analyticsRes.count ?? 0;
 
   return {
     activeListings,
@@ -130,9 +107,6 @@ async function fetchSnapshot(userId) {
     enquiries: enquiryStats,
     coldEnquiries,
     appointmentsToday,
-    totalSold,
-    totalGPThisMonth,
-    totalStockValue,
     topEvents,
     teamActivity,
   };
@@ -148,11 +122,15 @@ async function fetchSnapshot(userId) {
 // higher would leave the dealer looking at this morning's numbers all day —
 // useCachedFetch's default is a full day, which is right for a report and wrong
 // for a dashboard.
-export function useDealerSnapshot(userId) {
+//
+// Money is NOT here: the AI tab adds it from useCarMoney (the one engine), because this hook's own
+// "GP this month" picked cars by PURCHASE date and counted a car with no buy price as pure profit.
+// `enabled`: the AI tab only. It used to run its reads on every dashboard open, on every tab.
+export function useDealerSnapshot(userId, { enabled = true } = {}) {
   const { data: snapshot, loading } = useCachedFetch(
-    userId ? `snapshot:${userId}` : null,
+    userId ? `snapshot:v2:${userId}` : null,
     () => fetchSnapshot(userId),
-    { enabled: !!userId, ttlMs: 0 },
+    { enabled: !!userId && enabled, ttlMs: 0 },
   );
 
   return { snapshot: snapshot ?? null, loading };

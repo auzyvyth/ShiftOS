@@ -180,7 +180,10 @@ async function fetchOverview(dealerId) {
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
-  if (l.error) throw l.error;
+  // Same for cars, today's appointments, the team and the activity feed: any of them
+  // failing used to paint "0 listings", "0 appointments" or an empty team over good numbers.
+  const failed = [l, cl, apt, sm, acts].find((r) => r.error);
+  if (failed) throw failed.error;
   const allLeads    = l.data    || [];
   const allListings = cl.data   || [];
   const aptsToday   = apt.data  || [];
@@ -221,11 +224,10 @@ async function fetchOverview(dealerId) {
     sourceCounts[src] = (sourceCounts[src] || 0) + 1;
   }
 
+  // Days on the lot are NOT counted here: they come from carPnl's one clock (useCarMoney),
+  // the same as the money block. This used the listing date with a 30-day limit while the
+  // money block used the stock date with 60 days, on the same screen.
   const available = allListings.filter(c => c.status === 'available');
-  const avgDays   = available.length
-    ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length)
-    : 0;
-  const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
 
   // Cold leads = active pipeline with no touch in 5+ days. The single most
   // actionable morning signal: real buyers going quiet.
@@ -267,7 +269,7 @@ async function fetchOverview(dealerId) {
   return {
     activeLeads: activeLeads.length,
     activeListings: available.length,
-    stageCounts, sourceCounts, teamRows, avgDays, stale,
+    stageCounts, sourceCounts, teamRows,
     coldLeadsCount, coldOldestDays,
     aptsToday: aptsToday.length, recentActivities,
     // Prices waiting for the dealer's OK (batch 6a). A failed read (table not on the
@@ -285,7 +287,7 @@ async function fetchOverview(dealerId) {
 
 const EMPTY_SNAPSHOT = {
   activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
-  teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
+  teamRows: [], coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
   aptsToday: 0, recentActivities: [],
 };
 
@@ -436,10 +438,11 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
           detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
         });
-        if (snapshot.stale > 0) alerts.push({
+        const over60 = money?.stock.over60 || 0;
+        if (over60 > 0) alerts.push({
           key: 'stale', urgent: false, Icon: Clock,
-          label: `${snapshot.stale} aged unit${snapshot.stale === 1 ? '' : 's'}`,
-          detail: 'on lot 30d+ · review price', go: 'listings',
+          label: `${over60} aged unit${over60 === 1 ? '' : 's'}`,
+          detail: 'on lot 60d+ · review price', go: 'listings',
         });
         if (snapshot.aptsToday > 0) alerts.push({
           key: 'appt', urgent: false, Icon: Calendar,
@@ -481,7 +484,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
         {view.kpis.filter(allowed).map((id) => {
           const K = {
             open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline' },
-            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days' },
+            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: !money ? 'counting...' : money.stock.over60 ? `${money.stock.over60} on lot 60d+` : 'none over 60 days' },
             sold_month:      { label: 'Sold this month',  value: mtd ? mtd.units : '-', sub: 'vs this day last month', trend: unitTrend },
             gross_month:     { label: 'Gross this month', value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend },
             appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
@@ -513,9 +516,9 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
           <SectionHeader title="Stock" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
-              { label: 'Average days on lot', value: `${snapshot.avgDays}d` },
-              { label: 'On lot 30 days+',     value: snapshot.stale, warn: snapshot.stale > 0 },
-              { label: 'Appointments today',  value: snapshot.aptsToday },
+              // Appointments are a tile and an alert already; days come from the one clock.
+              { label: 'Average days on lot', value: money?.stock.avgDays == null ? '-' : `${money.stock.avgDays}d` },
+              { label: 'On lot 60 days+',     value: money ? money.stock.over60 : '-', warn: (money?.stock.over60 || 0) > 0 },
               { label: 'Capital tied up',     value: money ? fmt(money.stock.atCost) : '-' },
             ].map(({ label, value, warn }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: PL.raised, borderRadius: PL.radius.row, padding: '10px 12px' }}>

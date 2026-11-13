@@ -19,7 +19,9 @@ async function load(dealerId) {
     supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
     supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
   ]);
-  if (l.error || u.error) throw new Error('read_failed');
+  // Every read counts: a failed ad-spend, handover, add-on or cost-settings read used to be
+  // treated as "no costs", so profit came out HIGHER instead of the last good numbers staying.
+  if ([l, u, a, t, d, c].some((r) => r.error)) throw new Error('read_failed');
   const ads = {};
   for (const r of a.data || []) ads[r.stock_unit_id] = (ads[r.stock_unit_id] || 0) + (Number(r.amount) || 0);
   const handover = {};

@@ -57,6 +57,7 @@ export function carRow({ listing, unit }, ctx = {}, now = Date.now()) {
     soldDay: isSold ? dayKey(l.sold_at || u.sold_date) : null,
     costMissing: !(n(u.purchase_price) > 0),
     cost: n(u.purchase_price) + (p.lines.find((x) => x.key === 'recon')?.val || 0),
+    addonRevenue: n(addons.rev),
     p,
   };
 }
@@ -77,6 +78,9 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
     const costed = sold.filter((r) => !r.costMissing);
     return {
       units: sold.length,
+      soldIds: sold.map((r) => r.id),
+      // Add-on and F&I money on the cars sold in this window, all of them (revenue is never left out).
+      addonRevenue: sold.reduce((s, r) => s + r.addonRevenue, 0),
       revenue: sold.reduce((s, r) => s + r.p.revenue, 0),
       gross: costed.reduce((s, r) => s + r.p.net, 0),
       carsGross: costed.reduce((s, r) => s + r.p.front, 0),

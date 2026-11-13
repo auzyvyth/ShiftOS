@@ -19,11 +19,6 @@ const fmtRM = (n) =>
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
 
-const startOfMonth = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-};
-
 const thirtyDaysAgo = () => new Date(Date.now() - 30 * 86400000).toISOString();
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -212,12 +207,14 @@ export default function RevOpsPage({ userId }) {
       // Revenue / gross / units this month come from useCarMoney (the same sum of carPnl()
       // as Overview), not here. These two counts are all this read still does.
       const [{ count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
-        // Active listings for stock turn
+        // Cars for sale, for stock turn
         supabase
           .from("car_listings")
           .select("id", { count: "exact", head: true })
           .eq("dealer_id", userId)
-          .neq("status", "sold"),
+          // Cars for sale = 'available', the same rule as Overview's "Active listings"
+          // (it was "not sold", which counted archived, private and unpublished cars).
+          .eq("status", "available"),
         // Active leads (pipeline value proxy) — exclude every terminal stage variant
         supabase
           .from("leads")
@@ -299,41 +296,38 @@ export default function RevOpsPage({ userId }) {
   }, [userId]);
 
   // ── Section 3: Add-on Revenue ────────────────────────────────────────────
+  // The add-ons on the cars SOLD THIS MONTH, the same cars (and the same Malaysia month) the
+  // headline revenue and gross count (useCarMoney). It used to take deals whose lead was last
+  // EDITED this month (leads.updated_at), so editing an old won deal moved its add-ons into
+  // this month and the total revenue tile disagreed with the gross beside it.
+  const soldKey = mo ? mo.soldIds.join(",") : null;
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || soldKey === null) return;
+    const ids = soldKey ? soldKey.split(",") : [];
     const fetch = async () => {
       setAddonLoading(true);
-      const monthStart = startOfMonth();
-
-      // Add-ons on deals WON this month — tie revenue to the deal's close date
-      // (leads.updated_at when it flipped to won), not when the add-on row was
-      // created, so add-ons attached before the close still count for sold cars.
-      const { data: addonRows, error: addonErr } = await supabase
-        .from("deal_products")
-        .select("id, sold_price, lead_id, product_id, dealer_products(name), leads!inner(stage, updated_at)")
-        .eq("dealer_id", userId)
-        .in("leads.stage", ["won", "closed_won"])
-        .gte("leads.updated_at", monthStart);
-      if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
-      if (addonErr) { setAddonLoading(false); return; } // keep the saved numbers
-
-      // Won leads this month (for attachment rate denominator) — both won variants
-      const { count: wonCount } = await supabase
-        .from("leads")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", userId)
-        .in("stage", ["won", "closed_won"])
-        .gte("updated_at", monthStart);
+      let addonRows = [];
+      if (ids.length) {
+        const { data, error: addonErr } = await supabase
+          .from("deal_products")
+          .select("id, sold_price, lead_id, listing_id, product_id, dealer_products(name)")
+          .eq("dealer_id", userId)
+          .in("listing_id", ids);
+        if (addonErr) { console.error("[RevOps] deal_products fetch error:", addonErr.message); setAddonLoading(false); return; } // keep the saved numbers
+        addonRows = data || [];
+      }
+      // Attachment rate: cars sold this month that carry at least one add-on.
+      const wonCount = ids.length;
 
       const rows = addonRows || [];
       const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const uniqueLeads = new Set(
-        rows.filter((r) => r.lead_id).map((r) => r.lead_id),
+        rows.filter((r) => r.listing_id).map((r) => r.listing_id),
       );
       // avg per deal: divide revenue from lead-linked add-ons by the number of those
       // leads, so numerator and denominator cover the same rows
       const leadLinkedRevenue = rows
-        .filter((r) => r.lead_id)
+        .filter((r) => r.listing_id)
         .reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const avgPerDeal =
         uniqueLeads.size > 0
@@ -362,7 +356,7 @@ export default function RevOpsPage({ userId }) {
       setAddonLoading(false);
     };
     fetch();
-  }, [userId]);
+  }, [userId, soldKey]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -423,7 +417,7 @@ export default function RevOpsPage({ userId }) {
                 ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
                 : null
             }
-            sub="sold this month / active"
+            sub="sold this month / for sale"
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"

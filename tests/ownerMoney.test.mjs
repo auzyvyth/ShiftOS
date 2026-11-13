@@ -58,5 +58,9 @@ eq(m.daily.find((x) => x.day === '2026-11-10').revenue, 118000, 'car a on its sa
 eq(m.daily.reduce((s, x) => s + x.revenue, 0), 118000 + 90000 + 80000, 'chart total = every car sold in 30 days');
 eq(m.prevToDate.units, 0, 'last month up to the 12th: car e sold on 23 Oct is not counted');
 eq(m.prev.units, 1, 'whole last month still has car e');
+// Revenue page: add-ons belong to the month the CAR sold, every sold car counted.
+eq(m.month.addonRevenue, 1500, 'add-on revenue this month = car a');
+eq(m.month.soldIds.slice().sort().join(','), 'a,b', 'sold this month = a and b');
+eq(m.prev.addonRevenue, 0, 'no add-ons last month');
 if (fails.length) { console.error(fails.join('\n')); process.exit(1); }
 console.log(`ownerMoney: ${pass} checks passed`);

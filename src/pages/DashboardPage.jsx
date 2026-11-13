@@ -143,6 +143,7 @@ import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
+import { useCarMoney } from '../hooks/useCarMoney';
 import '../theme/premiumLight.css';
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
@@ -3240,6 +3241,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const handleAdd = async () => {
     setAddError("");
+    // Adding staff is the owner's alone; the server refuses anyone else too.
+    if (!["dealer", "owner", "superadmin"].includes(profile?.role)) {
+      setAddError("Only the owner can add staff.");
+      return;
+    }
     const n = name.trim(),
       e = email.trim().toLowerCase(),
       s = slug.trim(),
@@ -4917,81 +4923,23 @@ function stockNetProfit(u, ctx = {}) {
   const parts = stockNetProfitParts(u, ctx);
   return parts == null ? null : parts.front + parts.addonNet;
 }
-function stockDays(u) {
-  if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
-  const date = u.purchase_date || u.created_at;
-  if (!date) return null;
-  return Math.floor((Date.now() - new Date(date)) / 86400000);
-}
 
-// Compact 7-stat strip surfaced atop the Listings tab (migrated from the Stock tab
-// header). Fetches stock_units + cost components once and reuses the shared P&L math.
-// GP (month) is split into vehicle margin (Car GP) and F&I back-end margin
-// (Add-on GP) rather than one merged number, and Revenue (sold) folds in add-on
-// revenue for sold cars so it reads as one honest total instead of hiding
-// add-on income in a separate figure.
-function StockStatsStrip({ dealerId }) {
-  const [s, setS] = useState(null);
-  useEffect(() => {
-    if (!dealerId) return;
-    let cancelled = false;
-    (async () => {
-      const [u, cfg, ads, tasks, dp] = await Promise.all([
-        supabase.from('stock_units').select('*, car_listings(selling_price, base_price, included_services_cost, commission_amount, sold_price, sold_date, status)').eq('dealer_id', dealerId),
-        supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
-        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
-        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
-        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
-      ]);
-      if (cancelled) return;
-      const units = u.data || [];
-      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
-      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
-      const ar = {}; const ac = {};
-      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
-      const ctx = { cfg: cfg.data || {}, ads: a, handover: h, addRev: ar, addCost: ac };
-      const now = new Date();
-      const active = units.filter(x => x.status !== 'sold');
-      const sold = units.filter(x => x.status === 'sold');
-      const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
-      const withDays = active.map(stockDays).filter(d => typeof d === 'number');
-      // Add-on revenue for cars that are actually sold — matches soldCarRevenue's
-      // scope so "Revenue (sold)" is one honest total (car price + F&I add-ons),
-      // not just the vehicle price with add-on income hiding in a separate number.
-      const soldAddonRevenue = sold.reduce((t, x) => t + (ar[x.listing_id] || 0), 0);
-      const soldCarRevenue = sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0);
-      // Split GP (month) into vehicle margin vs F&I add-on margin — previously one
-      // merged number that read 0 whenever vehicle-only front gross was 0/unset
-      // even if add-ons had profit, and vice versa.
-      const monthParts = month.map(x => stockNetProfitParts(x, ctx)).filter(Boolean);
-      setS({
-        // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
-        // two value figures on this page never disagree for the same unsold inventory.
-        soldCarRevenue,
-        soldAddonRevenue,
-        soldRevenue: soldCarRevenue + soldAddonRevenue,
-        stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
-        avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
-        carGpMonth: monthParts.reduce((t, p) => t + p.front, 0),
-        addonGpMonth: monthParts.reduce((t, p) => t + p.addonNet, 0),
-        soldMonth: month.length,
-        aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [dealerId]);
-
+// The four tiles over Stock & costs. Every figure is the SAME sum Overview and Revenue show
+// (useCarMoney -> ownerMoney -> carPnl): "Profit this month" used to be its own sum over
+// stock_units, which counted a sold car with no buy price as pure profit and went by the stock
+// record's sold date, and the day counts read the stale stored days_in_stock (wrong for most cars).
+function StockStatsStrip({ dealerId, canSeeProfit = true }) {
+  const { money: m } = useCarMoney(dealerId);
   const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
-  // Four tiles (owner, 2026-11-09). Revenue and sold-this-month live in
-  // Reports > Revenue; car and add-on profit are one figure with the split under it.
-  const profit = s ? s.carGpMonth + s.addonGpMonth : null;
-  const items = s ? [
-    { label: 'Stock value', val: rm(s.stockValue), sub: 'Asking prices, unsold cars' },
-    { label: 'Avg days in stock', val: String(s.avgDays) },
-    { label: 'Over 60 days', val: String(s.aging), tone: s.aging > 0 ? 'bad' : undefined, sub: s.aging > 0 ? 'Cut the price or push them' : 'None ageing' },
-    { label: 'Profit this month', val: rm(profit), tone: profit < 0 ? 'bad' : undefined,
-      sub: s.addonGpMonth ? `Cars ${rm(s.carGpMonth)} · add-ons ${rm(s.addonGpMonth)}` : undefined },
-  ] : Array.from({ length: 4 }, () => ({}));
+  const mo = m?.month;
+  const items = m ? [
+    { label: 'Stock value', val: rm(m.stock.asking), sub: 'Asking prices, unsold cars' },
+    { label: 'Avg days in stock', val: m.stock.avgDays == null ? '-' : String(m.stock.avgDays) },
+    { label: 'Over 60 days', val: String(m.stock.over60), tone: m.stock.over60 > 0 ? 'bad' : undefined, sub: m.stock.over60 > 0 ? 'Cut the price or push them' : 'None ageing' },
+    { label: 'Profit this month', val: rm(mo.gross), tone: mo.gross < 0 ? 'bad' : undefined,
+      sub: mo.leftOut > 0 ? `${mo.leftOut} sold car${mo.leftOut === 1 ? '' : 's'} left out, no buy price`
+        : mo.addonsGross ? `Cars ${rm(mo.carsGross)} · add-ons ${rm(mo.addonsGross)}` : undefined },
+  ].filter((it) => canSeeProfit || it.label !== 'Profit this month') : Array.from({ length: canSeeProfit ? 4 : 3 }, () => ({}));
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -5011,6 +4959,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   useModalHistory(showAdd, () => setShowAdd(false), { isDirty: () => true });
   const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);
+  const [addErr, setAddErr] = useState('');
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
@@ -5291,13 +5240,33 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   const gpSparkData = bucketGPByMonth(units);
 
   const handleAdd = async () => {
+    setAddErr('');
+    // A car that already has a stock record must not get a second one: every money total
+    // would count its cost and sale twice. (A new listing makes its own record automatically.)
+    if (addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold')) {
+      setAddErr('This car already has a stock record. Edit that one in Stock & costs instead.');
+      return;
+    }
     setAddSaving(true);
-    const { data: inserted } = await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null }).select().single();
+    // Empty boxes go in as NULL: an empty string in a date or id column made the database
+    // refuse the whole row, and the form used to close as if it had saved.
+    const { data: inserted, error } = await supabase.from('stock_units').insert({
+      ...addForm, dealer_id: userId, status: 'in_stock',
+      listing_id: addForm.listing_id || null,
+      purchase_date: addForm.purchase_date || null,
+      purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0,
+      asking_price: Number(addForm.asking_price) || 0,
+      puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null,
+    }).select().single();
+    setAddSaving(false);
+    if (error || !inserted) {
+      setAddErr('Could not save this stock record. Check the boxes and try again.');
+      return;
+    }
     const lbl = listings.find(l => l.id === addForm.listing_id);
-    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted?.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
     setShowAdd(false);
     setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
-    setAddSaving(false);
     fetchUnits();
   };
 
@@ -6202,8 +6171,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
-            <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
+            {addErr && <p role="alert" className="px-5 pt-3 text-xs" style={{ color: premiumLight.accentText, margin: 0 }}>{addErr}</p>}
+            <div className="p-5 border-t border-gray-100 flex gap-3">
+              <button onClick={() => { setShowAdd(false); setAddErr(''); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
             </div>
           </div>
@@ -6849,6 +6819,8 @@ export default function DashboardPage() {
   const [studioListing, setStudioListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(seed.profile);
+  // The owner's per-role switches (Settings > Team). Overview hides money a role is not allowed.
+  const { can: canDo } = usePermissions(profile);
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
@@ -7345,7 +7317,15 @@ export default function DashboardPage() {
   };
   const handleAssign = async (listingId, salesmanId, name) => {
     setAssignDropdownId(null);
-    await supabase.from("car_listings").update({ assigned_to: salesmanId }).eq("id", listingId);
+    // Check the car really changed before evicting other salesmen or logging it: a refused
+    // write comes back as "0 rows, no error", and the screen used to say "Assigned" anyway.
+    const { data: saved, error: assignErr } = await supabase.from("car_listings")
+      .update({ assigned_to: salesmanId }).eq("id", listingId).select("id");
+    if (assignErr || !saved?.length) {
+      setAssignToast({ listingId, msg: "Could not assign. Try again." });
+      setTimeout(() => setAssignToast(null), 3000);
+      return;
+    }
     // Assignment is exclusive: evict any other salesmen who had featured this car
     // so it leaves their listings and the shared feature pool. The assignee keeps
     // it via assigned_to. (Salesman Lite rows have salesman_id = their own id too,
@@ -7362,7 +7342,13 @@ export default function DashboardPage() {
   };
   const handleUnassign = async (listingId) => {
     setAssignDropdownId(null);
-    await supabase.from("car_listings").update({ assigned_to: null }).eq("id", listingId);
+    const { data: saved, error: unassignErr } = await supabase.from("car_listings")
+      .update({ assigned_to: null }).eq("id", listingId).select("id");
+    if (unassignErr || !saved?.length) {
+      setAssignToast({ listingId, msg: "Could not unassign. Try again." });
+      setTimeout(() => setAssignToast(null), 3000);
+      return;
+    }
     setListings((prev) =>
       prev.map((l) => (l.id === listingId ? { ...l, assigned_to: null } : l))
     );
@@ -7793,7 +7779,18 @@ export default function DashboardPage() {
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
-  const { snapshot, loading: snapshotLoading } = useDealerSnapshot(userId);
+  // AI Manager's data loads only while its tab is open. Its money lines come from the same
+  // engine as Overview (useCarMoney), so the briefing quotes the numbers the owner sees.
+  const onAiTab = activeTab === "ai_manager";
+  const { snapshot: aiFacts, loading: snapshotLoading } = useDealerSnapshot(userId, { enabled: onAiTab });
+  const { money: aiMoney } = useCarMoney(onAiTab ? getDealerIdFromProfile(profile) : null);
+  const snapshot = aiFacts && aiMoney ? {
+    ...aiFacts,
+    totalGPThisMonth: aiMoney.month.gross,
+    gpLeftOut: aiMoney.month.leftOut,
+    soldThisMonth: aiMoney.month.units,
+    totalStockValue: aiMoney.stock.atCost,
+  } : null;
 
   const TITLES = {
     overview:  { title: "Overview", sub: "Dealership pulse at a glance" },
@@ -8456,7 +8453,7 @@ export default function DashboardPage() {
                   <ChevronRight size={16} color="#6b7280" />
                 </button>
               )}
-              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} />
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} can={canDo} />
             </div>
           )}
 
@@ -9109,7 +9106,7 @@ export default function DashboardPage() {
               <InventorySwitch tabs={INVENTORY_TABS} active="stock" onChange={openInventory} />
               {/* The money figures for the stock live here, once. StockTab's own
                   summary cards repeated them, so it is told to skip them. */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} canSeeProfit={canDo('view_gross')} />
               <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen} hideSummary onAdd={() => setAddCarOpen(true)}
                 onOpenListing={(l) => { setDetailInitialTab('owner'); setDetailListing(l); }}
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}

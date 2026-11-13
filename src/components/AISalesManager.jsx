@@ -32,8 +32,8 @@ Live dealership data:
 - Stale stock (30d+): ${snapshot.staleCars.map(c => `${c.model} (${c.days}d, RM${c.price?.toLocaleString()})`).join(', ') || 'None'}
 - Enquiries: ${snapshot.enquiries.new} new, ${snapshot.coldEnquiries} gone cold (48h+), ${snapshot.enquiries.qualified} qualified, ${snapshot.enquiries.converted} converted
 - Appointments today: ${snapshot.appointmentsToday}
-- Sold this month GP: RM${snapshot.totalGPThisMonth?.toLocaleString()}
-- Stock value on hand: RM${snapshot.totalStockValue?.toLocaleString()}
+- Sold this month: ${snapshot.soldThisMonth} cars, gross profit RM${snapshot.totalGPThisMonth?.toLocaleString()} (every cost counted${snapshot.gpLeftOut ? `; ${snapshot.gpLeftOut} sold car(s) left out because they have no buy price` : ''})
+- Money tied up in stock (buy + recon): RM${snapshot.totalStockValue?.toLocaleString()}
 - WhatsApp clicks (7d): ${snapshot.topEvents}
 
 Team activity in the last 24 hours (one line per person — name, role, action count, and what they actually did):
