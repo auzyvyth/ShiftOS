@@ -61,6 +61,9 @@ const EMPTY_GEN_FORM = {
 function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profile }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  // True when the last read failed. With nothing loaded yet the list says so
+  // (and offers a retry) instead of the false "No documents yet".
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showGen, setShowGen] = useState(false);
   useModalHistory(showGen, () => setShowGen(false));
   const [genForm, setGenForm] = useState({ ...EMPTY_GEN_FORM });
@@ -179,14 +182,24 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
   const fetchDocs = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('dealer_documents')
-      .select('*')
-      .eq('dealer_id', userId)
-      .order('issued_at', { ascending: false })
-      .limit(300);
-    setDocuments(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('dealer_documents')
+        .select('*')
+        .eq('dealer_id', userId)
+        .order('issued_at', { ascending: false })
+        .limit(300);
+      // A failed read keeps the list on screen; an empty list would read as
+      // "no documents". Not cached on purpose: rows carry buyer IC + address.
+      if (error) throw error;
+      setDocuments(data || []);
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
+      toast.error("Couldn't load documents. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { if (userId) fetchDocs(); }, [userId]);
@@ -632,6 +645,11 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
       <div style={{ ...INV_CARD, padding: 8 }}>
         {loading ? (
           <p style={{ padding: '28px 16px', margin: 0, fontSize: 14, color: PL.textMuted }}>Loading…</p>
+        ) : loadFailed && documents.length === 0 ? (
+          <div style={{ padding: '36px 16px', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: PL.textMuted }}>Couldn't load your documents.</p>
+            <button onClick={fetchDocs} style={{ ...INV_GHOST_BTN, margin: '0 auto' }}>Try again</button>
+          </div>
         ) : filteredDocs.length === 0 ? (
           <p style={{ padding: '36px 16px', margin: 0, fontSize: 14, color: PL.textMuted, textAlign: 'center' }}>
             {documents.length === 0 ? 'No documents yet. Make a sales agreement or deposit receipt from a buyer\'s lead, or press New document.' : 'No document matches that search.'}

@@ -4,6 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { callClaudeChat } from "../../lib/callClaude";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { usePermissions } from "../../hooks/usePermissions";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import { T, getListingAge } from "./shared";
 import { AgeBadge, Sparkline } from "./widgets";
 import { getListingGaps } from "../../utils/listingCompleteness";
@@ -33,24 +34,30 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
     if (chatOpen) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatOpen]);
 
-  const [carStatsRows, setCarStatsRows] = useState([]);
-  const [slugStatsRows, setSlugStatsRows] = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
+  // Kept on the device so the table paints last time's numbers at once. A failed
+  // read keeps them: it must never repaint every car as 0 views.
+  const statsDealerId = profile?.id ? getDealerIdFromProfile(profile) : null;
+  const [carStatsRows, setCarStatsRows, hadCarStats] = usePersistentState(
+    statsDealerId ? `an-car:${statsDealerId}` : null, []);
+  const [slugStatsRows, setSlugStatsRows] = usePersistentState(
+    statsDealerId ? `an-slug:${statsDealerId}` : null, []);
+  const [eventsLoading, setEventsLoading] = useState(!hadCarStats);
   const [lpSearch, setLpSearch] = useState('');
   const [lpVisible, setLpVisible] = useState(20);
   useEffect(() => {
-    if (!profile?.id) return;
-    const dealerId = getDealerIdFromProfile(profile);
-    if (!dealerId) return;
+    if (!statsDealerId) return;
+    let alive = true;
     Promise.all([
-      supabase.rpc("get_dealer_car_analytics", { p_dealer_id: dealerId }),
-      supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId }),
+      supabase.rpc("get_dealer_car_analytics", { p_dealer_id: statsDealerId }),
+      supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: statsDealerId }),
     ]).then(([carRes, slugRes]) => {
-      setCarStatsRows(carRes.data || []);
-      setSlugStatsRows(slugRes.data || []);
-      setEventsLoading(false);
-    });
-  }, [profile?.id]);
+      if (!alive) return;
+      if (!carRes.error) setCarStatsRows(carRes.data || []);
+      if (!slugRes.error) setSlugStatsRows(slugRes.data || []);
+    }).catch(() => { /* keep the last numbers */ })
+      .finally(() => { if (alive) setEventsLoading(false); });
+    return () => { alive = false; };
+  }, [statsDealerId]);
 
   const carStatsMap = useMemo(() => {
     const map = {};
