@@ -11,7 +11,9 @@ import { supabase } from '../../supabaseClient';
 const TTL_YES = 2 * 60 * 1000;
 const TTL_NO = 30 * 1000;
 const key = (uid) => `xd_zp_access2_${uid}`;
-const NO = { allowed: false, accounts: [] };
+// `ready` = the server has answered (or a saved answer was used). Before that nothing is known.
+const NO = { allowed: false, accounts: [], ready: false };
+const NO_READY = { allowed: false, accounts: [], ready: true };
 
 function readCached(uid) {
   try {
@@ -66,10 +68,10 @@ export function useSocialPostAccess(userId) {
     let dead = false;
     callZernioPost({ action: 'status' }).then(({ data, err }) => {
       if (dead) return;
-      const v = !err && data?.allowed ? { allowed: true, accounts: data.accounts || [] } : NO;
+      const v = !err && data?.allowed ? { allowed: true, accounts: data.accounts || [], ready: true } : NO_READY;
       setS(v);
       try { sessionStorage.setItem(key(userId), JSON.stringify({ v, at: Date.now() })); } catch { /* private mode */ }
-    }).catch(() => { if (!dead) setS(NO); });
+    }).catch(() => { if (!dead) setS(NO_READY); });
     return () => { dead = true; };
   }, [userId]);
   return s;

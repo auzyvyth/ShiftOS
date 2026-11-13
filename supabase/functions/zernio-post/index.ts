@@ -264,10 +264,13 @@ serve(async (req) => {
         if (!info.ok) return json({ error: "tiktok_options_failed", status: info.status }, 502, origin);
         const inbox = tt.inbox === true;
         const levels: string[] = (info.data?.privacyLevels || []).map((l: any) => l.value);
-        if (!draft) {
+        // Publishing needs the poster's explicit choices. The TikTok inbox does NOT publish (the
+        // creator finishes the post in the app), so it needs none of them (owner, 2026-11-13: it
+        // asked for the publish ticks before it would send to the inbox).
+        if (!draft && !inbox) {
           if (info.data?.creator?.canPostMore === false) return json({ error: "tiktok_cannot_post" }, 409, origin);
           if (tt.consent !== true) return json({ error: "tiktok_consent" }, 422, origin);
-          if (!inbox && !levels.includes(String(tt.privacy))) return json({ error: "tiktok_privacy" }, 422, origin);
+          if (!levels.includes(String(tt.privacy))) return json({ error: "tiktok_privacy" }, 422, origin);
         }
         tiktokSettings = {
           mediaType: "photo",
@@ -277,8 +280,10 @@ serve(async (req) => {
           commercialContentType: "none",
           autoAddMusic: false,
           photoCoverIndex: 0,
-          contentPreviewConfirmed: tt.consent === true,
-          expressConsentGiven: tt.consent === true,
+          // Inbox: choosing "My TikTok inbox" and pressing the confirm step IS the consent to send
+          // it there; Zernio's example for an inbox post sends both flags true.
+          contentPreviewConfirmed: inbox || tt.consent === true,
+          expressConsentGiven: inbox || tt.consent === true,
           ...(inbox ? { draft: true } : {}),
         };
       }

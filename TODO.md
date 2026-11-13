@@ -3067,6 +3067,15 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
   at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
   line before any inbox work.
+  **Decided 2026-11-13 (owner): Pro is paid upfront, NO free trial, no pay = no use.** Built: lock screen +
+  menu item always shown (`ProLockedSheet.jsx`), words + price in `src/utils/proPlan.js` (RM129/month
+  PROPOSED, USD about RM4.1, Zernio $6/account for accounts 3-10, $3 for 11-100, $1 after: 4 accounts per seller
+  is about RM74/seller at 3 sellers, RM57 at 10, RM34 at 50, RM25 at 100), entitlement table + RPCs queued in
+  `supabase/migrations/20261114a_pro_tier.sql` (NOT applied: after midnight, nobody live), console buttons
+  "Log RM129 Drevo Pro" / "Revoke" in `AccountsTab.jsx`. **Pro does NOT open `zernio-post`:** that function
+  posts to the OWNER's Zernio accounts, so a paying seller would post on the owner's Page. Wiring Pro into it
+  waits for per-seller connect (docs/DREVO_ACTION_PLAN.md Z1). Do not take money before the seller's own
+  accounts can really be connected (CPA 1999 s.10: selling a feature that does not exist yet).
 - **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
   inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
   gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked

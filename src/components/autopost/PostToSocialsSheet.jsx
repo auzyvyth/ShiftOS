@@ -22,6 +22,7 @@ import {
   buildPost, validateText, carLink, carTitle, money, ERROR_TEXT,
 } from '../../../supabase/functions/_shared/postCaption.js';
 import { callZernioPost, explain } from './useSocialPostAccess';
+import ProLockedSheet from './ProLockedSheet';
 
 const NETWORK = {
   facebook:  { label: 'Facebook Page', canTakeDown: true,  note: 'Clickable link, up to 8 photos.' },
@@ -171,10 +172,12 @@ function TikTokChoices({ photoCount, opts, tt, setTt, disabled, font, pill }) {
             </>)}
         </div>
       )}
+      {!tt.inbox && (
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 12, fontSize: 13, lineHeight: 1.4, color: P.text, cursor: 'pointer', fontFamily: font }}>
         <input type="checkbox" checked={tt.consent} disabled={disabled} onChange={(e) => setTt((t) => ({ ...t, consent: e.target.checked }))} style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: '#dc2626' }} />
         <span>I previewed this post and agree to {tt.inbox ? 'send it to' : 'publish it on'} {opts.nickname ? `@${opts.nickname.replace(/^@/, '')}` : 'my TikTok'}. It is not paid or branded content.</span>
       </label>
+      )}
     </div>
   );
 }
@@ -244,8 +247,8 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, onPos
     : !ttOpts ? (ttOpts === false ? 'Could not read your TikTok options. Close and reopen this sheet.' : 'Loading your TikTok options...')
     : !tt.inbox && !ttOpts.can_post_more ? 'TikTok says this account cannot post more right now.'
     : !tt.inbox && !tt.privacy ? 'Pick who can see the TikTok post.'
-    : tt.comment === null && ttOpts.comment?.enabled !== false ? 'Choose whether people can comment on TikTok.'
-    : !tt.consent ? 'Tick the TikTok confirmation box.' : '';
+    : !tt.inbox && tt.comment === null && ttOpts.comment?.enabled !== false ? 'Choose whether people can comment on TikTok.'
+    : !tt.inbox && !tt.consent ? 'Tick the TikTok confirmation box.' : '';
   const basicValid = chosen.length > 0 && chosen.every((n) => checks[n.platform].ok)
     && chosen.every((n) => NO_LINK.includes(n.platform) || texts[n.platform].includes(`/showroom/${encodeURIComponent(car.slug)}`));
   const allValid = basicValid && !ttMissing;
@@ -291,6 +294,9 @@ export default function PostToSocialsSheet({ car, seller, access, onClose, onPos
     if (err) { setError(explain(err)); return; }
     setResult((r) => ({ ...r, platforms: r.platforms.map((p) => (p.platform === platform ? { ...p, status: 'removed', url: null } : p)) }));
   };
+
+  // No Drevo Pro (or the answer has not come back yet): show the offer, never the posting tools.
+  if (!access.allowed) return <ProLockedSheet ready={access.ready} onClose={onClose} />;
 
   const wide = typeof window !== 'undefined' && window.innerWidth >= 700;
   const photo = Array.isArray(car.images) && car.images[0] ? cdnImg(car.images[0], 200, 70) : null;
