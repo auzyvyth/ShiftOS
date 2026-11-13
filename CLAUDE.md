@@ -268,14 +268,24 @@ Project ID: lemdkdizdlcirhbzqlos
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
   The switches live on the device only (`xd_autopost_preview_<dealerId>`). Going real = Zernio: its key in an
   edge function secret, never the browser; posting fires from the DB when a car goes live, not from a screen.
-  **TEST rig (2026-11-12, Premium Listings `···` > "Post to socials"):** `supabase/functions/zernio-post` posts a
-  live car to the OWNER's one Zernio workspace (free tier, Threads + Facebook Page). Only user ids in the edge
-  secret `ZERNIO_TEST_USER_IDS` may use it (else any seller could post to the owner's Page); key in
-  `ZERNIO_API_KEY`. Text rules for every network live in ONE file, `supabase/functions/_shared/postCaption.js`
+  **Drevo's OWN pages (SOCIAL-1, owner 2026-11-13) replaced the seller test rig: sellers no longer post.**
+  A seller who submits a car for approval is asked once, AFTER the form (`askSocialConsent` from `CarForm.jsx`,
+  shown by `SocialConsentHost` in `App.jsx`), whether Drevo may feature it on its Facebook Page + TikTok. The
+  answer is `car_listings.social_consent`, written only by `set_listing_social_consent` (a guard trigger reverts
+  any direct write). When the owner approves the car it shows in Console > Work > **Social**
+  (`src/components/platform/SocialQueueTab.jsx`, `get_social_queue()`, superadmin only) and the OWNER presses Post:
+  TikTok requires a human to preview and consent to every post, so this is never automatic. Never add an
+  auto-post path to it. `supabase/functions/zernio-post` answers only `profiles.role = 'superadmin'` (read with the
+  service role; the old `ZERNIO_TEST_USER_IDS` secret is unused), posts Facebook + TikTok only, refuses a car whose seller
+  has not said yes (`no_consent`), stamps `social_posted_at` itself, and every post credits the seller by name
+  ("Listed on Drevo by ...") with their `?ref=` link. A seller who later says no after a post shows as "withdrew
+  permission" in the queue: take it down (Facebook only; TikTok in the app). Terms s5 + Privacy + DPA list Zernio,
+  Meta and TikTok (`src/legal/legalDocs.js`). Migration `20261114b_social_consent.sql` is queued, not applied.
+  Key in `ZERNIO_API_KEY`. Text rules live in ONE file, `supabase/functions/_shared/postCaption.js`
   (`npm run test:postcaption`), shared by the sheet and the server. Zernio cannot edit a published post and does
-  not check lengths. The sheet's Recent tab lists the login's own posts of the last 30 days (found by a hashed
-  owner tag on each post, no table); take-down/discard/check refuse anything not tagged to the caller; limits: 10 live
-  posts per 24h, one post per car per network per 24h. Full plan + findings: `docs/DREVO_ACTION_PLAN.md`. No DB tables yet, on purpose.
+  not check lengths. Posts of the last 30 days are found by a hashed owner tag (no table); limits: 10 live posts
+  per 24h, one post per car per network per 24h. Per-seller accounts + a paid Pro tier are PARKED
+  (`supabase/parked/pro_tier.sql`, IDEA-34). Full plan: `docs/DREVO_ACTION_PLAN.md`.
 - **Listings tools (owner 2026-11-10):** each row shows views + enquiry taps, last 30 days
   (`InterestCell`, `get_dealer_car_analytics(p_days 30)`, kept on the device, placeholder until loaded).
   "Select" picks cars for `BulkBar` (`src/components/inventory/BulkBar.jsx`): status Available / Reserved /
@@ -1156,7 +1166,7 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
 `AdminPage.jsx` `NAV` array. Five sections in the left rail, each with its own tab
 strip; `activeSection` picks the section, `activeTab` the tab (ids are unique
 across all sections, one state each).
-  work → home, review · people → accounts, waitlist, prospects
+  work → home, review, social, reports · people → accounts, waitlist, prospects
   marketplace → marketplace(Settings), funnel, engagement, buyers, broadcast, platform(Volume)
   money → billing · safety → activity, sessions, posture, errors, alerts
 - It landed on Dealers, a directory; it lands on **Home** now — the queues are the

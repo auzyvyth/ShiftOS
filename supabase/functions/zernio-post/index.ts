@@ -3,15 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 
-// Auto-post TEST rig (ZERNIO-1, 2026-11-12). Posts one of the caller's live cars to the
-// social accounts connected in the OWNER'S Zernio workspace. It is a prototype on purpose:
-//   - Every request uses ONE Zernio workspace (the owner's, free tier, 2 accounts).
-//   - So only user ids listed in the edge secret ZERNIO_TEST_USER_IDS may use it. Anyone
-//     else gets `allowed:false` from `status` and a 403 from everything else. Without this
-//     list ANY logged-in seller could post to the owner's Facebook Page.
-//   - Remove an id from the secret = switched off for that person, no deploy needed.
-// The real version (one Zernio profile per seller, accounts in a table, posting from the
-// database) is in docs/DREVO_ACTION_PLAN.md. The key never leaves this function.
+// Drevo's OWN social pages (SOCIAL-1, 2026-11-13; was the ZERNIO-1 test rig). Posts a car to the
+// Facebook Page and TikTok connected in the OWNER'S Zernio workspace.
+//   - ONLY a superadmin may call it (profiles.role = 'superadmin', read here with the service role,
+//     never from the client). Sellers have no access: every post goes to the owner's pages.
+//   - A car may be posted only if the SELLER said yes (car_listings.social_consent, set through
+//     set_listing_social_consent) or it is the caller's own car. This is checked here, not in the app.
+//   - TikTok needs a human to preview and consent to every post, so this is a button the owner
+//     presses in the console's Social queue, not an automation.
+// The per-seller version (each seller's own accounts) is in docs/DREVO_ACTION_PLAN.md. The key never
+// leaves this function.
 //
 // Actions (POST body `{action, ...}`):
 //   status                              who am I allowed, which accounts are connected
@@ -19,6 +20,13 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 //   check {post_id}                     per-network status + link of a post
 //   takedown {post_id, platform}        Facebook / Threads only (Zernio cannot remove
 //                                       an Instagram or TikTok post)
+//   tiktok_options                      the connected TikTok account's own choices: privacy
+//                                       levels, whether it can post now, the comment toggle
+// A TikTok item is {platform:'tiktok', title, text(description), privacy, allow_comment,
+//   consent, inbox}. TikTok's rules (Content Posting API): the poster must CHOOSE the privacy
+//   level (no default), choose comments, and confirm the preview + consent for each post, so
+//   the server refuses a public TikTok post without all of them. `inbox:true` sends the photos
+//   to the creator's TikTok inbox as a draft: nothing is published, they finish it in the app.
 //   recent                              this login's posts of the last 30 days (max 20)
 //   discard {post_id}                   delete a DRAFT (never a published post)
 // Limits (no DB table: counted from Zernio itself, by a tag put on every post we send):
@@ -28,7 +36,10 @@ import { validateText, ERROR_TEXT } from "../_shared/postCaption.js";
 
 const ZERNIO = "https://zernio.com/api/v1";
 const SITE_URL = "https://drevo.my";
-const PUBLISH_PLATFORMS = ["facebook", "threads", "instagram"]; // TikTok needs its consent flow: not yet
+const PUBLISH_PLATFORMS = ["facebook", "tiktok"]; // owner: Facebook Page + TikTok for now
+// Networks whose text carries no clickable link (Instagram, TikTok say "link in bio").
+const NO_LINK = ["instagram", "tiktok"];
+const NEEDS_PHOTO = ["instagram", "tiktok"];
 const TAKEDOWN_PLATFORMS = ["facebook", "threads"];
 const MAX_PHOTOS = 8;
 const DAY_LIMIT = 10;                 // live posts per login per 24h
@@ -43,14 +54,14 @@ function json(data: unknown, status = 200, origin: string | null = null) {
   });
 }
 
-async function zernio(method: string, path: string, body?: unknown) {
+async function zernio(method: string, path: string, body?: unknown, timeoutMs = 25000) {
   const key = Deno.env.get("ZERNIO_API_KEY");
   if (!key) throw new Error("zernio_key_missing");
   const res = await fetch(ZERNIO + path, {
     method,
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   let data: any = null;
@@ -102,7 +113,7 @@ function row(post: any) {
     when: post.scheduledFor || post.createdAt || null,
     status: post.status,
     title: c.split("\n")[0].slice(0, 80),
-    slug: (c.match(/\/showroom\/([^?\s]+)/) || [])[1] || null,
+    slug: (typeof post?.metadata?.slug === "string" ? post.metadata.slug : null) || (c.match(/\/showroom\/([^?\s]+)/) || [])[1] || null,
     platforms: (post.platforms || []).map((p: any) => ({
       platform: p.platform,
       status: p.status,
@@ -124,8 +135,11 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await anon.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authErr || !user) return json({ error: "unauthorized" }, 401, origin);
 
-    const allow = (Deno.env.get("ZERNIO_TEST_USER_IDS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-    const allowed = allow.includes(user.id);
+    // Who is this? Read with the service role: a browser can never claim to be a superadmin.
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: me } = await admin.from("profiles").select("slug, role").eq("id", user.id).maybeSingle();
+    const allowed = me?.role === "superadmin";
+    const slug: string | null = me?.slug || null;
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
@@ -135,19 +149,15 @@ serve(async (req) => {
     if (action === "status" && !allowed) {
       // Counts and booleans only, never an id or a key: tells the owner (in the function
       // logs) whether the secrets reached this function at all.
-      console.log(`zernio-post status denied uid=${user.id.slice(0, 8)} ids_listed=${allow.length} key_set=${!!Deno.env.get("ZERNIO_API_KEY")}`);
-      return json({ allowed: false, configured: allow.length > 0 }, 200, origin);
+      return json({ allowed: false }, 200, origin);
     }
     if (!allowed) return json({ error: "forbidden" }, 403, origin);
 
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const tag = await ownerTag(user.id);
-    const { data: me } = await admin.from("profiles").select("slug").eq("id", user.id).maybeSingle();
-    const slug: string | null = me?.slug || null;
 
     // This login's posts of the last 30 days, newest first.
     const listMine = async () => {
-      const r = await zernio("GET", "/posts?limit=100&fields=content,platforms,status,tags,scheduledFor,createdAt");
+      const r = await zernio("GET", "/posts?limit=100&fields=content,platforms,status,tags,scheduledFor,createdAt,metadata");
       if (!r.ok) throw new Error("zernio_posts_" + r.status);
       const since = Date.now() - RECENT_DAYS * 86400000;
       return (r.data?.posts || [])
@@ -186,6 +196,21 @@ serve(async (req) => {
       }, 200, origin);
     }
 
+    if (action === "tiktok_options") {
+      const acc = await loadAccounts();
+      if (!acc.tiktok) return json({ error: "not_connected", platform: "tiktok" }, 409, origin);
+      const info = await zernio("GET", `/accounts/${acc.tiktok.accountId}/tiktok/creator-info?mediaType=photo`);
+      if (!info.ok) return json({ error: "tiktok_options_failed", status: info.status }, 502, origin);
+      const c = info.data?.postingLimits?.interactionSettings?.allow_comment;
+      return json({
+        ok: true,
+        nickname: String(info.data?.creator?.nickname || acc.tiktok.name).slice(0, 60),
+        can_post_more: info.data?.creator?.canPostMore !== false,
+        privacy: (info.data?.privacyLevels || []).map((l: any) => ({ value: String(l.value), label: String(l.label || l.value) })),
+        comment: { enabled: c?.enabled !== false, default: c?.default === true },
+      }, 200, origin);
+    }
+
     if (action === "publish") {
       const items = Array.isArray(body.items) ? body.items : [];
       if (!items.length || items.length > PUBLISH_PLATFORMS.length) return json({ error: "bad_items" }, 400, origin);
@@ -193,18 +218,24 @@ serve(async (req) => {
       for (const it of items) {
         if (!PUBLISH_PLATFORMS.includes(it?.platform) || seen.has(it.platform)) return json({ error: "bad_platform" }, 400, origin);
         seen.add(it.platform);
-        const v = validateText(it.platform, it.text, {});
+        const v = validateText(it.platform, it.text, it.platform === "tiktok" ? { title: it.title } : {});
         if (!v.ok) return json({ error: "text_rejected", platform: it.platform, errors: v.errors, message: v.errors.map((e: string) => (ERROR_TEXT as any)[e] || e).join(" ") }, 422, origin);
       }
 
       // The car must be the caller's own and live right now. Never trust the client's copy.
-      const { data: car } = await admin
-        .from("car_listings")
-        .select("id, slug, status, dealer_id, images, new_car_model_id")
-        .eq("id", String(body.listing_id || ""))
-        .eq("dealer_id", user.id)
-        .maybeSingle();
+      // The car must exist and either be the caller's own or carry its seller's "yes".
+      // (If the consent column is not there yet, the migration is not applied: nobody else's car.)
+      const cols = "id, slug, status, dealer_id, images, new_car_model_id";
+      let car: any = null;
+      {
+        const r = await admin.from("car_listings").select(cols + ", social_consent").eq("id", String(body.listing_id || "")).maybeSingle();
+        if (r.error && /social_consent/.test(r.error.message || "")) {
+          const r2 = await admin.from("car_listings").select(cols).eq("id", String(body.listing_id || "")).maybeSingle();
+          car = r2.data ? { ...r2.data, social_consent: null } : null;
+        } else car = r.data;
+      }
       if (!car) return json({ error: "car_not_found" }, 404, origin);
+      if (car.dealer_id !== user.id && car.social_consent !== true) return json({ error: "no_consent" }, 403, origin);
       if (car.status !== "available" || car.new_car_model_id) return json({ error: "car_not_live" }, 409, origin);
 
       const originals: string[] = (Array.isArray(car.images) ? car.images : [])
@@ -226,20 +257,53 @@ serve(async (req) => {
       const acc = await loadAccounts();
       for (const it of items) {
         if (!acc[it.platform]) return json({ error: "not_connected", platform: it.platform }, 409, origin);
-        if (it.platform === "instagram" && !photos.length) return json({ error: "needs_photo", platform: it.platform }, 409, origin);
+        if (NEEDS_PHOTO.includes(it.platform) && !photos.length) return json({ error: "needs_photo", platform: it.platform }, 409, origin);
+      }
+
+      // TikTok: the account's own options decide what is allowed (privacy levels, can it post
+      // more today). Checked here, not trusted from the browser.
+      const draft = body.draft === true;
+      const tt = items.find((it: any) => it.platform === "tiktok");
+      let tiktokSettings: Record<string, unknown> | undefined;
+      if (tt) {
+        const info = await zernio("GET", `/accounts/${acc.tiktok.accountId}/tiktok/creator-info?mediaType=photo`);
+        if (!info.ok) return json({ error: "tiktok_options_failed", status: info.status }, 502, origin);
+        const inbox = tt.inbox === true;
+        const levels: string[] = (info.data?.privacyLevels || []).map((l: any) => l.value);
+        // Publishing needs the poster's explicit choices. The TikTok inbox does NOT publish (the
+        // creator finishes the post in the app), so it needs none of them (owner, 2026-11-13: it
+        // asked for the publish ticks before it would send to the inbox).
+        if (!draft && !inbox) {
+          if (info.data?.creator?.canPostMore === false) return json({ error: "tiktok_cannot_post" }, 409, origin);
+          if (tt.consent !== true) return json({ error: "tiktok_consent" }, 422, origin);
+          if (!levels.includes(String(tt.privacy))) return json({ error: "tiktok_privacy" }, 422, origin);
+        }
+        tiktokSettings = {
+          mediaType: "photo",
+          description: String(tt.text),
+          privacyLevel: levels.includes(String(tt.privacy)) ? String(tt.privacy) : (levels.includes("SELF_ONLY") ? "SELF_ONLY" : levels[0]),
+          allowComment: tt.allow_comment === true,
+          commercialContentType: "none",
+          autoAddMusic: false,
+          photoCoverIndex: 0,
+          // Inbox: choosing "My TikTok inbox" and pressing the confirm step IS the consent to send
+          // it there; Zernio's example for an inbox post sends both flags true.
+          contentPreviewConfirmed: inbox || tt.consent === true,
+          expressConsentGiven: inbox || tt.consent === true,
+          ...(inbox ? { draft: true } : {}),
+        };
       }
 
       // The text must carry THIS car's link: a seller cannot post a link to somewhere else
       // (Facebook and Threads only; Instagram says "link in bio").
       for (const it of items) {
-        if (it.platform !== "instagram" && !String(it.text).includes(`${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`)) {
+        if (!NO_LINK.includes(it.platform) && !String(it.text).includes(`${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`)) {
           return json({ error: "link_missing", platform: it.platform }, 422, origin);
         }
-        const urls = String(it.text).match(/https?:\/\/\S+/g) || [];
+        const urls = (String(it.text) + " " + String(it.title || "")).match(/https?:\/\/\S+/g) || [];
         if (urls.some((u) => !u.startsWith(SITE_URL + "/"))) return json({ error: "foreign_link", platform: it.platform }, 422, origin);
       }
 
-      const draft = body.draft === true;
       if (!draft) {
         const mine = await listMine();
         const dayAgo = Date.now() - 86400000;
@@ -250,18 +314,43 @@ serve(async (req) => {
           if (dup) return json({ error: "already_posted", platform: it.platform }, 409, origin);
         }
       }
+      // A TikTok photo post's "content" is its TITLE; the long text goes in tiktokSettings.description.
+      const lead = items.find((it: any) => it.platform !== "tiktok") || items[0];
       const payload: Record<string, unknown> = {
-        content: items[0].text,
+        content: lead.platform === "tiktok" ? lead.title : lead.text,
         timezone: "Asia/Kuala_Lumpur",
         tags: [tag],
-        platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.text })),
+        // Which car this post is about, for the one-post-per-car rule: a TikTok text has no link.
+        metadata: { slug: car.slug },
+        platforms: items.map((it: any) => ({ platform: it.platform, accountId: acc[it.platform].accountId, customContent: it.platform === "tiktok" ? String(it.title) : it.text })),
+        ...(tiktokSettings ? { tiktokSettings } : {}),
         mediaItems: photos.map((url: string) => ({ type: "image", url })),
         ...(draft ? { isDraft: true } : { publishNow: true }),
       };
-      const r = await zernio("POST", "/posts", payload);
+      // Zernio holds this call open until every network has finished publishing, which can pass
+      // 25s. A timeout here does NOT mean "not posted" (2026-11-12: the post went out and the
+      // seller was told it had not). So wait longer, and if it still times out, look the post up
+      // by our tag + this car instead of reporting a failure.
+      let r: { ok: boolean; status: number; data: any };
+      try {
+        r = await zernio("POST", "/posts", payload, 70000);
+      } catch (e) {
+        const name = e instanceof Error ? e.name : "";
+        if (name !== "TimeoutError" && name !== "AbortError") throw e;
+        console.error("zernio publish timed out, looking the post up");
+        const found = (await listMine()).find((p: any) => p.slug === car.slug && new Date(p.when).getTime() >= Date.now() - 5 * 60000);
+        if (!found) return json({ error: "publish_unconfirmed" }, 504, origin);
+        return json({ ok: true, post_id: found.post_id, status: found.status, platforms: found.platforms }, 200, origin);
+      }
       if (!r.ok) {
         console.error("zernio publish failed", r.status, JSON.stringify(r.data).slice(0, 300));
         return json({ error: "zernio_failed", status: r.status, message: String(r.data?.error || r.data?.message || "").slice(0, 200) }, 502, origin);
+      }
+      // A live post of a seller's car leaves the console's queue. Stamped here with the service
+      // role (a browser cannot write this column); a TikTok inbox draft or a Zernio draft is not a post.
+      const wentLive = !draft && items.some((it: any) => !(it.platform === "tiktok" && it.inbox === true));
+      if (wentLive && car.social_consent === true) {
+        await admin.from("car_listings").update({ social_posted_at: new Date().toISOString() }).eq("id", car.id);
       }
       return json({ ok: true, ...shape(r.data?.post) }, 200, origin);
     }

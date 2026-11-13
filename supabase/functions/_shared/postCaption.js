@@ -63,7 +63,7 @@ export function clip(text, max) {
 // Each platform is a list of pieces. `must` pieces are never dropped; the rest are dropped
 // from the LAST in `dropOrder` first until the text fits. `desc` is clipped, not dropped,
 // before anything else goes.
-function layout(platform, car, url) {
+function layout(platform, car, url, credit = '') {
   const title = carTitle(car);
   const price = money(car.selling_price ?? car.price);
   const specs = [km(car.mileage), car.state || car.city || ''].filter(Boolean).join(' · ');
@@ -72,6 +72,9 @@ function layout(platform, car, url) {
   const headline = price ? `${title}\n${price}` : title;
   const cta = platform === 'facebook' || platform === 'threads' ? url : BIO_LINE;
   const ctaLabel = platform === 'facebook' ? 'Photos and details: ' : '';
+  // Drevo's own pages post a seller's car: the seller is credited by name (moral rights, and honest
+  // about who is advertising). Empty for a seller posting their own car.
+  const creditLine = credit ? `Listed on Drevo by ${credit}` : '';
 
   if (platform === 'threads') {
     return {
@@ -80,6 +83,7 @@ function layout(platform, car, url) {
         { key: 'specs', text: specs },
         { key: 'extra', text: extra },
         { key: 'desc', text: desc, clip: true },
+        { key: 'credit', text: creditLine, must: true },
         { key: 'cta', text: cta, must: true },
       ],
       dropOrder: ['desc', 'extra', 'specs'], joiner: '\n\n', descKey: 'desc',
@@ -91,6 +95,7 @@ function layout(platform, car, url) {
         { key: 'headline', text: headline, must: true },
         { key: 'specs', text: [specs, extra].filter(Boolean).join(' · ') },
         { key: 'desc', text: desc, clip: true },
+        { key: 'credit', text: creditLine, must: true },
         { key: 'cta', text: ctaLabel + cta, must: true },
       ],
       dropOrder: ['desc', 'specs'], joiner: '\n\n', descKey: 'desc',
@@ -102,6 +107,7 @@ function layout(platform, car, url) {
       { key: 'headline', text: headline, must: true },
       { key: 'specs', text: [specs, extra].filter(Boolean).join(' · ') },
       { key: 'desc', text: desc, clip: true },
+      { key: 'credit', text: creditLine, must: true },
       { key: 'cta', text: cta, must: true },
     ],
     dropOrder: ['desc', 'specs'], joiner: '\n\n', descKey: 'desc',
@@ -112,8 +118,8 @@ function join(pieces, joiner) {
   return pieces.filter((p) => p.text).map((p) => p.text).join(joiner);
 }
 
-function fit(platform, car, url, limit) {
-  const { pieces, dropOrder, joiner } = layout(platform, car, url);
+function fit(platform, car, url, limit, credit = '') {
+  const { pieces, dropOrder, joiner } = layout(platform, car, url, credit);
   const dropped = [];
   let cur = pieces.map((p) => ({ ...p }));
   // 1. clip the free-text description to what is left
@@ -135,7 +141,8 @@ function fit(platform, car, url, limit) {
 }
 
 // Build the post for one platform. `url` is the full car link (with its ?src= and ?ref=).
-export function buildPost(platform, car, url) {
+// `credit` = the seller's name when Drevo's own page posts their car (empty when a seller posts their own).
+export function buildPost(platform, car, url, { credit = '' } = {}) {
   const warnings = [];
   const price = money(car.selling_price ?? car.price);
   if (!price) warnings.push('no_price');
@@ -149,14 +156,14 @@ export function buildPost(platform, car, url) {
       [[car.year, car.model].filter(Boolean).join(' '), price],
     ].map(([t, p]) => [t, p].filter(Boolean).join(' '));
     const title = cands.find((c) => len(c) <= TIKTOK_TITLE_MAX) || clip(cands[2], TIKTOK_TITLE_MAX);
-    const body = fit('tiktok', car, url, LIMITS.tiktok);
+    const body = fit('tiktok', car, url, LIMITS.tiktok, credit);
     if (len(cands[2]) > TIKTOK_TITLE_MAX) warnings.push('title_clipped');
     return { platform, title, text: body.text, length: len(body.text), limit: LIMITS.tiktok,
       titleLimit: TIKTOK_TITLE_MAX, fits: body.fits, dropped: body.dropped, warnings };
   }
   const limit = LIMITS[platform];
   if (!limit) throw new Error('unknown platform ' + platform);
-  const r = fit(platform, car, url, limit);
+  const r = fit(platform, car, url, limit, credit);
   if (!r.fits) warnings.push('too_long');
   return { platform, text: r.text, length: len(r.text), limit, fits: r.fits, dropped: r.dropped, warnings };
 }
