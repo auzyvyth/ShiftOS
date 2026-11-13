@@ -15,7 +15,7 @@ import QuickSteps, { Tile, Custom, BigNumber, fmtNum } from "./QuickSteps";
 
 const ALL_BRANDS = Object.keys(CAR_DATA).sort();
 
-export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unlockSpecs, onExitBack, onDone, renderExtras, dark }) {
+export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unlockSpecs, onExitBack, onDone, renderExtras, dark, conditionChosen }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // ── Variant suggestions: what other sellers called this model's trims ─────
@@ -282,7 +282,10 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
     { key: "brand", title: "What's the brand?", required: true, answered: !!form.brand, render: renderBrand, focus: "fine", hideContext: true, onEnter: searchEnter("brand") },
     { key: "model", title: "Which model?", required: true, answered: !!form.model, render: renderModel, focus: "fine", onEnter: searchEnter("model") },
     { key: "year", title: "What year?", required: true, answered: !!form.year, render: renderYear },
-    { key: "condition", title: "Used, recon or new?", required: true, answered: !!form.condition, render: renderCondition },
+    // A salesman already answered this in the Used / Recon / New chooser that
+    // opens the form (CarKindChooser passes the condition in): asking again was
+    // the same question twice. Everyone else still gets the screen.
+    { key: "condition", title: "Used, recon or new?", skip: !!conditionChosen, required: true, answered: !!form.condition, render: renderCondition },
     { key: "mileage", title: "How many km on it?", skip: form.condition === "new", required: true, answered: hasMileage, render: renderMileage, focus: "always" },
     { key: "colour", title: "What colour?", required: true, answered: !!form.colour, render: renderColour },
     { key: "variant", title: "Which variant?", filled: !!form.variant, render: renderVariant },
