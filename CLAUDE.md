@@ -365,6 +365,7 @@ fi_officer → /fi
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
+  ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
   ↳ **Sold = ONE nav item, three pills: Handover | Customers | Documents (owner, 2026-11-10)**, same shape
