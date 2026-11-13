@@ -49,7 +49,7 @@ export function hasFeature(role, featureId, permissions) {
 // its default value when no stored override exists.
 // `enforced: true` means the app actively gates behaviour on this capability
 // today (vs. reserved for future use).
-export const CAPABILITIES = [
+export const CAPABILITIES_BASE = [
   {
     key: 'view_commission',
     label: 'View commission amounts',
@@ -101,7 +101,8 @@ export const CAPABILITIES = [
   // backed by a database rule (a hidden button protects nothing).
   { key: 'assign_leads',    group: 'people', label: 'Assign and reassign leads', description: 'Give a lead to a salesman or move it to another.', roles: ['manager'], default: true,  enforced: false },
   { key: 'assign_cars',     group: 'people', label: 'Lock a car to a salesman',  description: 'Make a car exclusive to one salesman.', roles: ['manager'], default: true,  enforced: false },
-  { key: 'invite_staff',    group: 'people', label: 'Invite or remove staff',    description: 'Add salesmen and other staff, or remove them.', roles: ['manager'], default: false, enforced: false },
+  // No 'invite_staff' switch: adding or removing staff is owner-only (OWNER_ONLY below). A manager who
+  // can add staff can create an accountant and see every money table.
   { key: 'approve_listings',group: 'stock',  label: 'Approve listings',          description: "Publish a salesman's car to the marketplace.", roles: ['manager'], default: true,  enforced: false },
   { key: 'change_price',    group: 'stock',  label: 'Change asking price',       description: 'Within the discount limit set in Settings.', roles: ['manager'], default: true,  enforced: false },
   { key: 'delete_car',      group: 'stock',  label: 'Remove a car',              description: 'Take a car out of stock.', roles: ['manager'], default: false, enforced: false },
@@ -109,8 +110,65 @@ export const CAPABILITIES = [
   { key: 'edit_settings',   group: 'deals',  label: 'Change cost settings and commission rates', description: 'Holding costs, fees, commission. Usually owner only.', roles: ['manager'], default: false, enforced: false },
 ];
 
+// ── Which dashboard tabs a manager or admin can open (owner, 2026-11-13: "the owner controls
+// and gives access to the manager with anything"). Managers and admins use the OWNER'S dashboard;
+// these switches pick its tabs. Overview is always there. A money tab also needs its money switch:
+// Revenue needs view_gross, Stock & costs needs view_cost.
+const tab = (key, label, description, managerDefault, adminDefault) => [
+  { key, group: 'tabs', label, description, roles: ['manager'], default: managerDefault, enforced: true },
+  { key, group: 'tabs', label, description, roles: ['admin'], default: adminDefault, enforced: true },
+];
+export const TAB_CAPABILITIES = [
+  ...tab('tab_crm', 'Leads, bookings and outreach', 'Sales > Leads / CRM.', true, true),
+  ...tab('tab_hp', 'HP Board', 'Loan submissions to banks.', true, true),
+  ...tab('tab_inventory', 'Inventory', 'Listings and Market demand.', true, true),
+  ...tab('tab_stock', 'Stock & costs', 'Buy prices and the profit of each car. Also needs "View stock cost".', true, false),
+  ...tab('tab_sold', 'Sold', 'Handover, customers and documents (buyer IC and address).', true, true),
+  ...tab('tab_revenue', 'Revenue', 'Sales and profit this month. Also needs "View gross profit".', true, false),
+  ...tab('tab_performance', 'Performance', 'Team scores and website traffic.', true, false),
+  ...tab('tab_reports_listings', 'Reports > Listings', 'Views and enquiries per car.', true, true),
+  ...tab('tab_storefront', 'Storefront', 'The public page, hero and services catalogue.', false, false),
+  ...tab('tab_ai_manager', 'AI Manager', 'The morning briefing (it quotes profit).', true, false),
+  ...tab('tab_team', 'Team', 'The team list and activity trail.', true, false),
+];
+
+// Never switchable: only the owner (owner, 2026-11-13).
+export const OWNER_ONLY = [
+  'Billing and plan',
+  'Adding or removing staff',
+  'Changing these switches',
+  'Deleting the dealership',
+];
+
+// The "Do you have a manager?" answer lives on the manager row of role_permissions as
+// `role_enabled` (false = this dealership has no manager: the role is hidden everywhere).
+export const ROLE_ENABLED_KEY = 'role_enabled';
+
+// Which switch opens which dashboard tab. A tab not listed is open to every role that reaches
+// the dashboard (Overview). `sub` = the analytics sub-page.
+export function tabCapability(tabId, sub) {
+  if (tabId === 'analytics') {
+    return { revenue: 'tab_revenue', performance: 'tab_performance', listings: 'tab_reports_listings' }[sub || 'revenue'] || 'tab_revenue';
+  }
+  return {
+    crm: 'tab_crm', leads: 'tab_crm', bookings: 'tab_crm', outreach: 'tab_crm',
+    hp: 'tab_hp',
+    listings: 'tab_inventory', market: 'tab_inventory', add: 'tab_inventory',
+    stock: 'tab_stock',
+    handover: 'tab_sold', customers: 'tab_sold', documents: 'tab_sold',
+    storefront: 'tab_storefront', ai_manager: 'tab_ai_manager', team: 'tab_team',
+  }[tabId] || null;
+}
+
+// Money a tab shows: the tab switch alone is not enough.
+export const TAB_NEEDS_MONEY = { tab_stock: 'view_cost', tab_revenue: 'view_gross', tab_ai_manager: 'view_gross' };
+
+// Every switch the matrix shows and the resolvers read.
+export const CAPABILITIES = [...CAPABILITIES_BASE, ...TAB_CAPABILITIES];
+
 // Matrix headings, in order (each capability has a `group`).
 export const CAPABILITY_GROUPS = [
+  { id: 'tabs',   label: 'Tabs they can open' },
   { id: 'money',  label: 'Money' },
   { id: 'people', label: 'People' },
   { id: 'stock',  label: 'Stock' },

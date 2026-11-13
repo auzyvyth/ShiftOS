@@ -28,7 +28,7 @@ import {
 } from "../utils/panelCache";
 import { getStorefrontUrl as buildStorefrontUrl } from "../hooks/useTenant";
 import { usePermissions } from "../hooks/usePermissions";
-import { CONFIGURABLE_ROLES, CAPABILITY_GROUPS, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
+import { CONFIGURABLE_ROLES, CAPABILITY_GROUPS, capabilitiesForRole, resolvePermissions, roleExtras, isFullAccessRole, tabCapability, TAB_NEEDS_MONEY, OWNER_ONLY, ROLE_ENABLED_KEY } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
@@ -542,29 +542,57 @@ function PermissionsMatrix({ dealerId, actor }) {
   const [rows, setRows] = useState({});   // { role: permissionsMap }
   const [loading, setLoading] = useState(true);
   const [savingRole, setSavingRole] = useState(null);
+  // "Do you have a manager?" (owner, 2026-11-13: some dealerships don't need one). Stored on the
+  // manager row as role_enabled; resolvePermissions drops unknown keys, so it is read apart.
+  const [hasManager, setHasManager] = useState(true);
+  const [managerCount, setManagerCount] = useState(0);
+  const [loadErr, setLoadErr] = useState(false);
 
   useEffect(() => {
     if (!dealerId) return;
     setLoading(true);
-    supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId)
-      .then(({ data }) => {
+    Promise.all([
+      supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('dealer_id', dealerId).eq('role', 'manager'),
+    ]).then(([{ data, error }, mgr]) => {
+        // A failed read must not show every switch at its default: saving that would overwrite
+        // what the owner set.
+        if (error) { setLoadErr(true); setLoading(false); return; }
         const byRole = {};
         for (const { value } of CONFIGURABLE_ROLES) {
           const stored = (data || []).find(r => r.role === value)?.permissions;
           byRole[value] = resolvePermissions(value, stored);
         }
+        const mgrStored = (data || []).find(r => r.role === 'manager')?.permissions;
+        setHasManager(mgrStored?.[ROLE_ENABLED_KEY] !== false);
+        setManagerCount(mgr?.count || 0);
         setRows(byRole);
         setLoading(false);
       });
   }, [dealerId]);
 
+  const saveHasManager = async (next) => {
+    if (!next && managerCount > 0) {
+      toast.error(`Remove your ${managerCount === 1 ? 'manager' : `${managerCount} managers`} in Team first.`);
+      return;
+    }
+    setHasManager(next);
+    const { data: saved, error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role: 'manager', permissions: { ...rows.manager, [ROLE_ENABLED_KEY]: next }, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
+      .select('role');
+    if (error || !saved?.length) { setHasManager(!next); toast.error('Save failed'); return; }
+    logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: next ? 'Manager role switched on' : 'Manager role switched off' });
+  };
+
   const toggle = (role, key) => setRows(p => ({ ...p, [role]: { ...p[role], [key]: !p[role]?.[key] } }));
 
   const saveRole = async (role) => {
     setSavingRole(role);
-    const { error } = await supabase.from('role_permissions')
-      .upsert({ dealer_id: dealerId, role, permissions: rows[role], updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' });
-    if (error) { toast.error('Save failed'); }
+    const permissions = role === 'manager' ? { ...rows[role], [ROLE_ENABLED_KEY]: hasManager } : rows[role];
+    const { data: saved, error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role, permissions, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
+      .select('role');
+    if (error || !saved?.length) { toast.error('Save failed'); }
     else {
       logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: `Permissions updated — ${role}` });
       toast.success('Permissions saved');
@@ -573,10 +601,22 @@ function PermissionsMatrix({ dealerId, actor }) {
   };
 
   if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
+  if (loadErr) return <p className="text-sm" style={{ color: premiumLight.accentText }}>Could not load the switches. Refresh to try again.</p>;
 
   return (
     <div className="space-y-5">
-      {CONFIGURABLE_ROLES.map(({ value, label }) => {
+      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>Do you have a manager?</p>
+        <p style={{ fontSize: 11.5, color: '#6b7280', margin: '2px 0 10px' }}>No hides the manager role everywhere: Team, these switches and Overview.</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[[true, 'Yes'], [false, 'No, I run it myself']].map(([v, l]) => (
+            <button key={l} type="button" onClick={() => v !== hasManager && saveHasManager(v)}
+              style={{ padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                background: hasManager === v ? '#111827' : '#eceef1', color: hasManager === v ? '#fff' : '#374151' }}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {CONFIGURABLE_ROLES.filter(({ value }) => (value !== 'manager' || hasManager) && (capabilitiesForRole(value).length || roleExtras(value).length)).map(({ value, label }) => {
         const caps = capabilitiesForRole(value);
         return (
           <div key={value} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
@@ -630,7 +670,7 @@ function PermissionsMatrix({ dealerId, actor }) {
           </div>
         );
       })}
-      <p style={{ fontSize: 11, color: '#9ca3af' }}>Owner, dealer and superadmin accounts always have full access and are not listed here.</p>
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>Only you, the owner, can do these, whatever the switches say: {OWNER_ONLY.join(', ').toLowerCase()}.</p>
     </div>
   );
 }
@@ -1304,7 +1344,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
   const nextPlan = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
 
-  const settingsNavGroups = [
+  const settingsNavGroupsAll = [
     { group: 'Profile', items: [
       { key: 'identity', icon: Building2, label: 'Dealership', desc: 'Name, logo & brand color' },
       { key: 'contact', icon: Phone, label: 'Contact & Socials', desc: 'WhatsApp, email & social links' },
@@ -1343,13 +1383,21 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         : []),
     ]},
   ];
+  // Staff (manager, admin) see only their own password. Every other section writes to the
+  // profile row of whoever is signed in, so a manager saving "Dealership" renamed THEMSELVES,
+  // and billing, staff, the switches and deleting the dealership are the owner's alone.
+  const settingsNavGroups = isFullAccessRole(profile?.role)
+    ? settingsNavGroupsAll
+    : [{ group: 'Account', items: settingsNavGroupsAll.flatMap(g => g.items).filter(i => i.key === 'security') }];
 
   // The Verify-ID prompt on the listings tab deep-links straight to that
   // section — landing on 'Dealership' and making them hunt is how the step got
   // missed in the first place.
   useEffect(() => { if (jumpTo) setSettingsNav(jumpTo); }, [jumpTo]);
 
-  const effectiveNav = settingsNav || 'identity';
+  const navKeys = new Set(settingsNavGroups.flatMap(g => g.items).map(i => i.key));
+  const effectiveNav = settingsNav && navKeys.has(settingsNav) ? settingsNav
+    : (isFullAccessRole(profile?.role) ? 'identity' : 'security');
 
   const sectionContent = (
     <div className="space-y-4 max-w-2xl">
@@ -2967,6 +3015,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [teamError, setTeamError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   useModalHistory(showAddForm, () => setShowAddForm(false), { isDirty: () => true });
+  // "Do you have a manager?" = No (Settings > Team) takes Manager out of the add-staff choices.
+  const [managerOn, setManagerOn] = useState(true);
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase.from('role_permissions').select('permissions').eq('dealer_id', dealerId).eq('role', 'manager').maybeSingle()
+      .then(({ data }) => setManagerOn(data?.permissions?.[ROLE_ENABLED_KEY] !== false));
+  }, [dealerId]);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
@@ -4328,7 +4383,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
                         { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
                         { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
-                      ].map(({ role, label, color, desc }) => (
+                      ].filter(({ role }) => role !== 'manager' || managerOn).map(({ role, label, color, desc }) => (
                         <button
                           key={role}
                           type="button"
@@ -6820,7 +6875,18 @@ export default function DashboardPage() {
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(seed.profile);
   // The owner's per-role switches (Settings > Team). Overview hides money a role is not allowed.
-  const { can: canDo } = usePermissions(profile);
+  const { can: canDo, loading: permsLoading } = usePermissions(profile);
+  // Managers and admins use this dashboard; the owner's switches (Settings > Team) pick which tabs
+  // they can open. Owners see everything. A money tab also needs its money switch.
+  const isOwnerView = !profile || isFullAccessRole(profile.role);
+  const tabAllowed = (id, sub) => {
+    if (isOwnerView) return true;
+    const cap = tabCapability(id, sub);
+    if (!cap) return true;
+    if (!canDo(cap)) return false;
+    const money = TAB_NEEDS_MONEY[cap];
+    return !money || canDo(money);
+  };
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
@@ -7240,6 +7306,13 @@ export default function DashboardPage() {
     });
   }, [navigate]);
   handleTabChangeRef.current = handleTabChange;
+
+  // A tab the owner has not opened to this role (a saved link, an old notification) goes to
+  // Overview. Waits for the switches to load, or every tab would bounce for a moment.
+  useEffect(() => {
+    if (isOwnerView || permsLoading || !profile) return;
+    if (!tabAllowed(activeTab, analyticsSub)) handleTabChange('overview');
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
   // old deep-links and saved URLs don't render a blank pane.
@@ -8069,7 +8142,7 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 mt-1" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {NAV_GROUPS.map((group) => {
+          {NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => tabAllowed(i.id, i.sub)) })).filter((g) => g.items.length).map((group) => {
             if (group.direct) {
               return (
                 <button
@@ -8210,7 +8283,8 @@ export default function DashboardPage() {
           )}
 
           {/* Plan tier chip */}
-          {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
+          {/* Billing is the owner's: staff never see the plan or the upgrade link. */}
+          {isOwnerView && planCfg && profile?.plan && profile.plan !== 'superadmin' && (
             <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
@@ -8432,7 +8506,7 @@ export default function DashboardPage() {
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (
             <div className="space-y-4">
-              {profile?.plan !== "dealer_starter" && (
+              {profile?.plan !== "dealer_starter" && tabAllowed("ai_manager") && (
                 <button
                   onClick={() => handleTabChange("ai_manager")}
                   className="pl-key"
@@ -8479,7 +8553,7 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
-              <InventorySwitch tabs={INVENTORY_TABS} active="listings" onChange={openInventory} />
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="listings" onChange={openInventory} />
               {/* The badge is worth nothing if nobody finds the upload step, and
                   Settings is the screen a dealer never opens. Jumps straight to
                   the Verified Badge section. */}
@@ -9103,7 +9177,7 @@ export default function DashboardPage() {
           />
           {activeTab === "stock" && userId && (
             <>
-              <InventorySwitch tabs={INVENTORY_TABS} active="stock" onChange={openInventory} />
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="stock" onChange={openInventory} />
               {/* The money figures for the stock live here, once. StockTab's own
                   summary cards repeated them, so it is told to skip them. */}
               <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} canSeeProfit={canDo('view_gross')} />
@@ -9137,7 +9211,7 @@ export default function DashboardPage() {
           )}
           {activeTab === "market" && userId && (
             <>
-              <InventorySwitch tabs={INVENTORY_TABS} active="market" onChange={openInventory} />
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="market" onChange={openInventory} />
               <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
             </>
           )}

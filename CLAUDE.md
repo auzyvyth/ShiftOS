@@ -357,8 +357,14 @@ still says "21 pages") — do not update it; it is pending removal.
 ## Roles
 owner / superadmin / dealer → /dashboard
 salesman → /salesman
-admin → /admin
-manager → /manager
+admin → /dashboard, manager → /dashboard (ACCESS-1, owner 2026-11-13). They use the OWNER'S dashboard;
+  the owner's switches (Settings > Team, `role_permissions`, `src/lib/permissions.js`) pick their tabs
+  (`tabCapability`, `TAB_NEEDS_MONEY`) and money. Staff Settings = Security only. Owner-only, never a
+  switch: billing, adding/removing staff (`invites` edge function), changing the switches, deleting the
+  dealership. "Do you have a manager?" = `role_enabled` on the manager row. The database check is
+  `dealer_can(dealer, cap)` (migration `20261114c`, defaults mirrored and tested: `npm run test:dealercan`).
+  `/manager` (ManagerPanel) and `/admin` (AdminPanel) still load until the owner tests; delete them
+  after. ManagerPanel's listing approvals (`manager_approve_listing`) must move first.
 accountant → /accountant
 fi_officer → /fi
 

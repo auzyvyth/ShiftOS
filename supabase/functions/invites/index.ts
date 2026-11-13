@@ -187,6 +187,19 @@ serve(async (req) => {
       return json({ error: "invalid_role" }, 400, origin);
     }
 
+    // "Do you have a manager?" = No (Settings > Team): this dealership has no manager role.
+    if (role === "manager" && dealer_id) {
+      const { data: mgrRow } = await adminClient
+        .from("role_permissions")
+        .select("permissions")
+        .eq("dealer_id", dealer_id)
+        .eq("role", "manager")
+        .maybeSingle();
+      if (mgrRow?.permissions?.role_enabled === false) {
+        return json({ error: "manager_role_off" }, 400, origin);
+      }
+    }
+
     const pw = password && password.length >= 8 ? password : generatePassword();
 
     // ── Create auth user ────────────────────────────────────────────────────

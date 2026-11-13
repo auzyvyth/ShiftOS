@@ -26,7 +26,7 @@ flowchart TB
     SF["Dealer storefront<br/>sub.xdrive.my"]
     LITE["Salesman Lite<br/>/salesman-lite"]
     PREM["Salesman Premium<br/>/salesman-premium"]
-    DASH["Dealer dashboard<br/>/dashboard + /manager /accountant /fi"]
+    DASH["Dealer dashboard<br/>/dashboard (owner, manager, admin) + /accountant /fi"]
     PLAT["Platform console<br/>/platform"]
     MKT["ShiftOS marketing<br/>/shiftos, /for-salesmen, /articles"]
     SX["Sensus AI landing<br/>/sensus-ai (resold product,<br/>demo requests)"]
@@ -203,7 +203,8 @@ flowchart TD
   RR -->|salesman with dealer| SM["/salesman<br/>(old panel; Premium linked mode<br/>/salesman-premium?linked=1 is opt-in)"]
   RR -->|solo, plan salesman_full| SP["/salesman-premium"]
   RR -->|solo, otherwise| SLt["/salesman-lite"]
-  RR -->|manager / accountant / fi_officer / admin| O["/manager /accountant /fi /admin"]
+  RR -->|manager / admin| D2["/dashboard, tabs the owner opens"]
+  RR -->|accountant / fi_officer| O["/accountant /fi"]
   RR -->|buyer| BA[back to the car, or /account]
   PA["/platform has its OWN sign-in<br/>(platformClient)"] --> PC[Platform console]
 ```
