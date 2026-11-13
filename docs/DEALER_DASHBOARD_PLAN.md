@@ -5,6 +5,17 @@ Decided after five read-only research passes (navigation, code structure, data l
 speed). Two of them independently said: **fix the numbers BEFORE merging more screens** (moving tabs
 while two screens show two figures only moves the confusion). Steps, in order, one commit each:
 
+**DONE 2026-11-13 (on staging 4ffd503, not prod): steps 1 and 2.** Step 1: Analytics > Listings keeps its
+last numbers (cached per dealer) on a failed read; Documents keeps its list and, with nothing loaded, says
+"Couldn't load" + Try again. Step 2: Overview's tiles + 30-day chart and Revenue's tiles read
+`src/hooks/useCarMoney.js` (OwnerMoney's loader, one shared request) and sum `ownerMoney()`; `ownerMoney()`
+gained `daily` (30 Malaysia days) and `prevToDate` (last month up to the same day, used for every
+"vs last month"). `costMissing` already lived in `ownerMoney.carRow`, so `carPnl` was left alone. The SQL
+rewrite was NOT written: no screen reads `gm_pnl_snapshot` any more (droppable later, owner confirms a DROP).
+`gm_exception_alerts.loss_makers` still uses price < buy + recon (manager view only). Not click-tested on
+staging. Mock render showed the owner money section's 6-month chart with no lines: unchanged code, check it.
+NEXT: step 3.
+
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
      paints zeros, and a rejected promise leaves `eventsLoading` true forever. Check `error`, keep the last
