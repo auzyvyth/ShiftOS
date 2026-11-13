@@ -12,7 +12,8 @@ import { cdnImg } from '../../utils/img';
 const PostToSocialsSheet = React.lazy(() => import('../autopost/PostToSocialsSheet'));
 const RecentPosts = React.lazy(() => import('../autopost/PostToSocialsSheet').then((m) => ({ default: m.RecentPosts })));
 
-const card = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 10 };
+// The console is dark and the cards are white, so the cards set their own dark text (the title inherited the console's light text and vanished).
+const card = { background: '#fff', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 10 };
 const btn = (primary) => ({
   height: 38, padding: '0 16px', borderRadius: 999, border: primary ? 'none' : '1px solid #e5e7eb', cursor: 'pointer',
   background: primary ? '#dc2626' : '#fff', color: primary ? '#fff' : '#111827', fontSize: 13.5, fontWeight: 600,
