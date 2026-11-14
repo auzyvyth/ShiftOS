@@ -1,5 +1,55 @@
 # Dealer dashboard: restructure plan + session handoff (2026-11-09)
 
+## CURRENT PLAN (2026-11-13) - read this first, it replaces the "Order of work" below
+Decided after five read-only research passes (navigation, code structure, data layer, competitors,
+speed). Two of them independently said: **fix the numbers BEFORE merging more screens** (moving tabs
+while two screens show two figures only moves the confusion). Steps, in order, one commit each:
+
+1. **Two read-failure bugs (about 15 lines, no visible change).**
+   - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
+     paints zeros, and a rejected promise leaves `eventsLoading` true forever. Check `error`, keep the last
+     value, add `.catch`, and cache the two reads with `usePersistentState` (key ends in the dealer id).
+   - `src/pages/dashboard/DocumentsTab.jsx:183-190`: `setDocuments(data || [])` with no `error` check blanks
+     the list on a failed read. Keep the old list. Do NOT cache it (buyer IC + address).
+2. **ONE "gross this month" (code only, no migration).** Overview (`OverviewTab.jsx:142`) and Revenue
+   (`RevOpsPage.jsx:207`) read the RPC `gm_pnl_snapshot`; `OwnerMoney` (`src/utils/ownerMoney.js`) sums
+   `carPnl()` (`src/utils/carPnl.js`). Make Overview + Revenue sum `carPnl()` over this month's sold cars the
+   same way. Add `costMissing` to `carPnl` (it does not exist yet): a car with no buy price is LEFT OUT and
+   the screen says "N cars left out", never a made-up profit (audit: ~100 of 142 cars). Totals will visibly
+   drop: tell the owner. Update `tests/carPnl.test.mjs`. The matching SQL `car_pnl()` for `gm_pnl_snapshot`,
+   the stock trigger and `gm_exception_alerts.loss_makers` is a migration: write it, queue it for the
+   after-midnight slot, do not apply it.
+3. **One days-on-lot clock and one threshold file.** Use `daysHeld()` (`carPnl.js:36`) in Stock
+   (`DashboardPage.jsx` `stockDays` / `daysInStock`), Overview (`OverviewTab.jsx:230-233`), Performance
+   (`PerformanceTab.jsx:222-225`, `:449`). Today: 30 / 45 / 60-day thresholds and four clocks.
+4. **Merges (each changes the screens, so each is its own commit + screenshots):**
+   a. Reports > Listings (`dashboard/AnalyticsTab.jsx`) folds into Inventory. FIRST check what it has that the
+      Inventory row lacks (incomplete-listings list, CSV export, CVR); keep only what is unique, then delete it
+      and redirect `analytics?sub=listings` to `listings`.
+   b. AI Manager tab becomes a card on Overview (the starter-plan gate moves with it); redirect `ai_manager`.
+   c. Performance + Team become one people screen (merge by subject, not by report type); redirect.
+   d. Kill the `add` tab, keep only `AddCarSheet` (5 entry points today); HP Board becomes a Sales pill.
+5. **Split the rest of `DashboardPage.jsx` (9,573 lines), in this order, one block per commit:** Settings
+   (`dashboard/settings/` with SettingsSection/SettingsField/SaveBtn/ErrMsg, PermissionsMatrix, WaTemplatesEditor,
+   MAX_DEALERSHIP_CHANGES) -> CostProcurementForm (+ PROC_SOURCES, ENCUMBRANCE_OPTS) -> PriceEditModal +
+   MarkSoldModal (MarkSoldModal must be its own file before Stock moves) -> TeamTab (+ lastActiveText) ->
+   ListingDetailDrawer -> StockTab bundle (StockStatsStrip, stock* helpers, STOCK_* constants, bucketGPByMonth)
+   -> shared-state hooks last (about 69 states; do not build a context until the leaf moves are done).
+   Verify EVERY move with: `eslint` rules `no-undef` AND `react/jsx-no-undef` (the first alone MISSED
+   `Sparkline` and `AgeBadge`, caught only by rendering), a `vite build`, and a mocked render of the moved
+   component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`).
+6. **Smaller items found by the research:** Fast List modal (`DashboardPage.jsx` `showFastModal`) is a fixed
+   overlay with no portal and no scroll lock (overlay rules 1-2); parallelise the profile fetch with the
+   cars/salesmen/stock queries; trim the ~70-column `car_listings` select; `vendor-charts` 457 KB is on the
+   dashboard path; "Sold" reads 34 vs 32 (`car_listings` vs `stock_units`, 3 rows to repair, a data fix).
+
+Done this session (2026-11-13, branch `ccr-7a190eea-i6x4n0`, on top of `origin/staging`, NOT on staging yet):
+Market demand is the third Inventory pill (`INVENTORY_TABS`, DashboardPage.jsx:67) and its sidebar item is
+gone; Market demand table fills the desktop width (note capped at 380px, `MarketDemandTab.jsx:522`); Documents
+and Analytics > Listings moved to `src/pages/dashboard/`. Not click-tested in the real dashboard.
+
+---
+
 Owner, 2026-11-09: "fuck the designs, let's work on the real stuff, functions, brain load when looking at
 the dashboard, hierarchy, functions that's the same in 2 tabs, mergeable tabs and features".
 This file is the plan for that, plus everything the 2026-11-09 session found and left open.

@@ -28,13 +28,15 @@ import {
 } from "../utils/panelCache";
 import { getStorefrontUrl as buildStorefrontUrl } from "../hooks/useTenant";
 import { usePermissions } from "../hooks/usePermissions";
-import { CONFIGURABLE_ROLES, capabilitiesForRole, resolvePermissions, roleExtras } from "../lib/permissions";
+import { CONFIGURABLE_ROLES, CAPABILITY_GROUPS, capabilitiesForRole, resolvePermissions, roleExtras, isFullAccessRole, tabCapability, TAB_NEEDS_MONEY, OWNER_ONLY, ROLE_ENABLED_KEY } from "../lib/permissions";
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import { liveChannel } from "../lib/liveChannel";
+import { T, iCls, taCls, SERVER_URL, getListingAge } from "./dashboard/shared";
+import { AgeBadge, Sparkline } from "./dashboard/widgets";
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
@@ -65,6 +67,7 @@ const INVENTORY_VIEW_KEY = "xd_inventory_view";
 const INVENTORY_TABS = [
   { id: "listings", label: "Listings" },
   { id: "stock",    label: "Stock & costs" },
+  { id: "market",   label: "Market demand" },
 ];
 // Sold = what happens after the win: Handover | Customers | Documents, ONE nav
 // item (owner, 2026-11-10), same shape as Inventory. Routes stay
@@ -99,7 +102,6 @@ function SubTabBar({ tabs, active, onChange }) {
 }
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
-const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
@@ -116,17 +118,21 @@ const AuditTrail       = React.lazy(() => import("../components/reports/ReportSe
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
+const DocumentsTab      = React.lazy(() => import("./dashboard/DocumentsTab"));
+const AnalyticsTab      = React.lazy(() => import("./dashboard/AnalyticsTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import PhoneInput from "../components/ui/PhoneInput";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
+import CarDetailsPanel, { CarSheetTabs } from "../components/inventory/CarDetailsPanel";
+import InterestCell from "../components/inventory/InterestCell";
+import CarAnalyticsPanel from "../components/inventory/CarAnalyticsPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
-import DamageMap from "../components/DamageMap";
 import PushPromptStrip from "../components/chat/PushPromptStrip";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
@@ -136,7 +142,9 @@ import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
+import { useCarMoney } from '../hooks/useCarMoney';
 import '../theme/premiumLight.css';
+import ApprovalQueue from "../components/inventory/ApprovalQueue";
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
 import { WindowStickerSheet } from '../components/inventory/WindowSticker';
@@ -192,13 +200,9 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronDown,
-  Palette,
   Inbox,
   Gauge,
-  Droplets,
-  MapPin,
   ChevronLeft,
-  ZoomIn,
   Calculator,
   Bell,
   Package,
@@ -218,11 +222,10 @@ import {
   Mail,
   Film,
   ShieldCheck,
-  Activity,
   Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
-import { effectiveRecon } from "../utils/reconCost";
+import { carPnl, daysHeld, AGEING_DAYS } from "../utils/carPnl";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -247,7 +250,6 @@ const TAB_TO_GROUP = {
   team: "g_admin",
 };
 
-const SERVER_URL = "https://lemdkdizdlcirhbzqlos.supabase.co/functions/v1";
 const MAX_DEALERSHIP_CHANGES = 2;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -305,38 +307,7 @@ const STYLES = `
   .blue-glow { animation: hotpulse 2.2s ease-in-out infinite; }
 `;
 
-const T = {
-  card: {
-    position: 'relative',
-    background: '#FFFFFF',
-    border: '1px solid #EAECF0',
-    borderRadius: 12,
-    boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
-  },
-  cardDark: {
-    position: 'relative',
-    background: '#F7F8FA',
-    border: '1px solid #EAECF0',
-    borderRadius: 12,
-  },
-  modal: {
-    position: 'relative',
-    background: '#FFFFFF',
-    border: '1px solid #EAECF0',
-    boxShadow: '0 20px 60px rgba(15,23,42,0.15)',
-  },
-  divider: { borderBottom: '1px solid #EAECF0' },
-  btnRed: {
-    background: '#DC2626',
-    boxShadow: '0 1px 4px rgba(220,38,38,0.3)',
-    border: 'none',
-  },
-};
 
-const iCls =
-  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
-const taCls =
-  "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -354,10 +325,6 @@ const HeroCarouselIcon = ({ className }) => (
     <path d="M9 21V9" />
   </svg>
 );
-
-function getListingAge(createdAt) {
-  return Math.floor((Date.now() - new Date(createdAt)) / 86400000);
-}
 
 const PROC_SOURCES = ["Auction", "Direct Owner", "Trade-in", "Consignment", "Repossession", "Import", "Other"];
 const ENCUMBRANCE_OPTS = [
@@ -462,43 +429,6 @@ function CostProcurementForm({ listing, dealerId, onClose }) {
         {saving ? "Saving…" : "Save cost & procurement"}
       </button>
     </div>
-  );
-}
-
-// premiumLight (owner, 2026-11-09): one grey pill; the days turn red from 30.
-const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
-  const d = getListingAge(createdAt);
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: premiumLight.raised, color: d >= 30 ? premiumLight.accentText : premiumLight.textSec }}>
-      <Clock style={{ width: 12, height: 12 }} />
-      {d === 0 ? "Today" : `${d}d`}
-    </span>
-  );
-});
-
-// ─── Sparkline ────────────────────────────────────────────────────────────────
-function Sparkline({ data = [], color = '#3b82f6', width = 80, height = 28 }) {
-  if (!data || data.length < 2) return null;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((v - min) / range) * (height - 4) - 2;
-    return `${x},${y}`;
-  }).join(' ');
-  const gradId = `sg-${color.replace('#', '')}`;
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#${gradId})`} />
-    </svg>
   );
 }
 
@@ -612,30 +542,68 @@ function PermissionsMatrix({ dealerId, actor }) {
   const [rows, setRows] = useState({});   // { role: permissionsMap }
   const [loading, setLoading] = useState(true);
   const [savingRole, setSavingRole] = useState(null);
+  // "Do you have a manager?" (owner, 2026-11-13: some dealerships don't need one). Stored on the
+  // manager row as role_enabled; resolvePermissions drops unknown keys, so it is read apart.
+  const [hasManager, setHasManager] = useState(true);
+  const [managerCount, setManagerCount] = useState(0);
+  const [loadErr, setLoadErr] = useState(false);
+  // The manager switches as last SAVED: the Yes/No answer is saved on top of these, never on top
+  // of toggles the owner has not pressed Save for.
+  const savedManager = useRef({});
 
   useEffect(() => {
     if (!dealerId) return;
     setLoading(true);
-    supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId)
-      .then(({ data }) => {
+    Promise.all([
+      supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId),
+      // Active managers only: a deactivated one cannot sign in, so it should not block "No".
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('dealer_id', dealerId).eq('role', 'manager').eq('is_active', true),
+    ]).then(([{ data, error }, mgr]) => {
+        // A failed read must not show every switch at its default: saving that would overwrite
+        // what the owner set.
+        if (error) { setLoadErr(true); setLoading(false); return; }
         const byRole = {};
         for (const { value } of CONFIGURABLE_ROLES) {
           const stored = (data || []).find(r => r.role === value)?.permissions;
           byRole[value] = resolvePermissions(value, stored);
         }
+        const mgrStored = (data || []).find(r => r.role === 'manager')?.permissions;
+        savedManager.current = byRole.manager;
+        setHasManager(mgrStored?.[ROLE_ENABLED_KEY] !== false);
+        setManagerCount(mgr?.error ? null : (mgr?.count || 0)); // null = could not count
         setRows(byRole);
         setLoading(false);
       });
   }, [dealerId]);
 
+  const saveHasManager = async (next) => {
+    if (!next && managerCount === null) {
+      toast.error('Could not check your team. Refresh and try again.');
+      return;
+    }
+    if (!next && managerCount > 0) {
+      toast.error(`Remove your ${managerCount === 1 ? 'manager' : `${managerCount} managers`} in Team first.`);
+      return;
+    }
+    setHasManager(next);
+    const { data: saved, error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role: 'manager', permissions: { ...savedManager.current, [ROLE_ENABLED_KEY]: next }, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
+      .select('role');
+    if (error || !saved?.length) { setHasManager(!next); toast.error('Save failed'); return; }
+    logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: next ? 'Manager role switched on' : 'Manager role switched off' });
+  };
+
   const toggle = (role, key) => setRows(p => ({ ...p, [role]: { ...p[role], [key]: !p[role]?.[key] } }));
 
   const saveRole = async (role) => {
     setSavingRole(role);
-    const { error } = await supabase.from('role_permissions')
-      .upsert({ dealer_id: dealerId, role, permissions: rows[role], updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' });
-    if (error) { toast.error('Save failed'); }
+    const permissions = role === 'manager' ? { ...rows[role], [ROLE_ENABLED_KEY]: hasManager } : rows[role];
+    const { data: saved, error } = await supabase.from('role_permissions')
+      .upsert({ dealer_id: dealerId, role, permissions, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
+      .select('role');
+    if (error || !saved?.length) { toast.error('Save failed'); }
     else {
+      if (role === 'manager') savedManager.current = rows.manager;
       logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: `Permissions updated — ${role}` });
       toast.success('Permissions saved');
     }
@@ -643,10 +611,22 @@ function PermissionsMatrix({ dealerId, actor }) {
   };
 
   if (loading) return <p className="text-gray-500 text-sm">Loading…</p>;
+  if (loadErr) return <p className="text-sm" style={{ color: premiumLight.accentText }}>Could not load the switches. Refresh to try again.</p>;
 
   return (
     <div className="space-y-5">
-      {CONFIGURABLE_ROLES.map(({ value, label }) => {
+      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>Do you have a manager?</p>
+        <p style={{ fontSize: 11.5, color: '#6b7280', margin: '2px 0 10px' }}>No hides the manager role everywhere: Team, these switches and Overview.</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[[true, 'Yes'], [false, 'No, I run it myself']].map(([v, l]) => (
+            <button key={l} type="button" onClick={() => v !== hasManager && saveHasManager(v)}
+              style={{ padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                background: hasManager === v ? '#111827' : '#eceef1', color: hasManager === v ? '#fff' : '#374151' }}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {CONFIGURABLE_ROLES.filter(({ value }) => (value !== 'manager' || hasManager) && (capabilitiesForRole(value).length || roleExtras(value).length)).map(({ value, label }) => {
         const caps = capabilitiesForRole(value);
         return (
           <div key={value} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
@@ -654,17 +634,28 @@ function PermissionsMatrix({ dealerId, actor }) {
               <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{label}</span>
               <SaveBtn sectionKey={`perm_${value}`} onClick={() => saveRole(value)} saving={{ [`perm_${value}`]: savingRole === value }} saved={{}} />
             </div>
-            <div className="space-y-2">
-              {caps.map(cap => (
-                <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
-                  <span>
-                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
-                    <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
+            {/* Grouped by what each switch protects (src/lib/permissions.js CAPABILITY_GROUPS). */}
+            {CAPABILITY_GROUPS.map(g => {
+              const inGroup = caps.filter(c => (c.group || 'money') === g.id);
+              if (!inGroup.length) return null;
+              return (
+                <div key={g.id} style={{ marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '6px 0 6px' }}>{g.label}</p>
+                  <div className="space-y-2">
+                    {inGroup.map(cap => (
+                      <label key={cap.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
+                        <span>
+                          <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
+                          {cap.enforced === false && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: '#6b7280', background: '#eceef1', borderRadius: 999, padding: '1px 7px' }}>Saved, not active yet</span>}
+                          <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             {/* Grantable extras — dealer-dashboard features lent to this role */}
             {roleExtras(value).length > 0 && (
               <>
@@ -689,7 +680,7 @@ function PermissionsMatrix({ dealerId, actor }) {
           </div>
         );
       })}
-      <p style={{ fontSize: 11, color: '#9ca3af' }}>Owner, dealer and superadmin accounts always have full access and are not listed here.</p>
+      <p style={{ fontSize: 11, color: '#9ca3af' }}>Only you, the owner, can do these, whatever the switches say: {OWNER_ONLY.join(', ').toLowerCase()}.</p>
     </div>
   );
 }
@@ -1363,7 +1354,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
   const nextPlan = nextDealerPlan(profile?.plan);
   const nextPlanCfg = nextPlan ? getPlanConfig(nextPlan) : null;
 
-  const settingsNavGroups = [
+  const settingsNavGroupsAll = [
     { group: 'Profile', items: [
       { key: 'identity', icon: Building2, label: 'Dealership', desc: 'Name, logo & brand color' },
       { key: 'contact', icon: Phone, label: 'Contact & Socials', desc: 'WhatsApp, email & social links' },
@@ -1402,13 +1393,21 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         : []),
     ]},
   ];
+  // Staff (manager, admin) see only their own password. Every other section writes to the
+  // profile row of whoever is signed in, so a manager saving "Dealership" renamed THEMSELVES,
+  // and billing, staff, the switches and deleting the dealership are the owner's alone.
+  const settingsNavGroups = isFullAccessRole(profile?.role)
+    ? settingsNavGroupsAll
+    : [{ group: 'Account', items: settingsNavGroupsAll.flatMap(g => g.items).filter(i => i.key === 'security') }];
 
   // The Verify-ID prompt on the listings tab deep-links straight to that
   // section — landing on 'Dealership' and making them hunt is how the step got
   // missed in the first place.
   useEffect(() => { if (jumpTo) setSettingsNav(jumpTo); }, [jumpTo]);
 
-  const effectiveNav = settingsNav || 'identity';
+  const navKeys = new Set(settingsNavGroups.flatMap(g => g.items).map(i => i.key));
+  const effectiveNav = settingsNav && navKeys.has(settingsNav) ? settingsNav
+    : (isFullAccessRole(profile?.role) ? 'identity' : 'security');
 
   const sectionContent = (
     <div className="space-y-4 max-w-2xl">
@@ -3003,905 +3002,6 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
   );
 }
 
-// ─── AnalyticsTab ─────────────────────────────────────────────────────────────
-function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelectListing, onStaleAdjusted, adjustedStaleIds }) {
-  const { can } = usePermissions(profile);
-  // SF-2b: map reserved_by -> salesman first name for the Reserved badge sub-label
-  // (dealer-only surface; never exposed to public storefront visitors).
-  const salesmanFirstName = (id) => {
-    if (!id) return null;
-    const full = salesmen.find((s) => s.id === id)?.full_name;
-    return full ? full.split(' ')[0] : null;
-  };
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: `Hi! I'm your performance advisor. I can see your inventory and help with pricing, leads, and conversions. What would you like to know?`,
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const endRef = useRef(null);
-  useEffect(() => {
-    if (chatOpen) endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, chatOpen]);
-
-  const [carStatsRows, setCarStatsRows] = useState([]);
-  const [slugStatsRows, setSlugStatsRows] = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
-  const [lpSearch, setLpSearch] = useState('');
-  const [lpVisible, setLpVisible] = useState(20);
-  useEffect(() => {
-    if (!profile?.id) return;
-    const dealerId = getDealerIdFromProfile(profile);
-    if (!dealerId) return;
-    Promise.all([
-      supabase.rpc("get_dealer_car_analytics", { p_dealer_id: dealerId }),
-      supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId }),
-    ]).then(([carRes, slugRes]) => {
-      setCarStatsRows(carRes.data || []);
-      setSlugStatsRows(slugRes.data || []);
-      setEventsLoading(false);
-    });
-  }, [profile?.id]);
-
-  const carStatsMap = useMemo(() => {
-    const map = {};
-    carStatsRows.forEach(r => {
-      const views = Number(r.views) || 0;
-      const wa = Number(r.whatsapp) || 0;
-      const calls = Number(r.calls) || 0;
-      map[r.car_id] = {
-        views,
-        whatsapp: wa,
-        calls,
-        bookings: Number(r.bookings) || 0,
-        cvr: views > 0 ? (((wa + calls) / views) * 100).toFixed(1) + '%' : '—',
-      };
-    });
-    return map;
-  }, [carStatsRows]);
-
-  const bySlug = useMemo(() => {
-    const acc = {};
-    slugStatsRows.forEach(r => {
-      if (r.slug) acc[r.slug] = { clicks: Number(r.clicks) || 0, whatsapp: Number(r.whatsapp) || 0 };
-    });
-    return acc;
-  }, [slugStatsRows]);
-
-  const dealerSlugs = new Set(salesmen.map(s => s.slug).filter(Boolean));
-  const topSalesmen = Object.entries(bySlug)
-    .filter(([slug]) => slug && slug.trim() && (dealerSlugs.size === 0 || dealerSlugs.has(slug)))
-    .sort((a, b) => b[1].whatsapp - a[1].whatsapp);
-
-  const total = listings.length;
-  const active = listings.filter(
-    (l) => (l.status || 'available') === 'available',
-  ).length;
-  const sold = listings.filter((l) => l.status === "sold").length;
-  const hot = listings.filter((l) => {
-    const op = l.original_price,
-      sp = l.selling_price;
-    return op && sp && sp <= op * 0.97;
-  }).length;
-  const avgAge = total
-    ? Math.round(
-        listings.reduce((s, l) => s + getListingAge(l.created_at), 0) / total,
-      )
-    : 0;
-  const stale = listings.filter(
-    (l) =>
-      getListingAge(l.created_at) >= 30 && (l.status || 'available') === 'available',
-  );
-
-  // A listing is "incomplete" when it's missing info a buyer needs to trust
-  // it. Bulk/AI import leaves several of these blank, so these are the cars
-  // to finish before they can actually sell. Sold cars are excluded.
-  // (Shared with the Inventory tab badge and CarForm's publish gate — see
-  // utils/listingCompleteness.js — so "complete" means the same thing everywhere.)
-  const listingGaps = getListingGaps;
-  const incomplete = listings.filter(
-    (l) => (l.status || 'available') !== 'sold' && listingGaps(l).length > 0,
-  );
-
-  const exportAnalyticsCSV = () => {
-    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const toCSV = (rows) => rows.map(r => r.map(esc).join(',')).join('\n');
-
-    // Sheet 1: Listing performance
-    const listingMap = {};
-    listings.forEach(l => { listingMap[l.slug] = l; });
-    const lpHeader = ['Brand','Model','Year','Plate','Status','Selling Price (RM)','Days Listed','Views','WhatsApp','Calls','Bookings'];
-    const lpRows = carStatsRows.map(r => {
-      const l = listings.find(li => li.id === r.car_id) || {};
-      return [l.brand||'', l.model||'', l.year||'', l.plate_number||'', l.status||'available', l.selling_price||0, getListingAge(l.created_at), r.views||0, r.whatsapp||0, r.calls||0, r.bookings||0];
-    });
-    const lpCSV = toCSV([lpHeader, ...lpRows]);
-
-    // Sheet 2: Salesman leaderboard
-    const slHeader = ['Salesman Slug','WhatsApp Contacts','Listing Clicks'];
-    const slRows = topSalesmen.map(([slug, d]) => [slug, d.whatsapp, d.clicks]);
-    const slCSV = toCSV([slHeader, ...slRows]);
-
-    const date = new Date().toISOString().slice(0,10);
-    const full = `LISTING PERFORMANCE — ${date}\n${lpCSV}\n\n\nSALESMAN LEADERBOARD — ${date}\n${slCSV}`;
-    const blob = new Blob([full], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `analytics-${date}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const ctx = () => {
-    const s = listings
-      .slice(0, 20)
-      .map(
-        (l) =>
-          `${l.brand} ${l.model}|RM${l.selling_price?.toLocaleString()}|${getListingAge(l.created_at)}d|${l.status || "available"}|${l.condition}|${l.mileage ? l.mileage.toLocaleString() + "km" : "-"}|${l.state || "-"}${l.original_price ? `|was RM${l.original_price.toLocaleString()}` : ""}`,
-      )
-      .join("\n");
-    return `AI performance advisor for ShiftOS, Malaysian car dealer SaaS.\nDealer: ${profile?.dealership || "Unknown"}. Total:${total} Active:${active} Sold:${sold} HotDeals:${hot} AvgAge:${avgAge}d Stale:${stale.length}\nListings:\n${s}\nBe concise, actionable. Under 200 words.`;
-  };
-
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const msg = input.trim();
-    setInput("");
-    setMessages((p) => [...p, { role: "user", content: msg }]);
-    setLoading(true);
-    try {
-      const history = [
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: msg },
-      ];
-      const reply = await callClaudeChat(history, ctx(), "sales_manager");
-      setMessages((p) => [...p, { role: "assistant", content: reply }]);
-    } catch {
-      setMessages((p) => [
-        ...p,
-        { role: "assistant", content: "Connection error. Try again." },
-      ]);
-    }
-    setLoading(false);
-  };
-
-  const PROMPTS = [
-    "Why aren't my listings converting?",
-    "Which car should I reprice?",
-    "Any I should remove?",
-    "How to write better listings?",
-  ];
-  // Last 14 days of sold units, bucketed by day, for the Sold KPI sparkline.
-  const soldSpark = useMemo(() => {
-    const buckets = Array(14).fill(0);
-    const now = new Date();
-    listings.forEach((l) => {
-      if (l.status !== 'sold' || !l.sold_at) return;
-      const days = Math.floor((now - new Date(l.sold_at)) / 86_400_000);
-      if (days >= 0 && days < 14) buckets[13 - days] += 1;
-    });
-    return buckets;
-  }, [listings]);
-
-  const kpis = [
-    {
-      label: "Active",
-      val: active,
-      sub: `of ${total} total`,
-      grad: "grad-cyan",
-      icon: <Car className="w-4 h-4" />,
-      glow: "rgba(103,232,249,0.14)",
-    },
-    {
-      label: "Sold",
-      val: sold,
-      sub: "all time",
-      grad: "grad-green",
-      icon: <CheckCircle2 className="w-4 h-4" />,
-      glow: "rgba(110,231,183,0.14)",
-      spark: soldSpark,
-      sparkColor: '#34d399',
-    },
-    {
-      label: "Avg. Age",
-      val: `${avgAge}d`,
-      sub: avgAge >= 30 ? "⚠ Aging" : "Healthy",
-      grad: avgAge >= 30 ? "grad-gold" : "grad-white",
-      icon: <Clock className="w-4 h-4" />,
-      glow: avgAge >= 30 ? "rgba(251,191,36,0.08)" : "transparent",
-    },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        {kpis.map(({ label, val, sub, grad, icon, glow, spark, sparkColor }) => (
-          <div
-            key={label}
-            className="stat-card card-top rounded-2xl overflow-hidden glass"
-            style={{ position: 'relative' }}
-          >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `radial-gradient(circle at 100% 0%, rgba(59,130,246,0.05) 0%, transparent 55%)`,
-              }}
-            />
-            {spark && (
-              <div className="relative px-3.5 pt-3">
-                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
-              </div>
-            )}
-            <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">
-                  {label}
-                </p>
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
-                >
-                  {icon}
-                </div>
-              </div>
-              <p
-                className={`text-xl sm:text-3xl font-black leading-none tabular-nums ${grad || "text-gray-900"}`}
-              >
-                {val}
-              </p>
-              <p className="text-xs text-gray-700 mt-1.5 hidden sm:block">
-                {sub}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-      {(() => {
-        const visibleStale = stale.filter(l => !(adjustedStaleIds || new Set()).has(l.id));
-        const adjustedStale = stale.filter(l => (adjustedStaleIds || new Set()).has(l.id));
-        return (
-          <>
-            {incomplete.length > 0 && (
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  background: "rgba(239,68,68,0.04)",
-                  border: "1px solid rgba(239,68,68,0.14)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4 text-red-400" />
-                  <p className="text-red-700 text-sm font-semibold">
-                    {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing key info buyers need to see
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {incomplete.slice(0, 8).map((l) => {
-                    const gaps = listingGaps(l);
-                    return (
-                      <div
-                        key={l.id}
-                        className="flex items-center justify-between py-2 gap-3"
-                        style={{ borderBottom: "1px solid rgba(239,68,68,0.08)" }}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {l.images?.[0] ? (
-                            <img src={cdnImg(l.images[0], 64, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-gray-900 text-sm font-medium truncate">
-                              {l.brand} {l.model} {l.year || ""}
-                            </p>
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {gaps.map((g) => (
-                                <span key={g} className="text-red-700 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                                  No {g}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        {onEditListing && (
-                          <button
-                            onClick={() => onEditListing(l)}
-                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all flex-shrink-0"
-                            style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#dc2626" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.2)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; }}
-                          >
-                            Finish
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {incomplete.length > 8 && (
-                    <p className="text-xs text-gray-500 pt-1">+{incomplete.length - 8} more incomplete</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {visibleStale.length > 0 && (
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  background: "rgba(251,191,36,0.04)",
-                  border: "1px solid rgba(251,191,36,0.12)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4 text-amber-400" />
-                  <p className="text-amber-700 text-sm font-semibold">
-                    {visibleStale.length} listing{visibleStale.length > 1 ? "s" : ""} aging 30+ days — needs attention
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {visibleStale.slice(0, 5).map((l) => (
-                    <div
-                      key={l.id}
-                      className="flex items-center justify-between py-2"
-                      style={{ borderBottom: "1px solid rgba(251,191,36,0.07)" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        {l.images?.[0] ? (
-                          <img
-                            src={cdnImg(l.images[0], 64, 70)}
-                            onError={imgFallback(l.images[0])}
-                            loading="lazy"
-                            decoding="async"
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
-                        )}
-                        <div>
-                          <p className="text-gray-900 text-sm font-medium">
-                            {l.brand} {l.model}
-                          </p>
-                          <p className="text-gray-500 text-xs">
-                            RM {l.selling_price?.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-amber-700 text-xs font-semibold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                          {getListingAge(l.created_at)}d
-                        </span>
-                        {onEditListing && (
-                          <button
-                            onClick={() => {
-                              onEditListing(l);
-                            }}
-                            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
-                            style={{
-                              background: "rgba(59,130,246,0.1)",
-                              border: "1px solid rgba(59,130,246,0.25)",
-                              color: "#93c5fd",
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
-                          >
-                            Adjust
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {adjustedStale.length > 0 && (
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  background: "rgba(34,197,94,0.03)",
-                  border: "1px solid rgba(34,197,94,0.15)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <p className="text-emerald-700 text-sm font-semibold">
-                    {adjustedStale.length} listing{adjustedStale.length > 1 ? "s" : ""} adjusted — 30+ days old, repriced or updated
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {adjustedStale.map((l) => (
-                    <div
-                      key={l.id}
-                      className="flex items-center justify-between py-2"
-                      style={{ borderBottom: "1px solid rgba(34,197,94,0.07)" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        {l.images?.[0] ? (
-                          <img
-                            src={cdnImg(l.images[0], 64, 70)}
-                            onError={imgFallback(l.images[0])}
-                            loading="lazy"
-                            decoding="async"
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
-                        )}
-                        <div>
-                          <p className="text-gray-900 text-sm font-medium">
-                            {l.brand} {l.model}
-                          </p>
-                          <p className="text-gray-500 text-xs">
-                            RM {l.selling_price?.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-700 text-xs font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                          {getListingAge(l.created_at)}d · adjusted
-                        </span>
-                        {onEditListing && (
-                          <button
-                            onClick={() => onEditListing(l)}
-                            className="text-xs px-2.5 py-1 rounded-lg transition-all"
-                            style={{ background: "#f9fafb", border: "1px solid #e5e7eb", color: "#6b7280" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "#f3f4f6"}
-                            onMouseLeave={e => e.currentTarget.style.background = "#f9fafb"}
-                          >
-                            Edit again
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        );
-      })()}
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        <style>{`
-          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e5e7eb; }
-          .lp-table-wrap { display:block; }
-          .lp-table { width:100%; border-collapse:collapse; table-layout:fixed; }
-          .lp-table colgroup col:nth-child(1) { width:22%; }
-          .lp-table colgroup col:nth-child(2) { width:14%; }
-          .lp-table colgroup col:nth-child(3) { width:9%; }
-          .lp-table colgroup col:nth-child(4) { width:9%; }
-          .lp-table colgroup col:nth-child(5) { width:10%; }
-          .lp-table colgroup col:nth-child(6) { width:9%; }
-          .lp-table colgroup col:nth-child(7) { width:10%; }
-          .lp-table colgroup col:nth-child(8) { width:8%; }
-          .lp-table colgroup col:nth-child(9) { width:9%; }
-          .lp-th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#6b7280; text-align:left; background:#f9fafb; border-bottom:1px solid #e5e7eb; }
-          .lp-row { border-bottom:1px solid #f3f4f6; transition:background 0.15s; }
-          .lp-row:last-child { border-bottom:none; }
-          .lp-row:hover { background:#f9fafb; }
-          .lp-row.stale { background:#fffbeb; }
-          .lp-row.stale:hover { background:#fef3c7; }
-          .lp-td { padding:13px 14px; vertical-align:middle; }
-          .lp-stat { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:24px; padding:0 8px; border-radius:6px; font-size:12px; font-weight:700; letter-spacing:0.02em; }
-          .lp-stat.sky   { background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; }
-          .lp-stat.green { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-          .lp-stat.purple{ background:#faf5ff; color:#7e22ce; border:1px solid #e9d5ff; }
-          .lp-stat.amber { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
-          .lp-stat.dim   { background:#f9fafb; color:#9ca3af; border:1px solid #e5e7eb; }
-          .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
-          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
-          .lp-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
-          .lp-card { border-radius:10px; overflow:hidden; background:#fff; border:1px solid #e5e7eb; transition:border-color 0.15s; }
-          .lp-card.stale { border-color:#fde68a; background:#fffbeb; }
-          .lp-card-top { display:flex; align-items:center; gap:12px; padding:12px 14px 10px; }
-          .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
-          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
-          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:#e5e7eb; border-top:1px solid #e5e7eb; }
-          .lp-card-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:9px 4px; background:#fff; gap:2px; }
-          .lp-card-stat-val { font-size:13px; font-weight:800; letter-spacing:0.02em; }
-          .lp-card-stat-lbl { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; }
-          @media(max-width:640px) {
-            .lp-table-wrap { display:none !important; }
-            .lp-cards { display:flex !important; }
-          }
-        `}</style>
-
-        {/* ── header ── */}
-        <div className="lp-header">
-          <div>
-            <h2 style={{ fontSize:14, fontWeight:700, color:'#111827', margin:0, letterSpacing:'-0.01em' }}>Listing Performance</h2>
-            <p style={{ fontSize:11, color:'#6b7280', margin:'2px 0 0', letterSpacing:'0.01em' }}>Sorted by views · traffic activates once listings go live</p>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            {can('export_data') && <button
-              onClick={exportAnalyticsCSV}
-              disabled={eventsLoading || carStatsRows.length === 0}
-              style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color:'#374151', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, padding:'5px 10px', cursor: eventsLoading || carStatsRows.length === 0 ? 'not-allowed' : 'pointer', opacity: eventsLoading || carStatsRows.length === 0 ? 0.5 : 1, fontFamily:"system-ui,sans-serif" }}
-              title="Export listing performance + salesman leaderboard as CSV"
-            >
-              <Download style={{ width:12, height:12 }} />
-              Export CSV
-            </button>}
-            <span style={{ fontSize:11, fontWeight:600, color:'#6b7280', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'4px 10px' }}>
-              {listings.length} listing{listings.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-
-        {/* ── search bar ── */}
-        <div style={{ padding:'0 20px 14px', position:'relative' }}>
-          <Search style={{ position:'absolute', left:32, top:'50%', transform:'translateY(-50%)', width:14, height:14, color:'#9ca3af', pointerEvents:'none' }} />
-          <input
-            value={lpSearch}
-            onChange={e => { setLpSearch(e.target.value); setLpVisible(20); }}
-            placeholder="Search brand, model, variant, VIN, price or date…"
-            style={{ width:'100%', boxSizing:'border-box', paddingLeft:38, paddingRight:12, paddingTop:8, paddingBottom:8, border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, color:'#111827', background:'#f9fafb', outline:'none', fontFamily:"system-ui,sans-serif" }}
-          />
-        </div>
-
-        {listings.length === 0 ? (
-          <div style={{ padding:'48px 20px', textAlign:'center', color:'#374151', fontSize:13 }}>
-            No listings to analyse yet
-          </div>
-        ) : (() => {
-          const allSorted = [...listings].sort((a, b) => {
-            const aViews = carStatsMap[a.id]?.views || 0;
-            const bViews = carStatsMap[b.id]?.views || 0;
-            return bViews - aViews;
-          });
-          const lpQ = lpSearch.trim().toLowerCase();
-          const filtered = lpQ
-            ? allSorted.filter(l => [
-                l.brand, l.model, l.variant, l.year,
-                l.vin_number, l.plate_number,
-                l.selling_price, l.selling_price != null ? Number(l.selling_price).toLocaleString() : '',
-                l.created_at ? new Date(l.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
-                l.created_at ? String(l.created_at).slice(0, 10) : '',
-              ].filter(Boolean).join(' ').toLowerCase().includes(lpQ))
-            : allSorted;
-          const sorted = filtered.slice(0, lpVisible);
-          const hasMore = filtered.length > lpVisible;
-          return (
-            <>
-              {/* ── desktop table ── */}
-              <div className="lp-table-wrap">
-                <table className="lp-table">
-                  <colgroup>
-                    <col /><col /><col /><col /><col /><col /><col /><col /><col />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      {['Vehicle','Price','Age','Views','WhatsApp','Calls','Bookings','CVR','Status'].map(h => (
-                        <th key={h} className="lp-th">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sorted.map((l, i) => {
-                      const stats  = carStatsMap[l.id] || {};
-                      const views  = stats.views    || 0;
-                      const wa     = stats.whatsapp  || 0;
-                      const calls  = stats.calls     || 0;
-                      const books  = stats.bookings  || 0;
-                      const cvr    = stats.cvr;
-                      const cvrNum = parseFloat(cvr);
-                      const isStale = getListingAge(l.created_at) >= 30;
-                      const statusKey = l.status || 'available';
-                      const statusCls = statusKey === 'available' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
-                        : statusKey === 'reserved' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                        : 'bg-blue-400/10 text-blue-400 border-blue-400/20';
-                      return (
-                        <tr key={l.id} className={`lp-row${isStale ? ' stale' : ''}`}>
-                          {/* Vehicle */}
-                          <td className="lp-td">
-                            <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-                              <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', width:18, textAlign:'right', flexShrink:0, fontVariantNumeric:'tabular-nums' }}>{i + 1}</span>
-                              {l.images?.[0]
-                                ? <img src={cdnImg(l.images[0], 96, 70)} alt="" className="lp-vehicle-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
-                                : <div className="lp-vehicle-placeholder" />
-                              }
-                              <div style={{ minWidth:0 }}>
-                                <p style={{ fontSize:13, fontWeight:700, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                  {onSelectListing ? (
-                                    <span role="button" tabIndex={0}
-                                       onClick={() => onSelectListing(l)}
-                                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
-                                       style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
-                                       onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
-                                       onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
-                                      {l.brand} {l.model}
-                                    </span>
-                                  ) : (<>{l.brand} {l.model}</>)}
-                                </p>
-                                <p style={{ fontSize:11, color:'#4b5563', margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                                  {l.variant || l.year || '—'}
-                                </p>
-                                {(l.vin_number || l.plate_number) && (
-                                  <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums', letterSpacing:'0.02em' }}>
-                                    {l.vin_number || l.plate_number}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          {/* Price */}
-                          <td className="lp-td">
-                            <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, letterSpacing:'-0.02em', tabularNums:true }}>
-                              RM {l.selling_price?.toLocaleString() || '—'}
-                            </p>
-                          </td>
-                          {/* Age */}
-                          <td className="lp-td">
-                            <AgeBadge createdAt={l.created_at} />
-                          </td>
-                          {/* Views */}
-                          <td className="lp-td">
-                            <span className={`lp-stat ${views > 0 ? 'sky' : 'dim'}`}>
-                              {eventsLoading ? '…' : views}
-                            </span>
-                          </td>
-                          {/* WhatsApp */}
-                          <td className="lp-td">
-                            <span className={`lp-stat ${wa > 0 ? 'green' : 'dim'}`}>
-                              {eventsLoading ? '…' : wa}
-                            </span>
-                          </td>
-                          {/* Calls */}
-                          <td className="lp-td">
-                            <span className={`lp-stat ${calls > 0 ? 'purple' : 'dim'}`}>
-                              {eventsLoading ? '…' : calls}
-                            </span>
-                          </td>
-                          {/* Bookings */}
-                          <td className="lp-td">
-                            <span className={`lp-stat ${books > 0 ? 'amber' : 'dim'}`}>
-                              {eventsLoading ? '…' : books}
-                            </span>
-                          </td>
-                          {/* CVR */}
-                          <td className="lp-td">
-                            <span style={{ fontSize:12, fontWeight:700, color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151' }}>
-                              {eventsLoading ? '…' : (cvr || '—')}
-                            </span>
-                          </td>
-                          {/* Status */}
-                          <td className="lp-td">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusCls}`} style={{ letterSpacing:'0.04em', textTransform:'capitalize' }}>
-                              {statusKey}
-                            </span>
-                            {statusKey === 'reserved' && salesmanFirstName(l.reserved_by) && (
-                              <p style={{ fontSize:10, color:'#6b7280', margin:'3px 0 0' }}>
-                                by {salesmanFirstName(l.reserved_by)}
-                              </p>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* ── mobile cards ── */}
-              <div className="lp-cards">
-                {sorted.map((l, i) => {
-                  const stats  = carStatsMap[l.id] || {};
-                  const views  = stats.views    || 0;
-                  const wa     = stats.whatsapp  || 0;
-                  const calls  = stats.calls     || 0;
-                  const books  = stats.bookings  || 0;
-                  const cvr    = stats.cvr;
-                  const cvrNum = parseFloat(cvr);
-                  const isStale = getListingAge(l.created_at) >= 30;
-                  const statusKey = l.status || 'available';
-                  const statusColor = statusKey === 'available' ? '#4ade80' : statusKey === 'reserved' ? '#fbbf24' : '#60a5fa';
-                  return (
-                    <div key={l.id} className={`lp-card${isStale ? ' stale' : ''}`}>
-                      {/* top row */}
-                      <div className="lp-card-top">
-                        {l.images?.[0]
-                          ? <img src={cdnImg(l.images[0], 160, 70)} alt="" className="lp-card-img" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = l.images[0]; }} />
-                          : <div className="lp-card-placeholder" />
-                        }
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6 }}>
-                            <div style={{ minWidth:0 }}>
-                              <p style={{ fontSize:13, fontWeight:800, color:'#111827', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                                <span style={{ color:'#9ca3af', fontWeight:700 }}>{i + 1}.</span>{' '}
-                                {onSelectListing ? (
-                                  <span role="button" tabIndex={0}
-                                     onClick={() => onSelectListing(l)}
-                                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectListing(l); } }}
-                                     style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}
-                                     onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
-                                     onMouseLeave={e => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}>
-                                    {l.brand} {l.model}
-                                  </span>
-                                ) : (<>{l.brand} {l.model}</>)}
-                              </p>
-                              <p style={{ fontSize:11, color:'#4b5563', margin:'1px 0 0' }}>
-                                {l.variant || l.year || '—'}
-                              </p>
-                              {(l.vin_number || l.plate_number) && (
-                                <p style={{ fontSize:10, color:'#9ca3af', margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
-                                  {l.vin_number || l.plate_number}
-                                </p>
-                              )}
-                            </div>
-                            <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
-                              {statusKey}
-                            </span>
-                          </div>
-                          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-                            <span style={{ fontSize:14, fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>
-                              RM {l.selling_price?.toLocaleString() || '—'}
-                            </span>
-                            <AgeBadge createdAt={l.created_at} />
-                            {statusKey === 'reserved' && salesmanFirstName(l.reserved_by) && (
-                              <span style={{ fontSize:10, color:'#6b7280' }}>Reserved by {salesmanFirstName(l.reserved_by)}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {/* stats strip */}
-                      <div className="lp-card-stats">
-                        {[
-                          { label:'Views',    val: views,  color:'#38bdf8' },
-                          { label:'WhatsApp', val: wa,     color:'#4ade80' },
-                          { label:'Calls',    val: calls,  color:'#c084fc' },
-                          { label:'Bookings', val: books,  color:'#fbbf24' },
-                          { label:'CVR',      val: eventsLoading ? '…' : (cvr || '—'), color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151', raw: true },
-                        ].map(({ label, val, color, raw }) => (
-                          <div key={label} className="lp-card-stat">
-                            <span className="lp-card-stat-val" style={{ color: (raw ? true : val > 0) ? color : '#374151' }}>
-                              {eventsLoading && !raw ? '…' : val}
-                            </span>
-                            <span className="lp-card-stat-lbl">{label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {hasMore && (
-                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-                  <button
-                    onClick={() => setLpVisible(v => v + 40)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
-                  >
-                    Load more ({filtered.length - lpVisible} remaining)
-                  </button>
-                  <button
-                    onClick={() => setLpVisible(filtered.length)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
-                  >
-                    Show all {filtered.length}
-                  </button>
-                </div>
-              )}
-            </>
-          );
-        })()}
-      </div>
-      {profile?.plan === "dealer_pro" && (
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        <button
-          onClick={() => setChatOpen((v) => !v)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
-            >
-              <Bot className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-gray-900 text-sm font-semibold">
-                AI Performance Advisor
-              </p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                Ask anything about your inventory & performance
-              </p>
-            </div>
-          </div>
-          <ChevronRight
-            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${chatOpen ? "rotate-90" : ""}`}
-          />
-        </button>
-        {chatOpen && (
-          <div style={{ borderTop: "1px solid #e5e7eb" }}>
-            <div className="h-72 overflow-y-auto p-4 space-y-3">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}
-                >
-                  {m.role === "assistant" && (
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
-                    >
-                      <Bot className="w-3 h-3 text-blue-600" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "text-white rounded-tr-sm" : "text-gray-700 rounded-tl-sm"}`}
-                    style={
-                      m.role === "user"
-                        ? { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", boxShadow: "0 2px 8px rgba(59,130,246,0.22)" }
-                        : { background: "#f9fafb", border: "1px solid #e5e7eb" }
-                    }
-                  >
-                    {m.content}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex gap-2.5">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
-                  >
-                    <Bot className="w-3 h-3 text-blue-600" />
-                  </div>
-                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                    <div className="flex gap-1">
-                      {[0, 1, 2].map((i) => (
-                        <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={endRef} />
-            </div>
-            {messages.length === 1 && (
-              <div className="px-4 pb-3 flex flex-wrap gap-2">
-                {PROMPTS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setInput(p)}
-                    className="text-xs px-3 py-1.5 rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                    style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="p-3 flex gap-2 items-end" style={{ borderTop: "1px solid #e5e7eb" }}>
-              <textarea
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-                }}
-                placeholder="Ask about your listings, pricing, leads…"
-                className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none transition-colors"
-                style={{ background: "#fff", border: "1px solid #e5e7eb", maxHeight: "120px" }}
-                onFocus={(e) => (e.target.style.borderColor = "#93c5fd")}
-                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-              />
-              <button
-                onClick={send}
-                disabled={loading || !input.trim()}
-                className="btn-shimmer w-9 h-9 flex items-center justify-center disabled:opacity-30 rounded-xl flex-shrink-0"
-                style={T.btnRed}
-              >
-                <Send className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      )}
-    </div>
-  );
-}
-
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
 function lastActiveText(ts) {
   if (!ts) return 'No activity yet';
@@ -3914,7 +3014,26 @@ function lastActiveText(ts) {
   return '30d+ ago';
 }
 
+// One wording for every refusal the invites / create-salesman functions send back.
+function staffAddError(data) {
+  switch (data?.error) {
+    case "email_taken": return "That email already has an account.";
+    case "seat_cap": return `Seat limit reached (${data.current}/${data.cap}). Upgrade your plan to add more team members.`;
+    case "not_allowed": return "The owner has not let managers add staff.";
+    case "manager_role_limit": return "Managers can add salesmen and admins only.";
+    case "manager_role_off": return "This dealership has no manager role. Switch it on in Settings > Team first.";
+    case "email_failed": return "The setup email could not be sent, so nothing was created. Try again.";
+    default: return data?.message || data?.error || "Could not create the account.";
+  }
+}
+
 function TeamTab({ managerDealership, dealerId, profile }) {
+  // Who may add staff: the owner always; a manager only with the owner's "Add staff" switch, and
+  // then only salesmen and admins, with no password (they set their own from the email). The
+  // invites / create-salesman functions enforce the same rules on the server.
+  const isOwnerTeam = ["dealer", "owner", "superadmin"].includes(profile?.role);
+  const { can: teamCan } = usePermissions(profile);
+  const canAddStaff = isOwnerTeam || (profile?.role === "manager" && teamCan("add_staff"));
   // Persisted (IC material stripped) so the roster paints instantly; the
   // fetch below still replaces it. "loadingTeam" = nothing to show yet.
   const [salespeople, setSalespeople, teamCached] = usePersistentState(
@@ -3925,6 +3044,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [teamError, setTeamError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   useModalHistory(showAddForm, () => setShowAddForm(false), { isDirty: () => true });
+  // "Do you have a manager?" = No (Settings > Team) takes Manager out of the add-staff choices.
+  const [managerOn, setManagerOn] = useState(true);
+  useEffect(() => {
+    if (!dealerId) return;
+    supabase.from('role_permissions').select('permissions').eq('dealer_id', dealerId).eq('role', 'manager').maybeSingle()
+      .then(({ data }) => setManagerOn(data?.permissions?.[ROLE_ENABLED_KEY] !== false));
+  }, [dealerId]);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
@@ -4062,11 +3188,14 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const handleAssignCar = async (listingId, salesmanId, name) => {
     setAssignWorking(listingId);
     const car = openCars.find((c) => c.id === listingId);
-    const { error } = await supabase
+    // A refused write is "0 rows, no error": check a row came back before evicting anyone.
+    const { data: saved, error } = await supabase
       .from("car_listings")
       .update({ assigned_to: salesmanId })
-      .eq("id", listingId);
-    if (!error) {
+      .eq("id", listingId)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not assign. Try again.");
+    else {
       await supabase.from("salesman_listings").delete()
         .eq("listing_id", listingId).neq("salesman_id", salesmanId);
       logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
@@ -4079,11 +3208,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const handleUnassignCar = async (listingId) => {
     setAssignWorking(listingId);
     const car = Object.values(assignedMap).flat().find((c) => c.id === listingId);
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from("car_listings")
       .update({ assigned_to: null })
-      .eq("id", listingId);
-    if (!error) {
+      .eq("id", listingId)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not unassign. Try again.");
+    else {
       logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim() });
       await fetchAssignedCars();
     }
@@ -4199,6 +3330,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const handleAdd = async () => {
     setAddError("");
+    if (!canAddStaff) { setAddError("Only the owner can add staff."); return; }
+    if (!isOwnerTeam && !["salesman", "admin"].includes(newRole)) { setAddError("You can add salesmen and admins only."); return; }
     const n = name.trim(),
       e = email.trim().toLowerCase(),
       s = slug.trim(),
@@ -4208,7 +3341,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       return;
     }
     const isSalesman = newRole === "salesman";
-    if (!n || !e || !s || (!isSalesman && !tempPw)) {
+    if (!n || !e || !s || (!isSalesman && isOwnerTeam && !tempPw)) {
       setAddError("All fields required.");
       return;
     }
@@ -4216,7 +3349,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       setAddError(MY_PHONE_ERROR);
       return;
     }
-    if (!isSalesman && tempPw.length < 8) {
+    if (!isSalesman && isOwnerTeam && tempPw.length < 8) {
       setAddError("Password min 8 chars.");
       return;
     }
@@ -4256,11 +3389,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setAddError(
-            data.error === "email_taken"
-              ? "Email already in use."
-              : data.message || data.error || "Failed to create account.",
-          );
+          setAddError(staffAddError(data));
           setAddLoading(false);
           return;
         }
@@ -4283,13 +3412,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
             dealership: managerDealership,
             dealer_id: dealerId,
             slug: s,
-            password: tempPw,
+            password: isOwnerTeam ? tempPw : undefined,
             role: newRole,
           }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setAddError(data.message || "Failed.");
+          setAddError(staffAddError(data));
           setAddLoading(false);
           return;
         }
@@ -4314,12 +3443,16 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setTimeout(() => setCopiedId(null), 2000);
   };
   const toggleActive = async (s) => {
+    // Switching staff on or off is the owner's (owner-only list, Settings > Team).
+    if (!["dealer", "owner", "superadmin"].includes(profile?.role)) { toast.error("Only the owner can do this."); return; }
     setTogglingId(s.id);
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from("profiles")
       .update({ is_active: !s.is_active })
-      .eq("id", s.id);
-    if (!error)
+      .eq("id", s.id)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not save. Try again.");
+    else
       setSalespeople((p) =>
         p.map((x) => (x.id === s.id ? { ...x, is_active: !s.is_active } : x)),
       );
@@ -4432,7 +3565,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               setShowAddForm(true);
               resetForm();
             }}
-            disabled={!managerDealership}
+            disabled={!managerDealership || !canAddStaff}
+            title={canAddStaff ? undefined : "Only the owner can add staff"}
             className="btn-shimmer inline-flex items-center gap-2 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
             style={T.btnRed}
           >
@@ -4510,7 +3644,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 setShowAddForm(true);
                 resetForm();
               }}
-              disabled={!managerDealership}
+              disabled={!managerDealership || !canAddStaff}
               className="btn-shimmer text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
               style={T.btnRed}
             >
@@ -5281,7 +4415,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
                         { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
                         { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
-                      ].map(({ role, label, color, desc }) => (
+                      ].filter(({ role }) => (role !== 'manager' || managerOn) && (isOwnerTeam || role === 'salesman' || role === 'admin')).map(({ role, label, color, desc }) => (
                         <button
                           key={role}
                           type="button"
@@ -5343,7 +4477,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       </label>
                       <PhoneInput value={phone} onChange={(v) => setPhone(v)} autoComplete="off" className={inputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
                     </div>
-                    {newRole !== "salesman" && (
+                    {newRole !== "salesman" && isOwnerTeam && (
                       <div>
                         <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
                           Temp Password *
@@ -5358,7 +4492,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         />
                       </div>
                     )}
-                    {newRole === "salesman" && (
+                    {(newRole === "salesman" || !isOwnerTeam) && (
                       <div className="flex items-end">
                         <div
                           className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-700"
@@ -5367,7 +4501,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             border: "1px solid #86efac",
                           }}
                         >
-                          Password auto-generated — shown once after creation.
+                          {isOwnerTeam
+                            ? "Password auto-generated — shown once after creation."
+                            : "They get an email to set their own password. The owner is told."}
                         </div>
                       </div>
                     )}
@@ -5485,36 +4621,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 }
 
 // ─── Helpers shared by ListingDetailDrawer ────────────────────────────────────
-function parseTags(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  return raw.split(/,|\n/).map(s => s.trim()).filter(Boolean);
-}
-
-const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
-
 // Listings row: counted views + enquiry taps (WhatsApp, call, booking), last 30 days.
 // null = still loading: a placeholder, never a 0.
-function InterestCell({ stats, compact, scans }) {
-  if (!stats) {
-    return <span aria-label="Loading" style={{ display: 'inline-block', width: compact ? 70 : 54, height: compact ? 12 : 28, borderRadius: 6, background: premiumLight.raised }} />;
-  }
-  const none = !stats.views && !stats.enq;
-  if (compact) {
-    return (
-      <span style={{ fontSize: 11, color: none ? premiumLight.textMuted : premiumLight.textSec, fontWeight: 500 }}>
-        {none ? 'No views yet' : `${stats.views} views · ${stats.enq} enq.`}{scans ? ` · ${scans} scan${scans === 1 ? '' : 's'}` : ''}
-      </span>
-    );
-  }
-  return (
-    <div title="Last 30 days. Views count only buyers who allowed analytics, so the real number is higher.">
-      <p style={{ fontSize: 13, color: none ? premiumLight.textMuted : premiumLight.text, fontWeight: 600, margin: 0 }}>{stats.views} views</p>
-      <p style={{ fontSize: 11, color: stats.enq ? premiumLight.up : premiumLight.textMuted, margin: '2px 0 0', fontWeight: stats.enq ? 600 : 400 }}>{stats.enq} enquir{stats.enq === 1 ? 'y' : 'ies'}</p>
-      {scans ? <p style={{ fontSize: 11, color: premiumLight.textSec, margin: '2px 0 0' }}>{scans} sticker scan{scans === 1 ? '' : 's'}</p> : null}
-    </div>
-  );
-}
 
 function SelectTick({ on }) {
   return (
@@ -5528,7 +4636,7 @@ function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker,
+  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker, initialTab = 'specs',
 }) {
   useModalHistory(true, onClose);
   const { can } = usePermissions(profile);
@@ -5536,7 +4644,7 @@ function ListingDetailDrawer({
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
   useModalHistory(lbOpen, () => setLbOpen(false));
-  const [drawerTab, setDrawerTab] = useState('specs');
+  const [drawerTab, setDrawerTab] = useState(initialTab === 'owner' && !canViewCosts ? 'specs' : initialTab);
   const [ownerTool, setOwnerTool] = useState(null);
   useEffect(() => { if (drawerTab !== 'owner') setOwnerTool(null); }, [drawerTab]);
   const [showAssign, setShowAssign] = useState(false);
@@ -5550,16 +4658,7 @@ function ListingDetailDrawer({
   }, []);
   const images = Array.isArray(listing.images) && listing.images.length > 0 ? listing.images : ['/placeholder-car.jpg'];
   const sp = listing.selling_price || listing.price || 0;
-  const op = listing.original_price || listing.previous_price || null;
-  const saving = op && op > sp ? op - sp : 0;
   const monthly = calcMonthly(sp);
-  const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
-  const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
-  const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#93c5fd' }[listing.interior_grade] || '#9ca3af';
-  let damageMap = [];
-  try { if (listing.damage_map) damageMap = typeof listing.damage_map === 'string' ? JSON.parse(listing.damage_map) : listing.damage_map; } catch {}
-  const features = parseTags(listing.features);
-  const options  = parseTags(listing.options);
   const isSold   = listing.status === 'sold';
   const age      = getListingAge(listing.created_at);
   const sCfg = ({ available: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'available'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
@@ -5571,19 +4670,7 @@ function ListingDetailDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [lbOpen, onClose]);
 
-  const tabs = ['specs', 'features', 'options', ...(listing.is_recon ? ['recon'] : [])];
-  const tabLabel = { specs: 'Specifications', features: 'Features', options: 'Options', recon: 'Recon', owner: 'Owner · P&L' };
-
   const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "system-ui, sans-serif", color: '#374151' };
-
-  const specRows = [
-    { k: 'Year',              v: listing.year || '—' },
-    { k: 'Registration Date', v: listing.registration_date || '—' },
-    { k: 'VIN',               v: listing.vin_number || '—' },
-    { k: 'Condition',         v: listing.condition || '—' },
-    { k: 'Chassis Status',    v: listing.chassis_status || '—', dot: true },
-    { k: 'Location',          v: [listing.city, listing.state].filter(Boolean).join(', ') || '—' },
-  ];
 
   return (
     <>
@@ -5610,20 +4697,12 @@ function ListingDetailDrawer({
             {/* LEFT */}
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
-              {/* Public ↔ Owner toggle (like the Sold/Available switch) */}
-              {canViewCosts && (
-                <div style={{ display: 'flex', gap: 6, background: '#f3f4f6', borderRadius: 10, padding: 4, marginBottom: 16 }}>
-                  {[['public', 'Public Details'], ['owner', 'Owner · P&L']].map(([key, label]) => {
-                    const on = key === 'owner' ? drawerTab === 'owner' : drawerTab !== 'owner';
-                    return (
-                      <button key={key} onClick={() => setDrawerTab(key === 'owner' ? 'owner' : 'specs')}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "system-ui,sans-serif", background: on ? '#fff' : 'transparent', color: on ? '#111827' : '#6b7280', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              {/* One pop-up, three buttons (owner, 2026-11-12): Details | Owner | Analytics. Owner needs view_cost. */}
+              <CarSheetTabs
+                tabs={[{ id: 'specs', label: 'Details' }, ...(canViewCosts ? [{ id: 'owner', label: 'Owner · P&L' }] : []), { id: 'analytics', label: 'Analytics' }]}
+                value={drawerTab === 'owner' || drawerTab === 'analytics' ? drawerTab : 'specs'}
+                onChange={setDrawerTab}
+              />
 
               {drawerTab === 'owner' && canViewCosts ? (
                 <OwnerCarPanel
@@ -5633,179 +4712,14 @@ function ListingDetailDrawer({
                   statusUpdating={updatingStatus === listing.id}
                   onMarkSold={() => setMarkSoldListing(listing)}
                 />
+              ) : drawerTab === 'analytics' ? (
+                <CarAnalyticsPanel listing={listing} dealerId={getDealerIdFromProfile(profile)} />
               ) : (
-              <>
-              {/* Gallery */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Thumb strip */}
-                <div style={{ width: 64, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: isMobile ? 200 : 320, overflowY: 'auto' }}>
-                  {images.map((img, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setImgIdx(i)}
-                      style={{ width: 64, height: 48, borderRadius: 4, cursor: 'pointer', flexShrink: 0, background: '#f3f4f6', border: i === imgIdx ? '1px solid #3b82f6' : '1px solid #e5e7eb', overflow: 'hidden', opacity: i === imgIdx ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} loading="lazy" decoding="async" />
-                    </div>
-                  ))}
-                </div>
-                {/* Main image */}
-                <div style={{ flex: 1, position: 'relative', background: '#0f1117', borderRadius: 6, overflow: 'hidden', height: isMobile ? 200 : 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img
-                    src={images[imgIdx]}
-                    alt=""
-                    onClick={() => setLbOpen(true)}
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in', display: 'block' }}
-                  />
-                  {images.length > 1 && (
-                    <>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronLeft style={{ width: 14, height: 14 }} />
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronRight style={{ width: 14, height: 14 }} />
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => setLbOpen(true)} style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ZoomIn style={{ width: 13, height: 13 }} />
-                  </button>
-                  {images.length > 1 && (
-                    <span style={{ position: 'absolute', bottom: 8, left: 8, fontSize: 10, color: '#fff', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 7px' }}>{imgIdx + 1} / {images.length}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Car header */}
-              <div style={{ marginTop: 20 }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.15em', margin: 0 }}>{listing.brand}</p>
-                <p style={{ fontSize: 22, fontWeight: 300, color: '#111827', margin: '4px 0 0', lineHeight: 1.2 }}>{listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: '6px 0 0' }}>
-                  {[listing.year, listing.body_type, listing.transmission, listing.fuel_type].filter(Boolean).join(' · ')}
-                </p>
-                {(listing.city || listing.state) && (
-                  <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <MapPin style={{ width: 11, height: 11 }} />
-                    {[listing.city, listing.state].filter(Boolean).join(', ')}
-                  </p>
-                )}
-              </div>
-
-              {/* Price row */}
-              <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: '#111827', margin: 0, lineHeight: 1 }}>RM {sp.toLocaleString()}</p>
-                {saving > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 12, color: '#374151', textDecoration: 'line-through' }}>RM {op.toLocaleString()}</span>
-                    <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
-                  </div>
-                )}
-                {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · {DEFAULT_EIR}% EIR</p>}
-              </div>
-
-              {/* Specs strip */}
-              <div style={{ display: 'flex', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', margin: '16px 0', padding: '12px 0', gap: 0, overflowX: 'auto' }}>
-                {[
-                  { Icon: Gauge,    label: 'Mileage',       value: listing.mileage ? `${Number(listing.mileage).toLocaleString()} km` : '—' },
-                  { Icon: Settings, label: 'Engine',        value: listing.engine_cc ? `${Number(listing.engine_cc).toLocaleString()} cc` : '—' },
-                  { Icon: ChevronRight, label: 'Transmission', value: listing.transmission || '—' },
-                  { Icon: Droplets, label: 'Fuel',          value: listing.fuel_type || '—' },
-                  { Icon: Palette,  label: 'Colour',        value: listing.colour || '—' },
-                ].map(({ Icon, label, value }, i, arr) => (
-                  <div key={label} style={{ flex: '1 0 80px', textAlign: 'center', padding: '0 12px', borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <Icon style={{ width: 13, height: 13, color: '#6b7280', marginBottom: 4 }} />
-                    <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b7280', marginBottom: 3 }}>{label}</p>
-                    <p style={{ fontSize: 13, color: '#111827' }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
-                {tabs.map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setDrawerTab(tab)}
-                    style={{ padding: '8px 16px', fontSize: 12, color: drawerTab === tab ? '#111827' : '#6b7280', borderBottom: drawerTab === tab ? '2px solid #ef4444' : '2px solid transparent', background: 'none', cursor: 'pointer', fontFamily: "system-ui, sans-serif", transition: 'color 0.15s' }}
-                  >
-                    {tabLabel[tab]}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab: Specifications */}
-              {drawerTab === 'specs' && (
-                <div>
-                  {specRows.map(({ k, v, dot }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
-                      <span style={{ fontSize: 13, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {dot && v !== '—' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />}
-                        {v}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Features */}
-              {drawerTab === 'features' && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {features.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No features listed.</p> : features.map((f, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{f}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Options */}
-              {drawerTab === 'options' && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {options.length === 0 ? <p style={{ fontSize: 13, color: '#6b7280' }}>No options listed.</p> : options.map((o, i) => (
-                    <span key={i} style={{ fontSize: 12, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 10px' }}>{o}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab: Recon */}
-              {drawerTab === 'recon' && listing.is_recon && (
-                <div>
-                  {gradeMeta && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: '#f9fafb', border: `1px solid ${gradeMeta}25`, borderRadius: 6, padding: '10px 16px', marginBottom: 20 }}>
-                      <div>
-                        <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Ext. Grade</p>
-                        <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: gradeMeta, lineHeight: 1 }}>{listing.auction_grade}</p>
-                      </div>
-                      {listing.interior_grade && (
-                        <>
-                          <div style={{ width: 1, height: 40, background: '#e5e7eb' }} />
-                          <div>
-                            <p style={{ fontSize: 9, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Int. Grade</p>
-                            <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: intColor, lineHeight: 1 }}>{listing.interior_grade}</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {[
-                    { k: 'Import Country', v: listing.import_country },
-                    { k: 'Auction House',  v: listing.auction_house },
-                    { k: 'Exterior Grade', v: listing.auction_grade },
-                    { k: 'Interior Grade', v: listing.interior_grade },
-                  ].filter(r => r.v).map(({ k, v }) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <span style={{ fontSize: 12, color: '#6b7280' }}>{k}</span>
-                      <span style={{ fontSize: 13, color: '#9ca3af' }}>{v}</span>
-                    </div>
-                  ))}
-                  <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 20, marginBottom: 0 }}>Condition Map</p>
-                  {Array.isArray(damageMap) && damageMap.length > 0 ? (
-                    <div style={{ marginTop: 16 }}><DamageMap value={damageMap} readOnly theme="light" /></div>
-                  ) : (
-                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 10 }}>No damage marked on this car.</p>
-                  )}
-                </div>
-              )}
-              </>
+              <CarDetailsPanel
+                listing={listing} images={images} imgIdx={imgIdx} setImgIdx={setImgIdx}
+                onOpenLightbox={() => setLbOpen(true)} isMobile={isMobile}
+                monthlyText={monthly ? `Est. RM ${monthly.toLocaleString()}/mo · 90% loan · 7yr · ${DEFAULT_EIR}% EIR` : null}
+              />
               )}
             </div>
 
@@ -5822,6 +4736,7 @@ function ListingDetailDrawer({
                       ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
                       ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
                       ['Compliance', Shield, () => setOwnerTool('compliance')],
+                      ['Condition', ShieldCheck, () => setOwnerTool('appraisal')],
                       ['Activity', Clock, () => setOwnerTool('activity')],
                     ].map(([label, Icon, onClick]) => (
                       <button key={label} onClick={onClick} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
@@ -6078,102 +4993,42 @@ function stockNetProfitParts(u, ctx = {}) {
   const revenue = isSold ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(c.selling_price) || 0);
   if (revenue === 0 && cost === 0) return null;
   if (isSold && !u.sold_price && cost === 0) return null;
-  const recon = Number(u.recon_cost) || 0;
-  const services = Number(c.included_services_cost) || 0;
-  const commission = Number(c.commission_amount) || 0;
-  const adSpend = ads[u.id] || 0;
-  const hc = handover[u.listing_id] || 0;
+  // The ONE profit engine (src/utils/carPnl.js); recon jobs are not loaded per row, so the
+  // estimate stands in (effectiveRecon never goes below it).
+  const p = carPnl({
+    purchase: cost, reconEstimate: u.recon_cost, servicesCost: c.included_services_cost,
+    commission: c.commission_amount, adSpend: ads[u.id] || 0,
+    handoverCost: handover[u.listing_id] ?? null,
+    asking: Number(u.asking_price) || Number(c.selling_price) || 0, soldPrice: u.sold_price, isSold,
+    startDate: u.purchase_date || u.created_at, soldDate: u.sold_date,
+    engineCc: u.engine_cc || c.engine_cc, warrantyMonths: c.warranty_months, cfg,
+  });
+  const front = p.front;
   const aR = addRev[u.listing_id] || 0;
   const aC = addCost[u.listing_id] || 0;
-  let dailyHold = 0;
-  if (Number(cfg.floor_plan_rate) > 0 && cost > 0) dailyHold = cost * (Number(cfg.floor_plan_rate) / 100) / 365;
-  else if (Number(cfg.monthly_overhead) > 0) dailyHold = Number(cfg.monthly_overhead) / Math.max(1, Number(cfg.avg_fleet_size) || 20) / 30;
-  const start = u.purchase_date || u.created_at;
-  const end = isSold && u.sold_date ? new Date(u.sold_date) : new Date();
-  const days = start ? Math.max(0, Math.floor((end - new Date(start)) / 86400000)) : 0;
-  const holding = Math.round(dailyHold * days);
-  const front = revenue - (cost + recon + services + commission + holding + adSpend + hc);
   return { front, addonRevenue: aR, addonCost: aC, addonNet: aR - aC };
 }
 function stockNetProfit(u, ctx = {}) {
   const parts = stockNetProfitParts(u, ctx);
   return parts == null ? null : parts.front + parts.addonNet;
 }
-function stockDays(u) {
-  if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
-  const date = u.purchase_date || u.created_at;
-  if (!date) return null;
-  return Math.floor((Date.now() - new Date(date)) / 86400000);
-}
 
-// Compact 7-stat strip surfaced atop the Listings tab (migrated from the Stock tab
-// header). Fetches stock_units + cost components once and reuses the shared P&L math.
-// GP (month) is split into vehicle margin (Car GP) and F&I back-end margin
-// (Add-on GP) rather than one merged number, and Revenue (sold) folds in add-on
-// revenue for sold cars so it reads as one honest total instead of hiding
-// add-on income in a separate figure.
-function StockStatsStrip({ dealerId }) {
-  const [s, setS] = useState(null);
-  useEffect(() => {
-    if (!dealerId) return;
-    let cancelled = false;
-    (async () => {
-      const [u, cfg, ads, tasks, dp] = await Promise.all([
-        supabase.from('stock_units').select('*, car_listings(selling_price, base_price, included_services_cost, commission_amount, sold_price, sold_date, status)').eq('dealer_id', dealerId),
-        supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
-        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
-        supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
-        supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
-      ]);
-      if (cancelled) return;
-      const units = u.data || [];
-      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
-      const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
-      const ar = {}; const ac = {};
-      (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
-      const ctx = { cfg: cfg.data || {}, ads: a, handover: h, addRev: ar, addCost: ac };
-      const now = new Date();
-      const active = units.filter(x => x.status !== 'sold');
-      const sold = units.filter(x => x.status === 'sold');
-      const month = sold.filter(x => { if (!x.sold_date) return false; const d = new Date(x.sold_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
-      const withDays = active.map(stockDays).filter(d => typeof d === 'number');
-      // Add-on revenue for cars that are actually sold — matches soldCarRevenue's
-      // scope so "Revenue (sold)" is one honest total (car price + F&I add-ons),
-      // not just the vehicle price with add-on income hiding in a separate number.
-      const soldAddonRevenue = sold.reduce((t, x) => t + (ar[x.listing_id] || 0), 0);
-      const soldCarRevenue = sold.reduce((t, x) => t + (Number(x.sold_price) || Number(x.asking_price) || 0), 0);
-      // Split GP (month) into vehicle margin vs F&I add-on margin — previously one
-      // merged number that read 0 whenever vehicle-only front gross was 0/unset
-      // even if add-ons had profit, and vice versa.
-      const monthParts = month.map(x => stockNetProfitParts(x, ctx)).filter(Boolean);
-      setS({
-        // Matches the Inventory tab's "Total Value" (car_listings.selling_price) so the
-        // two value figures on this page never disagree for the same unsold inventory.
-        soldCarRevenue,
-        soldAddonRevenue,
-        soldRevenue: soldCarRevenue + soldAddonRevenue,
-        stockValue: active.reduce((t, x) => t + (Number(x.car_listings?.selling_price) || Number(x.asking_price) || 0), 0),
-        avgDays: withDays.length ? Math.round(withDays.reduce((t, d) => t + d, 0) / withDays.length) : 0,
-        carGpMonth: monthParts.reduce((t, p) => t + p.front, 0),
-        addonGpMonth: monthParts.reduce((t, p) => t + p.addonNet, 0),
-        soldMonth: month.length,
-        aging: active.filter(x => { const d = stockDays(x); return typeof d === 'number' && d > 60; }).length,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [dealerId]);
-
+// The four tiles over Stock & costs. Every figure is the SAME sum Overview and Revenue show
+// (useCarMoney -> ownerMoney -> carPnl): "Profit this month" used to be its own sum over
+// stock_units, which counted a sold car with no buy price as pure profit and went by the stock
+// record's sold date, and the day counts read the stale stored days_in_stock (wrong for most cars).
+function StockStatsStrip({ dealerId, canSeeProfit = true }) {
+  const { money: m } = useCarMoney(dealerId);
   const rm = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
-  // Four tiles (owner, 2026-11-09). Revenue and sold-this-month live in
-  // Reports > Revenue; car and add-on profit are one figure with the split under it.
-  const profit = s ? s.carGpMonth + s.addonGpMonth : null;
-  const items = s ? [
-    { label: 'Stock value', val: rm(s.stockValue), sub: 'Asking prices, unsold cars' },
-    { label: 'Avg days in stock', val: String(s.avgDays) },
-    { label: 'Over 60 days', val: String(s.aging), tone: s.aging > 0 ? 'bad' : undefined, sub: s.aging > 0 ? 'Cut the price or push them' : 'None ageing' },
-    { label: 'Profit this month', val: rm(profit), tone: profit < 0 ? 'bad' : undefined,
-      sub: s.addonGpMonth ? `Cars ${rm(s.carGpMonth)} · add-ons ${rm(s.addonGpMonth)}` : undefined },
-  ] : Array.from({ length: 4 }, () => ({}));
+  const mo = m?.month;
+  const items = m ? [
+    { label: 'Stock value', val: rm(m.stock.asking), sub: 'Asking prices, unsold cars' },
+    { label: 'Avg days in stock', val: m.stock.avgDays == null ? '-' : String(m.stock.avgDays) },
+    { label: 'Over 60 days', val: String(m.stock.over60), tone: m.stock.over60 > 0 ? 'bad' : undefined, sub: m.stock.over60 > 0 ? 'Cut the price or push them' : 'None ageing' },
+    { label: 'Profit this month', val: rm(mo.gross), tone: mo.gross < 0 ? 'bad' : undefined,
+      sub: mo.leftOut > 0 ? `${mo.leftOut} sold car${mo.leftOut === 1 ? '' : 's'} left out, no buy price`
+        : mo.addonsGross ? `Cars ${rm(mo.carsGross)} · add-ons ${rm(mo.addonsGross)}` : undefined },
+  ].filter((it) => canSeeProfit || it.label !== 'Profit this month') : Array.from({ length: canSeeProfit ? 4 : 3 }, () => ({}));
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -6181,7 +5036,7 @@ function StockStatsStrip({ dealerId }) {
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false, onAdd }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false, onAdd, onOpenListing }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   // Persisted so the stock table paints last-known units instantly (no IC or
@@ -6193,6 +5048,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   useModalHistory(showAdd, () => setShowAdd(false), { isDirty: () => true });
   const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);
+  const [addErr, setAddErr] = useState('');
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
@@ -6378,11 +5234,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     return () => { cancelled = true; };
   }, [userId]);
 
+  // carPnl's one clock (daysHeld): from the purchase date, else the day the stock record was
+  // made, else the listing; stops on the sale. The stored days_in_stock was stale for most cars.
   const daysInStock = (u) => {
-    if (u.days_in_stock != null && u.days_in_stock > 0) return u.days_in_stock;
-    const date = u.purchase_date || u.created_at;
-    if (!date) return '—';
-    return Math.floor((Date.now() - new Date(date)) / 86400000);
+    const d = daysHeld(u.purchase_date || u.created_at || u.car_listings?.created_at, u.status === 'sold' ? u.sold_date : null);
+    return d == null ? '—' : d;
   };
 
   const costBasis = (u) => {
@@ -6394,10 +5250,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // services, commission, handover, holding, ad spend, F&I back-end). Drives the
   // "In loss" filter, the row Net badge and the Listings stats strip via one shared
   // helper so all three agree.
-  const netProfit = (u) => stockNetProfit(u, {
+  // A role without "View gross profit" gets no profit anywhere in this tab: every row badge,
+  // the "In loss" filter, the profit sorts and the P&L button read null (only a tile was hidden).
+  const netProfit = (u) => (can('view_gross') ? stockNetProfit(u, {
     cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
     addRev: costExtras.addRev, addCost: costExtras.addCost,
-  });
+  }) : null);
 
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
   const stockFilterFns = {
@@ -6408,7 +5266,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     unpublished: u => !u.listing_id || u.car_listings?.status === 'unpublished',
     under_hp:    u => (u.encumbrance_status || 'unknown') === 'under_hp',
     enc_unknown: u => (u.encumbrance_status || 'unknown') === 'unknown',
-    aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > 60,
+    aging:       u => u.status === 'in_stock' && typeof daysInStock(u) === 'number' && daysInStock(u) > AGEING_DAYS,
     loss:        u => { const g = netProfit(u); return g != null && g < 0; },
   };
   // Apply text search + active chip filters + sort to a list of units
@@ -6468,18 +5326,42 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     : 0;
   const agingUnits = activeUnits.filter(u => {
     const days = daysInStock(u);
-    return typeof days === 'number' && days > 60;
+    return typeof days === 'number' && days > AGEING_DAYS;
   });
   const gpSparkData = bucketGPByMonth(units);
 
   const handleAdd = async () => {
+    setAddErr('');
+    // Strict (owner, 2026-11-14): no stock record without what the car cost, or every profit
+    // sum has to leave it out.
+    if (!(Number(addForm.purchase_price) > 0)) { setAddErr('Enter the buy price. Profit cannot be worked out without it.'); return; }
+    if (!addForm.purchase_date) { setAddErr('Enter the date you bought it. Days on the lot count from it.'); return; }
+    // A car that already has a stock record must not get a second one: every money total
+    // would count its cost and sale twice. (A new listing makes its own record automatically.)
+    if (addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold')) {
+      setAddErr('This car already has a stock record. Edit that one in Stock & costs instead.');
+      return;
+    }
     setAddSaving(true);
-    const { data: inserted } = await supabase.from('stock_units').insert({ ...addForm, dealer_id: userId, status: 'in_stock', purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0, asking_price: Number(addForm.asking_price) || 0, puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null }).select().single();
+    // Empty boxes go in as NULL: an empty string in a date or id column made the database
+    // refuse the whole row, and the form used to close as if it had saved.
+    const { data: inserted, error } = await supabase.from('stock_units').insert({
+      ...addForm, dealer_id: userId, status: 'in_stock',
+      listing_id: addForm.listing_id || null,
+      purchase_date: addForm.purchase_date || null,
+      purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0,
+      asking_price: Number(addForm.asking_price) || 0,
+      puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null,
+    }).select().single();
+    setAddSaving(false);
+    if (error || !inserted) {
+      setAddErr('Could not save this stock record. Check the boxes and try again.');
+      return;
+    }
     const lbl = listings.find(l => l.id === addForm.listing_id);
-    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted?.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
+    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
     setShowAdd(false);
     setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
-    setAddSaving(false);
     fetchUnits();
   };
 
@@ -6651,41 +5533,31 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       addons = dp || [];
       handoverTasks = pst || [];
     }
-    const purchasePrice  = Number(unit.purchase_price) || 0;
-    const reconEst       = Number(unit.recon_cost) || 0;
-    const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    // One rule with the stored profit (stock_recon_effective): the larger of the two.
-    const reconCost      = effectiveRecon(reconEst, reconJobsList);
-    const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
-    const commission     = Number(unit.car_listings?.commission_amount) || 0;
-    const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
-    const adSpend        = adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-    const addonRevenue   = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
-    const addonCost      = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
-    const revenue        = Number(unit.sold_price) || Number(unit.asking_price) || Number(unit.car_listings?.selling_price) || 0;
-
-    // Holding cost: floor-plan interest (priority) or overhead/fleet, × days held
-    const cc = costCfg || {};
-    let dailyHold = 0;
-    if (Number(cc.floor_plan_rate) > 0 && purchasePrice > 0) {
-      dailyHold = purchasePrice * (Number(cc.floor_plan_rate) / 100) / 365;
-    } else if (Number(cc.monthly_overhead) > 0) {
-      dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
-    }
-    let holdingDays = 0;
-    const startDate = unit.purchase_date || unit.created_at;
-    if (startDate) {
-      const end = unit.status === 'sold' && unit.sold_date ? new Date(unit.sold_date) : new Date();
-      holdingDays = Math.max(0, Math.floor((end - new Date(startDate)) / 86400000));
-    }
-    const holdingCost = Math.round(dailyHold * holdingDays);
-
-    const vehicleCosts   = purchasePrice + reconCost + servicesCost + commission + handoverCost + holdingCost + adSpend;
-    const frontGross     = revenue - vehicleCosts;
-    const backGross      = addonRevenue - addonCost;
-    const totalCosts     = vehicleCosts + addonCost;
-    const netPnl         = frontGross + backGross;
-    setPnlData({ purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, holdingCost, holdingDays, dailyHold, adSpend, addonRevenue, addonCost, revenue, frontGross, backGross, totalCosts, netPnl, addons, isSold: unit.status === 'sold' });
+    // The ONE profit engine (src/utils/carPnl.js): same numbers as the car pop-up's Owner button.
+    const cl = unit.car_listings || {};
+    const e = carPnl({
+      purchase: unit.purchase_price, reconEstimate: unit.recon_cost, reconJobs: reconJobsList,
+      servicesCost: cl.included_services_cost, commission: cl.commission_amount,
+      handoverCost: handoverTasks.length ? handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0) : null,
+      adSpend: adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0),
+      addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0),
+      addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      asking: Number(unit.asking_price) || Number(cl.selling_price) || 0, soldPrice: unit.sold_price,
+      isSold: unit.status === 'sold', startDate: unit.purchase_date || unit.created_at, soldDate: unit.sold_date,
+      engineCc: unit.engine_cc || cl.engine_cc, warrantyMonths: cl.warranty_months, cfg: costCfg || {},
+    });
+    const line = (k) => e.lines.find((l) => l.key === k)?.val || 0;
+    setPnlData({
+      purchasePrice: line('purchase'), reconCost: line('recon'),
+      reconEst: Number(unit.recon_cost) || 0, reconActual: reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0),
+      servicesCost: line('services'), commission: line('commission'),
+      // Shown as one "Handover processing" line here: transfer (estimated until the deal), admin, warranty reserve.
+      handoverCost: line('transfer') + line('admin') + line('warranty'),
+      holdingCost: e.holding, holdingDays: e.days || 0, dailyHold: e.perDay.total, adSpend: line('ads'),
+      addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0), addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      revenue: e.revenue, frontGross: e.front, backGross: e.back, totalCosts: e.costTotal + addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
+      netPnl: e.net, addons, isSold: e.isSold,
+    });
     setPnlLoading(false);
   };
 
@@ -6734,6 +5606,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
           };
         }).filter(r => r.brand || r.model);
         if (rows.length === 0) { setCsvError('No valid rows found. Ensure columns: brand/make, model, year.'); setCsvRows([]); return; }
+        // Every car needs its buy price (a "purchase" / "cost" column). Rows without one are named,
+        // and nothing imports until the file is fixed: a half-imported list is worse than none.
+        const noCost = rows.filter(r => !(r.purchase_price > 0)).map(r => r._row);
+        if (noCost.length) {
+          setCsvError(iCost < 0
+            ? 'Add a buy price column (named "purchase" or "cost") and upload again.'
+            : `No buy price on row${noCost.length === 1 ? '' : 's'} ${noCost.slice(0, 12).join(', ')}${noCost.length > 12 ? '…' : ''}. Fill ${noCost.length === 1 ? 'it' : 'them'} in and upload again.`);
+          setCsvRows([]); return;
+        }
         setCsvError('');
         setCsvRows(rows);
       } catch { setCsvError('Failed to parse CSV. Please check the file format.'); setCsvRows([]); }
@@ -6905,6 +5786,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
   const handleSavePrices = async () => {
     if (!editPriceUnit) return;
+    if (!(Number(editPriceForm.purchase_price) > 0)) { toast.error('Enter the buy price. It cannot be empty or 0.'); return; }
     setEditPriceSaving(true);
     const patch = {
       purchase_price: Number(editPriceForm.purchase_price) || 0,
@@ -7034,7 +5916,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   const gp = netProfit(u);
                   const days = daysInStock(u);
                   const daysNum = typeof days === 'number' ? days : 0;
-                  const isAging = u.status === 'in_stock' && daysNum > 60;
+                  const isAging = u.status === 'in_stock' && daysNum > AGEING_DAYS;
                   const carYear = car?.year ? Number(car.year) : null;
                   const carAge = carYear ? currentYear - carYear : null;
                   const plate = car.plate_number || u.registration_number;
@@ -7045,7 +5927,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   return (
                     <div
                       key={u.id}
-                      onClick={() => setDetailUnit(u)}
+                      onClick={() => {
+                        // A stock car with a listing opens the SAME pop-up as Inventory (Owner button first);
+                        // only a stock car with no listing keeps this older stock pop-up.
+                        const l = u.listing_id && onOpenListing ? listings.find(x => x.id === u.listing_id) : null;
+                        if (l) onOpenListing(l); else setDetailUnit(u);
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px',
                         borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer',
@@ -7131,7 +6018,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
         const gp = netProfit(u);
         const days = daysInStock(u);
         const daysNum = typeof days === 'number' ? days : 0;
-        const isAging = u.status === 'in_stock' && daysNum > 60;
+        const isAging = u.status === 'in_stock' && daysNum > AGEING_DAYS;
         const ps  = puspakomStatus(u.puspakom_b7_date);
         const b5  = b5Status(u.puspakom_b5_date);
         const enc = ENCUMBRANCE_CFG[u.encumbrance_status || 'unknown'];
@@ -7285,7 +6172,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ padding: '12px 16px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', 'primary', null, null, () => setSoldTarget(u))}
-                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
+                {can('view_gross') && ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
                 {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', null, null, null, () => fetchReconJobs(u))}
                 {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', null, null, null, () => openAdSpend(u))}
                 {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', null, null, null, () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
@@ -7344,8 +6231,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Procurement</p>
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM) <span className="text-red-500">*</span></label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date <span className="text-red-500">*</span></label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Est. (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
@@ -7389,8 +6276,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
             </div>
-            <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
+            {addErr && <p role="alert" className="px-5 pt-3 text-xs" style={{ color: premiumLight.accentText, margin: 0 }}>{addErr}</p>}
+            <div className="p-5 border-t border-gray-100 flex gap-3">
+              <button onClick={() => { setShowAdd(false); setAddErr(''); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
               <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
             </div>
           </div>
@@ -7958,987 +6846,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   );
 });
 
-// ─── DocumentsTab ─────────────────────────────────────────────────────────────
-const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
-// Short pill labels: the full names did not fit one row beside the search box.
-const DOC_TYPE_PILL = { 'Sales Agreement': 'Agreements', 'Deposit Receipt': 'Receipts', 'Handover Checklist': 'Checklists' };
-const DOC_TYPE_PREFIX = { 'Sales Agreement': 'SA', 'Deposit Receipt': 'DR', 'Handover Checklist': 'HC' };
-const DEFAULT_HANDOVER_ITEMS = [
-  'Geran (Vehicle Ownership Certificate) — original',
-  'JPJ transfer forms (K3/K8) — signed',
-  'Puspakom B5 inspection report',
-  'Puspakom B7 inspection report',
-  'Insurance certificate / cover note',
-  'Road tax disc',
-  'Service booklet (with all stamps)',
-  'Owner\'s manual / handbook',
-  'Primary key (remote functional)',
-  'Spare / master key',
-  'Spare tyre',
-  'Jack and tools',
-  'Warning triangle',
-  'Factory floor mats',
-];
-
-const EMPTY_GEN_FORM = {
-  doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
-  buyer_email: '', buyer_phone: '', buyer_address: '', sale_price: '', deposit_amount: '',
-  payment_deadline: '', payment_method: 'Bank Transfer',
-  // Dealer (auto-filled from profile)
-  dealer_name: '', dealer_ssm: '', dealer_city: '', dealer_state: '',
-  // SA (auto-filled from profile)
-  sa_name: '', sa_phone: '', sa_ic: '',
-  // Vehicle extras (auto-filled from listing)
-  engine_number: '', engine_cc: '', transmission: '', variant: '',
-  previous_owners: '', road_tax_expiry: '', warranty_months: '',
-  odometer_at_delivery: '',
-  // Compliance
-  puspakom_b5_done: false, puspakom_b7_done: false, encumbrance_declared: false,
-  // Financing
-  include_financing: false,
-  loan_amount: '', interest_rate: '', loan_tenure_months: '', monthly_payment: '', financing_bank: '',
-  // Handover
-  handover_items: [...DEFAULT_HANDOVER_ITEMS],
-  exceptions_noted: '',
-};
-
-function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profile }) {
-  const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showGen, setShowGen] = useState(false);
-  useModalHistory(showGen, () => setShowGen(false));
-  const [genForm, setGenForm] = useState({ ...EMPTY_GEN_FORM });
-  const [genSaving, setGenSaving] = useState(false);
-  const [printDoc, setPrintDoc] = useState(null);
-  useModalHistory(!!printDoc, () => setPrintDoc(null));
-  const [listingDropOpen, setListingDropOpen] = useState(false);
-  const [selectedListing, setSelectedListing] = useState(null);
-  const [docSearch, setDocSearch] = useState('');
-  const [docTypeFilter, setDocTypeFilter] = useState('');
-  const [listingSearch, setListingSearch] = useState('');
-  const [deleteId, setDeleteId] = useState(null);
-  useModalHistory(!!deleteId, () => setDeleteId(null));
-  // Documents pop-ups sit above the page (portal) with the page locked behind them.
-  const docOverlayOpen = showGen || !!printDoc || !!deleteId;
-  useEffect(() => {
-    if (!docOverlayOpen) return undefined;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, [docOverlayOpen]);
-  const [newHandoverItem, setNewHandoverItem] = useState('');
-  const [linkedStock, setLinkedStock] = useState(null);
-  const [emailSendingId, setEmailSendingId] = useState(null);
-
-  // Pre-fill from Enquiries shortcut
-  useEffect(() => {
-    if (!prefillDocData) return;
-    const prefillListing = prefillDocData.listing_id ? listings.find(l => l.id === prefillDocData.listing_id) || null : null;
-    setSelectedListing(prefillListing);
-    setGenForm(p => ({
-      ...p,
-      doc_type: prefillDocData.doc_type || 'Sales Agreement',
-      buyer_name: prefillDocData.buyer_name || '',
-      buyer_phone: prefillDocData.buyer_phone || '',
-      listing_id: prefillDocData.listing_id || '',
-      sale_price: prefillListing?.selling_price ? String(prefillListing.selling_price) : p.sale_price,
-      sa_name: profile?.full_name || '',
-      sa_phone: profile?.whatsapp_number || '',
-    }));
-    setShowGen(true);
-    onClearPrefill?.();
-  }, [prefillDocData]);
-
-  // Auto-fill dealer + SA from profile when modal opens.
-  // The Sales Advisor is ALWAYS the person generating the document (the logged-in
-  // user), role-aware by construction: `profile` is the current user's own row, so
-  // a manager sees the manager, a salesman sees the salesman, an owner sees the
-  // owner. Take the live profile FIRST (not `p.sa_name ||`) so a value that got
-  // stuck in the form from a previous doc can never shadow the real generator —
-  // that was the "shows the wrong name" bug. Still editable per-document below.
-  useEffect(() => {
-    if (showGen && profile) {
-      setGenForm(p => ({
-        ...p,
-        sa_name:     profile.full_name        || p.sa_name     || '',
-        sa_phone:    profile.whatsapp_number   || p.sa_phone    || '',
-        sa_ic:       profile.ic_number         || p.sa_ic       || '',
-        dealer_name: p.dealer_name || profile.dealership        || '',
-        dealer_ssm:  p.dealer_ssm  || profile.ssm_number        || '',
-        dealer_city: p.dealer_city || profile.city              || '',
-        dealer_state:p.dealer_state|| profile.state             || '',
-      }));
-    }
-  }, [showGen]);
-
-  // Generic document form calculator — not the same as the standard car estimate in utils/financing.js.
-  // This one accepts user-specified rate and tenure from form inputs.
-  const calcLoanPayment = (amount, rate, months) => {
-    const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
-    if (!a || !r || !m) return '';
-    // Reducing balance on an EIR (HP (Amendment) Act 2026) — was flat.
-    return monthlyPayment(a, r, m).toFixed(2);
-  };
-
-  const gf = (field, value) => {
-    setGenForm(p => {
-      const next = { ...p, [field]: value };
-      if (['loan_amount', 'interest_rate', 'loan_tenure_months'].includes(field)) {
-        next.monthly_payment = calcLoanPayment(
-          field === 'loan_amount' ? value : next.loan_amount,
-          field === 'interest_rate' ? value : next.interest_rate,
-          field === 'loan_tenure_months' ? value : next.loan_tenure_months,
-        );
-      }
-      return next;
-    });
-  };
-
-  const handleListingSelect = async (listing) => {
-    setSelectedListing(listing);
-    setLinkedStock(null);
-    setGenForm(p => ({
-      ...p,
-      listing_id:           listing.id,
-      sale_price:           listing.selling_price     ? String(listing.selling_price)  : p.sale_price,
-      engine_number:        listing.engine_number     || p.engine_number,
-      engine_cc:            listing.engine_cc         ? String(listing.engine_cc)      : p.engine_cc,
-      transmission:         listing.transmission      || p.transmission,
-      variant:              listing.variant           || p.variant,
-      previous_owners:      listing.previous_owners   != null ? String(listing.previous_owners) : p.previous_owners,
-      road_tax_expiry:      listing.road_tax_expiry   || p.road_tax_expiry,
-      warranty_months:      listing.warranty_months   != null ? String(listing.warranty_months)  : p.warranty_months,
-      odometer_at_delivery: listing.mileage           ? String(listing.mileage)        : p.odometer_at_delivery,
-    }));
-    setListingDropOpen(false);
-    setListingSearch('');
-    // Fetch linked stock unit for encumbrance / B5 check
-    const { data } = await supabase
-      .from('stock_units')
-      .select('encumbrance_status, puspakom_b5_date, puspakom_b7_date')
-      .eq('listing_id', listing.id)
-      .eq('dealer_id', userId)
-      .maybeSingle();
-    setLinkedStock(data || null);
-  };
-
-  const fetchDocs = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from('dealer_documents')
-      .select('*')
-      .eq('dealer_id', userId)
-      .order('issued_at', { ascending: false })
-      .limit(300);
-    setDocuments(data || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { if (userId) fetchDocs(); }, [userId]);
-
-  const generateDocRef = async (docType) => {
-    const prefix = DOC_TYPE_PREFIX[docType] || 'DOC';
-    const year = new Date().getFullYear();
-    const { count } = await supabase
-      .from('dealer_documents')
-      .select('id', { count: 'exact', head: true })
-      .eq('dealer_id', userId)
-      .eq('doc_type', docType);
-    return `${prefix}-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
-  };
-
-  const handleSendEmail = async (doc) => {
-    if (!doc.buyer_email) { toast.error('No buyer email on this document — edit and add one before sending'); return; }
-    setEmailSendingId(doc.id);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${SERVER_URL}/send-document`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ doc_id: doc.id, dealer_id: userId }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        // Surface the real server error (e.g. "Email service not configured")
-        // instead of masking everything as a generic network failure.
-        toast.error(body.error || `Failed to send email (status ${res.status})`);
-      } else {
-        toast.success(`Document emailed to ${doc.buyer_email}`);
-        setDocuments(p => p.map(d => d.id === doc.id ? { ...d, email_sent_at: new Date().toISOString() } : d));
-      }
-    } catch (e) { toast.error(`Couldn't reach the email service${e?.message ? ` (${e.message})` : ''} — try again`); }
-    setEmailSendingId(null);
-  };
-
-  const handleGenerate = async () => {
-    const needsIc = ['Sales Agreement', 'Deposit Receipt'].includes(genForm.doc_type);
-    if (needsIc && !genForm.buyer_ic.trim()) {
-      toast.error('Buyer IC is required for ' + genForm.doc_type);
-      return;
-    }
-    if (!genForm.buyer_name.trim()) {
-      toast.error('Buyer name is required');
-      return;
-    }
-    setGenSaving(true);
-    const car = selectedListing || listings.find(l => l.id === genForm.listing_id) || null;
-    try {
-      const docRef = await generateDocRef(genForm.doc_type);
-      const { data, error } = await supabase.from('dealer_documents').insert({
-        dealer_id: userId,
-        listing_id: genForm.listing_id || null,
-        buyer_name: genForm.buyer_name,
-        buyer_ic: genForm.buyer_ic,
-        buyer_email: genForm.buyer_email.trim() || null,
-        buyer_phone: genForm.buyer_phone,
-        buyer_address: genForm.buyer_address,
-        doc_type: genForm.doc_type,
-        doc_ref: docRef,
-        sale_price: Number(genForm.sale_price) || 0,
-        deposit_amount: Number(genForm.deposit_amount) || 0,
-        balance_amount: Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)),
-        issued_at: null,
-        doc_status: 'draft',
-        car_brand: car?.brand || null,
-        car_model: car?.model || null,
-        car_year: car?.year || null,
-        car_colour: car?.colour || null,
-        car_plate: car?.plate_number || null,
-        car_vin: car?.vin_number || null,
-        car_mileage: car?.mileage ? Number(car.mileage) : null,
-        included_services_snapshot: car?.included_services || null,
-        sa_name: genForm.sa_name,
-        sa_phone: genForm.sa_phone,
-        sa_ic: genForm.sa_ic,
-        loan_amount: genForm.include_financing && genForm.loan_amount ? Number(genForm.loan_amount) : null,
-        interest_rate: genForm.include_financing && genForm.interest_rate ? Number(genForm.interest_rate) : null,
-        loan_tenure_months: genForm.include_financing && genForm.loan_tenure_months ? Number(genForm.loan_tenure_months) : null,
-        monthly_payment: genForm.include_financing && genForm.monthly_payment ? Number(genForm.monthly_payment) : null,
-        financing_bank: genForm.include_financing ? genForm.financing_bank : null,
-        metadata: {
-          // New documents state their rate as EIR; older ones have no key and
-          // keep printing "flat", which is what they were computed with.
-          rate_basis:          genForm.include_financing ? RATE_BASIS : null,
-          car_label:           car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : '',
-          car_variant:         genForm.variant,
-          car_engine_number:   genForm.engine_number,
-          car_engine_cc:       genForm.engine_cc,
-          car_transmission:    genForm.transmission,
-          car_previous_owners: genForm.previous_owners,
-          car_road_tax_expiry: genForm.road_tax_expiry,
-          car_warranty_months: genForm.warranty_months,
-          odometer_at_delivery:genForm.odometer_at_delivery,
-          dealer_name:         genForm.dealer_name,
-          dealer_ssm:          genForm.dealer_ssm,
-          dealer_city:         genForm.dealer_city,
-          dealer_state:        genForm.dealer_state,
-          payment_deadline:    genForm.payment_deadline,
-          payment_method:      genForm.payment_method,
-          puspakom_b5_done:    genForm.puspakom_b5_done,
-          puspakom_b7_done:    genForm.puspakom_b7_done,
-          encumbrance_declared:genForm.encumbrance_declared,
-          include_financing:   genForm.include_financing,
-          handover_items:      mergePendingTag(genForm.handover_items, newHandoverItem),
-          exceptions_noted:    genForm.exceptions_noted,
-        },
-      }).select().single();
-      if (error) throw error;
-      logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: data?.id, action: 'created', summary: `${genForm.doc_type} draft generated — ${genForm.buyer_name || 'unknown buyer'}${data?.doc_ref ? ` · ${data.doc_ref}` : ''}` });
-      setShowGen(false);
-      setSelectedListing(null);
-      setLinkedStock(null);
-      setGenForm({ ...EMPTY_GEN_FORM });
-      setNewHandoverItem('');
-      if (data) setPrintDoc(data);
-      fetchDocs();
-    } catch (err) {
-      console.error('[DocumentsTab] handleGenerate error:', err.message, err);
-      toast.error(`Failed to save document: ${err.message}`);
-    } finally {
-      setGenSaving(false);
-    }
-  };
-
-  const handleIssue = async (doc) => {
-    const now = new Date().toISOString();
-    const issuedBy = profile?.full_name || profile?.email || 'Unknown';
-    const { error } = await supabase
-      .from('dealer_documents')
-      .update({ doc_status: 'issued', issued_at: now, issued_by: issuedBy })
-      .eq('id', doc.id)
-      .eq('dealer_id', userId);
-    if (error) { toast.error('Failed to issue document'); return; }
-    const updated = { ...doc, doc_status: 'issued', issued_at: now, issued_by: issuedBy };
-    logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: doc.id, action: 'issued', summary: `${doc.doc_type} issued — ${doc.buyer_name || 'unknown buyer'}${doc.doc_ref ? ` · ${doc.doc_ref}` : ''}` });
-    setDocuments(p => p.map(d => d.id === doc.id ? updated : d));
-    setPrintDoc(updated);
-    toast.success(`${doc.doc_type} issued`);
-  };
-
-  const handleDelete = async (id) => {
-    const doc = documents.find(d => d.id === id);
-    if (doc?.doc_status === 'issued') { toast.error('Cannot delete an issued document'); setDeleteId(null); return; }
-    logActivity({ dealerId: userId, actor: profile, tableName: 'dealer_documents', recordId: id, action: 'deleted', summary: `${doc?.doc_type || 'Document'} draft deleted — ${doc?.buyer_name || 'unknown buyer'}${doc?.doc_ref ? ` · ${doc.doc_ref}` : ''}` });
-    const { error } = await supabase.from('dealer_documents').delete().eq('id', id).eq('dealer_id', userId);
-    if (error) { toast.error('Failed to delete document'); return; }
-    setDocuments(prev => prev.filter(d => d.id !== id));
-    setDeleteId(null);
-    toast.success('Document deleted');
-  };
-
-  const filteredDocs = useMemo(() => {
-    let d = documents;
-    if (docTypeFilter) d = d.filter(x => x.doc_type === docTypeFilter);
-    if (docSearch.trim()) {
-      const q = docSearch.toLowerCase();
-      d = d.filter(x =>
-        x.buyer_name?.toLowerCase().includes(q) ||
-        x.doc_ref?.toLowerCase().includes(q) ||
-        x.metadata?.car_label?.toLowerCase().includes(q) ||
-        (x.car_brand && `${x.car_year || ''} ${x.car_brand} ${x.car_model || ''}`.toLowerCase().includes(q))
-      );
-    }
-    return d;
-  }, [documents, docSearch, docTypeFilter]);
-
-  const filteredListings = useMemo(() => {
-    if (!listingSearch.trim()) return listings;
-    const q = listingSearch.toLowerCase();
-    return listings.filter(l =>
-      `${l.year || ''} ${l.brand || ''} ${l.model || ''}`.toLowerCase().includes(q) ||
-      l.plate_number?.toLowerCase().includes(q)
-    );
-  }, [listings, listingSearch]);
-
-  const renderDocHTML = (doc) => {
-    const m           = doc.metadata || {};
-    const carLabel    = m.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—');
-    const carVariant  = m.car_variant   || '';
-    const carPlate    = doc.car_plate   || '—';
-    const carColour   = doc.car_colour  || '—';
-    const carMileage  = m.odometer_at_delivery || doc.car_mileage || null;
-    const carVin      = doc.car_vin     || null;
-    const engineNo    = m.car_engine_number || null;
-    const engineCc    = m.car_engine_cc || null;
-    const transmission= m.car_transmission || null;
-    const prevOwners  = m.car_previous_owners != null ? m.car_previous_owners : null;
-    const rtExpiry    = m.car_road_tax_expiry || null;
-    const warrantyMo  = m.car_warranty_months || null;
-    const dealerName  = m.dealer_name  || '';
-    const dealerSsm   = m.dealer_ssm   || '';
-    const dealerCity  = m.dealer_city  || '';
-    const dealerState = m.dealer_state || '';
-    const saName      = doc.sa_name    || '—';
-    const saPhone     = doc.sa_phone   || '—';
-    const saIc        = doc.sa_ic      || null;
-    const payDeadline = m.payment_deadline || null;
-    const payMethod   = m.payment_method   || null;
-    const b5Done      = m.puspakom_b5_done;
-    const b7Done      = m.puspakom_b7_done;
-    const enFree      = m.encumbrance_declared;
-    const hasFinancing= doc.doc_type === 'Sales Agreement' && m.include_financing && doc.loan_amount;
-    const services    = doc.included_services_snapshot || [];
-    const handoverItems = m.handover_items?.length ? m.handover_items : [...DEFAULT_HANDOVER_ITEMS];
-    const exceptions  = m.exceptions_noted || '';
-    // A draft has no issue date. It printed "Date: —", which reads like a real
-    // receipt with a missing date; say plainly that it is not issued.
-    const issued      = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : 'DRAFT, not issued';
-    const isHandover  = doc.doc_type === 'Handover Checklist';
-    const isDeposit   = doc.doc_type === 'Deposit Receipt';
-    const isSales     = doc.doc_type === 'Sales Agreement';
-
-    const row  = (label, val) => val ? `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:190px;vertical-align:top;">${label}</td><td style="padding:5px 0;font-size:13px;">${val}</td></tr>` : '';
-    const sect = (title, content) => `<div style="margin-bottom:24px;"><h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:#999;border-bottom:1px solid #e5e5e5;padding-bottom:5px;margin:0 0 12px;">${title}</h3>${content}</div>`;
-    const tick = (label, done) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;"><div style="width:15px;height:15px;border:1.5px solid ${done?'#16a34a':'#aaa'};border-radius:3px;flex-shrink:0;background:${done?'#dcfce7':'transparent'};display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#16a34a;">${done?'✓':''}</span></div><span style="font-size:13px;">${label}</span></div>`;
-
-    const dealerHeader = (dealerName || dealerSsm) ? `
-      <div style="text-align:right;font-size:12px;color:#555;line-height:1.6;">
-        ${dealerName ? `<div style="font-weight:700;font-size:13px;color:#111;">${dealerName}</div>` : ''}
-        ${dealerSsm  ? `<div>SSM Reg: ${dealerSsm}</div>` : ''}
-        ${[dealerCity,dealerState].filter(Boolean).join(', ') || ''}
-      </div>` : '';
-
-    /* ── Sales Agreement ─────────────────────────────────── */
-    if (isSales) return `
-      <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #111;">
-          <div>
-            <h1 style="font-size:20px;font-weight:800;margin:0 0 3px;">VEHICLE SALES AGREEMENT</h1>
-            <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            ${doc.doc_ref ? `<div style="text-align:right;"><span style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;">Ref. No.</span><br><span style="font-size:14px;font-weight:700;font-family:monospace;">${doc.doc_ref}</span></div>` : ''}
-            ${dealerHeader}
-          </div>
-        </div>
-
-        ${sect('Vehicle Details', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Vehicle', `<strong>${carLabel}${carVariant ? ' ' + carVariant : ''}</strong>`)}
-          ${row('Registration No.', carPlate)}
-          ${row('Colour', carColour)}
-          ${engineNo  ? row('Engine No.', engineNo) : ''}
-          ${carVin    ? row('Chassis / VIN', carVin) : ''}
-          ${engineCc  ? row('Engine Capacity', `${Number(engineCc).toLocaleString()} cc`) : ''}
-          ${transmission ? row('Transmission', transmission) : ''}
-          ${carMileage ? row('Odometer at Sale', `${Number(carMileage).toLocaleString()} km`) : ''}
-          ${prevOwners != null ? row('Previous Owners', prevOwners) : ''}
-          ${rtExpiry  ? row('Road Tax Expiry', new Date(rtExpiry).toLocaleDateString('en-MY',{day:'2-digit',month:'long',year:'numeric'})) : ''}
-        </table>`)}
-
-        ${sect('Seller / Dealer', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Company Name', dealerName)}
-          ${row('SSM / Reg. No.', dealerSsm)}
-          ${row('Address', [dealerCity,dealerState].filter(Boolean).join(', '))}
-          ${row('Sales Advisor', saName)}
-          ${row('SA Contact', saPhone)}
-          ${saIc ? row('SA IC No.', saIc) : ''}
-        </table>`)}
-
-        ${sect('Buyer Details', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Full Name', doc.buyer_name)}
-          ${row('IC No.', doc.buyer_ic)}
-          ${row('Phone', doc.buyer_phone)}
-          ${row('Address', doc.buyer_address)}
-        </table>`)}
-
-        ${sect('Financial Terms', `<table style="width:100%;border-collapse:collapse;">
-          <tr style="border-bottom:1px solid #e5e5e5;"><th style="text-align:left;padding:5px 0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#999;">Description</th><th style="text-align:right;padding:5px 0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#999;">Amount (RM)</th></tr>
-          <tr><td style="padding:8px 0;font-size:13px;">Agreed Sale Price</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.sale_price||0).toLocaleString()}</td></tr>
-          <tr><td style="padding:8px 0;font-size:13px;">Deposit Paid</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>
-          <tr style="border-top:2px solid #111;"><td style="padding:8px 0;font-size:14px;font-weight:700;">Balance Due</td><td style="text-align:right;font-size:14px;font-weight:700;">RM ${Number(doc.balance_amount||0).toLocaleString()}</td></tr>
-          ${payDeadline ? `<tr><td style="padding:4px 0;font-size:12px;color:#555;">Balance payment due by</td><td style="text-align:right;font-size:12px;color:#555;">${new Date(payDeadline).toLocaleDateString('en-MY',{day:'2-digit',month:'long',year:'numeric'})}</td></tr>` : ''}
-          ${payMethod   ? `<tr><td style="padding:4px 0;font-size:12px;color:#555;">Payment method</td><td style="text-align:right;font-size:12px;color:#555;">${payMethod}</td></tr>` : ''}
-        </table>`)}
-
-        ${hasFinancing ? sect('Hire Purchase / Financing', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Financing Bank', doc.financing_bank)}
-          ${row('Loan Amount', `RM ${Number(doc.loan_amount).toLocaleString()}`)}
-          ${row(rateLabel(doc.metadata?.rate_basis) === 'EIR' ? 'Interest Rate (EIR)' : 'Flat Interest Rate', `${doc.interest_rate}% p.a.`)}
-          ${row('Tenure', `${doc.loan_tenure_months} months`)}
-          ${doc.monthly_payment ? row('Est. Monthly Instalment', `RM ${Number(doc.monthly_payment).toLocaleString()}`) : ''}
-        </table>`) : ''}
-
-        ${services.length > 0 ? sect('Included Services & Packages', `<table style="width:100%;border-collapse:collapse;">
-          ${services.map(s => `<tr><td style="padding:5px 0;font-size:13px;">${s.name||'—'}</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(s.selling_price||0).toLocaleString()}</td></tr>`).join('')}
-        </table>`) : ''}
-
-        ${warrantyMo ? sect('Dealer Warranty', `<p style="font-size:13px;margin:0;">Dealer provides <strong>${warrantyMo} month(s)</strong> warranty on this vehicle from the date of handover, covering major mechanical faults as agreed.</p>`) : ''}
-
-        ${sect('Declarations', `
-          ${tick('Vehicle is free from any outstanding hire-purchase / encumbrances', enFree)}
-          ${tick('Puspakom B5 (chassis inspection) completed', b5Done)}
-          ${tick('Puspakom B7 (engine inspection) completed', b7Done)}
-          <p style="font-size:11px;color:#777;margin:12px 0 0;line-height:1.6;">The seller declares that all information above is true and correct. Ownership of the vehicle passes to the buyer upon receipt of full payment. This agreement is governed by the laws of Malaysia (Contracts Act 1950, Consumer Protection Act 1999, Road Transport Act 1987).</p>
-        `)}
-
-        <div style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Buyer</p>
-            <p style="font-size:11px;color:#555;margin:0;">${doc.buyer_name || ''} &nbsp;|&nbsp; IC: ${doc.buyer_ic || ''}</p>
-            <p style="font-size:11px;color:#aaa;margin:28px 0 0;">Signature &amp; Date: _______________</p>
-          </div></div>
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Dealer / Sales Advisor</p>
-            <p style="font-size:11px;color:#555;margin:0;">${saName}</p>
-            <p style="font-size:11px;color:#aaa;margin:28px 0 0;">Signature, Stamp &amp; Date: _______________</p>
-          </div></div>
-        </div>
-      </div>`;
-
-    /* ── Deposit Receipt ─────────────────────────────────── */
-    if (isDeposit) return `
-      <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #111;">
-          <div>
-            <h1 style="font-size:20px;font-weight:800;margin:0 0 3px;">DEPOSIT RECEIPT</h1>
-            <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            ${doc.doc_ref ? `<div style="text-align:right;"><span style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;">Receipt No.</span><br><span style="font-size:14px;font-weight:700;font-family:monospace;">${doc.doc_ref}</span></div>` : ''}
-            ${dealerHeader}
-          </div>
-        </div>
-
-        ${sect('Received From', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Buyer Name', doc.buyer_name)}
-          ${row('IC No.', doc.buyer_ic)}
-          ${row('Contact', doc.buyer_phone)}
-        </table>`)}
-
-        ${sect('Vehicle Reserved', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Vehicle', `<strong>${carLabel}${carVariant ? ' ' + carVariant : ''}</strong>`)}
-          ${row('Registration No.', carPlate)}
-          ${row('Colour', carColour)}
-          ${engineNo ? row('Engine No.', engineNo) : ''}
-          ${carVin   ? row('Chassis / VIN', carVin) : ''}
-        </table>`)}
-
-        ${sect('Payment', `<table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:8px 0;font-size:13px;">Agreed Sale Price</td><td style="text-align:right;font-size:13px;">RM ${Number(doc.sale_price||0).toLocaleString()}</td></tr>
-          <tr style="background:#f9fafb;"><td style="padding:10px;font-size:15px;font-weight:700;">Deposit Received</td><td style="text-align:right;padding:10px;font-size:15px;font-weight:700;">RM ${Number(doc.deposit_amount||0).toLocaleString()}</td></tr>
-          <tr><td style="padding:8px 0;font-size:13px;color:#555;">Balance Remaining</td><td style="text-align:right;font-size:13px;color:#555;">RM ${Number(doc.balance_amount||0).toLocaleString()}</td></tr>
-          ${payMethod ? `<tr><td style="padding:4px 0;font-size:12px;color:#888;">Payment Method</td><td style="text-align:right;font-size:12px;color:#888;">${payMethod}</td></tr>` : ''}
-        </table>`)}
-
-        ${sect('Terms & Conditions', `
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">1. This deposit reserves the above vehicle exclusively for the buyer${payDeadline ? ` until <strong>${new Date(payDeadline).toLocaleDateString('en-MY',{day:'2-digit',month:'long',year:'numeric'})}</strong>` : ''}.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">2. <strong>If the buyer's loan/financing application is rejected by all banks:</strong> the full deposit is refundable within 14 days of written notification of rejection.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">3. <strong>If the buyer cancels for other reasons:</strong> a cancellation fee of up to 5% of the sale price may be retained by the dealer.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">4. <strong>If the dealer fails to deliver the reserved vehicle:</strong> the full deposit shall be refunded to the buyer within 14 days.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0;">5. Disputes may be referred to the Tribunal for Consumer Claims Malaysia (TTPM).</p>
-        `)}
-
-        <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Buyer Acknowledgment</p>
-            <p style="font-size:11px;color:#555;margin:0;">${doc.buyer_name || ''}</p>
-            <p style="font-size:11px;color:#aaa;margin:28px 0 0;">Signature &amp; Date: _______________</p>
-          </div></div>
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Authorised by</p>
-            <p style="font-size:11px;color:#555;margin:0;">${saName}${dealerName ? ' · ' + dealerName : ''}</p>
-            <p style="font-size:11px;color:#aaa;margin:28px 0 0;">Signature &amp; Stamp: _______________</p>
-          </div></div>
-        </div>
-      </div>`;
-
-    /* ── Handover Checklist ─────────────────────────────── */
-    return `
-      <div style="font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:40px;color:#111;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #111;">
-          <div>
-            <h1 style="font-size:20px;font-weight:800;margin:0 0 3px;">VEHICLE HANDOVER CHECKLIST</h1>
-            <p style="font-size:12px;color:#555;margin:0;">Date: ${issued}</p>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            ${doc.doc_ref ? `<div style="text-align:right;"><span style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;">Ref. No.</span><br><span style="font-size:14px;font-weight:700;font-family:monospace;">${doc.doc_ref}</span></div>` : ''}
-            ${dealerHeader}
-          </div>
-        </div>
-
-        ${sect('Vehicle', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Vehicle', `<strong>${carLabel}${carVariant ? ' ' + carVariant : ''}</strong>`)}
-          ${row('Registration No.', carPlate)}
-          ${row('Colour', carColour)}
-          ${engineNo  ? row('Engine No.', engineNo) : ''}
-          ${carVin    ? row('Chassis / VIN', carVin) : ''}
-          ${carMileage ? row('Odometer at Delivery', `<strong>${Number(carMileage).toLocaleString()} km</strong>`) : ''}
-        </table>`)}
-
-        ${sect('Buyer', `<table style="width:100%;border-collapse:collapse;">
-          ${row('Name', doc.buyer_name)}
-          ${row('IC No.', doc.buyer_ic)}
-          ${row('Contact', doc.buyer_phone)}
-        </table>`)}
-
-        ${sect('Handover Items', handoverItems.map(item => tick(item, false)).join(''))}
-
-        ${exceptions ? sect('Noted Exceptions / Agreed Defects', `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px;font-size:13px;line-height:1.7;">${exceptions}</div>`) : ''}
-
-        ${sect('Odometer Declaration', `<p style="font-size:13px;margin:0;line-height:1.8;">I, the Sales Advisor, declare that the odometer reading at the time of vehicle handover is <strong>${carMileage ? Number(carMileage).toLocaleString() + ' km' : '_______ km'}</strong> and has not been tampered with or altered.</p>`)}
-
-        <div style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:48px;">
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Buyer</p>
-            <p style="font-size:11px;color:#555;margin:0;">${doc.buyer_name || ''} &nbsp;|&nbsp; IC: ${doc.buyer_ic || ''}</p>
-            <p style="font-size:11px;color:#aaa;margin:4px 0 0;line-height:1.6;">I confirm receipt of the above vehicle and all listed items in the condition stated. Any exceptions are noted above.</p>
-            <p style="font-size:11px;color:#aaa;margin:20px 0 0;">Signature &amp; Date: _______________</p>
-          </div></div>
-          <div><div style="border-top:1.5px solid #111;padding-top:8px;">
-            <p style="font-size:12px;font-weight:600;margin:0 0 2px;">Sales Advisor / Dealer Representative</p>
-            <p style="font-size:11px;color:#555;margin:0;">${saName}${dealerName ? ' · ' + dealerName : ''}</p>
-            <p style="font-size:11px;color:#aaa;margin:28px 0 0;">Signature, Stamp &amp; Date: _______________</p>
-          </div></div>
-        </div>
-      </div>`;
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* ── Document list (premiumLight, 2026-11-10). The Sold pill names the page, so
-          no second "Documents" heading; type is a pill row, not a drop-down; the one red
-          button is New document; a draft's Issue is the dark key. ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-        <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-          <StatusPills
-            items={[{ key: '', label: 'All', count: documents.length }, ...DOC_TYPES.map(t => ({ key: t, label: DOC_TYPE_PILL[t] || t, count: documents.filter(d => d.doc_type === t).length }))]}
-            active={docTypeFilter} onChange={setDocTypeFilter} />
-        </div>
-        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 320 }}>
-          <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: PL.textMuted, pointerEvents: 'none' }} />
-          <input value={docSearch} onChange={e => setDocSearch(e.target.value)} placeholder="Search ref, buyer, car"
-            style={{ ...INV_INPUT, paddingLeft: 32, background: PL.card, boxShadow: PL.shadow }} />
-        </div>
-        <button onClick={() => setShowGen(true)} style={{ ...INV_GHOST_BTN, background: PL.accent, color: PL.onAccent }}>
-          <FileText style={{ width: 14, height: 14 }} />New document
-        </button>
-      </div>
-
-      <div style={{ ...INV_CARD, padding: 8 }}>
-        {loading ? (
-          <p style={{ padding: '28px 16px', margin: 0, fontSize: 14, color: PL.textMuted }}>Loading…</p>
-        ) : filteredDocs.length === 0 ? (
-          <p style={{ padding: '36px 16px', margin: 0, fontSize: 14, color: PL.textMuted, textAlign: 'center' }}>
-            {documents.length === 0 ? 'No documents yet. Make a sales agreement or deposit receipt from a buyer\'s lead, or press New document.' : 'No document matches that search.'}
-          </p>
-        ) : filteredDocs.map((doc, i) => {
-          const issued = doc.doc_status === 'issued';
-          const car = doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : null);
-          const btn = { ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12 };
-          return (
-            <div key={doc.id} className="doc-row" style={{ display: 'grid', gap: '8px 16px', alignItems: 'center', padding: '12px 10px', borderTop: i ? `1px solid ${PL.line}` : 'none' }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PL.text }}>
-                  {doc.buyer_name || 'No buyer named'}
-                  <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: issued ? PL.textMuted : PL.accentText }}>{issued ? 'Issued' : 'Draft'}</span>
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: PL.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {[doc.doc_type, car, doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ')}
-                  {doc.doc_ref && <span style={{ fontFamily: 'monospace', marginLeft: 6 }}>{doc.doc_ref}</span>}
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={() => setPrintDoc(doc)} style={btn}><Printer style={{ width: 13, height: 13 }} />View</button>
-                {issued ? (
-                  <button onClick={() => handleSendEmail(doc)} disabled={!doc.buyer_email || emailSendingId === doc.id}
-                    title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email. Open the document to add one.'}
-                    style={{ ...btn, opacity: !doc.buyer_email || emailSendingId === doc.id ? 0.5 : 1, cursor: doc.buyer_email ? 'pointer' : 'not-allowed' }}>
-                    {emailSendingId === doc.id ? 'Sending…' : !doc.buyer_email ? 'No email' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={() => handleIssue(doc)} style={{ ...btn, background: PL.text, color: '#fff' }}>Issue</button>
-                    <button onClick={() => setDeleteId(doc.id)} aria-label="Delete draft" style={{ ...btn, padding: 8, color: PL.textMuted }}><Trash2 style={{ width: 14, height: 14 }} /></button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <style>{`
-        .doc-row { grid-template-columns: 1fr; }
-        @media (min-width: 760px) { .doc-row { grid-template-columns: minmax(0,1fr) auto; } }
-      `}</style>
-
-      {/* ── Generate Modal ── */}
-      {showGen && createPortal(
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-sm">Generate Document</h3>
-              <button onClick={() => setShowGen(false)} className="text-gray-400 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="overflow-y-auto p-5 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Document Type</label>
-                <select value={genForm.doc_type} onChange={e => setGenForm(p => ({ ...p, doc_type: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
-                  {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-
-              {/* Car listing selector with search */}
-              <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <div style={{ position: 'relative' }}>
-                  <button type="button" onClick={() => setListingDropOpen(p => !p)}
-                    style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', fontFamily: "system-ui, sans-serif" }}>
-                    {selectedListing ? (
-                      <>
-                        {selectedListing.images?.[0] ? (
-                          <img src={cdnImg(selectedListing.images[0], 96, 70)} onError={imgFallback(selectedListing.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
-                        ) : (
-                          <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#6b7280' }} /></div>
-                        )}
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedListing.year} {selectedListing.brand} {selectedListing.model}</div>
-                          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
-                            {selectedListing.plate_number && <span>{selectedListing.plate_number}</span>}
-                            {selectedListing.colour && <span>{selectedListing.colour}</span>}
-                            {selectedListing.mileage && <span>{Number(selectedListing.mileage).toLocaleString()} km</span>}
-                          </div>
-                        </div>
-                        {selectedListing.selling_price && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flexShrink: 0 }}>RM {Number(selectedListing.selling_price).toLocaleString()}</span>}
-                      </>
-                    ) : (
-                      <span style={{ fontSize: 13, color: '#6b7280' }}>Select a listing…</span>
-                    )}
-                    <ChevronDown style={{ width: 16, height: 16, color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }} />
-                  </button>
-                  {listingDropOpen && (
-                    <>
-                      <div onClick={() => { setListingDropOpen(false); setListingSearch(''); }} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, zIndex: 50, maxHeight: 280, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}>
-                        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
-                          <input
-                            value={listingSearch} onChange={e => setListingSearch(e.target.value)}
-                            placeholder="Search by car or plate…"
-                            autoFocus
-                            style={{ width: '100%', padding: '6px 10px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 6, outline: 'none', background: '#f9fafb', boxSizing: 'border-box' }}
-                          />
-                        </div>
-                        <div style={{ overflowY: 'auto' }}>
-                          {filteredListings.length === 0 ? (
-                            <div style={{ padding: '12px 14px', fontSize: 13, color: '#9ca3af' }}>No listings match</div>
-                          ) : filteredListings.map(l => (
-                            <button key={l.id} type="button" onClick={() => handleListingSelect(l)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "system-ui, sans-serif" }}
-                              onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
-                              onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
-                              {l.images?.[0] ? (
-                                <img src={cdnImg(l.images[0], 96, 70)} onError={imgFallback(l.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
-                              ) : (
-                                <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#6b7280' }} /></div>
-                              )}
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.year} {l.brand} {l.model}</div>
-                                <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', gap: 8, marginTop: 1 }}>
-                                  {l.plate_number && <span>{l.plate_number}</span>}
-                                  {l.colour && <span>{l.colour}</span>}
-                                  {l.mileage && <span>{Number(l.mileage).toLocaleString()} km</span>}
-                                </div>
-                              </div>
-                              {l.selling_price && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flexShrink: 0 }}>RM {Number(l.selling_price).toLocaleString()}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label>
-                  <input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} style={!genForm.buyer_name.trim() ? { borderColor: '#fca5a5' } : {}} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
-                    Buyer IC
-                    {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
-                  </label>
-                  <input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls}
-                    style={['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() ? { borderColor: '#fca5a5' } : {}} />
-                  {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() && (
-                    <p style={{ fontSize: 10, color: '#dc2626', marginTop: 3 }}>Required for {genForm.doc_type}</p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><PhoneInput value={genForm.buyer_phone} onChange={(v) => setGenForm(p => ({ ...p, buyer_phone: v }))} className={iCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div>
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-              </div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Email <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— for document delivery</span></label><input type="email" value={genForm.buyer_email} onChange={e => setGenForm(p => ({ ...p, buyer_email: e.target.value }))} placeholder="buyer@email.com" className={iCls} /></div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Address</label><textarea value={genForm.buyer_address} onChange={e => setGenForm(p => ({ ...p, buyer_address: e.target.value }))} rows={2} className={taCls} placeholder="Full address" /></div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Deposit Amount (RM)</label><input type="number" value={genForm.deposit_amount} onChange={e => setGenForm(p => ({ ...p, deposit_amount: e.target.value }))} placeholder="0" className={iCls} /></div>
-
-              {/* Balance due — auto-computed (sale price − deposit), never typed. Shows the
-                  same figure that gets saved to the document so there's no surprise. */}
-              {(Number(genForm.sale_price) > 0 || Number(genForm.deposit_amount) > 0) && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Balance Due <span style={{ color: '#9ca3af', fontWeight: 400 }}>(auto)</span></span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>RM {Math.max(0, (Number(genForm.sale_price) || 0) - (Number(genForm.deposit_amount) || 0)).toLocaleString('en-MY')}</span>
-                </div>
-              )}
-
-              {genForm.doc_type !== 'Handover Checklist' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Payment Deadline</label>
-                    <input type="date" value={genForm.payment_deadline} onChange={e => setGenForm(p => ({ ...p, payment_deadline: e.target.value }))} className={iCls} />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Payment Method</label>
-                    <select value={genForm.payment_method} onChange={e => setGenForm(p => ({ ...p, payment_method: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
-                      {['Bank Transfer','Cash','Cheque','Online Transfer'].map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Sales Advisor */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><PhoneInput value={genForm.sa_phone} onChange={(v) => setGenForm(p => ({ ...p, sa_phone: v }))} className={iCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div>
-                </div>
-                <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
-              </div>
-
-              {/* Vehicle Details */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Vehicle Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Engine No.</label><input value={genForm.engine_number} onChange={e => setGenForm(p => ({ ...p, engine_number: e.target.value }))} placeholder="e.g. 2AR-FE 123456" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Engine CC</label><input type="number" value={genForm.engine_cc} onChange={e => setGenForm(p => ({ ...p, engine_cc: e.target.value }))} placeholder="2000" className={iCls} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3" style={{ marginTop: 10 }}>
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Odometer at Delivery (km)</label>
-                    <input type="number" value={genForm.odometer_at_delivery} onChange={e => setGenForm(p => ({ ...p, odometer_at_delivery: e.target.value }))} placeholder="e.g. 45000" className={iCls} />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Previous Owners</label>
-                    <input type="number" value={genForm.previous_owners} onChange={e => setGenForm(p => ({ ...p, previous_owners: e.target.value }))} placeholder="1" className={iCls} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Handover Checklist item editor */}
-              {genForm.doc_type === 'Handover Checklist' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
-                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Handover Items</p>
-                  <div className="space-y-1.5">
-                    {genForm.handover_items.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f9fafb', borderRadius: 7, border: '1px solid #e5e7eb' }}>
-                        <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{item}</span>
-                        <button onClick={() => setGenForm(p => ({ ...p, handover_items: p.handover_items.filter((_, i) => i !== idx) }))} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0 }} onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#d1d5db'}><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <input value={newHandoverItem} onChange={e => setNewHandoverItem(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && newHandoverItem.trim()) { setGenForm(p => ({ ...p, handover_items: [...p.handover_items, newHandoverItem.trim()] })); setNewHandoverItem(''); e.preventDefault(); } }}
-                      placeholder="Add item…" className={iCls} style={{ flex: 1 }} />
-                    <button onClick={() => { if (newHandoverItem.trim()) { setGenForm(p => ({ ...p, handover_items: [...p.handover_items, newHandoverItem.trim()] })); setNewHandoverItem(''); } }}
-                      style={{ padding: '0 14px', borderRadius: 8, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>Add</button>
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Exceptions / Agreed Defects</label>
-                    <textarea value={genForm.exceptions_noted} onChange={e => setGenForm(p => ({ ...p, exceptions_noted: e.target.value }))} rows={2} className={taCls} placeholder="List any agreed cosmetic defects, missing items, or conditions noted at handover…" />
-                  </div>
-                </div>
-              )}
-
-              {/* Compliance declarations — Sales Agreement only */}
-              {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
-                  <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Compliance Declarations</p>
-                  <div className="space-y-2">
-                    {[
-                      ['puspakom_b5_done', 'Puspakom B5 inspection completed (chassis/body)'],
-                      ['puspakom_b7_done', 'Puspakom B7 inspection completed (engine, valid 30 days)'],
-                      ['encumbrance_declared', 'Vehicle free from hire purchase / encumbrance'],
-                    ].map(([field, label]) => (
-                      <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '7px 10px', background: genForm[field] ? 'rgba(22,163,74,0.06)' : '#f9fafb', borderRadius: 7, border: `1px solid ${genForm[field] ? 'rgba(22,163,74,0.2)' : '#e5e7eb'}` }}>
-                        <input type="checkbox" checked={genForm[field]} onChange={e => setGenForm(p => ({ ...p, [field]: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#16a34a', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#374151', fontFamily: "system-ui, sans-serif" }}>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Financing — Sales Agreement only */}
-              {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
-                    <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
-                    <span style={{ fontSize: 13, color: '#374151', fontFamily: "system-ui, sans-serif" }}>Include Financing Details</span>
-                  </label>
-                  {genForm.include_financing && (
-                    <div className="space-y-3">
-                      <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Financing Bank</label><input value={genForm.financing_bank} onChange={e => gf('financing_bank', e.target.value)} placeholder="e.g. Maybank, CIMB" className={iCls} /></div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Loan Amount (RM)</label><input type="number" value={genForm.loan_amount} onChange={e => gf('loan_amount', e.target.value)} placeholder="0" className={iCls} /></div>
-                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Interest Rate (% EIR)</label><input type="number" step="0.01" value={genForm.interest_rate} onChange={e => gf('interest_rate', e.target.value)} placeholder={String(DEFAULT_EIR)} className={iCls} /></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Tenure (months)</label><input type="number" value={genForm.loan_tenure_months} onChange={e => gf('loan_tenure_months', e.target.value)} placeholder="84" className={iCls} /></div>
-                        <div>
-                          <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Monthly Payment (RM)</label>
-                          <input readOnly value={genForm.monthly_payment ? `RM ${Number(genForm.monthly_payment).toLocaleString()}` : '—'} className={iCls} style={{ color: '#16a34a', background: 'rgba(22,163,74,0.04)', cursor: 'default' }} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            {(() => {
-              const encBlocked = genForm.doc_type === 'Handover Checklist' && linkedStock && linkedStock.encumbrance_status === 'under_hp';
-              return (
-                <div className="p-5 border-t border-gray-100 space-y-3">
-                  {encBlocked && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10 }}>
-                      <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "system-ui,sans-serif" }}>
-                        This vehicle is marked <strong>Under HP</strong> in stock. Clear the encumbrance before issuing a Handover Checklist.
-                      </span>
-                    </div>
-                  )}
-                  {linkedStock && linkedStock.encumbrance_status === 'unknown' && genForm.doc_type === 'Handover Checklist' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10 }}>
-                      <AlertTriangle style={{ width: 14, height: 14, color: '#f59e0b', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <button onClick={() => setShowGen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
-                    <button onClick={handleGenerate} disabled={genSaving || encBlocked} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={encBlocked ? { background: '#9ca3af', cursor: 'not-allowed' } : T.btnRed}>
-                      {genSaving ? 'Generating…' : 'Generate'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      , document.body)}
-
-      {/* ── Print Preview Modal ── */}
-      {printDoc && createPortal(
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
-          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
-                  {printDoc.doc_status !== 'issued'
-                    ? <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 5, padding: '1px 7px' }}>DRAFT</span>
-                    : <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 5, padding: '1px 7px' }}>Issued</span>
-                  }
-                </div>
-                {printDoc.doc_ref && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', fontFamily: 'monospace' }}>{printDoc.doc_ref}</p>}
-                {printDoc.issued_by && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>Issued by {printDoc.issued_by}</p>}
-              </div>
-              <div className="flex items-center gap-2">
-                {printDoc.doc_status !== 'issued' && (
-                  <button onClick={() => handleIssue(printDoc)} style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Issue Document</button>
-                )}
-                <button onClick={() => { const escHtml = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); const w = window.open('','_blank'); w.document.write(`<html><head><title>${escHtml(printDoc.doc_ref || printDoc.doc_type)}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
-                <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
-              </div>
-            </div>
-            {printDoc.doc_status !== 'issued' && (
-              <div style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
-              </div>
-            )}
-            <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
-          </div>
-        </div>
-      , document.body)}
-
-      {/* ── Delete Confirmation ── */}
-      {deleteId && createPortal(
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl p-6 max-w-xs w-full mx-4" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>Delete document?</h3>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>This cannot be undone.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-              <button onClick={() => handleDelete(deleteId)} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#dc2626', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13, border: 'none' }}>Delete</button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-    </div>
-  );
-}
-
 // ─── Customers Tab ───────────────────────────────────────────────────────────
 
 function Avatar({ size = "md", profile }) {
@@ -8997,8 +6904,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
-  const [showFastModal, setShowFastModal] = useState(false);
-  useModalHistory(showFastModal, () => setShowFastModal(false), { isDirty: () => true });
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
   const [reactivating, setReactivating] = useState(false);
@@ -9017,6 +6922,19 @@ export default function DashboardPage() {
   const [studioListing, setStudioListing] = useState(null);
   const [markSoldLoading, setMarkSoldLoading] = useState(false);
   const [profile, setProfile] = useState(seed.profile);
+  // The owner's per-role switches (Settings > Team). Overview hides money a role is not allowed.
+  const { can: canDo, loading: permsLoading } = usePermissions(profile);
+  // Managers and admins use this dashboard; the owner's switches (Settings > Team) pick which tabs
+  // they can open. Owners see everything. A money tab also needs its money switch.
+  const isOwnerView = !profile || isFullAccessRole(profile.role);
+  const tabAllowed = (id, sub) => {
+    if (isOwnerView) return true;
+    const cap = tabCapability(id, sub);
+    if (!cap) return true;
+    if (!canDo(cap)) return false;
+    const money = TAB_NEEDS_MONEY[cap];
+    return !money || canDo(money);
+  };
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
@@ -9044,6 +6962,9 @@ export default function DashboardPage() {
   const [assignDropdownId, setAssignDropdownId] = useState(null);
   const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
+  // Which button the car pop-up opens on: 'owner' from a Stock & costs row, else Details. Resets when it closes.
+  const [detailInitialTab, setDetailInitialTab] = useState('specs');
+  useEffect(() => { if (!detailListing) setDetailInitialTab('specs'); }, [detailListing]);
   // Net F&I add-on gross per listing (sold_price − cost) so the Listings table
   // Gross column reflects what a sold car actually earned, add-ons included.
   const [addonNetByListing, setAddonNetByListing] = useState({});
@@ -9079,7 +7000,7 @@ export default function DashboardPage() {
     handleTabChangeRef.current?.(view);
   }, []);
   const lastInventoryView = () => {
-    try { return localStorage.getItem(INVENTORY_VIEW_KEY) === "stock" ? "stock" : "listings"; } catch { return "listings"; }
+    try { const v = localStorage.getItem(INVENTORY_VIEW_KEY); return v === "stock" || v === "market" ? v : "listings"; } catch { return "listings"; }
   };
   // ONE handover state for the Handover and Customers pills (CLAUDE.md "One post-sale
   // state"): Customers used to run its own post_sale_tasks query for the same %.
@@ -9233,7 +7154,7 @@ export default function DashboardPage() {
       const [{ data: cars, error: carsError }, { data: sm, error: smError }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
-          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
+          .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at,acceleration,top_speed,boot_size,co2_emissions,safety_rating,insurance_group,geran_status,docs_verified,docs_verified_at")
           .eq("dealer_id", dealerId)
           .neq("status", "archived")
           .order("created_at", { ascending: false }),
@@ -9434,6 +7355,20 @@ export default function DashboardPage() {
   }, [navigate]);
   handleTabChangeRef.current = handleTabChange;
 
+  // A tab the owner has not opened to this role (a saved link, an old notification) goes to
+  // Overview. Waits for the switches to load, or every tab would bounce for a moment.
+  // REPLACES the history entry (Back must not land on the closed tab and bounce again), once per
+  // closed tab (the ref), so a slow commit cannot push several entries.
+  const bouncedFrom = useRef(null);
+  const closedTab = !isOwnerView && !permsLoading && !!profile && !tabAllowed(activeTab, analyticsSub);
+  useEffect(() => {
+    if (!closedTab) { bouncedFrom.current = null; return; }
+    if (bouncedFrom.current === activeTab) return;
+    bouncedFrom.current = activeTab;
+    setActiveTab('overview');
+    navigate('/dashboard/overview', { replace: true });
+  }, [closedTab, activeTab, navigate]);
+
   // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
   // old deep-links and saved URLs don't render a blank pane.
   useEffect(() => {
@@ -9510,7 +7445,15 @@ export default function DashboardPage() {
   };
   const handleAssign = async (listingId, salesmanId, name) => {
     setAssignDropdownId(null);
-    await supabase.from("car_listings").update({ assigned_to: salesmanId }).eq("id", listingId);
+    // Check the car really changed before evicting other salesmen or logging it: a refused
+    // write comes back as "0 rows, no error", and the screen used to say "Assigned" anyway.
+    const { data: saved, error: assignErr } = await supabase.from("car_listings")
+      .update({ assigned_to: salesmanId }).eq("id", listingId).select("id");
+    if (assignErr || !saved?.length) {
+      setAssignToast({ listingId, msg: "Could not assign. Try again." });
+      setTimeout(() => setAssignToast(null), 3000);
+      return;
+    }
     // Assignment is exclusive: evict any other salesmen who had featured this car
     // so it leaves their listings and the shared feature pool. The assignee keeps
     // it via assigned_to. (Salesman Lite rows have salesman_id = their own id too,
@@ -9527,7 +7470,13 @@ export default function DashboardPage() {
   };
   const handleUnassign = async (listingId) => {
     setAssignDropdownId(null);
-    await supabase.from("car_listings").update({ assigned_to: null }).eq("id", listingId);
+    const { data: saved, error: unassignErr } = await supabase.from("car_listings")
+      .update({ assigned_to: null }).eq("id", listingId).select("id");
+    if (unassignErr || !saved?.length) {
+      setAssignToast({ listingId, msg: "Could not unassign. Try again." });
+      setTimeout(() => setAssignToast(null), 3000);
+      return;
+    }
     setListings((prev) =>
       prev.map((l) => (l.id === listingId ? { ...l, assigned_to: null } : l))
     );
@@ -9543,7 +7492,7 @@ export default function DashboardPage() {
       if (off || error) return; // a failed read keeps what is on the device
       const m = {};
       (data || []).forEach(r => {
-        m[r.car_id] = { views: Number(r.views) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
+        m[r.car_id] = { views: Number(r.views) || 0, wa: Number(r.whatsapp) || 0, calls: Number(r.calls) || 0, bookings: Number(r.bookings) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
       });
       setCarInterest(m);
     });
@@ -9958,7 +7907,29 @@ export default function DashboardPage() {
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
-  const { snapshot, loading: snapshotLoading } = useDealerSnapshot(userId);
+  // AI Manager's data loads only while its tab is open. Its money lines come from the same
+  // engine as Overview (useCarMoney), so the briefing quotes the numbers the owner sees.
+  const onAiTab = activeTab === "ai_manager";
+  const { snapshot: aiFacts, loading: snapshotLoading } = useDealerSnapshot(userId, { enabled: onAiTab });
+  const { money: aiMoney, failed: aiMoneyFailed } = useCarMoney(onAiTab ? getDealerIdFromProfile(profile) : null);
+  // Memoised: AISalesManager fires its briefing from an effect keyed on `snapshot`, and a new
+  // object every render cancelled its timer, so the briefing never ran. Money and days come from
+  // the one engine and clock; money a role may not see is left out of the briefing; a failed money
+  // read still lets the briefing run on the rest.
+  const aiSeeGross = canDo('view_gross'), aiSeeCost = canDo('view_cost');
+  const snapshot = useMemo(() => {
+    if (!aiFacts || (!aiMoney && !aiMoneyFailed)) return null; // wait for the money (or its failure)
+    const m = aiMoney;
+    return {
+      ...aiFacts,
+      avgDaysOnLot: m?.stock.avgDays ?? null,
+      staleCars: m ? m.stuck.filter(c => c.flag === 'ageing').map(c => ({ model: c.title, days: c.days, price: c.asking })) : [],
+      totalGPThisMonth: m && aiSeeGross ? m.month.gross : null,
+      gpLeftOut: m ? m.month.leftOut : 0,
+      soldThisMonth: m ? m.month.units : null,
+      totalStockValue: m && aiSeeCost ? m.stock.atCost : null,
+    };
+  }, [aiFacts, aiMoney, aiMoneyFailed, aiSeeGross, aiSeeCost]);
 
   const TITLES = {
     overview:  { title: "Overview", sub: "Dealership pulse at a glance" },
@@ -9967,7 +7938,7 @@ export default function DashboardPage() {
     team: { title: "Team", sub: "Manage salespeople" },
     analytics: ({
       revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
-      performance: { title: "Performance", sub: "Team, website traffic and stock health" },
+      performance: { title: "Performance", sub: "Team and website traffic" },
       listings:    { title: "Listings",    sub: "Per-car views, enquiries and days on lot" },
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
@@ -10002,7 +7973,6 @@ export default function DashboardPage() {
       id: "g_inventory", Icon: Package, label: "Inventory",
       items: [
         { id: "listings", Icon: Car,        label: "Inventory", badge: listings.length },
-        { id: "market",   Icon: Activity,   label: "Market Demand" },
       ],
     },
     {
@@ -10238,7 +8208,7 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2 sm:p-3 mt-1" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {NAV_GROUPS.map((group) => {
+          {NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => tabAllowed(i.id, i.sub)) })).filter((g) => g.items.length).map((group) => {
             if (group.direct) {
               return (
                 <button
@@ -10285,7 +8255,7 @@ export default function DashboardPage() {
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map(({ id, sub, Icon, label, badge }) => {
-                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock") || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
+                      const isActive = (activeTab === id || (id === "listings" && (activeTab === "stock" || activeTab === "market")) || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
@@ -10379,7 +8349,8 @@ export default function DashboardPage() {
           )}
 
           {/* Plan tier chip */}
-          {planCfg && profile?.plan && profile.plan !== 'superadmin' && (
+          {/* Billing is the owner's: staff never see the plan or the upgrade link. */}
+          {isOwnerView && planCfg && profile?.plan && profile.plan !== 'superadmin' && (
             <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
@@ -10601,7 +8572,7 @@ export default function DashboardPage() {
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (
             <div className="space-y-4">
-              {profile?.plan !== "dealer_starter" && (
+              {profile?.plan !== "dealer_starter" && tabAllowed("ai_manager") && (
                 <button
                   onClick={() => handleTabChange("ai_manager")}
                   className="pl-key"
@@ -10622,7 +8593,7 @@ export default function DashboardPage() {
                   <ChevronRight size={16} color="#6b7280" />
                 </button>
               )}
-              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} can={canDo} />
             </div>
           )}
 
@@ -10648,7 +8619,7 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
-              <InventorySwitch tabs={INVENTORY_TABS} active="listings" onChange={openInventory} />
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="listings" onChange={openInventory} />
               {/* The badge is worth nothing if nobody finds the upload step, and
                   Settings is the screen a dealer never opens. Jumps straight to
                   the Verified Badge section. */}
@@ -10658,6 +8629,14 @@ export default function DashboardPage() {
                 onStart={() => { setSettingsJump("verify"); handleTabChange("settings"); }}
               />
 
+              {/* Cars a salesman drafted (DRAFTS-1): the owner, or a manager with "Approve listings". */}
+              {(isOwnerView || canDo("approve_listings")) && (
+                <ApprovalQueue
+                  dealerId={getDealerIdFromProfile(profile)}
+                  canSeeCost={isOwnerView || canDo("view_cost")}
+                  onChanged={(id, status) => setListings((p) => p.map((x) => (x.id === id ? { ...x, status } : x)))}
+                />
+              )}
 
               {/* ── Listings panel ── one card: search, filters, the one Add car button,
                   the status pills, then the cars. No count tiles: the pills carry the counts. */}
@@ -10814,7 +8793,7 @@ export default function DashboardPage() {
                       <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: `1px solid ${premiumLight.line}` }}>
-                            {['', 'Vehicle', 'Price', 'Interest (30d)', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
+                            {['', 'Vehicle', 'Price', 'Last 30 days', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ ...INV_MICRO, padding: '11px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
@@ -11000,7 +8979,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
                               {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
-                              <InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
+                              <div style={{ flexBasis: 'calc(100% + 92px)', margin: '4px 0 0 -92px' }}><InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} /></div>
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               {(() => {
                                 const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
@@ -11264,7 +9243,6 @@ export default function DashboardPage() {
           <AddCarSheet
             open={addCarOpen}
             onClose={() => setAddCarOpen(false)}
-            onQuick={() => setShowFastModal(true)}
             onFull={() => { handleTabChange("add"); setAddMode("marketplace"); }}
             onStock={() => { setStockAutoTool("add"); handleTabChange("stock"); }}
             onCsv={() => { setStockAutoTool("csv"); handleTabChange("stock"); }}
@@ -11272,11 +9250,12 @@ export default function DashboardPage() {
           />
           {activeTab === "stock" && userId && (
             <>
-              <InventorySwitch tabs={INVENTORY_TABS} active="stock" onChange={openInventory} />
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="stock" onChange={openInventory} />
               {/* The money figures for the stock live here, once. StockTab's own
                   summary cards repeated them, so it is told to skip them. */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} canSeeProfit={canDo('view_gross')} />
               <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen} hideSummary onAdd={() => setAddCarOpen(true)}
+                onOpenListing={(l) => { setDetailInitialTab('owner'); setDetailListing(l); }}
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
                 onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
               />
@@ -11304,7 +9283,10 @@ export default function DashboardPage() {
             <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} theme="plight" />
           )}
           {activeTab === "market" && userId && (
-            <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
+            <>
+              <InventorySwitch tabs={INVENTORY_TABS.filter(t => tabAllowed(t.id))} active="market" onChange={openInventory} />
+              <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />
+            </>
           )}
           </React.Suspense>
           </TabErrorBoundary>
@@ -11313,6 +9295,8 @@ export default function DashboardPage() {
 
       {detailListing && (
         <ListingDetailDrawer
+          key={detailListing.id}
+          initialTab={detailInitialTab}
           listing={detailListing}
           salesmen={salesmen}
           salesmenById={salesmenById}
@@ -11451,26 +9435,6 @@ export default function DashboardPage() {
       )}
 
       {/* ── Fast List modal ── */}
-      {showFastModal && (
-        <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "system-ui,sans-serif" }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#4b5563' }}>2 steps — live in 30 seconds</p>
-              </div>
-              <button onClick={() => setShowFastModal(false)} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, color: '#6b7280', width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-            <CarFormFast
-              onCreate={(car) => {
-                setShowFastModal(false);
-                toast.success("Listed! Add more details anytime.");
-              }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* ── Delete modal ── */}
       {deleteId && (
         <div

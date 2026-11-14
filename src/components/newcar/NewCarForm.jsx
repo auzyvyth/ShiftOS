@@ -6,7 +6,7 @@ import { groupByModel, rm, priceBasis } from "../../utils/newCars";
 import { compressListingPhoto, photoExt } from "../../utils/compressImage";
 
 // NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota / BYD / Honda).
-// Rendered by CarForm and CarFormFast in place of the used-car form when
+// Rendered by CarForm in place of the used-car form when
 // profile.seller_type === 'new_car' (owner, 2026-10-08).
 //
 // A card is a normal car_listings row with new_car_model_id set, so it gets the

@@ -6,6 +6,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { estimateRoadTax } from "../utils/roadTax";
+import { holdingPerDay } from "../utils/carPnl";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { lookupCarSpec } from "../utils/carSpecs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
@@ -282,13 +283,8 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
     const commission = num(form.commission_amount);
     const transfer = JPJ_GOVT_FEE + PUSPAKOM_B5 + runner;
 
-    // daily holding cost: prefer floor-plan interest, else overhead/fleet
-    let dailyHold = 0;
-    if (num(s.floor_plan_rate) > 0 && purchase > 0) {
-      dailyHold = purchase * (num(s.floor_plan_rate) / 100) / 365;
-    } else if (num(s.monthly_overhead) > 0) {
-      dailyHold = num(s.monthly_overhead) / Math.max(1, num(s.avg_fleet_size) || 20) / 30;
-    }
+    // daily holding cost: the same rule as the car's P&L (src/utils/carPnl.js), interest + overhead.
+    const dailyHold = holdingPerDay(purchase, s).total;
 
     const asking = num(form.asking_price);
     const warrantyReserve = num(form.warranty_months) > 0

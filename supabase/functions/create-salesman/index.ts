@@ -195,6 +195,18 @@ function setPasswordBaseFor(origin: string | null): string {
   return "https://drevo.my";
 }
 
+// The plan's seat limit, checked HERE: the dashboard's check_seat_cap call is in the browser, so
+// a direct call to this function skipped it. Same rule as check_seat_cap (active team members).
+async function seatCapReached(adminClient: any, dealerId: string): Promise<{ cap: number; current: number } | null> {
+  const { data: dealer } = await adminClient.from("profiles").select("plan").eq("id", dealerId).maybeSingle();
+  if (!dealer?.plan) return null;
+  const { data: pc } = await adminClient.from("plan_config").select("seat_cap").eq("plan", String(dealer.plan)).maybeSingle();
+  if (pc?.seat_cap == null) return null;
+  const { count } = await adminClient.from("profiles").select("id", { count: "exact", head: true })
+    .eq("dealer_id", dealerId).eq("is_active", true);
+  return (count ?? 0) >= pc.seat_cap ? { cap: pc.seat_cap, current: count ?? 0 } : null;
+}
+
 serve(async (req) => {
   // Echo the caller's real origin so dealer subdomains (*.drevo.my) pass the
   // browser CORS check. Reusing a null-origin header set here hardcoded the
@@ -233,13 +245,26 @@ serve(async (req) => {
     );
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role, id, dealership")
+      .select("role, id, dealership, dealer_id, is_active, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!callerProfile || !["dealer", "superadmin", "owner"].includes(callerProfile.role)) {
+    // Owner / platform admin, or a MANAGER whose owner switched "Add staff" on (owner,
+    // 2026-11-14). A manager adds salesmen to their own dealership only, always by setup email.
+    const isManagerCaller = callerProfile?.role === "manager";
+    if (!callerProfile || (!["dealer", "superadmin", "owner"].includes(callerProfile.role) && !isManagerCaller)) {
       return json({ error: "forbidden" }, 403);
     }
+    if (isManagerCaller) {
+      const { data: mgrRow } = await adminClient.from("role_permissions").select("permissions")
+        .eq("dealer_id", callerProfile.dealer_id).eq("role", "manager").maybeSingle();
+      const perms = mgrRow?.permissions || {};
+      if (!callerProfile.dealer_id || callerProfile.is_active === false || perms.role_enabled === false || perms.add_staff !== true) {
+        return json({ error: "not_allowed" }, 403);
+      }
+    }
+    // The dealership this caller acts for: the owner IS it; a manager belongs to it.
+    const callerDealer = isManagerCaller ? callerProfile.dealer_id : callerProfile.id;
 
     // ── Parse body ──────────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
@@ -263,7 +288,7 @@ serve(async (req) => {
       // Authz: superadmin, or the salesman belongs to the caller's dealership
       // (owner/dealer are their own dealer, so their id IS the dealer_id).
       const isSuper = callerProfile.role === "superadmin";
-      if (!isSuper && target.dealer_id !== callerProfile.id) {
+      if (!isSuper && target.dealer_id !== callerDealer) {
         return json({ error: "forbidden" }, 403);
       }
       // Rate limit: every send REPLACES the link, so a double tap (no feedback
@@ -290,7 +315,7 @@ serve(async (req) => {
     // owner can add the seller's cars first and send it from the account
     // record ("Send setup email" -> resend_setup). Default keeps the dealer
     // Team tab's behaviour: email at once.
-    const sendEmail = body.send_email !== false;
+    const sendEmail = isManagerCaller || body.send_email !== false;
 
     if (!email || !full_name || !plan) {
       return json({ error: "invalid_input" }, 400);
@@ -311,7 +336,7 @@ serve(async (req) => {
     // Only superadmin may target an arbitrary dealer_id (or null, for a
     // standalone account).
     const isSuperCaller = callerProfile.role === "superadmin";
-    const effectiveDealerId = isSuperCaller ? (dealer_id ?? null) : callerProfile.id;
+    const effectiveDealerId = isSuperCaller ? (dealer_id ?? null) : callerDealer;
 
     // Pay-first gate for solo Salesman Premium, mirrored from the DB trigger
     // prevent_profile_privilege_escalation's `gated` rule. That trigger no-ops
@@ -358,6 +383,11 @@ serve(async (req) => {
         bio: text(body.bio, 2000),
       }
       : {};
+
+    if (!isSuperCaller && effectiveDealerId) {
+      const full = await seatCapReached(adminClient, effectiveDealerId);
+      if (full) return json({ error: "seat_cap", ...full }, 403);
+    }
 
     const tempPassword = generatePassword();
 
@@ -487,10 +517,27 @@ serve(async (req) => {
         !effectiveDealerId && finalProfile ? setupDetails(finalProfile, setPasswordBaseFor(origin)) : [])
       : false;
 
+    if (isManagerCaller) {
+      // A manager never sees a password: no setup email means no way in, so undo the account.
+      if (!emailSent) {
+        await adminClient.auth.admin.deleteUser(newUserId);
+        return json({ error: "email_failed", message: "The setup email could not be sent. Nothing was created." }, 502);
+      }
+      // The owner hears about every account a manager makes (the row is also the push).
+      await adminClient.from("dealer_notifications").insert({
+        dealer_id: effectiveDealerId,
+        type: "staff_added",
+        title: "New salesman account",
+        body: `${callerProfile.full_name || "Your manager"} added ${full_name} as a salesman.`,
+        link_to: "/dashboard/team",
+        ref_id: newUserId,
+      });
+    }
+
     return json({
       success: true,
       user_id: newUserId,
-      temp_password: tempPassword,
+      temp_password: isManagerCaller ? undefined : tempPassword,
       email_sent: emailSent,
       profile: finalProfile,
     });

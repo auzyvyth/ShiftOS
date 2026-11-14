@@ -28,13 +28,11 @@ function buildSystemPrompt(snapshot, dealerName) {
 Personality: Direct, sharp, no fluff. Speak like a senior sales manager. Occasionally use casual Malay terms (boss, confirm, lah). Never say "I am an AI". You ARE the Sales Manager.
 
 Live dealership data:
-- Active listings: ${snapshot.activeListings} cars, avg ${snapshot.avgDaysOnLot} days on lot
-- Stale stock (30d+): ${snapshot.staleCars.map(c => `${c.model} (${c.days}d, RM${c.price?.toLocaleString()})`).join(', ') || 'None'}
+- Active listings: ${snapshot.activeListings} cars${snapshot.avgDaysOnLot != null ? `, avg ${snapshot.avgDaysOnLot} days on lot` : ''}
+- Ageing stock (over 60 days): ${snapshot.staleCars.map(c => `${c.model} (${c.days}d, RM${c.price?.toLocaleString()})`).join(', ') || 'None'}
 - Enquiries: ${snapshot.enquiries.new} new, ${snapshot.coldEnquiries} gone cold (48h+), ${snapshot.enquiries.qualified} qualified, ${snapshot.enquiries.converted} converted
 - Appointments today: ${snapshot.appointmentsToday}
-- Sold this month GP: RM${snapshot.totalGPThisMonth?.toLocaleString()}
-- Stock value on hand: RM${snapshot.totalStockValue?.toLocaleString()}
-- WhatsApp clicks (7d): ${snapshot.topEvents}
+${snapshot.soldThisMonth != null ? `- Sold this month: ${snapshot.soldThisMonth} cars${snapshot.totalGPThisMonth != null ? `, gross profit RM${snapshot.totalGPThisMonth.toLocaleString()} (every cost counted${snapshot.gpLeftOut ? `; ${snapshot.gpLeftOut} sold car(s) left out because they have no buy price` : ''})` : ''}\n` : ''}${snapshot.totalStockValue != null ? `- Money tied up in stock (buy + recon): RM${snapshot.totalStockValue.toLocaleString()}\n` : ''}- WhatsApp clicks (7d): ${snapshot.topEvents}
 
 Team activity in the last 24 hours (one line per person — name, role, action count, and what they actually did):
 ${teamLines}
@@ -65,13 +63,13 @@ export default function AISalesManager({ snapshot, dealerName }) {
   const chatRef = useRef(null);
   const triggered = useRef(false);
 
+  // Fires once, 600ms after the snapshot settles. `triggered` is set INSIDE the timer: set before
+  // it, a second snapshot within 600ms cleared the timer and nothing ever re-armed it.
   useEffect(() => {
-    if (!triggered.current && snapshot) {
-      triggered.current = true;
-      const id = setTimeout(() => sendMessage('Give me my morning briefing.'), 600);
-      return () => clearTimeout(id);
-    }
-  }, [snapshot]);
+    if (triggered.current || !snapshot) return undefined;
+    const id = setTimeout(() => { triggered.current = true; sendMessage('Give me my morning briefing.'); }, 600);
+    return () => clearTimeout(id);
+  }, [snapshot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;

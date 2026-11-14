@@ -3071,6 +3071,27 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   per-seller connect is not built (test rig posts to the owner's accounts only, allowlist
   `ZERNIO_TEST_USER_IDS`), a plan needs a `plan_config` row + entitlement helper (DB migration,
   after midnight), and a card on Zernio. Plan + findings: `docs/DREVO_ACTION_PLAN.md`.
+  **Scope draft (2026-11-12, owner asked "what else"):** four networks (Facebook, Instagram, Threads,
+  TikTok; TikTok approve-each-post, photo title 90 chars, no link). Automation: post when a car goes
+  live, new "price drop" post, take down on sold (FB/Threads only), one-tap repost of a SILENT car
+  (`pickSilentCar`, `src/utils/carCoach.js`), schedule the week. Sales: comments/DMs on posts become
+  pipeline leads (needs `leads.lead_source` CHECK + 'social'; AI drafts, a human sends), per-network
+  `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
+  at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
+  line before any inbox work.
+  **2026-11-13 later: the seller-facing Pro work was PARKED** when posting moved to the owner's console (SOCIAL-1,
+  CLAUDE.md "Drevo's OWN pages"): no seller posts any more, so nothing to gate. `supabase/parked/pro_tier.sql`
+  keeps the entitlement table; the lock screen, `proPlan.js` and the console Pro buttons were removed. The notes
+  below (price, margin, the shared-workspace danger) still apply the day per-seller connect is built.
+  **Decided 2026-11-13 (owner): Pro is paid upfront, NO free trial, no pay = no use.** Built: lock screen +
+  menu item always shown (`ProLockedSheet.jsx`), words + price in `src/utils/proPlan.js` (RM129/month
+  PROPOSED, USD about RM4.1, Zernio $6/account for accounts 3-10, $3 for 11-100, $1 after: 4 accounts per seller
+  is about RM74/seller at 3 sellers, RM57 at 10, RM34 at 50, RM25 at 100), entitlement table + RPCs queued in
+  `supabase/migrations/20261114a_pro_tier.sql` (NOT applied: after midnight, nobody live), console buttons
+  "Log RM129 Drevo Pro" / "Revoke" in `AccountsTab.jsx`. **Pro does NOT open `zernio-post`:** that function
+  posts to the OWNER's Zernio accounts, so a paying seller would post on the owner's Page. Wiring Pro into it
+  waits for per-seller connect (docs/DREVO_ACTION_PLAN.md Z1). Do not take money before the seller's own
+  accounts can really be connected (CPA 1999 s.10: selling a feature that does not exist yet).
 - **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
   inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
   gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked

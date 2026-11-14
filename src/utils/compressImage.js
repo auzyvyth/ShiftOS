@@ -76,7 +76,7 @@ function hasTransparency(ctx, width, height) {
 }
 
 // File extension for an encoded photo, for storage paths that name the file
-// themselves (CarFormFast, NewCarForm, the console's new-car photos).
+// themselves (NewCarForm, the console's new-car photos).
 export function photoExt(file) {
   const type = file?.type || '';
   if (type === 'image/webp') return 'webp';
@@ -94,7 +94,7 @@ export function asJpegFile(original, blob) {
   return new File([blob], `${base}.${photoExt({ type })}`, { type });
 }
 
-// THE preset for every car-photo upload (CarForm, CarFormFast, AddCarForm,
+// THE preset for every car-photo upload (CarForm, AddCarForm,
 // NewCarForm). Two of those uploaded the raw camera file, which is why 29
 // car-images objects were over 1MB (max 3.9MB): the image proxy has to pull
 // the whole original before it can resize it, and the onError fallback shows

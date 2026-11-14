@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../supabaseClient';
 import { toast } from 'sonner';
 import {
-  AlertTriangle, TrendingUp, Wrench, Megaphone, ShieldCheck,
-  Pencil, X, Plus, Trash2, UserCheck, Clock,
+  Wrench, Megaphone, ShieldCheck, ClipboardCheck,
+  X, Plus, Trash2, UserCheck, Clock,
 } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
-import { effectiveRecon } from '../../utils/reconCost';
+import { carPnl } from '../../utils/carPnl';
+import { premiumLight as PL } from '../../theme/tokens';
+import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
@@ -24,12 +26,13 @@ const ENC_OPTS = [
 ];
 const encCfg = (v) => ENC_OPTS.find((o) => o.v === v) || ENC_OPTS[2];
 
-const Section = ({ icon: Icon, title, color, right, children }) => (
-  <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 12, background: '#fff' }}>
+// premiumLight (2026-11-12): grey block, no border, quiet icon; the title says what it is.
+const Section = ({ icon: Icon, title, right, children }) => (
+  <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: 14, marginBottom: 12 }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <Icon style={{ width: 14, height: 14, color: color || '#6b7280' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</span>
+        <Icon style={{ width: 14, height: 14, color: PL.textMuted }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: PL.textSec, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</span>
       </div>
       {right}
     </div>
@@ -65,11 +68,6 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [addons, setAddons] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [costCfg, setCostCfg] = useState(null);
-  const [smCount, setSmCount] = useState(0);
-  const [views, setViews] = useState(0);
-  const [enquiries, setEnquiries] = useState(0);
-  const [saves, setSaves] = useState(0);
-  const [lastViewed, setLastViewed] = useState(null);
   const [creating, setCreating] = useState(false);
 
   // tool form state
@@ -79,6 +77,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '' });
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState(null);
+  const [apprDraft, setApprDraft] = useState(null);
 
   const close = () => setTool && setTool(null);
 
@@ -89,24 +88,15 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       .eq('listing_id', listing.id).eq('dealer_id', userId)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     setUnit(u || null);
-    const [rcfg, dp, pst, sl, av, enq, sv, lv] = await Promise.all([
+    // Buyer traffic (views, enquiries, saves) moved to the pop-up's Analytics button (2026-11-12).
+    const [rcfg, dp, pst] = await Promise.all([
       supabase.from('dealer_cost_settings').select('*').eq('dealer_id', userId).maybeSingle(),
       supabase.from('deal_products').select('sold_price, dealer_products(name, cost_price)').eq('listing_id', listing.id).eq('dealer_id', userId),
       supabase.from('post_sale_tasks').select('step_key, status, cost').eq('listing_id', listing.id).eq('dealer_id', userId),
-      supabase.from('salesman_listings').select('id', { count: 'exact', head: true }).eq('listing_id', listing.id),
-      supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('car_id', listing.id).eq('event_type', 'car_view'),
-      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('car_listing_id', listing.id).eq('dealer_id', userId),
-      supabase.rpc('count_listing_saves', { p_listing: listing.id }),
-      supabase.from('analytics_events').select('created_at').eq('car_id', listing.id).eq('event_type', 'car_view').order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     setCostCfg(rcfg.data || null);
     setAddons(dp.data || []);
     setTasks(pst.data || []);
-    setSmCount(sl.count || 0);
-    setViews(av.count || 0);
-    setEnquiries(enq.count || 0);
-    setSaves(sv.data || 0);
-    setLastViewed(lv.data?.created_at || null);
     if (u) {
       const [rj, ad] = await Promise.all([
         supabase.from('recon_jobs').select('*').eq('stock_unit_id', u.id).order('created_at', { ascending: false }),
@@ -125,6 +115,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     if (!unit) return;
     if (tool === 'prices') setCostForm({ purchase_price: String(unit.purchase_price || ''), recon_cost: String(unit.recon_cost || '') });
     if (tool === 'compliance') setCompForm({ puspakom_b5_date: unit.puspakom_b5_date || '', puspakom_b7_date: unit.puspakom_b7_date || '', encumbrance_status: unit.encumbrance_status || 'unknown' });
+    if (tool === 'appraisal') setApprDraft(unit.appraisal || null);
     if (tool === 'activity') {
       setActivity(null);
       // Merge the stock_unit's and the linked car_listing's events so the timeline
@@ -149,40 +140,31 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     toast.success('Cost record created');
   };
 
-  // ---- P&L ----
-  const pnl = (() => {
-    if (!unit) return null;
-    const purchasePrice = Number(unit.purchase_price) || 0;
-    const reconEst = Number(unit.recon_cost) || 0;
-    const reconActual = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    const reconCost = effectiveRecon(reconEst, recon); // one rule, see utils/reconCost.js
-    const servicesCost = Number(listing.included_services_cost) || 0;
-    const commission = Number(listing.commission_amount) || 0;
-    const handoverCost = tasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
-    const adSpend = ads.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-    const addonRevenue = addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0);
-    const addonCost = addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0);
-    const isSold = unit.status === 'sold' || listing.status === 'sold';
-    const revenue = Number(unit.sold_price) || Number(listing.selling_price) || Number(unit.asking_price) || 0;
-    const cc = costCfg || {};
-    let dailyHold = 0;
-    if (Number(cc.floor_plan_rate) > 0 && purchasePrice > 0) dailyHold = purchasePrice * (Number(cc.floor_plan_rate) / 100) / 365;
-    else if (Number(cc.monthly_overhead) > 0) dailyHold = Number(cc.monthly_overhead) / Math.max(1, Number(cc.avg_fleet_size) || 20) / 30;
-    let holdingDays = 0;
-    const start = unit.purchase_date || unit.created_at;
-    if (start) {
-      const end = isSold && unit.sold_date ? new Date(unit.sold_date) : new Date();
-      holdingDays = Math.max(0, Math.floor((end - new Date(start)) / 86400000));
-    }
-    const holdingCost = Math.round(dailyHold * holdingDays);
-    const frontGross = revenue - (purchasePrice + reconCost + servicesCost + commission + handoverCost + holdingCost + adSpend);
-    const backGross = addonRevenue - addonCost;
-    const netPnl = frontGross + backGross;
-    return { purchasePrice, reconCost, reconEst, reconActual, servicesCost, commission, handoverCost, adSpend, addonRevenue, addonCost, revenue, dailyHold, holdingDays, holdingCost, frontGross, backGross, netPnl, isSold };
-  })();
+  // ---- P&L: the ONE engine (src/utils/carPnl.js), counted from the day the car was added ----
+  const pnl = unit ? carPnl({
+    purchase: unit.purchase_price,
+    reconEstimate: unit.recon_cost,
+    reconJobs: recon,
+    servicesCost: listing.included_services_cost,
+    commission: listing.commission_amount,
+    // The handover checklist exists only after the win; until then transfer costs are estimated.
+    handoverCost: tasks.length ? tasks.filter((t) => t.status !== 'na').reduce((sum, t) => sum + (Number(t.cost) || 0), 0) : null,
+    adSpend: ads.reduce((sum, a) => sum + (Number(a.amount) || 0), 0),
+    addonRevenue: addons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0),
+    addonCost: addons.reduce((sum, a) => sum + (Number(a.dealer_products?.cost_price) || 0), 0),
+    asking: listing.selling_price || unit.asking_price,
+    soldPrice: unit.sold_price || listing.sold_price,
+    isSold: unit.status === 'sold' || listing.status === 'sold',
+    startDate: unit.purchase_date || unit.created_at || listing.created_at,
+    soldDate: unit.sold_date || listing.sold_date || listing.sold_at,
+    engineCc: listing.engine_cc || unit.engine_cc,
+    warrantyMonths: listing.warranty_months,
+    cfg: costCfg || {},
+  }) : null;
 
   // ---- tool actions ----
   const saveCost = async () => {
+    if (!(Number(costForm.purchase_price) > 0)) { toast.error('Enter the buy price. It cannot be empty or 0.'); return; }
     setSaving(true);
     const patch = { purchase_price: Number(costForm.purchase_price) || 0, recon_cost: Number(costForm.recon_cost) || 0 };
     const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);
@@ -204,6 +186,16 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     if (error) { toast.error('Failed to save'); return; }
     setUnit((p) => ({ ...p, ...patch }));
     toast.success('Compliance updated'); close();
+  };
+
+  const saveAppraisal = async () => {
+    setSaving(true);
+    const payload = apprDraft ? { ...apprDraft, appraised_at: new Date().toISOString(), appraised_by: userId } : null;
+    const { data: saved, error } = await supabase.from('stock_units').update({ appraisal: payload }).eq('id', unit.id).eq('dealer_id', userId).select('id');
+    setSaving(false);
+    if (error || !saved?.length) { toast.error('Could not save appraisal'); return; }
+    setUnit((p) => ({ ...p, appraisal: payload }));
+    toast.success('Appraisal saved'); close();
   };
 
   const addRecon = async () => {
@@ -254,51 +246,30 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const status = listing.status || 'available';
   const statusCfg = { available: { l: 'Available', c: '#16a34a' }, reserved: { l: 'Reserved', c: '#d97706' }, sold: { l: 'Sold', c: '#6b7280' }, unpublished: { l: 'Unpublished', c: '#6b7280' } }[status] || { l: status, c: '#6b7280' };
 
-  // verdict
+  // verdict: one plain sentence, from the engine's numbers only.
   const v = pnl;
-  const marginPct = v.revenue > 0 ? (v.netPnl / v.revenue) * 100 : 0;
-  const spread = v.revenue - v.purchasePrice;
-  const spreadPct = v.purchasePrice > 0 ? (spread / v.purchasePrice) * 100 : 0;
-  const loss = v.netPnl < 0;
-  const thin = !loss && marginPct < 5;
-  const reasons = [];
-  if (v.holdingCost > 0 && (v.holdingDays > 60 || v.holdingCost >= Math.abs(v.netPnl) * 0.4)) reasons.push(`${rm(v.holdingCost)} carrying cost from ${v.holdingDays} days on the floor`);
-  if (spread <= v.purchasePrice * 0.03) reasons.push(`only ${rm(spread)} markup over buy price (${spreadPct.toFixed(1)}%)`);
-  if (v.reconEst > 0 && v.reconActual > v.reconEst) reasons.push(`recon overran the estimate by ${rm(v.reconActual - v.reconEst)}`);
-  if (v.commission > 0 && v.commission >= Math.abs(v.netPnl) * 0.5) reasons.push(`${rm(v.commission)} sales commission`);
-  if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4) reasons.push(`${rm(v.adSpend)} ad spend`);
-  const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
-    : thin ? { bg: '#fffbeb', bd: '#fde68a', tx: '#b45309', ic: '#d97706' }
-      : { bg: '#f0fdf4', bd: '#bbf7d0', tx: '#15803d', ic: '#16a34a' };
-  const headline = loss ? `Losing ${rm(Math.abs(v.netPnl))} on this unit` : `${thin ? 'Slim' : 'Healthy'} ${rm(v.netPnl)} profit · ${marginPct.toFixed(1)}% margin`;
-  const body = reasons.length ? (loss ? 'Driven by ' : 'Watch: ') + reasons.join('; ') + '.'
-    : loss ? 'Costs have eaten through the asking price — reprice up or trim reconditioning.'
-      : `${rm(spread)} spread over buy price survives all costs.`;
+  const loss = v.net < 0;
+  const thin = !loss && v.margin != null && v.margin < 5;
+  const signed = (x) => `${x < 0 ? '− ' : '+'}${rm(Math.abs(x))}`;
+  const perDay = Math.round(v.perDay.total);
+  const verdict = v.isSold
+    ? `${loss ? 'Lost' : 'Made'} ${rm(Math.abs(v.net))} on this car after ${v.days ?? '?'} days.`
+    : loss
+      ? `Losing ${rm(Math.abs(v.net))} if it sells at the asking price today. Break-even is ${rm(v.breakeven)}.`
+      : v.daysUntilZero != null
+        ? `${rm(v.net)} profit if it sells today. Holding eats it in ${v.daysUntilZero} more day${v.daysUntilZero === 1 ? '' : 's'}.`
+        : `${rm(v.net)} profit if it sells at the asking price today.`;
 
   const reconTotal = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
   const adTotal = ads.reduce((s, a) => s + (Number(a.amount) || 0), 0);
   const enc = encCfg(unit.encumbrance_status || 'unknown');
 
-  const Row = ({ label, val, neg }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-      <span style={{ color: '#6b7280' }}>{label}</span>
-      <span style={{ color: neg ? '#f87171' : '#111827', fontWeight: neg ? 400 : 600 }}>{neg ? '− ' : ''}{rm(val)}</span>
-    </div>
-  );
   const Badge = ({ ok, label, color }) => (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: ok ? `${color}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${ok ? `${color}40` : 'rgba(100,116,139,0.18)'}`, color: ok ? color : '#94a3b8' }}>{label}</span>
   );
-  const Stat = ({ label, value, color }) => (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '9px 11px', background: '#fff' }}>
-      <p style={{ fontSize: 9.5, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0, fontWeight: 600 }}>{label}</p>
-      <p style={{ fontSize: 16, fontWeight: 700, color: color || '#111827', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
-    </div>
-  );
-  const repsSelling = listing.assigned_to ? 1 : smCount;
-
   return (
     <div>
-      {/* Identity + at-a-glance numbers */}
+      {/* Identity */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
         {listing.images?.[0]
           ? <img src={listing.images[0]} alt="" style={{ width: 92, height: 66, borderRadius: 10, objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
@@ -308,20 +279,74 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
           <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{[listing.year, listing.variant, listing.plate_number].filter(Boolean).join(' · ') || '—'}</p>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-        <Stat label="Total Gross" value={`${v.netPnl < 0 ? '− ' : ''}${rm(Math.abs(v.netPnl))}`} color={v.netPnl >= 0 ? '#16a34a' : '#dc2626'} />
-        <Stat label="Days on floor" value={`${v.holdingDays}d`} color={v.holdingDays > 60 ? '#dc2626' : '#111827'} />
-        <Stat label="Reps selling" value={String(repsSelling)} color={repsSelling > 0 ? '#2563eb' : '#9ca3af'} />
-        <Stat label="Asking" value={rm(listing.selling_price || unit.asking_price)} />
-        <Stat label="Ad spend" value={rm(adTotal)} color={adTotal > 0 ? '#db2777' : '#111827'} />
-        <Stat label="Car views" value={views.toLocaleString()} />
-        <Stat label="Enquiries" value={enquiries.toLocaleString()} color={enquiries > 0 ? '#2563eb' : '#111827'} />
-        <Stat label="Saves" value={saves.toLocaleString()} color={saves > 0 ? '#db2777' : '#111827'} />
-        <Stat label="Last viewed" value={ago(lastViewed)} />
+      {/* Live meter (owner, 2026-11-12): counted from the day the car was added, moves every day. */}
+      <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: 14, marginBottom: 12 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: PL.textMuted }}>
+          {v.isSold ? 'Final result' : 'If it sells at the asking price today'}
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 800, color: loss ? PL.accentText : PL.up, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{signed(v.net)}</div>
+        <div style={{ fontSize: 13, color: thin || loss ? PL.accentText : PL.textSec, marginTop: 4, lineHeight: 1.45 }}>{verdict}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginTop: 12 }}>
+          {[
+            [v.isSold ? 'Days held' : 'Days on lot', v.days == null ? '—' : `${v.days}d`],
+            [v.isSold ? 'Margin' : 'Costs / day', v.isSold ? (v.margin == null ? '—' : `${v.margin.toFixed(1)}%`) : (perDay > 0 ? rm(perDay) : '—')],
+            [v.isSold ? 'Total cost' : 'Break-even', rm(v.isSold ? v.costTotal : v.breakeven)],
+          ].map(([k, val]) => (
+            <div key={k} style={{ background: PL.card, borderRadius: 10, padding: '8px 10px', minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: PL.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PL.text, marginTop: 2, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        {!v.isSold && v.projections.length > 0 && perDay > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: PL.textMuted, marginBottom: 4 }}>If it is still here in</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+              {v.projections.map((p) => (
+                <div key={p.days} style={{ fontSize: 12.5, color: PL.textSec }}>
+                  <span style={{ color: PL.textMuted }}>{p.days} days </span>
+                  <span style={{ fontWeight: 700, color: p.net < 0 ? PL.accentText : PL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{signed(p.net)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {perDay === 0 && !v.isSold && (
+          <div style={{ fontSize: 12, color: PL.textMuted, marginTop: 10 }}>Holding cost is not counted yet. Set floor-plan rate or monthly overhead in Settings, Costs.</div>
+        )}
+        {!v.startKnown && <div style={{ fontSize: 12, color: PL.textMuted, marginTop: 6 }}>No start date on this car, so days and holding are not counted.</div>}
+      </div>
+
+      {/* Every cost so far, one list. Estimates say so; holding grows daily until the sale. */}
+      <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: '4px 14px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 13 }}>
+          <span style={{ color: PL.textSec }}>{v.isSold ? 'Sold for' : 'Asking price'}</span>
+          <span style={{ fontWeight: 700, color: PL.text, fontVariantNumeric: 'tabular-nums' }}>{rm(v.revenue)}</span>
+        </div>
+        {v.lines.filter((l) => l.val > 0 || l.key === 'purchase' || l.key === 'holding').map((l) => (
+          <div key={l.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderTop: `1px solid ${PL.line}`, fontSize: 13 }}>
+            <span style={{ color: PL.textSec }}>
+              {l.label}
+              {l.kind === 'estimate' && <span style={{ color: PL.textMuted }}> · estimate</span>}
+              {l.kind === 'accruing' && !v.isSold && perDay > 0 && <span style={{ color: PL.textMuted }}> · +{rm(perDay)}/day</span>}
+            </span>
+            <span style={{ color: PL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>− {rm(l.val)}</span>
+          </div>
+        ))}
+        {(v.back !== 0 || addons.length > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderTop: `1px solid ${PL.line}`, fontSize: 13 }}>
+            <span style={{ color: PL.textSec }}>Add-ons sold ({addons.length}), after their cost</span>
+            <span style={{ color: v.back >= 0 ? PL.up : PL.accentText, fontVariantNumeric: 'tabular-nums' }}>{signed(v.back)}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderTop: `1px solid ${PL.line}`, fontSize: 14, fontWeight: 800 }}>
+          <span style={{ color: PL.text }}>{v.isSold ? 'Profit' : 'Profit if sold today'}</span>
+          <span style={{ color: loss ? PL.accentText : PL.up, fontVariantNumeric: 'tabular-nums' }}>{signed(v.net)}</span>
+        </div>
       </div>
 
       {/* ---------- READ-ONLY VIEW ---------- */}
-      <Section icon={UserCheck} title="Status & Attribution" color="#2563eb">
+      <Section icon={UserCheck} title="Status & Attribution">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {onStatusChange ? (
             <select value={status} onChange={(e) => { const val = e.target.value; if (val === 'sold') { onMarkSold && onMarkSold(); } else { onStatusChange(val); } }} disabled={statusUpdating}
@@ -347,61 +372,9 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         </div>
       </Section>
 
-      <Section icon={loss ? AlertTriangle : TrendingUp} title="Profit & Loss" color={tone.ic}>
-        <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 8, padding: '11px 12px', marginBottom: 12 }}>
-          <p style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx, margin: 0 }}>{headline}</p>
-          <p style={{ fontSize: 12, color: tone.tx, opacity: 0.92, margin: '5px 0 0', lineHeight: 1.45 }}>{body}</p>
-          {!v.isSold && <p style={{ fontSize: 10.5, color: '#9ca3af', margin: '6px 0 0' }}>Projection based on the current asking price.</p>}
-        </div>
-        <Row label={v.isSold ? 'Sale price' : 'Asking price'} val={v.revenue} />
-        {v.purchasePrice > 0 && <Row label="Purchase price" val={v.purchasePrice} neg />}
-        {v.reconCost > 0 && <Row label="Recon cost" val={v.reconCost} neg />}
-        {v.servicesCost > 0 && <Row label="Included services" val={v.servicesCost} neg />}
-        {v.commission > 0 && <Row label="Commission" val={v.commission} neg />}
-        {v.handoverCost > 0 && <Row label="Handover processing" val={v.handoverCost} neg />}
-        {v.adSpend > 0 && <Row label="Advertising" val={v.adSpend} neg />}
-        {v.holdingCost > 0 && <Row label={`Holding (${v.holdingDays}d)`} val={v.holdingCost} neg />}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
-          <span style={{ color: '#374151' }}>Front gross</span>
-          <span style={{ color: v.frontGross >= 0 ? '#059669' : '#f87171' }}>{v.frontGross < 0 ? '− ' : ''}{rm(Math.abs(v.frontGross))}</span>
-        </div>
-        {(v.addonRevenue > 0 || v.addonCost > 0) && (
-          <>
-            <div style={{ marginTop: 8 }}>
-              {addons.length > 0 && (
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Sold with ({addons.length})</p>
-              )}
-              {addons.map((a, i) => (
-                <Row key={i} label={a.dealer_products?.name || 'Add-on'} val={Number(a.sold_price) || 0} />
-              ))}
-              {v.addonCost > 0 && <Row label="Add-on cost" val={v.addonCost} neg />}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, marginTop: 4, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
-              <span style={{ color: '#374151' }}>Back gross</span>
-              <span style={{ color: v.backGross >= 0 ? '#059669' : '#f87171' }}>{v.backGross < 0 ? '− ' : ''}{rm(Math.abs(v.backGross))}</span>
-            </div>
-          </>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Total Gross</span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: v.netPnl >= 0 ? '#16a34a' : '#dc2626' }}>{v.netPnl < 0 ? '− ' : ''}{rm(Math.abs(v.netPnl))}</span>
-        </div>
-      </Section>
-
-      <Section icon={Pencil} title="Cost Basis" color="#7c3aed">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          {[['Purchase', unit.purchase_price], ['Recon est.', unit.recon_cost], ['Asking', listing.selling_price || unit.asking_price]].map(([l, val]) => (
-            <div key={l}>
-              <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{l}</p>
-              <p style={{ fontSize: 13, color: '#111827', fontWeight: 600, margin: '2px 0 0' }}>{val ? rm(val) : '—'}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section icon={Wrench} title="Recon Jobs" color="#d97706" right={<span style={{ fontSize: 12, fontWeight: 700, color: '#d97706' }}>{rm(reconTotal)}</span>}>
+      <Section icon={Wrench} title="Recon Jobs" right={<span style={{ fontSize: 12, fontWeight: 700, color: PL.text }}>{rm(reconTotal)}</span>}>
         {recon.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No recon work logged.</p> : recon.map((j) => (
-          <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${PL.line}` }}>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 12, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</p>
               <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', textTransform: 'capitalize' }}>{(j.status || 'pending').replace('_', ' ')}{j.vendor ? ` · ${j.vendor}` : ''}</p>
@@ -411,9 +384,9 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         ))}
       </Section>
 
-      <Section icon={Megaphone} title="Advertising Spend" color="#db2777" right={<span style={{ fontSize: 12, fontWeight: 700, color: '#db2777' }}>{rm(adTotal)}</span>}>
+      <Section icon={Megaphone} title="Advertising Spend" right={<span style={{ fontSize: 12, fontWeight: 700, color: PL.text }}>{rm(adTotal)}</span>}>
         {ads.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No ad spend logged.</p> : ads.map((a) => (
-          <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${PL.line}` }}>
             <div>
               <p style={{ fontSize: 12, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}</p>
               {a.spent_at && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{fmtD(a.spent_at)}</p>}
@@ -423,12 +396,18 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         ))}
       </Section>
 
-      <Section icon={ShieldCheck} title="Compliance" color="#16a34a">
+      <Section icon={ShieldCheck} title="Compliance">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <Badge ok={!!unit.puspakom_b5_date} color="#16a34a" label={unit.puspakom_b5_date ? `B5 · ${fmtD(unit.puspakom_b5_date)}` : 'B5 not logged'} />
           <Badge ok={!!unit.puspakom_b7_date} color="#16a34a" label={unit.puspakom_b7_date ? `B7 · ${fmtD(unit.puspakom_b7_date)}` : 'B7 not logged'} />
           <Badge ok={(unit.encumbrance_status || 'unknown') !== 'unknown'} color={enc.c} label={enc.l} />
         </div>
+      </Section>
+
+      <Section icon={ClipboardCheck} title="Condition">
+        <p style={{ fontSize: 12, color: summarizeAppraisal(unit.appraisal) ? PL.text : '#9ca3af', margin: 0 }}>
+          {summarizeAppraisal(unit.appraisal) || 'No condition appraisal yet.'}
+        </p>
       </Section>
 
       {/* ---------- TOOL MODALS (opened from the side panel) ---------- */}
@@ -473,13 +452,24 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         </ToolModal>
       )}
 
+      {tool === 'appraisal' && (
+        <ToolModal title="Condition appraisal" onClose={close} footer={
+          <>
+            <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={saveAppraisal} disabled={saving} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#111827', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
+          </>
+        }>
+          <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
+        </ToolModal>
+      )}
+
       {tool === 'recon' && (
         <ToolModal title="Recon Jobs" onClose={close} footer={
           <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
         }>
           {recon.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No recon work logged yet.</p>}
           {recon.map((j) => (
-            <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+            <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PL.line}` }}>
               <p style={{ fontSize: 12.5, color: '#111827', margin: 0 }}>{j.title}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{j.cost ? rm(j.cost) : '—'}</span>
@@ -501,7 +491,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         }>
           {ads.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No ad spend logged yet.</p>}
           {ads.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PL.line}` }}>
               <p style={{ fontSize: 12.5, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}{a.spent_at ? ` · ${fmtD(a.spent_at)}` : ''}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
@@ -526,7 +516,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
           {activity === null ? <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>Loading…</p>
             : activity.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>No history recorded for this unit.</p>
               : activity.map((log, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '7px 0', borderBottom: '1px solid #f3f4f6' }}>
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '7px 0', borderBottom: `1px solid ${PL.line}` }}>
                   <Clock style={{ width: 12, height: 12, color: '#9ca3af', marginTop: 3, flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: 12.5, color: '#111827', margin: 0 }}>{log.summary || log.action}</p>

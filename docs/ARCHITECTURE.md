@@ -26,7 +26,7 @@ flowchart TB
     SF["Dealer storefront<br/>sub.xdrive.my"]
     LITE["Salesman Lite<br/>/salesman-lite"]
     PREM["Salesman Premium<br/>/salesman-premium"]
-    DASH["Dealer dashboard<br/>/dashboard + /manager /accountant /fi"]
+    DASH["Dealer dashboard<br/>/dashboard (owner, manager, admin) + /accountant /fi"]
     PLAT["Platform console<br/>/platform"]
     MKT["ShiftOS marketing<br/>/shiftos, /for-salesmen, /articles"]
     SX["Sensus AI landing<br/>/sensus-ai (resold product,<br/>demo requests)"]
@@ -203,7 +203,8 @@ flowchart TD
   RR -->|salesman with dealer| SM["/salesman<br/>(old panel; Premium linked mode<br/>/salesman-premium?linked=1 is opt-in)"]
   RR -->|solo, plan salesman_full| SP["/salesman-premium"]
   RR -->|solo, otherwise| SLt["/salesman-lite"]
-  RR -->|manager / accountant / fi_officer / admin| O["/manager /accountant /fi /admin"]
+  RR -->|manager / admin| D2["/dashboard, tabs the owner opens"]
+  RR -->|accountant / fi_officer| O["/accountant /fi"]
   RR -->|buyer| BA[back to the car, or /account]
   PA["/platform has its OWN sign-in<br/>(platformClient)"] --> PC[Platform console]
 ```
@@ -245,6 +246,98 @@ change them; each is applied on its own.
 | Why does Google show a generic page? | `api/og.js` |
 | Why does / or /showroom paint cars before the app loads? | `api/shell.js` + `src/utils/serverSeed.js` |
 | Loan / instalment numbers | `src/utils/financing.js` (the only formula) |
+| Why do two dealer screens show different numbers? | Section 8 below + `docs/DEALER_NUMBERS_AUDIT.md`; car profit = `src/utils/carPnl.js` |
 | What to fix before a loan goes to a bank (Premium) | `loan_checks` (one row per lead), `src/utils/loanReadiness.js`, `src/components/loans/LoanCheck.jsx` |
 | What a buyer can see about a seller | `get_salesman_by_slug`, `sellerWaUrl` (`src/utils/sellerWhatsApp.js`) |
 | Plans and caps | `plan_config`, `enforce_listing_cap`, `src/utils/planConfig.js` |
+
+---
+
+## 8. Dealer numbers: every number flows up into Overview
+
+Owner, 2026-11-12: "the numbers in each tab need to be totalled in Overview, like a commit tree,
+every source must go to one". The rule: **a number is computed ONCE, at the lowest level (one car,
+one lead), by one engine. Every tab shows those per-car numbers or a sum of them. Overview is the
+sum of everything.** No tab and no SQL function may recompute a number with its own formula.
+What drifts today, and the fix for each: `docs/DEALER_NUMBERS_AUDIT.md` (#1-#8 below).
+
+```mermaid
+flowchart LR
+  subgraph SRC["Sources (tables)"]
+    SU["stock_units<br/>buy price, purchase date, recon est."]
+    RJ["recon_jobs"]
+    AD["ad_spend"]
+    CL["car_listings<br/>asking, status, sold_at, sold_price,<br/>commission, services cost"]
+    PST["post_sale_tasks<br/>transfer step costs"]
+    DP["deal_products<br/>add-ons sold"]
+    DCS["dealer_cost_settings<br/>floor plan, overhead, runner,<br/>admin, warranty %"]
+    AE["analytics_events<br/>views, WA / call / booking taps"]
+    LD["leads + lead_activities"]
+  end
+
+  subgraph ENG["Engines (one formula each)"]
+    PNL["carPnl()<br/>src/utils/carPnl.js<br/>profit, cost/day, break-even"]
+    DAYS["daysHeld()<br/>(in carPnl.js)<br/>days on lot"]
+    TRAF["get_dealer_car_analytics(p_days)<br/>views + taps per car"]
+    SOLD["won trigger<br/>auto_create_customer_on_won<br/>sold = car_listings.status + sold_at"]
+    TEAM["_team_health()<br/>per salesman"]
+  end
+
+  SU --> PNL
+  RJ --> PNL
+  AD --> PNL
+  CL --> PNL
+  PST --> PNL
+  DP --> PNL
+  DCS --> PNL
+  SU --> DAYS
+  AE --> TRAF
+  LD --> SOLD
+  SOLD --> CL
+  LD --> TEAM
+
+  subgraph CAR["One car (the leaf)"]
+    POP["Car pop-up<br/>Details | Owner | Analytics"]
+    ROW["Inventory row<br/>5 buyer numbers, age badge"]
+  end
+
+  PNL --> POP
+  DAYS --> POP
+  TRAF --> POP
+  TRAF --> ROW
+  DAYS --> ROW
+
+  subgraph TABS["Tabs (sums of the leaves)"]
+    INV["Inventory / Stock strip<br/>asking value, money tied up,<br/>avg days, over 60, profit this month"]
+    REV["Reports > Revenue<br/>revenue, gross, per-car drill-down"]
+    PERF["Reports > Performance<br/>per salesman, traffic"]
+    SOLDT["Sold<br/>handover, customers"]
+  end
+
+  POP --> INV
+  ROW --> INV
+  PNL --> REV
+  SOLD --> REV
+  TEAM --> PERF
+  TRAF --> PERF
+  SOLD --> SOLDT
+
+  OV["OVERVIEW<br/>gross this month = sum of carPnl of cars sold this month<br/>units sold, revenue, money tied up,<br/>avg days, ageing count, views 30d, pipeline"]
+  INV --> OV
+  REV --> OV
+  PERF --> OV
+  SOLDT --> OV
+```
+
+| Number | ONE source | Shown in | Today |
+|---|---|---|---|
+| Profit of one car | `carPnl()` | Car pop-up Owner, Stock row + P&L, Reports drill-down | OK (2026-11-12) |
+| Gross this month | sum of `carPnl()` over cars sold this month | Overview, Reports > Revenue, Stock strip | DRIFT #1: `gm_pnl_snapshot` sums `stock_units.gross_profit` (no holding, ads, transfer, admin, warranty) |
+| Profit when buy price missing | none: say "Add the buy price", leave the car out of totals and say how many | everywhere | DRIFT #2: 100 of 142 cars show a fake profit |
+| Days on lot | `daysHeld()`: purchase date, else stock created, else listing created | row badge, Stock, Overview, Performance, AI Manager | DRIFT #3: four clocks; stored `days_in_stock` stale for 125 cars |
+| Ageing | one pair of thresholds (watch 30, ageing 60) | every badge and count | DRIFT #4: 30 / 45 / 60 |
+| Sold, units, revenue | `car_listings.status='sold'` + `sold_at` + `sold_price` (won trigger) | Overview, Revenue, Inventory Sold pill | DRIFT #5: Overview reads `stock_units` (32 vs 34) |
+| Views, taps | `get_dealer_car_analytics(p_days)`, default 30 days, label the window | row, pop-up, Performance, Overview | DRIFT #6: all-time in Performance / Reports > Listings |
+| Asking value / money tied up | sum of asking / sum of buy + recon, unsold cars | Stock strip, Overview | DRIFT #7: wording looks alike |
+| Salesman health | `_team_health()` | Performance, daily push | OK |
+

@@ -1,5 +1,5 @@
 // What a used/recon listing needs before it can be submitted. One copy, read
-// by CarForm and CarFormFast, so the two add-car forms cannot drift.
+// by CarForm (and AddCarForm where it applies).
 
 export const MIN_LISTING_PHOTOS = 5;
 

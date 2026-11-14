@@ -192,8 +192,11 @@ export default function ListingsTab({
  sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
- setMyListings((p) => [car, ...p]);
  setShowAddForm(false);
+ // A salesman under a dealer drafts the DEALER's car (DRAFTS-1): it waits for the owner and
+ // is not theirs, so it does not join their own list.
+ if (profile?.dealer_id) { toast.success(t("salesmanPremium.lst.sentForApproval")); return; }
+ setMyListings((p) => [car, ...p]);
  toast.success(t("salesmanPremium.lst.published"));
  }}
  />
@@ -385,7 +388,7 @@ export default function ListingsTab({
  </div>
 
  {/* Price + margin on one line */}
- <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+ <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 6, position: "relative" }}>
  <span style={{ fontSize: 18, fontWeight: 700, color: isSold ? P.textSec : P.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{price}</span>
  {margin != null && (
  <span style={{ fontSize: 12, color: P.textMuted }}>

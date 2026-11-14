@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
+import OwnerMoney from './overview/OwnerMoney';
+import { useCarMoney } from '../hooks/useCarMoney';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
@@ -7,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox, Package } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
@@ -136,12 +139,6 @@ function SectionHeader({ title, sub, live }) {
 // and revalidate behind it. This tab is the first thing an owner sees; it used
 // to show a skeleton until all five queries returned, which on a slow database
 // moment was the whole 15+ second wait.
-async function fetchPnl(dealerId) {
-  const { data, error } = await supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId });
-  if (error) throw error;
-  return data;
-}
-
 async function fetchOverview(dealerId) {
   const now = Date.now();
   const today = malaysiaDayBounds();
@@ -183,7 +180,10 @@ async function fetchOverview(dealerId) {
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
-  if (l.error) throw l.error;
+  // Same for cars, today's appointments, the team and the activity feed: any of them
+  // failing used to paint "0 listings", "0 appointments" or an empty team over good numbers.
+  const failed = [l, cl, apt, sm, acts].find((r) => r.error);
+  if (failed) throw failed.error;
   const allLeads    = l.data    || [];
   const allListings = cl.data   || [];
   const aptsToday   = apt.data  || [];
@@ -224,11 +224,10 @@ async function fetchOverview(dealerId) {
     sourceCounts[src] = (sourceCounts[src] || 0) + 1;
   }
 
+  // Days on the lot are NOT counted here: they come from carPnl's one clock (useCarMoney),
+  // the same as the money block. This used the listing date with a 30-day limit while the
+  // money block used the stock date with 60 days, on the same screen.
   const available = allListings.filter(c => c.status === 'available');
-  const avgDays   = available.length
-    ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length)
-    : 0;
-  const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
 
   // Cold leads = active pipeline with no touch in 5+ days. The single most
   // actionable morning signal: real buyers going quiet.
@@ -270,7 +269,7 @@ async function fetchOverview(dealerId) {
   return {
     activeLeads: activeLeads.length,
     activeListings: available.length,
-    stageCounts, sourceCounts, teamRows, avgDays, stale,
+    stageCounts, sourceCounts, teamRows,
     coldLeadsCount, coldOldestDays,
     aptsToday: aptsToday.length, recentActivities,
     // Prices waiting for the dealer's OK (batch 6a). A failed read (table not on the
@@ -288,19 +287,31 @@ async function fetchOverview(dealerId) {
 
 const EMPTY_SNAPSHOT = {
   activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
-  teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
+  teamRows: [], coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
   aptsToday: 0, recentActivities: [],
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function OverviewTab({ dealerId, onNavigate }) {
+export default function OverviewTab({ dealerId, onNavigate, role, can }) {
+  // Owner and manager see the SAME numbers in a different order (src/config/dealerRoles.js).
+  // An owner can preview the manager's view; a manager cannot switch to the owner's.
+  const realView = overviewRoleFor(role);
+  const [preview, setPreview] = useState(null);
+  const viewKey = realView === 'owner' && preview ? preview : realView;
+  const view = OVERVIEW_ROLES[viewKey];
+  const previewing = viewKey !== realView;
+  // A previewed manager view hides what a manager would not see by default (their switches).
+  const allowed = (key) => {
+    const need = NEEDS[key];
+    if (!need) return true;
+    if (previewing) return true; // manager defaults have view_cost / view_gross ON
+    return can ? can(need) : true;
+  };
   // Keys end in the dealer id (per-account, and purged on logout via the
   // `cf:v1:` prefix in panelCache). ttlMs 0 = always refetch behind the paint.
-  const { data: pnl } = useCachedFetch(
-    dealerId ? `overview_pnl:${dealerId}` : null,
-    () => fetchPnl(dealerId),
-    { enabled: !!dealerId, ttlMs: 0 },
-  );
+  // Money figures come from the same sum of carPnl() as the money section (useCarMoney),
+  // never the RPC gm_pnl_snapshot: the two used to disagree on "gross this month".
+  const { money } = useCarMoney(dealerId);
   const { data: cachedSnapshot, loading, refresh } = useCachedFetch(
     dealerId ? `overview:${dealerId}` : null,
     () => fetchOverview(dealerId),
@@ -324,10 +335,17 @@ export default function OverviewTab({ dealerId, onNavigate }) {
   }, [dealerId]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const mtd  = pnl?.mtd  || {};
-  const lmtd = pnl?.lmtd || {};
-  const unitTrend = delta(Number(mtd.units || 0), Number(lmtd.units || 0));
-  const gpTrend   = delta(Number(mtd.gross_profit || 0), Number(lmtd.gross_profit || 0));
+  const mtd  = money?.month || null;
+  const lmtd = money?.prevToDate || null;
+  const unitTrend = mtd && lmtd ? delta(mtd.units, lmtd.units) : null;
+  const gpTrend   = mtd && lmtd ? delta(mtd.gross, lmtd.gross) : null;
+  // "N left out" when a sold car has no buy price: its profit is not invented.
+  const grossSub = !mtd ? 'counting...'
+    : mtd.leftOut > 0 ? `${mtd.leftOut} sold car${mtd.leftOut === 1 ? '' : 's'} left out, no buy price`
+    : mtd.margin != null ? `${mtd.margin.toFixed(1)}% margin` : 'no sales yet';
+  const tiedSub = money?.stock.noCost > 0
+    ? `${money.stock.noCost} car${money.stock.noCost === 1 ? '' : 's'} left out, no buy price`
+    : 'buy + recon, cars in stock';
 
   const pipelineData = snapshot
     ? ACTIVE_STAGES.map(s => ({ stage: stageLabel(s), count: snapshot.stageCounts[s] || 0, color: STAGE_CONFIG[s].headerBorder })).filter(d => d.count > 0)
@@ -340,8 +358,10 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         .slice(0, 6)
     : [];
 
-  // gm_pnl_snapshot returns sparkline rows as { d: <date>, rev: <revenue> }
-  const sparkData = (pnl?.sparkline || []).map(d => ({ day: d.d?.slice(5), rev: Number(d.rev || 0) }));
+  // Last 30 days of sales revenue, Malaysia days (ownerMoney().daily). Hidden when nothing sold.
+  const sparkData = (money?.daily || []).some(d => d.revenue > 0)
+    ? money.daily.map(d => ({ day: d.day.slice(5), rev: d.revenue }))
+    : [];
 
   if (loading) {
     return (
@@ -373,23 +393,9 @@ export default function OverviewTab({ dealerId, onNavigate }) {
     .sort((a, b) => (a.isActive !== b.isActive ? (a.isActive ? -1 : 1) : b.active - a.active));
   const onlineCount = teamRows.filter(r => r.isActive).length;
 
-  return (
-    <div style={{ fontFamily: "system-ui, sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
-          .ov-rev-stock  { grid-template-columns: 1fr !important; }
-          .ov-pipe-src   { grid-template-columns: 1fr !important; }
-          .ov-team-conv  { grid-template-columns: 1fr !important; }
-          .ov-attn-grid  { grid-template-columns: 1fr !important; }
-        }
-        @media (max-width: 480px) {
-          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
-          .ov-conv-table { font-size: 11px !important; }
-          .ov-conv-col-hide { display: none !important; }
-        }
-      `}</style>
-
+  const SECTIONS = {
+    finance: <OwnerMoney dealerId={dealerId} onNavigate={onNavigate} />,
+    alerts: (<>
       {/* ── Needs Attention strip ── */}
       {(() => {
         const alerts = [];
@@ -432,17 +438,30 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
           detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
         });
-        if (snapshot.stale > 0) alerts.push({
+        // Cars whose buy price is missing (imports, older cars, a salesman's car): their profit is
+        // left out of every sum until someone with cost access fills it in. Named here, the one
+        // "needs you" list, so the gap gets closed instead of quietly shrinking the numbers.
+        const noCost = (money?.stock.noCost || 0) + (money?.month.leftOut || 0);
+        if (noCost > 0) alerts.push({
+          key: 'no_cost', urgent: false, Icon: Package,
+          label: `${noCost} without buy price`,
+          detail: 'profit left out · fill it in', go: 'stock',
+        });
+        const over60 = money?.stock.over60 || 0;
+        if (over60 > 0) alerts.push({
           key: 'stale', urgent: false, Icon: Clock,
-          label: `${snapshot.stale} aged unit${snapshot.stale === 1 ? '' : 's'}`,
-          detail: 'on lot 30d+ · review price', go: 'listings',
+          label: `${over60} aged unit${over60 === 1 ? '' : 's'}`,
+          detail: 'on lot 60d+ · review price', go: 'listings',
         });
         if (snapshot.aptsToday > 0) alerts.push({
           key: 'appt', urgent: false, Icon: Calendar,
           label: `${snapshot.aptsToday} appointment${snapshot.aptsToday === 1 ? '' : 's'} today`,
           detail: 'check the bookings board', go: 'crm', query: { sub: 'bookings' },
         });
-        if (alerts.length === 0) return (
+        const shown = alerts
+          .filter((x) => view.alerts.includes(x.key) && allowed(x.key))
+          .sort((x, y) => view.alerts.indexOf(x.key) - view.alerts.indexOf(y.key));
+        if (shown.length === 0) return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 18px' }}>
             <CheckCircle2 style={{ width: 16, height: 16, color: PL.up }} />
             <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. Nothing needs you right now.</p>
@@ -450,7 +469,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         );
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-            {alerts.map(a => (
+            {shown.map(a => (
               <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go, a.query)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
@@ -467,19 +486,30 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         );
       })()}
 
+    </>),
+    kpis: (<>
       {/* ── KPI Row ── */}
       <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-        <KpiCard label="Open leads"       value={snapshot.activeLeads}    sub="active pipeline" />
-        <KpiCard label="Active listings"  value={snapshot.activeListings} sub={snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days'} />
-        <KpiCard label="Sold this month"  value={mtd.units ?? 0}          sub="vs last month" trend={unitTrend} />
-        <KpiCard label="Gross this month" value={fmt(mtd.gross_profit)}   sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'no sales yet'} trend={gpTrend} />
+        {view.kpis.filter(allowed).map((id) => {
+          const K = {
+            open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline' },
+            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: !money ? 'counting...' : money.stock.over60 ? `${money.stock.over60} on lot 60d+` : 'none over 60 days' },
+            sold_month:      { label: 'Sold this month',  value: mtd ? mtd.units : '-', sub: 'vs this day last month', trend: unitTrend },
+            gross_month:     { label: 'Gross this month', value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend },
+            appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
+            money_tied:      { label: 'Money tied up',    value: money ? fmt(money.stock.atCost) : '-', sub: tiedSub },
+          }[id];
+          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} /> : null;
+        })}
       </div>
 
+    </>),
+    money: (<>
       {/* ── Revenue + Stock ── */}
       <div className="ov-rev-stock" style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
         {sparkData.length > 0 && (
           <Panel>
-            <SectionHeader title="Revenue — Last 30 Days" sub={`MTD ${fmt(mtd.revenue)}  ·  prev ${fmt(lmtd.revenue)}`} />
+            <SectionHeader title="Revenue, last 30 days" sub={`This month ${fmt(mtd?.revenue)}  ·  same days last month ${fmt(lmtd?.revenue)}`} />
             <ResponsiveContainer width="100%" height={130}>
               <LineChart data={sparkData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={PL.raised} />
@@ -495,10 +525,10 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           <SectionHeader title="Stock" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
-              { label: 'Average days on lot', value: `${snapshot.avgDays}d` },
-              { label: 'On lot 30 days+',     value: snapshot.stale, warn: snapshot.stale > 0 },
-              { label: 'Appointments today',  value: snapshot.aptsToday },
-              { label: 'Capital tied up',     value: fmt(pnl?.inventory?.capital_tied) },
+              // Appointments are a tile and an alert already; days come from the one clock.
+              { label: 'Average days on lot', value: money?.stock.avgDays == null ? '-' : `${money.stock.avgDays}d` },
+              { label: 'On lot 60 days+',     value: money ? money.stock.over60 : '-', warn: (money?.stock.over60 || 0) > 0 },
+              { label: 'Capital tied up',     value: money ? fmt(money.stock.atCost) : '-' },
             ].map(({ label, value, warn }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: PL.raised, borderRadius: PL.radius.row, padding: '10px 12px' }}>
                 <span style={{ fontSize: 12, color: PL.textSec }}>{label}</span>
@@ -509,6 +539,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         </Panel>
       </div>
 
+    </>),
+    pipeline: (<>
       {/* ── Pipeline + Sources ── */}
       <div className="ov-pipe-src" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <Panel>
@@ -563,6 +595,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         </Panel>
       </div>
 
+    </>),
+    team: (<>
       {/* ── Team on Duty + Recent Conversations ── */}
       <div className="ov-team-conv" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14 }}>
 
@@ -655,6 +689,43 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           )}
         </Panel>
       </div>
+    </>),
+  };
+
+  return (
+    <div style={{ fontFamily: "system-ui, sans-serif", color: '#111827', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-rev-stock  { grid-template-columns: 1fr !important; }
+          .ov-pipe-src   { grid-template-columns: 1fr !important; }
+          .ov-team-conv  { grid-template-columns: 1fr !important; }
+          .ov-attn-grid  { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
+          .ov-conv-table { font-size: 11px !important; }
+          .ov-conv-col-hide { display: none !important; }
+        }
+      `}</style>
+
+      {/* Owner only: preview what a manager sees (same numbers, their order). */}
+      {realView === 'owner' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+          <span style={{ fontSize: 12, color: PL.textMuted }}>View as</span>
+          <div role="group" aria-label="View as" style={{ display: 'inline-flex', background: PL.raised, borderRadius: PL.radius.pill, padding: 3 }}>
+            {['owner', 'manager'].map((r) => (
+              <button key={r} type="button" aria-pressed={viewKey === r} onClick={() => setPreview(r === 'owner' ? null : r)}
+                style={{ height: 30, padding: '0 14px', borderRadius: PL.radius.pill, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                  background: viewKey === r ? PL.card : 'transparent', color: viewKey === r ? PL.text : PL.textMuted, boxShadow: viewKey === r ? '0 1px 3px rgba(17,24,39,0.12)' : 'none' }}>
+                {OVERVIEW_ROLES[r].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view.sections.filter(allowed).map((sec) => <Fragment key={sec}>{SECTIONS[sec]}</Fragment>)}
     </div>
   );
 }

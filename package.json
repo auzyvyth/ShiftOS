@@ -18,6 +18,8 @@
     "test:postauth": "node tests/postAuthRoute.test.mjs",
     "test:site": "node tests/site.test.mjs",
     "test:postcaption": "node tests/postCaption.test.mjs",
+    "test:carpnl": "node tests/carPnl.test.mjs",
+    "test:ownermoney": "node tests/ownerMoney.test.mjs",
     "test:chassis": "node tests/chassisDecode.test.mjs",
     "test:modelkey": "node tests/modelKey.test.mjs",
     "test:chassisspec": "node tests/chassisSpec.test.mjs",
@@ -37,7 +39,7 @@
     "test:analytics": "node tests/analyticsEvent.test.mjs",
     "articles:build": "node tools/generate-article-pages.mjs",
     "articles:check": "node tools/generate-article-pages.mjs --check",
-    "test": "npm run test:tour && npm run test:prospects && npm run test:coach && npm run test:carbuyers && npm run test:phone && npm run test:aftercare && npm run test:analytics && npm run test:accountstate && npm run test:agentseo && npm run test:agenttrust && npm run test:live && npm run test:livechannel && npm run test:loancheck && npm run test:pagebudget && npm run test:revisit && npm run test:realtimeidle && npm run test:poster && npm run test:backdrops && npm run test:scope && npm run test:coverfocus && npm run test:pageaccent && npm run test:agentabout && npm run test:newcarcaption && npm run test:financing && npm run test:hubs && npm run test:panelcache && npm run test:followup && npm run test:perf && npm run test:plan && npm run test:postauth && npm run test:site && npm run test:chassis && npm run test:modelkey && npm run test:chassisspec && npm run test:specs && npm run specs:check && npm run articles:check",
+    "test": "npm run test:tour && npm run test:carpnl && npm run test:ownermoney && npm run test:dealercan && npm run test:prospects && npm run test:coach && npm run test:carbuyers && npm run test:phone && npm run test:aftercare && npm run test:analytics && npm run test:accountstate && npm run test:agentseo && npm run test:agenttrust && npm run test:live && npm run test:livechannel && npm run test:loancheck && npm run test:pagebudget && npm run test:revisit && npm run test:realtimeidle && npm run test:poster && npm run test:backdrops && npm run test:scope && npm run test:coverfocus && npm run test:pageaccent && npm run test:agentabout && npm run test:newcarcaption && npm run test:financing && npm run test:hubs && npm run test:panelcache && npm run test:followup && npm run test:perf && npm run test:plan && npm run test:postauth && npm run test:site && npm run test:chassis && npm run test:modelkey && npm run test:chassisspec && npm run test:specs && npm run specs:check && npm run articles:check",
     "specs:build": "node tools/specs/generate.mjs",
     "specs:check": "node tools/specs/generate.mjs --check",
     "test:specs": "node tests/specsPipeline.test.mjs",
@@ -53,7 +55,8 @@
     "test:pageaccent": "node tests/pageAccent.test.mjs",
     "test:agentabout": "node tests/agentAbout.test.mjs",
     "test:carbuyers": "node tests/carBuyers.test.mjs",
-    "test:prospects": "node tests/prospectImport.test.mjs"
+    "test:prospects": "node tests/prospectImport.test.mjs",
+    "test:dealercan": "node tests/dealerCan.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

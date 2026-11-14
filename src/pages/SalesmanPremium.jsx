@@ -501,12 +501,8 @@ export default function SalesmanPremium() {
  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
- // LINKED-PREMIUM: a salesman under a dealer does not list cars of their own; every
- // "Add car" entry point opens the dealer's cars to feature instead (as the old panel did).
- useEffect(() => {
- if (isLinked && showAddForm) { setShowAddForm(false); switchTab("inventory"); }
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [isLinked, showAddForm]);
+ // LINKED-PREMIUM: "Add car" for a salesman under a dealer DRAFTS a dealer car (DRAFTS-1, owner
+ // 2026-11-14): no buy price, it waits for the owner (or a manager with "Approve listings").
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);

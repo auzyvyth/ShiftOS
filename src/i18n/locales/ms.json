@@ -1921,6 +1921,7 @@
       "newTitle": "Listing baru",
       "newSub": "Borang penuh: semua spek, gambar dan harga",
       "published": "Listing dah publish!",
+      "sentForApproval": "Dah hantar ke dealer. Kereta live bila dia approve.",
       "liveBarPre": "Listing anda",
       "liveBarStrong": "live di Drevo",
       "liveBarPost": "dan buyer boleh cari anda di {{url}}",

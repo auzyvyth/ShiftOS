@@ -909,7 +909,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // Editing a car on the dealer side: its cost is on the stock record, which a
   // linked salesman cannot read, so "Your cost" may be blank and is not required.
   // Solo sellers (salesman, no dealer) still have to give theirs.
-  const costOptional = !!listing && !(profile?.role === "salesman" && !profile?.dealer_id);
+  // A salesman under a dealer never sees or sets a buy price (DRAFTS-1: the owner fills it in
+  // before approving; the database wipes any cost they send).
+  const costHidden = profile?.role === "salesman" && !!profile?.dealer_id;
+  const costOptional = costHidden || (!!listing && !(profile?.role === "salesman" && !profile?.dealer_id));
   const geranSatisfied = isNewCar || !!docInSlot("registration_card") || !!form.geranReason;
   // 5 photos for a new listing; an edit of an older car keeps its own count.
   const minPhotos = minPhotosFor(listing ? (Array.isArray(listing.images) ? listing.images.filter(Boolean).length : 0) : null);
@@ -1472,6 +1475,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const createDraftIfNeeded = async (firstUrl) => {
     if (draftId || creatingDraftRef.current) return;
     if (!dealerId) return;
+    // A salesman under a dealer may only INSERT a finished car as a draft for the owner to approve
+    // (DRAFTS-1); a half-filled placeholder row would land in the owner's queue. The final save inserts.
+    if (isSalesman && profile?.dealer_id) return;
     creatingDraftRef.current = true;
     try {
       const { data, error } = await supabase
@@ -3210,7 +3216,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <p className="text-xs text-gray-500">What buyers see on the listing.</p>
         </div>
       ) },
-    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: !isNewCar && !costOptional, answered: !!form.basePrice, focus: "always",
+    { key: "cost", title: "What did it cost you?", skip: !!intakeDone || costHidden, required: !isNewCar && !costOptional, answered: !!form.basePrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
@@ -3254,7 +3260,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
   ], [
     { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
-    { key: "cost", label: "Your cost", value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" },
+    ...(costHidden ? [] : [{ key: "cost", label: "Your cost", value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" }]),
     { key: "payment", label: "Payment", value: form.payment_type === "cash" ? "Cash" : "Loan" },
     { key: "encumbrance", label: "Loan on car", value: { clear: "Clear", under_hp: "Under hire-purchase", unknown: "Not sure" }[form.encumbranceStatus] || "" },
     { key: "commission", label: "Commission", value: form.commissionAmount ? `RM ${fmtNum(form.commissionAmount)}` : "" },
@@ -3870,7 +3876,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
 
           {!intakeDone && (
           <>
-          <Field
+          {!costHidden && <Field
             label="Base Price (RM)"
             required={!isNewCar}
             hint={isNewCar ? "Optional for a new car. Leave blank if you don't buy the car yourself." : "Your cost / purchase price"}
@@ -3891,7 +3897,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className={`${inputCls} pl-12`}
               />
             </div>
-          </Field>
+          </Field>}
           <Field
             label="Selling Price (RM)"
             required
@@ -3922,7 +3928,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               PriceEditModal (DashboardPage.jsx:2654) when a dealer actually
               drops a live listing's price, so a crossed-out price on a card is
               now always a real one. */}
-          {form.basePrice && form.sellingPrice && (
+          {!costHidden && form.basePrice && form.sellingPrice && (
             <div
               className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
             >
@@ -4044,7 +4050,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <ReviewItem label="Payment" value={(form.payment_type || "loan").charAt(0).toUpperCase() + (form.payment_type || "loan").slice(1)} />
                 <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
                 <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
-                <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
+                {!costHidden && <ReviewItem label="Base / cost" value={rm(form.basePrice)} />}
                 {hideCommission ? (
                   <ReviewItem
                     label="Your margin"

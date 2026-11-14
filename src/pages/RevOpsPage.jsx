@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useCarMoney } from "../hooks/useCarMoney";
 import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -17,11 +18,6 @@ const fmtRM = (n) =>
 
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
-
-const startOfMonth = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-};
 
 const thirtyDaysAgo = () => new Date(Date.now() - 30 * 86400000).toISOString();
 
@@ -175,7 +171,19 @@ export default function RevOpsPage({ userId }) {
   // Every section persists its last result, so the tab paints the numbers it
   // showed last time; "loading" only means "nothing to show yet" (usePersistentState).
   const ck = (name) => (userId ? `revops_${name}:${userId}` : null);
-  const [revData, setRevData] = usePersistentState(ck('rev'), null);
+  const [revCounts, setRevData] = usePersistentState(ck('rev'), null);
+  // ONE "gross this month": the same carPnl() sum Overview shows (useCarMoney).
+  const { money } = useCarMoney(userId);
+  const mo = money?.month;
+  const revData = revCounts && mo ? {
+    ...revCounts,
+    revMTD: mo.revenue,
+    gpMTD: mo.gross,
+    carsGross: mo.carsGross,
+    costedRevenue: mo.costedRevenue,
+    leftOut: mo.leftOut,
+    unitsSoldMTD: mo.units,
+  } : null;
   const [revFetching, setRevLoading] = useState(true);
   const revLoading = revFetching && !revData;
 
@@ -196,21 +204,17 @@ export default function RevOpsPage({ userId }) {
     const fetch = async () => {
       setRevLoading(true);
 
-      // H6: pull MTD revenue/GP/units from gm_pnl_snapshot (the same RPC
-      // Overview/Oversight use, backed by stock_units) instead of running a
-      // second, independently-computed query against car_listings — the two
-      // tables are synced via triggers but can drift, which previously made
-      // RevOps and Overview disagree on the same month's numbers.
-      // Three independent reads, run together (they were serial: three round
-      // trips to Sydney back to back before the first tile could fill).
-      const [{ data: pnl, error: pnlErr }, { count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
-        supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId }),
-        // Active listings for stock turn
+      // Revenue / gross / units this month come from useCarMoney (the same sum of carPnl()
+      // as Overview), not here. These two counts are all this read still does.
+      const [{ count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
+        // Cars for sale, for stock turn
         supabase
           .from("car_listings")
           .select("id", { count: "exact", head: true })
           .eq("dealer_id", userId)
-          .neq("status", "sold"),
+          // Cars for sale = 'available', the same rule as Overview's "Active listings"
+          // (it was "not sold", which counted archived, private and unpublished cars).
+          .eq("status", "available"),
         // Active leads (pipeline value proxy) — exclude every terminal stage variant
         supabase
           .from("leads")
@@ -218,16 +222,12 @@ export default function RevOpsPage({ userId }) {
           .eq("dealer_id", userId)
           .not("stage", "in", "(won,closed_won,lost,closed_lost)"),
       ]);
-      if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
       // A failed read keeps the numbers already on screen (saved copy); writing
       // zeros here showed "RM 0 this month" whenever the database was slow.
-      if (pnlErr || stockErr || leadsCountErr || !pnl) { setRevLoading(false); return; }
+      if (stockErr || leadsCountErr) { setRevLoading(false); return; }
 
       setRevData({
-        revMTD: Number(pnl?.mtd?.revenue) || 0,
-        gpMTD: Number(pnl?.mtd?.gross_profit) || 0,
         activeLeads: activeLeads ?? 0,
-        unitsSoldMTD: Number(pnl?.mtd?.units) || 0,
         activeCount: activeCount ?? 0,
       });
       setRevLoading(false);
@@ -296,41 +296,38 @@ export default function RevOpsPage({ userId }) {
   }, [userId]);
 
   // ── Section 3: Add-on Revenue ────────────────────────────────────────────
+  // The add-ons on the cars SOLD THIS MONTH, the same cars (and the same Malaysia month) the
+  // headline revenue and gross count (useCarMoney). It used to take deals whose lead was last
+  // EDITED this month (leads.updated_at), so editing an old won deal moved its add-ons into
+  // this month and the total revenue tile disagreed with the gross beside it.
+  const soldKey = mo ? mo.soldIds.join(",") : null;
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || soldKey === null) return;
+    const ids = soldKey ? soldKey.split(",") : [];
     const fetch = async () => {
       setAddonLoading(true);
-      const monthStart = startOfMonth();
-
-      // Add-ons on deals WON this month — tie revenue to the deal's close date
-      // (leads.updated_at when it flipped to won), not when the add-on row was
-      // created, so add-ons attached before the close still count for sold cars.
-      const { data: addonRows, error: addonErr } = await supabase
-        .from("deal_products")
-        .select("id, sold_price, lead_id, product_id, dealer_products(name), leads!inner(stage, updated_at)")
-        .eq("dealer_id", userId)
-        .in("leads.stage", ["won", "closed_won"])
-        .gte("leads.updated_at", monthStart);
-      if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
-      if (addonErr) { setAddonLoading(false); return; } // keep the saved numbers
-
-      // Won leads this month (for attachment rate denominator) — both won variants
-      const { count: wonCount } = await supabase
-        .from("leads")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", userId)
-        .in("stage", ["won", "closed_won"])
-        .gte("updated_at", monthStart);
+      let addonRows = [];
+      if (ids.length) {
+        const { data, error: addonErr } = await supabase
+          .from("deal_products")
+          .select("id, sold_price, lead_id, listing_id, product_id, dealer_products(name)")
+          .eq("dealer_id", userId)
+          .in("listing_id", ids);
+        if (addonErr) { console.error("[RevOps] deal_products fetch error:", addonErr.message); setAddonLoading(false); return; } // keep the saved numbers
+        addonRows = data || [];
+      }
+      // Attachment rate: cars sold this month that carry at least one add-on.
+      const wonCount = ids.length;
 
       const rows = addonRows || [];
       const totalRevenue = rows.reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const uniqueLeads = new Set(
-        rows.filter((r) => r.lead_id).map((r) => r.lead_id),
+        rows.filter((r) => r.listing_id).map((r) => r.listing_id),
       );
       // avg per deal: divide revenue from lead-linked add-ons by the number of those
       // leads, so numerator and denominator cover the same rows
       const leadLinkedRevenue = rows
-        .filter((r) => r.lead_id)
+        .filter((r) => r.listing_id)
         .reduce((s, r) => s + (Number(r.sold_price) || 0), 0);
       const avgPerDeal =
         uniqueLeads.size > 0
@@ -359,7 +356,7 @@ export default function RevOpsPage({ userId }) {
       setAddonLoading(false);
     };
     fetch();
-  }, [userId]);
+  }, [userId, soldKey]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -400,7 +397,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Gross Profit This Month"
             value={revData ? fmtRM(revData.gpMTD) : null}
-            loading={revLoading}
+            sub={revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
+            loading={revLoading || !mo}
             icon={TrendingUp}
             accentColor="#34d399"
           />
@@ -419,7 +417,7 @@ export default function RevOpsPage({ userId }) {
                 ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
                 : null
             }
-            sub="sold this month / active"
+            sub="sold this month / for sale"
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"
@@ -433,7 +431,7 @@ export default function RevOpsPage({ userId }) {
           const addonRev = addonData?.totalRevenue || 0;
           const totalRev = vehicleRev + addonRev;
           const addonPct = totalRev > 0 ? Math.round((addonRev / totalRev) * 100) : 0;
-          const marginPct = vehicleRev > 0 ? Math.round((revData.gpMTD / vehicleRev) * 100) : 0;
+          const marginPct = revData.costedRevenue > 0 ? Math.round((revData.carsGross / revData.costedRevenue) * 100) : 0;
           return (
             <div
               className="grid grid-cols-3 gap-3 mt-3"
@@ -474,7 +472,7 @@ export default function RevOpsPage({ userId }) {
                   {marginPct}%
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                  {fmtRM(revData.gpMTD)} gross profit
+                  {fmtRM(revData.carsGross)} on the cars{revData.leftOut > 0 ? ` · ${revData.leftOut} left out, no buy price` : ''}
                 </span>
               </div>
             </div>

@@ -357,14 +357,31 @@ still says "21 pages") — do not update it; it is pending removal.
 ## Roles
 owner / superadmin / dealer → /dashboard
 salesman → /salesman
-admin → /admin
-manager → /manager
+admin → /dashboard, manager → /dashboard (ACCESS-1, owner 2026-11-13). They use the OWNER'S dashboard;
+  the owner's switches (Settings > Team, `role_permissions`, `src/lib/permissions.js`) pick their tabs
+  (`tabCapability`, `TAB_NEEDS_MONEY`) and money. Staff Settings = Security only. Owner-only, never a
+  switch: billing, adding/removing staff (`invites` edge function), changing the switches, deleting the
+  dealership. "Do you have a manager?" = `role_enabled` on the manager row. The database check is
+  `dealer_can(dealer, cap)` (migration `20261114c`, defaults mirrored and tested: `npm run test:dealercan`).
+  `/manager` (ManagerPanel) and `/admin` (AdminPanel) still load until the owner tests; delete them
+  after. ManagerPanel's listing approvals (`manager_approve_listing`) must move first.
+  **Adding staff (owner, 2026-11-14):** the owner adds anyone; a manager only with the `add_staff` switch
+  (off by default), only salesmen + admins, never a password (setup email; no email = the account is
+  undone), and the owner gets a `staff_added` notification. Removing staff stays owner-only. Enforced in
+  `invites` + `create-salesman` (both read `role_permissions` themselves), plus the server seat cap.
+  **Salesmen draft, owner approves (DRAFTS-1, migration `20261114d`, queued):** a linked salesman's Add car
+  inserts a dealer car as `pending_approval` with no cost, no assignee, `submitted_by` = them
+  (`trg_a_salesman_draft`; CarForm hides cost via `costHidden`). The owner, or a manager with
+  `approve_listings`, approves in Inventory > Listings (`ApprovalQueue.jsx`) via `dealer_approve_listing`
+  (refuses with no buy price) or `dealer_reject_listing` (reason required); the salesman is notified.
+  Never one shared login to add cars.
 accountant → /accountant
 fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
+  ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
   ↳ **Sold = ONE nav item, three pills: Handover | Customers | Documents (owner, 2026-11-10)**, same shape
@@ -373,6 +390,17 @@ Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add
     (`soldHandover`, loads only while a Sold pill is open) feeds `PostSaleBoard controller` AND
     `CustomersTab handover`: Customers used to query `post_sale_tasks` itself for the same %. Do not split
     the three back into separate nav items. Next: one dealer-sale tab plan in `docs/DEALER_DASHBOARD_PLAN.md`.
+
+## Dealer numbers: one engine per number, every tab sums up into Overview (owner, 2026-11-12)
+"Like a commit tree, every source must go to one." A dealer number is computed ONCE, at the
+leaf (one car, one lead), by one engine; tabs show those or SUM them; Overview is the sum of all.
+Never recompute a number with a local formula, in JS or SQL. Map + table of every number and its
+source: `docs/ARCHITECTURE.md` section 8. What still drifts and the fix: `docs/DEALER_NUMBERS_AUDIT.md`.
+- Car profit = `carPnl()` (`src/utils/carPnl.js`, `npm run test:carpnl`): buy, recon (one rule),
+  holding (floor-plan interest + overhead share, daily from the day the car is added), ads,
+  services, commission, transfer (estimated until the handover checklist exists), admin, warranty
+  reserve, add-ons net. A SQL copy must mirror it with the same test cases.
+- Days on lot = `daysHeld()` in the same file. Sold = `car_listings.status='sold'` + `sold_at`.
 
 ## Won = sold: one trigger does everything (DO NOT split this brain again)
 A lead reaching `won`/`closed_won` is the SINGLE source of truth for a closed deal.

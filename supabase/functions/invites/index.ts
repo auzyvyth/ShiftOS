@@ -12,13 +12,17 @@ function json(data: unknown, status = 200, origin: string | null = null) {
   });
 }
 
-function generatePassword(length = 10): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let pw = "";
-  const arr = new Uint8Array(length);
-  crypto.getRandomValues(arr);
-  arr.forEach((b) => (pw += chars[b % chars.length]));
-  return pw;
+// The project's password policy needs a lowercase letter, an uppercase letter, a digit AND a
+// symbol (create-salesman learned this first): letters + digits alone are rejected by createUser,
+// which would fail every invite made without a typed password (every manager-made one).
+function generatePassword(length = 14): string {
+  const classes = ["abcdefghjkmnpqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "!@#$%^&*-_"];
+  const all = classes.join("");
+  const rand = (n: number) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+  const chars = classes.map((c) => c[rand(c.length)]);
+  while (chars.length < length) chars.push(all[rand(all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) { const j = rand(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+  return chars.join("");
 }
 
 const ALLOWED_ROLES = ["manager", "accountant", "fi_officer", "admin"];
@@ -93,6 +97,18 @@ async function sendTeamSetupEmail(
   }
 }
 
+// The plan's seat limit, checked HERE: the dashboard's check_seat_cap call is in the browser, so
+// a direct call to this function skipped it. Same rule as check_seat_cap (active team members).
+async function seatCapReached(adminClient: any, dealerId: string): Promise<{ cap: number; current: number } | null> {
+  const { data: dealer } = await adminClient.from("profiles").select("plan").eq("id", dealerId).maybeSingle();
+  if (!dealer?.plan) return null;
+  const { data: pc } = await adminClient.from("plan_config").select("seat_cap").eq("plan", String(dealer.plan)).maybeSingle();
+  if (pc?.seat_cap == null) return null;
+  const { count } = await adminClient.from("profiles").select("id", { count: "exact", head: true })
+    .eq("dealer_id", dealerId).eq("is_active", true);
+  return (count ?? 0) >= pc.seat_cap ? { cap: pc.seat_cap, current: count ?? 0 } : null;
+}
+
 serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") {
@@ -121,11 +137,16 @@ serve(async (req) => {
     // ── Role check ──────────────────────────────────────────────────────────
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role, id, dealership, dealer_id")
+      .select("role, id, dealership, dealer_id, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!callerProfile || !["dealer", "superadmin", "owner", "manager", "admin"].includes(callerProfile.role)) {
+    // The OWNER (and the platform admin) adds and removes staff. A MANAGER may add an admin only
+    // when the owner has switched "Add staff" on for managers (owner, 2026-11-14), and never
+    // removes anyone, never picks a password, never makes a manager / accountant / F&I officer.
+    const isOwnerCaller = !!callerProfile && ["dealer", "superadmin", "owner"].includes(callerProfile.role);
+    const isManagerCaller = callerProfile?.role === "manager";
+    if (!callerProfile || (!isOwnerCaller && !isManagerCaller)) {
       return json({ error: "forbidden" }, 403, origin);
     }
 
@@ -146,6 +167,7 @@ serve(async (req) => {
     const targetId = pathParts[pathParts.length - 1];
 
     if (req.method === "DELETE" && targetId && targetId !== "invites") {
+      if (!isOwnerCaller) return json({ error: "owner_only" }, 403, origin);
       const { data: target } = await adminClient
         .from("profiles")
         .select("id, role, dealer_id")
@@ -184,7 +206,41 @@ serve(async (req) => {
       return json({ error: "invalid_role" }, 400, origin);
     }
 
-    const pw = password && password.length >= 8 ? password : generatePassword();
+    // A manager: the owner's switch must be on, the manager active, and only an admin.
+    if (isManagerCaller) {
+      if (role !== "admin") return json({ error: "manager_role_limit" }, 403, origin);
+      const [{ data: me }, { data: mgrRow }] = await Promise.all([
+        adminClient.from("profiles").select("is_active").eq("id", user.id).maybeSingle(),
+        adminClient.from("role_permissions").select("permissions")
+          .eq("dealer_id", callerDealerId).eq("role", "manager").maybeSingle(),
+      ]);
+      const perms = mgrRow?.permissions || {};
+      if (me?.is_active === false || perms.role_enabled === false || perms.add_staff !== true) {
+        return json({ error: "not_allowed" }, 403, origin);
+      }
+    }
+
+    // "Do you have a manager?" = No (Settings > Team): this dealership has no manager role.
+    if (role === "manager" && dealer_id) {
+      const { data: mgrRow } = await adminClient
+        .from("role_permissions")
+        .select("permissions")
+        .eq("dealer_id", dealer_id)
+        .eq("role", "manager")
+        .maybeSingle();
+      if (mgrRow?.permissions?.role_enabled === false) {
+        return json({ error: "manager_role_off" }, 400, origin);
+      }
+    }
+
+    if (!isSuper && dealer_id) {
+      const full = await seatCapReached(adminClient, dealer_id);
+      if (full) return json({ error: "seat_cap", ...full }, 403, origin);
+    }
+
+    // Only the owner may set a starting password. A manager's new staff get a random one they
+    // never see, and set their own from the emailed link.
+    const pw = isOwnerCaller && password && password.length >= 8 ? password : generatePassword();
 
     // ── Create auth user ────────────────────────────────────────────────────
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
@@ -249,13 +305,31 @@ serve(async (req) => {
       adminClient, email, full_name, dealershipName, ROLE_LABELS[role] || "team",
     );
 
+    // A manager-made account with no setup email would have no way in: undo it rather than hand
+    // the manager a password.
+    if (isManagerCaller && !emailSent) {
+      await adminClient.auth.admin.deleteUser(newUserId);
+      return json({ error: "email_failed", message: "The setup email could not be sent. Nothing was created." }, 502, origin);
+    }
+    // The owner hears about every account a manager makes (this row is also the push).
+    if (isManagerCaller) {
+      await adminClient.from("dealer_notifications").insert({
+        dealer_id: callerDealerId,
+        type: "staff_added",
+        title: "New staff account",
+        body: `${callerProfile.full_name || "Your manager"} added ${full_name} (${ROLE_LABELS[role] || role}).`,
+        link_to: "/dashboard/team",
+        ref_id: newUserId,
+      });
+    }
+
     const { data: finalProfile } = await adminClient
       .from("profiles")
       .select("*")
       .eq("id", newUserId)
       .maybeSingle();
 
-    return json({ success: true, invite: finalProfile, temp_password: pw, email_sent: emailSent }, 200, origin);
+    return json({ success: true, invite: finalProfile, temp_password: isOwnerCaller ? pw : undefined, email_sent: emailSent }, 200, origin);
   } catch (e) {
     console.error("invites error:", e);
     // Return CORS for the caller's real origin so a dealer subdomain surfaces the

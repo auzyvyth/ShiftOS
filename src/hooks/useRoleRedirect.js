@@ -12,11 +12,13 @@ export const ROLE_ROUTES = {
   superadmin:  '/platform',
   dealer:      '/dashboard',
   owner:       '/dashboard',
-  manager:     '/manager',
+  // Managers and admins use the OWNER'S dashboard, with the tabs the owner opens to them
+  // (owner, 2026-11-13). /manager and /admin still load until the owner has tested this.
+  manager:     '/dashboard',
   salesman:    '/salesman',
   accountant:  '/accountant',
   fi_officer:  '/fi',
-  admin:       '/admin',
+  admin:       '/dashboard',
   buyer:       '/account',
 };
 
