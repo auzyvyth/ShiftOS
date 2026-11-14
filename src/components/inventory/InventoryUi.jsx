@@ -3,7 +3,7 @@
 // borders, red only for the one main button and for urgent counts.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Zap, FileText, Package, Upload, Bot, X, ChevronRight, ChevronDown, Check, PlusCircle } from 'lucide-react';
+import { FileText, Package, Upload, Bot, X, ChevronRight, ChevronDown, Check, PlusCircle } from 'lucide-react';
 import { premiumLight as PL } from '../../theme/tokens';
 import { useModalHistory } from '../../hooks/useModalHistory';
 
@@ -86,7 +86,7 @@ export function InvTile({ label, value, sub, tone }) {
 
 // The one way to add a car. Every former entry point (menu item, Fast, Full
 // Form, Add Stock, Tools > Import) opens this.
-export function AddCarSheet({ open, onClose, onQuick, onFull, onStock, onCsv, onAi }) {
+export function AddCarSheet({ open, onClose, onFull, onStock, onCsv, onAi }) {
   useModalHistory(open, onClose);
   useEffect(() => {
     if (!open) return;
@@ -121,7 +121,8 @@ export function AddCarSheet({ open, onClose, onQuick, onFull, onStock, onCsv, on
         </div>
         <p style={{ ...INV_MICRO, margin: '0 2px 8px' }}>One car</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Row Icon={Zap} title="Quick listing" sub="Photos, price and the basics. Live on the marketplace." onClick={run(onQuick)} />
+          {/* No "Quick listing" (owner, 2026-11-14: make the forms strict). It saved the asking
+              price as the buy price and told buyers every car was Auto / Petrol / Sedan. */}
           <Row Icon={FileText} title="Full listing" sub="Every spec, condition report and included services." onClick={run(onFull)} />
           <Row Icon={Package} title="Stock only" sub="Record the car and its costs. Not on the marketplace yet." onClick={run(onStock)} />
         </div>

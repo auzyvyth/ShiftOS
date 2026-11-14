@@ -164,6 +164,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
 
   // ---- tool actions ----
   const saveCost = async () => {
+    if (!(Number(costForm.purchase_price) > 0)) { toast.error('Enter the buy price. It cannot be empty or 0.'); return; }
     setSaving(true);
     const patch = { purchase_price: Number(costForm.purchase_price) || 0, recon_cost: Number(costForm.recon_cost) || 0 };
     const { error } = await supabase.from('stock_units').update(patch).eq('id', unit.id).eq('dealer_id', userId);

@@ -15,7 +15,7 @@ import NewCarForm from "./NewCarForm";
 // new_car_card_fill on every card). Picking a brand saves it on the profile;
 // picking a different one from the one saved asks first.
 //
-// Rendered by CarForm and CarFormFast; `renderUsed(defaults)` is the caller's
+// Rendered by CarForm; `renderUsed(defaults)` is the caller's
 // own used-car form so each keeps its layout.
 //
 // `dark` MUST match the sheet it sits in: Lite's add-car sheet is white

@@ -102,7 +102,6 @@ function SubTabBar({ tabs, active, onChange }) {
 }
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
-const CarFormFast      = React.lazy(() => import("../components/CarFormFast"));
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const FinancingCalculator = React.lazy(() => import("../components/FinancingCalculator"));
@@ -5317,6 +5316,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
   const handleAdd = async () => {
     setAddErr('');
+    // Strict (owner, 2026-11-14): no stock record without what the car cost, or every profit
+    // sum has to leave it out.
+    if (!(Number(addForm.purchase_price) > 0)) { setAddErr('Enter the buy price. Profit cannot be worked out without it.'); return; }
+    if (!addForm.purchase_date) { setAddErr('Enter the date you bought it. Days on the lot count from it.'); return; }
     // A car that already has a stock record must not get a second one: every money total
     // would count its cost and sale twice. (A new listing makes its own record automatically.)
     if (addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold')) {
@@ -5587,6 +5590,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
           };
         }).filter(r => r.brand || r.model);
         if (rows.length === 0) { setCsvError('No valid rows found. Ensure columns: brand/make, model, year.'); setCsvRows([]); return; }
+        // Every car needs its buy price (a "purchase" / "cost" column). Rows without one are named,
+        // and nothing imports until the file is fixed: a half-imported list is worse than none.
+        const noCost = rows.filter(r => !(r.purchase_price > 0)).map(r => r._row);
+        if (noCost.length) {
+          setCsvError(iCost < 0
+            ? 'Add a buy price column (named "purchase" or "cost") and upload again.'
+            : `No buy price on row${noCost.length === 1 ? '' : 's'} ${noCost.slice(0, 12).join(', ')}${noCost.length > 12 ? '…' : ''}. Fill ${noCost.length === 1 ? 'it' : 'them'} in and upload again.`);
+          setCsvRows([]); return;
+        }
         setCsvError('');
         setCsvRows(rows);
       } catch { setCsvError('Failed to parse CSV. Please check the file format.'); setCsvRows([]); }
@@ -5758,6 +5770,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
   const handleSavePrices = async () => {
     if (!editPriceUnit) return;
+    if (!(Number(editPriceForm.purchase_price) > 0)) { toast.error('Enter the buy price. It cannot be empty or 0.'); return; }
     setEditPriceSaving(true);
     const patch = {
       purchase_price: Number(editPriceForm.purchase_price) || 0,
@@ -6202,8 +6215,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Procurement</p>
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM)</label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date</label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM) <span className="text-red-500">*</span></label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date <span className="text-red-500">*</span></label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Est. (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
@@ -6875,8 +6888,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
-  const [showFastModal, setShowFastModal] = useState(false);
-  useModalHistory(showFastModal, () => setShowFastModal(false), { isDirty: () => true });
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
   const [reactivating, setReactivating] = useState(false);
@@ -9208,7 +9219,6 @@ export default function DashboardPage() {
           <AddCarSheet
             open={addCarOpen}
             onClose={() => setAddCarOpen(false)}
-            onQuick={() => setShowFastModal(true)}
             onFull={() => { handleTabChange("add"); setAddMode("marketplace"); }}
             onStock={() => { setStockAutoTool("add"); handleTabChange("stock"); }}
             onCsv={() => { setStockAutoTool("csv"); handleTabChange("stock"); }}
@@ -9401,26 +9411,6 @@ export default function DashboardPage() {
       )}
 
       {/* ── Fast List modal ── */}
-      {showFastModal && (
-        <div onClick={() => setShowFastModal(false)} className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d1117', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', fontFamily: "system-ui,sans-serif" }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>⚡ Fast List</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#4b5563' }}>2 steps — live in 30 seconds</p>
-              </div>
-              <button onClick={() => setShowFastModal(false)} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, color: '#6b7280', width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-            <CarFormFast
-              onCreate={(car) => {
-                setShowFastModal(false);
-                toast.success("Listed! Add more details anytime.");
-              }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* ── Delete modal ── */}
       {deleteId && (
         <div

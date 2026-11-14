@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox, Package } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
@@ -437,6 +437,15 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
           key: 'cold', urgent: true, Icon: MessageCircle,
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
           detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
+        });
+        // Cars whose buy price is missing (imports, older cars, a salesman's car): their profit is
+        // left out of every sum until someone with cost access fills it in. Named here, the one
+        // "needs you" list, so the gap gets closed instead of quietly shrinking the numbers.
+        const noCost = (money?.stock.noCost || 0) + (money?.month.leftOut || 0);
+        if (noCost > 0) alerts.push({
+          key: 'no_cost', urgent: false, Icon: Package,
+          label: `${noCost} without buy price`,
+          detail: 'profit left out · fill it in', go: 'stock',
         });
         const over60 = money?.stock.over60 || 0;
         if (over60 > 0) alerts.push({
