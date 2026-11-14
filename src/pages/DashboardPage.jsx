@@ -144,6 +144,7 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
 import { useCarMoney } from '../hooks/useCarMoney';
 import '../theme/premiumLight.css';
+import ApprovalQueue from "../components/inventory/ApprovalQueue";
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
 import { WindowStickerSheet } from '../components/inventory/WindowSticker';
@@ -3013,7 +3014,26 @@ function lastActiveText(ts) {
   return '30d+ ago';
 }
 
+// One wording for every refusal the invites / create-salesman functions send back.
+function staffAddError(data) {
+  switch (data?.error) {
+    case "email_taken": return "That email already has an account.";
+    case "seat_cap": return `Seat limit reached (${data.current}/${data.cap}). Upgrade your plan to add more team members.`;
+    case "not_allowed": return "The owner has not let managers add staff.";
+    case "manager_role_limit": return "Managers can add salesmen and admins only.";
+    case "manager_role_off": return "This dealership has no manager role. Switch it on in Settings > Team first.";
+    case "email_failed": return "The setup email could not be sent, so nothing was created. Try again.";
+    default: return data?.message || data?.error || "Could not create the account.";
+  }
+}
+
 function TeamTab({ managerDealership, dealerId, profile }) {
+  // Who may add staff: the owner always; a manager only with the owner's "Add staff" switch, and
+  // then only salesmen and admins, with no password (they set their own from the email). The
+  // invites / create-salesman functions enforce the same rules on the server.
+  const isOwnerTeam = ["dealer", "owner", "superadmin"].includes(profile?.role);
+  const { can: teamCan } = usePermissions(profile);
+  const canAddStaff = isOwnerTeam || (profile?.role === "manager" && teamCan("add_staff"));
   // Persisted (IC material stripped) so the roster paints instantly; the
   // fetch below still replaces it. "loadingTeam" = nothing to show yet.
   const [salespeople, setSalespeople, teamCached] = usePersistentState(
@@ -3310,11 +3330,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const handleAdd = async () => {
     setAddError("");
-    // Adding staff is the owner's alone; the server refuses anyone else too.
-    if (!["dealer", "owner", "superadmin"].includes(profile?.role)) {
-      setAddError("Only the owner can add staff.");
-      return;
-    }
+    if (!canAddStaff) { setAddError("Only the owner can add staff."); return; }
+    if (!isOwnerTeam && !["salesman", "admin"].includes(newRole)) { setAddError("You can add salesmen and admins only."); return; }
     const n = name.trim(),
       e = email.trim().toLowerCase(),
       s = slug.trim(),
@@ -3324,7 +3341,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       return;
     }
     const isSalesman = newRole === "salesman";
-    if (!n || !e || !s || (!isSalesman && !tempPw)) {
+    if (!n || !e || !s || (!isSalesman && isOwnerTeam && !tempPw)) {
       setAddError("All fields required.");
       return;
     }
@@ -3332,7 +3349,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       setAddError(MY_PHONE_ERROR);
       return;
     }
-    if (!isSalesman && tempPw.length < 8) {
+    if (!isSalesman && isOwnerTeam && tempPw.length < 8) {
       setAddError("Password min 8 chars.");
       return;
     }
@@ -3372,11 +3389,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setAddError(
-            data.error === "email_taken"
-              ? "Email already in use."
-              : data.message || data.error || "Failed to create account.",
-          );
+          setAddError(staffAddError(data));
           setAddLoading(false);
           return;
         }
@@ -3399,13 +3412,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
             dealership: managerDealership,
             dealer_id: dealerId,
             slug: s,
-            password: tempPw,
+            password: isOwnerTeam ? tempPw : undefined,
             role: newRole,
           }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setAddError(data.message || "Failed.");
+          setAddError(staffAddError(data));
           setAddLoading(false);
           return;
         }
@@ -3552,7 +3565,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               setShowAddForm(true);
               resetForm();
             }}
-            disabled={!managerDealership}
+            disabled={!managerDealership || !canAddStaff}
+            title={canAddStaff ? undefined : "Only the owner can add staff"}
             className="btn-shimmer inline-flex items-center gap-2 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
             style={T.btnRed}
           >
@@ -3630,7 +3644,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 setShowAddForm(true);
                 resetForm();
               }}
-              disabled={!managerDealership}
+              disabled={!managerDealership || !canAddStaff}
               className="btn-shimmer text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
               style={T.btnRed}
             >
@@ -4401,7 +4415,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
                         { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
                         { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
-                      ].filter(({ role }) => role !== 'manager' || managerOn).map(({ role, label, color, desc }) => (
+                      ].filter(({ role }) => (role !== 'manager' || managerOn) && (isOwnerTeam || role === 'salesman' || role === 'admin')).map(({ role, label, color, desc }) => (
                         <button
                           key={role}
                           type="button"
@@ -4463,7 +4477,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       </label>
                       <PhoneInput value={phone} onChange={(v) => setPhone(v)} autoComplete="off" className={inputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
                     </div>
-                    {newRole !== "salesman" && (
+                    {newRole !== "salesman" && isOwnerTeam && (
                       <div>
                         <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
                           Temp Password *
@@ -4478,7 +4492,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         />
                       </div>
                     )}
-                    {newRole === "salesman" && (
+                    {(newRole === "salesman" || !isOwnerTeam) && (
                       <div className="flex items-end">
                         <div
                           className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-700"
@@ -4487,7 +4501,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             border: "1px solid #86efac",
                           }}
                         >
-                          Password auto-generated — shown once after creation.
+                          {isOwnerTeam
+                            ? "Password auto-generated — shown once after creation."
+                            : "They get an email to set their own password. The owner is told."}
                         </div>
                       </div>
                     )}
@@ -8613,6 +8629,14 @@ export default function DashboardPage() {
                 onStart={() => { setSettingsJump("verify"); handleTabChange("settings"); }}
               />
 
+              {/* Cars a salesman drafted (DRAFTS-1): the owner, or a manager with "Approve listings". */}
+              {(isOwnerView || canDo("approve_listings")) && (
+                <ApprovalQueue
+                  dealerId={getDealerIdFromProfile(profile)}
+                  canSeeCost={isOwnerView || canDo("view_cost")}
+                  onChanged={(id, status) => setListings((p) => p.map((x) => (x.id === id ? { ...x, status } : x)))}
+                />
+              )}
 
               {/* ── Listings panel ── one card: search, filters, the one Add car button,
                   the status pills, then the cars. No count tiles: the pills carry the counts. */}

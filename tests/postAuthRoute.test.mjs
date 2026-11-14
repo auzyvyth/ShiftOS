@@ -40,7 +40,8 @@ is('plan full but unpaid -> lite (same rule the Premium panel enforces)',
    r({ role: 'salesman', plan: 'salesman_full', payment_status: 'pending' }), { url: '/salesman-lite', hard: false });
 is('lite -> lite', r({ role: 'salesman', plan: 'salesman_lite' }), { url: '/salesman-lite', hard: false });
 is('linked salesman -> /salesman', r({ role: 'salesman', dealer_id: 'd1', plan: 'salesman_full' }), { url: '/salesman', hard: false });
-for (const [role, url] of [['manager', '/manager'], ['admin', '/admin'], ['accountant', '/accountant'], ['fi_officer', '/fi']]) {
+// ACCESS-1 (owner, 2026-11-13): manager and admin use the owner's dashboard; the owner's switches pick their tabs.
+for (const [role, url] of [['manager', '/dashboard'], ['admin', '/dashboard'], ['accountant', '/accountant'], ['fi_officer', '/fi']]) {
   is(`${role} -> ${url} directly, never /salesman first`, r({ role }), { url, hard: false });
 }
 // The admin account has its own login at /platform; the main sign-in refuses it.

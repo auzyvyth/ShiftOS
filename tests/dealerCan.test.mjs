@@ -24,7 +24,8 @@ for (const [tab, sub] of [['crm'], ['hp'], ['listings'], ['stock'], ['handover']
 eq(tabCapability('overview'), null, 'Overview is never switched off');
 eq(TAB_NEEDS_MONEY.tab_stock, 'view_cost', 'Stock & costs needs view_cost');
 eq(TAB_NEEDS_MONEY.tab_revenue, 'view_gross', 'Revenue needs view_gross');
-eq(CAPABILITIES.some((c) => c.key === 'invite_staff'), false, 'adding staff is never a switch');
+eq(CAPABILITIES.find((c) => c.key === 'add_staff')?.roles.join(), 'manager', 'only a manager can be given "add staff"');
+eq(CAPABILITIES.find((c) => c.key === 'add_staff')?.default, false, '"add staff" starts off');
 eq(resolvePermissions('manager', { tab_stock: false }).tab_stock, false, 'a stored switch wins over the default');
 
 if (fails.length) { console.error(fails.join('\n')); process.exit(1); }

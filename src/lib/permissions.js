@@ -123,9 +123,11 @@ export const CAPABILITIES_BASE = [
   // backed by a database rule (a hidden button protects nothing).
   { key: 'assign_leads',    group: 'people', label: 'Assign and reassign leads', description: 'Give a lead to a salesman or move it to another.', roles: ['manager'], default: true,  enforced: false },
   { key: 'assign_cars',     group: 'people', label: 'Lock a car to a salesman',  description: 'Make a car exclusive to one salesman.', roles: ['manager'], default: true,  enforced: false },
-  // No 'invite_staff' switch: adding or removing staff is owner-only (OWNER_ONLY below). A manager who
-  // can add staff can create an accountant and see every money table.
-  { key: 'approve_listings',group: 'stock',  label: 'Approve listings',          description: "Publish a salesman's car to the marketplace.", roles: ['manager'], default: true,  enforced: false },
+  // Adding staff (owner, 2026-11-14): a manager may add SALESMEN and ADMINS only, by email setup
+  // link (no password), the owner notified each time; removing staff stays owner-only. The
+  // invites / create-salesman functions read this key from role_permissions themselves.
+  { key: 'add_staff', group: 'people', label: 'Add salesmen and admins', description: 'They get an email to set their own password. You are told each time. Removing staff stays yours.', roles: ['manager'], default: false, enforced: true },
+  { key: 'approve_listings',group: 'stock',  label: 'Approve listings',          description: "Publish a car a salesman added, once the buy price is in.", roles: ['manager'], default: true,  enforced: true },
   { key: 'change_price',    group: 'stock',  label: 'Change asking price',       description: 'Within the discount limit set in Settings.', roles: ['manager'], default: true,  enforced: false },
   { key: 'delete_car',      group: 'stock',  label: 'Remove a car',              description: 'Take a car out of stock.', roles: ['manager'], default: false, enforced: false },
   { key: 'approve_deals',   group: 'deals',  label: 'Approve deals up to the discount limit', description: 'Above the limit it still goes to the owner.', roles: ['manager'], default: true, enforced: false },
@@ -157,7 +159,7 @@ export const TAB_CAPABILITIES = [
 // Never switchable: only the owner (owner, 2026-11-13).
 export const OWNER_ONLY = [
   'Billing and plan',
-  'Adding or removing staff',
+  'Adding managers, accountants or F&I officers, and removing anyone',
   'Changing these switches',
   'Deleting the dealership',
 ];

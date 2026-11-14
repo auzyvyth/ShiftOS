@@ -31,6 +31,7 @@ as $$
     ('admin', 'export_data', true),
     ('manager', 'assign_leads', true),
     ('manager', 'assign_cars', true),
+    ('manager', 'add_staff', false),
     ('manager', 'approve_listings', true),
     ('manager', 'change_price', true),
     ('manager', 'delete_car', false),

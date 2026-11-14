@@ -1932,6 +1932,7 @@
       "newTitle": "New Listing",
       "newSub": "Full form: every spec, photo and price field",
       "published": "Listing published!",
+      "sentForApproval": "Sent to your dealer. It goes live once they approve it.",
       "liveBarPre": "Your listings are",
       "liveBarStrong": "live on Drevo",
       "liveBarPost": "and buyers can find you at {{url}}",

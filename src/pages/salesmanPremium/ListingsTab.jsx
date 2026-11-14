@@ -192,8 +192,11 @@ export default function ListingsTab({
  sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
- setMyListings((p) => [car, ...p]);
  setShowAddForm(false);
+ // A salesman under a dealer drafts the DEALER's car (DRAFTS-1): it waits for the owner and
+ // is not theirs, so it does not join their own list.
+ if (profile?.dealer_id) { toast.success(t("salesmanPremium.lst.sentForApproval")); return; }
+ setMyListings((p) => [car, ...p]);
  toast.success(t("salesmanPremium.lst.published"));
  }}
  />

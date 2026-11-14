@@ -365,6 +365,16 @@ admin → /dashboard, manager → /dashboard (ACCESS-1, owner 2026-11-13). They 
   `dealer_can(dealer, cap)` (migration `20261114c`, defaults mirrored and tested: `npm run test:dealercan`).
   `/manager` (ManagerPanel) and `/admin` (AdminPanel) still load until the owner tests; delete them
   after. ManagerPanel's listing approvals (`manager_approve_listing`) must move first.
+  **Adding staff (owner, 2026-11-14):** the owner adds anyone; a manager only with the `add_staff` switch
+  (off by default), only salesmen + admins, never a password (setup email; no email = the account is
+  undone), and the owner gets a `staff_added` notification. Removing staff stays owner-only. Enforced in
+  `invites` + `create-salesman` (both read `role_permissions` themselves), plus the server seat cap.
+  **Salesmen draft, owner approves (DRAFTS-1, migration `20261114d`, queued):** a linked salesman's Add car
+  inserts a dealer car as `pending_approval` with no cost, no assignee, `submitted_by` = them
+  (`trg_a_salesman_draft`; CarForm hides cost via `costHidden`). The owner, or a manager with
+  `approve_listings`, approves in Inventory > Listings (`ApprovalQueue.jsx`) via `dealer_approve_listing`
+  (refuses with no buy price) or `dealer_reject_listing` (reason required); the salesman is notified.
+  Never one shared login to add cars.
 accountant → /accountant
 fi_officer → /fi
 
