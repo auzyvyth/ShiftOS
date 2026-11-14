@@ -348,11 +348,7 @@ serve(async (req) => {
       }
       // A live post of a seller's car leaves the console's queue. Stamped here with the service
       // role (a browser cannot write this column); a TikTok inbox draft or a Zernio draft is not a post.
-      // A post where EVERY network failed is not posted: the car must stay in the queue so the owner can retry
-      // (2026-11-13: TikTok answered "Internal error", the car was stamped posted anyway and left the queue).
-      const plats: any[] = r.data?.post?.platforms || [];
-      const allFailed = plats.length > 0 && plats.every((p: any) => ["failed", "error", "cancelled"].includes(String(p.status).toLowerCase()));
-      const wentLive = !draft && !allFailed && items.some((it: any) => !(it.platform === "tiktok" && it.inbox === true));
+      const wentLive = !draft && items.some((it: any) => !(it.platform === "tiktok" && it.inbox === true));
       if (wentLive && car.social_consent === true) {
         await admin.from("car_listings").update({ social_posted_at: new Date().toISOString() }).eq("id", car.id);
       }
