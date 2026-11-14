@@ -28,10 +28,36 @@ const STEPS = [
 // slow moment (a statement timeout) left a Live presenter card with no
 // variants, no insurance estimate and no NCD for the rest of the live.
 const pending = new Map();
+// The last good answer per card, in memory AND on the device (VARIANTS-KEEP, 2026-11-14). A seller
+// in a live flips between cars; the presenter used to blank a card's variants on every flip and
+// wait on the database again, so a slow database (11:2x that day) left the chips empty mid-live
+// and a Perodua advisor ended his stream. Public catalogue data only (prices, specs): no buyer or
+// seller detail, so a device copy is safe. Shown at once, refreshed behind it; never cleared by
+// a failed read.
+const KEEP_KEY = "xd_ncinfo_";
+const KEEP_MS = 7 * 86400000;
+const lastGood = new Map();
+function keptInfo(id) {
+  if (!id) return null;
+  if (lastGood.has(id)) return lastGood.get(id);
+  try {
+    const raw = localStorage.getItem(KEEP_KEY + id);
+    if (!raw) return null;
+    const { at, data } = JSON.parse(raw);
+    if (!data || Date.now() - at > KEEP_MS) return null;
+    lastGood.set(id, data);
+    return data;
+  } catch { return null; }
+}
+function keepInfo(id, data) {
+  if (!data) return;
+  lastGood.set(id, data);
+  try { localStorage.setItem(KEEP_KEY + id, JSON.stringify({ at: Date.now(), data })); } catch { /* full or blocked */ }
+}
 function loadInfo(id) {
   if (!pending.has(id)) {
     const p = publicClient.rpc("get_new_car_listing_info", { p_listing_id: id }).maybeSingle()
-      .then(({ data, error }) => { if (error) throw error; return data || null; });
+      .then(({ data, error }) => { if (error) throw error; if (data) keepInfo(id, data); return data || null; });
     pending.set(id, p);
     p.then(() => setTimeout(() => pending.delete(id), 60000), () => pending.delete(id));
   }
@@ -79,21 +105,32 @@ const sourceHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, "
 // The car page's tiles read the same row (Engine, Seats, Economy for a new car),
 // through the same cached request, so the page and this panel cost one read.
 export function useNewCarInfo(listingId) {
-  const [info, setInfo] = useState(null);
+  const [state, setState] = useState(() => ({ id: listingId, info: keptInfo(listingId) }));
+  // A new car paints its kept copy in the SAME render, never an empty frame.
+  const info = state.id === listingId ? state.info : keptInfo(listingId);
   useEffect(() => {
     let alive = true;
-    setInfo(null);
+    setState({ id: listingId, info: keptInfo(listingId) });
     if (!listingId) return undefined;
-    // Retry a failed read while this car is on screen: 1.5s, 3s, 4.5s, 6s.
+    // Keep trying while this car is on screen (1.5s, 3s, ... then every 8s). A kept copy stays
+    // up the whole time; a failure never blanks it.
     let timer;
     const attempt = (n) => loadInfo(listingId).then(
-      (d) => { if (alive) setInfo(d); },
-      () => { if (alive && n < 4) timer = setTimeout(() => attempt(n + 1), 1500 * (n + 1)); },
+      (d) => { if (alive && d) setState({ id: listingId, info: d }); },
+      () => { if (alive) timer = setTimeout(() => attempt(n + 1), Math.min(1500 * (n + 1), 8000)); },
     );
     attempt(0);
     return () => { alive = false; clearTimeout(timer); };
   }, [listingId]);
   return info;
+}
+
+// Load every model card's details once, in the background, so flipping cars in a live never
+// waits on the database (LivePresenter calls it with its model cards when it opens).
+export function preloadNewCarInfos(ids) {
+  (ids || []).filter((id) => id && !lastGood.has(id)).forEach((id, i) => {
+    setTimeout(() => { loadInfo(id).catch(() => {}); }, i * 150);
+  });
 }
 
 // Several cards at once (the Live presenter's Budget tab prices every variant

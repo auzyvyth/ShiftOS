@@ -19,7 +19,7 @@ import {
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, DEFAULT_ACCENT, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
-import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
+import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant, preloadNewCarInfos } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
 import { cdnImg, imgFallback, isSeeThroughPhoto } from '../../utils/img';
@@ -489,6 +489,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return () => ro.disconnect();
   }, [report]);
 
+  // Every model card's variants loaded once, up front: a flip never waits on the database.
+  const modelCardIds = listings.filter((c) => c.is_model_card).map((c) => c.id).join(',');
+  useEffect(() => { preloadNewCarInfos(modelCardIds ? modelCardIds.split(',') : []); }, [modelCardIds]);
   const car = listings[idx] || null;
   // Variants of a model card. The info is checked against the car on screen so
   // the render right after a swipe never prices this car off the last one.
