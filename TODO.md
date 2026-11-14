@@ -3054,6 +3054,22 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-36: Broker network for dealers (owner, 2026-11-14, from a "copy the West" feature list)** —
+  the one real gap after checking that list against the code. A dealer invites outside brokers,
+  each gets a private stock sheet link (no cost prices, revocable at once, including stock already
+  shared), registers a buyer against a car so two brokers cannot claim the same buyer, and the
+  dealer sees the commission owed per broker. Why: it is how Malaysian dealers already move stock
+  (WhatsApp stock lists to brokers), and nothing in the app covers it (`seller_type='broker'` is
+  only a label on a standalone seller). Reuse: `salesman_listings` (feature without a lead),
+  `resolve_lead_salesman`, the exclusivity lock, `close_deal_at_price`. Constraints: the dealer
+  dashboard has no live users yet, so the SQL parks until a dealer is signed; the stock sheet is a
+  bearer link, so it must be a SECURITY DEFINER function taking the token (share-token rules);
+  check the commission/agency wording against real law before any payout feature. The rest of the
+  list was already built (inventory P&L, CRM, roles, bookings, storefront sections, team health) or
+  blocked: custom domains per dealer (Vercel Hobby + sign-in per origin), online booking deposits
+  (PAY-2, no SSM entity), WhatsApp/Facebook lead intake (Meta business verification), valuations
+  and vehicle history (no data source), multi-branch (no dealer to design it with).
+
 - **IDEA-35: AI-generated "one to one" photos for the new-car models (owner, 2026-11-12)** — the 13
   Toyota/Honda models in `new_car_models` have 0 photos (`new_car_model_media`); idea is to generate
   them with AI instead of sourcing real ones. Why it is parked, not built: the owner's own worry is
