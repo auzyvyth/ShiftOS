@@ -14,13 +14,15 @@ export const dayKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).to
 const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const UNSOLD = ['available', 'reserved', 'unpublished', 'pending_approval', 'in_stock'];
 
-// One row per car: the listing and its stock record joined (a stock record with no listing still counts).
+// One row per car: the listing and its stock record joined. A stock record with NO listing
+// (bought, not listed yet) still counts. A stock record whose listing is not in `listings` does
+// NOT: the loader leaves archived (deleted) cars out, and their stock records used to come back
+// as unsold stock (18 live, 2026-11-14), inflating "money tied up".
 export function mergeCars(listings = [], units = []) {
   const byListing = new Map();
   for (const u of units) if (u.listing_id && !byListing.has(u.listing_id)) byListing.set(u.listing_id, u);
   const rows = listings.map((l) => ({ listing: l, unit: byListing.get(l.id) || null }));
-  const seen = new Set(listings.map((l) => l.id));
-  for (const u of units) if (!u.listing_id || !seen.has(u.listing_id)) rows.push({ listing: null, unit: u });
+  for (const u of units) if (!u.listing_id) rows.push({ listing: null, unit: u });
   return rows;
 }
 

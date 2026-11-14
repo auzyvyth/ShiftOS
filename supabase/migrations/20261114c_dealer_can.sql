@@ -24,9 +24,9 @@ as $$
     ('salesman', 'view_commission', true),
     ('salesman', 'view_all_leads', false),
     ('manager', 'view_cost', true),
-    ('admin', 'view_cost', true),
+    ('admin', 'view_cost', false),
     ('manager', 'view_gross', true),
-    ('admin', 'view_gross', true),
+    ('admin', 'view_gross', false),
     ('manager', 'export_data', true),
     ('admin', 'export_data', true),
     ('manager', 'assign_leads', true),
@@ -94,7 +94,9 @@ grant execute on function public.dealer_can(uuid, text) to authenticated;
 revoke all on function public.dealer_cap_default(text, text) from public, anon;
 
 -- 3. Stock (buy prices): accountant and owner as before (can_see_dealer_money); a manager or
---    admin only while the owner leaves "View stock cost" on. It was every manager, always.
+--    admin only while "View stock cost" is on (manager: on by default; admin: off). It was every
+--    manager, always. NOTE: stock_units' policy is FOR ALL, so this switch also gives write;
+--    splitting read from write is a follow-up.
 create or replace function public.can_see_dealer_stock(p_dealer uuid)
 returns boolean language sql stable security definer
 set search_path to 'pg_catalog', 'public'
@@ -128,7 +130,7 @@ end $$;
 create policy rp_team_read on public.role_permissions for select to authenticated
   using (dealer_id = (select public.get_my_dealer_id()) or (select public.is_superadmin()));
 create policy rp_owner_write on public.role_permissions for all to authenticated
-  using (dealer_id = auth.uid() and (select public.my_profile_role()) in ('dealer', 'owner'))
-  with check (dealer_id = auth.uid() and (select public.my_profile_role()) in ('dealer', 'owner'));
+  using ((dealer_id = auth.uid() and (select public.my_profile_role()) in ('dealer', 'owner')) or (select public.is_superadmin()))
+  with check ((dealer_id = auth.uid() and (select public.my_profile_role()) in ('dealer', 'owner')) or (select public.is_superadmin()));
 
 commit;

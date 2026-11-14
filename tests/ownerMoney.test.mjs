@@ -62,5 +62,13 @@ eq(m.prev.units, 1, 'whole last month still has car e');
 eq(m.month.addonRevenue, 1500, 'add-on revenue this month = car a');
 eq(m.month.soldIds.slice().sort().join(','), 'a,b', 'sold this month = a and b');
 eq(m.prev.addonRevenue, 0, 'no add-ons last month');
+// A stock record whose car was archived (listing not loaded) is not stock; one with no listing is.
+{
+  const rows = mergeCars([{ id: 'x', status: 'available' }], [
+    { id: 'u1', listing_id: 'x' }, { id: 'u2', listing_id: 'gone' }, { id: 'u3', listing_id: null },
+  ]);
+  eq(rows.length, 2, 'archived car stock record dropped, unlisted one kept');
+  eq(rows.some((r) => r.unit?.id === 'u2'), false, 'archived car stock record not counted');
+}
 if (fails.length) { console.error(fails.join('\n')); process.exit(1); }
 console.log(`ownerMoney: ${pass} checks passed`);

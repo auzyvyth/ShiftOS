@@ -73,8 +73,19 @@ export const CAPABILITIES_BASE = [
     group: 'money',
     label: 'View stock cost & purchase price',
     description: 'Show purchase price, recon cost, and cost basis columns in the Stock tab.',
-    roles: ['manager', 'admin'],
+    roles: ['manager'],
     default: true,
+    enforced: true,
+  },
+  // An admin (office staff) starts WITHOUT money; the owner can switch it on. With it on by
+  // default, the database rule (dealer_can) would have handed the admin buy prices on day one.
+  {
+    key: 'view_cost',
+    group: 'money',
+    label: 'View stock cost & purchase price',
+    description: 'Show purchase price, recon cost, and cost basis columns in the Stock tab.',
+    roles: ['admin'],
+    default: false,
     enforced: true,
   },
   {
@@ -82,8 +93,19 @@ export const CAPABILITIES_BASE = [
     group: 'money',
     label: 'View gross profit figures',
     description: 'Show gross profit column in Stock tab and P&L breakdown.',
-    roles: ['manager', 'admin'],
+    roles: ['manager'],
     default: true,
+    enforced: true,
+  },
+  // An admin (office staff) starts WITHOUT money; the owner can switch it on. With it on by
+  // default, the database rule (dealer_can) would have handed the admin buy prices on day one.
+  {
+    key: 'view_gross',
+    group: 'money',
+    label: 'View gross profit figures',
+    description: 'Show gross profit column in Stock tab and P&L breakdown.',
+    roles: ['admin'],
+    default: false,
     enforced: true,
   },
   {
