@@ -128,7 +128,7 @@ export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   const costedStock = stock.filter((r) => !r.costMissing);
   const withDays = stock.filter((r) => r.p.days != null);
   const stuck = stock.map((r) => ({
-    id: r.id, title: r.title, days: r.p.days, cost: r.costMissing ? null : r.cost,
+    id: r.id, title: r.title, days: r.p.days, asking: r.p.revenue || null, cost: r.costMissing ? null : r.cost,
     net: r.costMissing ? null : r.p.net, perDay: r.p.perDay.total,
     flag: r.costMissing ? 'no_cost' : !(r.p.revenue > 0) ? 'no_price' : r.p.net < 0 ? 'losing' : (r.p.days || 0) > AGEING_DAYS ? 'ageing' : 'ok',
   })).sort((a, b) => (b.days ?? -1) - (a.days ?? -1));

@@ -5,7 +5,7 @@ import { getListingAge } from "./shared";
 import { AGEING_DAYS } from "../../utils/carPnl";
 
 // Small pieces shared by more than one dashboard tab.
-// premiumLight (owner, 2026-11-09): one grey pill; the days turn red from 30.
+// premiumLight (owner, 2026-11-09): one grey pill; the days turn red past AGEING_DAYS (60). Counts from the listing date, which is the stock date for a car made on the dashboard (auto_create_stock_unit).
 export const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
   return (

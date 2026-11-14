@@ -547,13 +547,17 @@ function PermissionsMatrix({ dealerId, actor }) {
   const [hasManager, setHasManager] = useState(true);
   const [managerCount, setManagerCount] = useState(0);
   const [loadErr, setLoadErr] = useState(false);
+  // The manager switches as last SAVED: the Yes/No answer is saved on top of these, never on top
+  // of toggles the owner has not pressed Save for.
+  const savedManager = useRef({});
 
   useEffect(() => {
     if (!dealerId) return;
     setLoading(true);
     Promise.all([
       supabase.from('role_permissions').select('role, permissions').eq('dealer_id', dealerId),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('dealer_id', dealerId).eq('role', 'manager'),
+      // Active managers only: a deactivated one cannot sign in, so it should not block "No".
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('dealer_id', dealerId).eq('role', 'manager').eq('is_active', true),
     ]).then(([{ data, error }, mgr]) => {
         // A failed read must not show every switch at its default: saving that would overwrite
         // what the owner set.
@@ -564,21 +568,26 @@ function PermissionsMatrix({ dealerId, actor }) {
           byRole[value] = resolvePermissions(value, stored);
         }
         const mgrStored = (data || []).find(r => r.role === 'manager')?.permissions;
+        savedManager.current = byRole.manager;
         setHasManager(mgrStored?.[ROLE_ENABLED_KEY] !== false);
-        setManagerCount(mgr?.count || 0);
+        setManagerCount(mgr?.error ? null : (mgr?.count || 0)); // null = could not count
         setRows(byRole);
         setLoading(false);
       });
   }, [dealerId]);
 
   const saveHasManager = async (next) => {
+    if (!next && managerCount === null) {
+      toast.error('Could not check your team. Refresh and try again.');
+      return;
+    }
     if (!next && managerCount > 0) {
       toast.error(`Remove your ${managerCount === 1 ? 'manager' : `${managerCount} managers`} in Team first.`);
       return;
     }
     setHasManager(next);
     const { data: saved, error } = await supabase.from('role_permissions')
-      .upsert({ dealer_id: dealerId, role: 'manager', permissions: { ...rows.manager, [ROLE_ENABLED_KEY]: next }, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
+      .upsert({ dealer_id: dealerId, role: 'manager', permissions: { ...savedManager.current, [ROLE_ENABLED_KEY]: next }, updated_at: new Date().toISOString() }, { onConflict: 'dealer_id,role' })
       .select('role');
     if (error || !saved?.length) { setHasManager(!next); toast.error('Save failed'); return; }
     logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: next ? 'Manager role switched on' : 'Manager role switched off' });
@@ -594,6 +603,7 @@ function PermissionsMatrix({ dealerId, actor }) {
       .select('role');
     if (error || !saved?.length) { toast.error('Save failed'); }
     else {
+      if (role === 'manager') savedManager.current = rows.manager;
       logActivity({ dealerId, actor, tableName: 'role_permissions', recordId: null, action: 'updated', summary: `Permissions updated — ${role}` });
       toast.success('Permissions saved');
     }
@@ -3159,11 +3169,14 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const handleAssignCar = async (listingId, salesmanId, name) => {
     setAssignWorking(listingId);
     const car = openCars.find((c) => c.id === listingId);
-    const { error } = await supabase
+    // A refused write is "0 rows, no error": check a row came back before evicting anyone.
+    const { data: saved, error } = await supabase
       .from("car_listings")
       .update({ assigned_to: salesmanId })
-      .eq("id", listingId);
-    if (!error) {
+      .eq("id", listingId)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not assign. Try again.");
+    else {
       await supabase.from("salesman_listings").delete()
         .eq("listing_id", listingId).neq("salesman_id", salesmanId);
       logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
@@ -3176,11 +3189,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const handleUnassignCar = async (listingId) => {
     setAssignWorking(listingId);
     const car = Object.values(assignedMap).flat().find((c) => c.id === listingId);
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from("car_listings")
       .update({ assigned_to: null })
-      .eq("id", listingId);
-    if (!error) {
+      .eq("id", listingId)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not unassign. Try again.");
+    else {
       logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`.trim() });
       await fetchAssignedCars();
     }
@@ -3416,12 +3431,16 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setTimeout(() => setCopiedId(null), 2000);
   };
   const toggleActive = async (s) => {
+    // Switching staff on or off is the owner's (owner-only list, Settings > Team).
+    if (!["dealer", "owner", "superadmin"].includes(profile?.role)) { toast.error("Only the owner can do this."); return; }
     setTogglingId(s.id);
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from("profiles")
       .update({ is_active: !s.is_active })
-      .eq("id", s.id);
-    if (!error)
+      .eq("id", s.id)
+      .select("id");
+    if (error || !saved?.length) toast.error("Could not save. Try again.");
+    else
       setSalespeople((p) =>
         p.map((x) => (x.id === s.id ? { ...x, is_active: !s.is_active } : x)),
       );
@@ -5216,10 +5235,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // services, commission, handover, holding, ad spend, F&I back-end). Drives the
   // "In loss" filter, the row Net badge and the Listings stats strip via one shared
   // helper so all three agree.
-  const netProfit = (u) => stockNetProfit(u, {
+  // A role without "View gross profit" gets no profit anywhere in this tab: every row badge,
+  // the "In loss" filter, the profit sorts and the P&L button read null (only a tile was hidden).
+  const netProfit = (u) => (can('view_gross') ? stockNetProfit(u, {
     cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
     addRev: costExtras.addRev, addCost: costExtras.addCost,
-  });
+  }) : null);
 
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
   const stockFilterFns = {
@@ -6122,7 +6143,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ padding: '12px 16px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', 'primary', null, null, () => setSoldTarget(u))}
-                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
+                {can('view_gross') && ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
                 {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', null, null, null, () => fetchReconJobs(u))}
                 {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', null, null, null, () => openAdSpend(u))}
                 {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', null, null, null, () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
@@ -7309,10 +7330,17 @@ export default function DashboardPage() {
 
   // A tab the owner has not opened to this role (a saved link, an old notification) goes to
   // Overview. Waits for the switches to load, or every tab would bounce for a moment.
+  // REPLACES the history entry (Back must not land on the closed tab and bounce again), once per
+  // closed tab (the ref), so a slow commit cannot push several entries.
+  const bouncedFrom = useRef(null);
+  const closedTab = !isOwnerView && !permsLoading && !!profile && !tabAllowed(activeTab, analyticsSub);
   useEffect(() => {
-    if (isOwnerView || permsLoading || !profile) return;
-    if (!tabAllowed(activeTab, analyticsSub)) handleTabChange('overview');
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!closedTab) { bouncedFrom.current = null; return; }
+    if (bouncedFrom.current === activeTab) return;
+    bouncedFrom.current = activeTab;
+    setActiveTab('overview');
+    navigate('/dashboard/overview', { replace: true });
+  }, [closedTab, activeTab, navigate]);
 
   // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
   // old deep-links and saved URLs don't render a blank pane.
@@ -7856,14 +7884,25 @@ export default function DashboardPage() {
   // engine as Overview (useCarMoney), so the briefing quotes the numbers the owner sees.
   const onAiTab = activeTab === "ai_manager";
   const { snapshot: aiFacts, loading: snapshotLoading } = useDealerSnapshot(userId, { enabled: onAiTab });
-  const { money: aiMoney } = useCarMoney(onAiTab ? getDealerIdFromProfile(profile) : null);
-  const snapshot = aiFacts && aiMoney ? {
-    ...aiFacts,
-    totalGPThisMonth: aiMoney.month.gross,
-    gpLeftOut: aiMoney.month.leftOut,
-    soldThisMonth: aiMoney.month.units,
-    totalStockValue: aiMoney.stock.atCost,
-  } : null;
+  const { money: aiMoney, failed: aiMoneyFailed } = useCarMoney(onAiTab ? getDealerIdFromProfile(profile) : null);
+  // Memoised: AISalesManager fires its briefing from an effect keyed on `snapshot`, and a new
+  // object every render cancelled its timer, so the briefing never ran. Money and days come from
+  // the one engine and clock; money a role may not see is left out of the briefing; a failed money
+  // read still lets the briefing run on the rest.
+  const aiSeeGross = canDo('view_gross'), aiSeeCost = canDo('view_cost');
+  const snapshot = useMemo(() => {
+    if (!aiFacts || (!aiMoney && !aiMoneyFailed)) return null; // wait for the money (or its failure)
+    const m = aiMoney;
+    return {
+      ...aiFacts,
+      avgDaysOnLot: m?.stock.avgDays ?? null,
+      staleCars: m ? m.stuck.filter(c => c.flag === 'ageing').map(c => ({ model: c.title, days: c.days, price: c.asking })) : [],
+      totalGPThisMonth: m && aiSeeGross ? m.month.gross : null,
+      gpLeftOut: m ? m.month.leftOut : 0,
+      soldThisMonth: m ? m.month.units : null,
+      totalStockValue: m && aiSeeCost ? m.stock.atCost : null,
+    };
+  }, [aiFacts, aiMoney, aiMoneyFailed, aiSeeGross, aiSeeCost]);
 
   const TITLES = {
     overview:  { title: "Overview", sub: "Dealership pulse at a glance" },

@@ -15,25 +15,28 @@ export function usePermissions(profile) {
   // The role_permissions row is always keyed by the owner's profile id.
   const dealerId = profile?.dealer_id || profile?.id || null;
   const [permissions, setPermissions] = useState({});
-  const [loading, setLoading] = useState(true);
+  // Which role + dealer the stored map belongs to. `loading` stays true until it matches the
+  // current profile: on a cold load the profile arrives after the first (null) pass, and a
+  // dashboard that read "not loading, nothing allowed" in between bounced deep links to Overview.
+  const [loadedFor, setLoadedFor] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    if (!role) { setLoading(false); return; }
-    if (isFullAccessRole(role)) { setPermissions({}); setLoading(false); return; }
-    if (!dealerId) { setLoading(false); return; }
+    const key = `${role}:${dealerId}`;
+    if (!role || isFullAccessRole(role) || !dealerId) { setPermissions({}); setLoadedFor(key); return; }
 
-    setLoading(true);
     supabase
       .from('role_permissions')
       .select('permissions')
       .eq('dealer_id', dealerId)
       .eq('role', role)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
-        setPermissions(resolvePermissions(role, data?.permissions));
-        setLoading(false);
+        // A failed read allows NOTHING beyond Overview. Falling back to the defaults re-opened
+        // every tab and money figure the owner had switched off.
+        setPermissions(error ? {} : resolvePermissions(role, data?.permissions));
+        setLoadedFor(key);
       });
 
     return () => { cancelled = true; };
@@ -44,5 +47,6 @@ export function usePermissions(profile) {
     return permissions[key] === true;
   };
 
+  const loading = loadedFor !== `${role}:${dealerId}`;
   return { can, permissions, loading };
 }
