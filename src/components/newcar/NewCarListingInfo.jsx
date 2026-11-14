@@ -140,7 +140,16 @@ export function preloadNewCarInfos(ids) {
 // call fails (e.g. before that migration is applied), falls back to per card.
 export function useNewCarInfos(listingIds) {
   const key = (listingIds || []).join(",");
-  const [infos, setInfos] = useState({});
+  const [fresh, setFresh] = useState({});
+  // Kept copies first (VARIANTS-KEEP), the latest answer on top: a failed or slow batch read
+  // never leaves Budget or Adjust > Rebates without a card's variants.
+  const infos = {};
+  for (const id of key ? key.split(",") : []) {
+    const kept = keptInfo(id);
+    if (kept?.variants) infos[id] = { variants: kept.variants };
+    if (fresh[id]) infos[id] = fresh[id];
+  }
+  const setInfos = (m) => setFresh((prev) => ({ ...prev, ...m }));
   useEffect(() => {
     let alive = true;
     const ids = key ? key.split(",") : [];
