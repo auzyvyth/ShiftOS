@@ -17,6 +17,7 @@ import { routeForRole } from "../hooks/useRoleRedirect";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { normalizePhone, toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import PhoneInput from "../components/ui/PhoneInput";
+import NicknameField from "./../components/profile/NicknameField";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import { copyListingCaption } from "../utils/copyListingCaption";
@@ -983,6 +984,7 @@ export default function SalesmanLite() {
   // settings
   const [settingsForm, setSettingsForm] = useState({
     full_name: "",
+    nickname: "",
     whatsapp_number: "",
     telegram_chat_id: "",
     city: "",
@@ -1419,6 +1421,7 @@ export default function SalesmanLite() {
     if (profile) {
       setSettingsForm({
         full_name: profile.full_name || "",
+        nickname: profile.nickname || "",
         whatsapp_number: profile.whatsapp_number || "",
         telegram_chat_id: profile.telegram_chat_id || "",
         city: profile.city || "",
@@ -5087,6 +5090,10 @@ export default function SalesmanLite() {
                   style={inputStyle}
                 />
               </div>
+              {/* NICKNAME-1: free on Lite too (being found is never gated). Own save button + own query. */}
+              <NicknameField userId={userId} value={settingsForm.nickname} savedValue={profile?.nickname || ""}
+                onChange={(v) => setSettingsForm((p) => ({ ...p, nickname: v }))}
+                onSaved={(v) => { setProfile((p) => ({ ...p, nickname: v })); setSettingsForm((p) => ({ ...p, nickname: v })); }} />
               <div>
                 <label style={lbl}>{t("salesmanLite.settings.whatsapp")}</label>
                 <PhoneInput

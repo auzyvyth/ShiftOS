@@ -2707,6 +2707,19 @@
       "deposit_taken": "Deposit diterima"
     }
   },
+  "nickname": {
+    "label": "Nama media sosial anda",
+    "placeholder": "fedaus",
+    "hint": "Nama yang anda guna di TikTok atau Facebook, supaya pembeli yang kenal anda dengan nama itu boleh jumpa halaman anda. Dipaparkan sebagai @nama, tidak pernah nombor telefon anda. Pautan halaman anda tidak berubah.",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "checking": "Menyemak...",
+    "free": "Boleh guna. Tekan Simpan untuk ambil.",
+    "saved": "Disimpan. Ia dipaparkan di halaman anda dan di Google.",
+    "removed": "Dibuang.",
+    "saveFailed": "Tidak dapat simpan. Cuba lagi.",
+    "notReady": "Ini belum dihidupkan. Cuba lagi esok."
+  },
   "carPicker": {
     "search": "Cari kereta anda",
     "noMatch": "Tiada kereta yang sepadan.",

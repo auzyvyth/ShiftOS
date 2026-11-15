@@ -3039,7 +3039,7 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
-- **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15; scoped in chat, NOT built)** — a seller's
+- **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
   "HAKIM PERODUA"). Add ONE field, `profiles.nickname` ("your social media name", e.g. fedaus), on every plan (Lite too:
   being found is never gated). Show "@fedaus" under the name on `/s/:slug`, add it to `agentPageDescription` + JSON-LD

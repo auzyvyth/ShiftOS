@@ -2690,6 +2690,19 @@
       "deposit_taken": "Deposit taken"
     }
   },
+  "nickname": {
+    "label": "Your social media name",
+    "placeholder": "fedaus",
+    "hint": "The name you use on TikTok or Facebook, so buyers who know you by it can find your page. Shown as @name, never your phone number. Your page link does not change.",
+    "save": "Save",
+    "saving": "Saving...",
+    "checking": "Checking...",
+    "free": "Free. Press Save to take it.",
+    "saved": "Saved. It shows on your page and on Google.",
+    "removed": "Removed.",
+    "saveFailed": "Could not save. Try again.",
+    "notReady": "This is not switched on yet. Try again tomorrow."
+  },
   "carPicker": {
     "search": "Search your cars",
     "noMatch": "No car matches that.",

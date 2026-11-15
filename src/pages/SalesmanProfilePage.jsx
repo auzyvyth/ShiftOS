@@ -11,7 +11,7 @@ import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef, setRef } from '../utils/refTracking';
-import { agentPageTitle, agentPageDescription, agentShareImage, agentCardVersion } from '../utils/agentSeo';
+import { agentPageTitle, agentPageDescription, agentShareImage, agentCardVersion, agentNickname } from '../utils/agentSeo';
 import { SITE_URL } from '../config/site';
 import { useAgentTrust } from '../hooks/useAgentTrust';
 import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
@@ -466,6 +466,18 @@ export default function SalesmanProfilePage() {
     return () => { alive = false; };
   }, [slug, profile?.id, profile?.page_basic]);
 
+  // NICKNAME-1: the seller's social media name (get_agent_nickname), every plan. Its own call, so a missing
+  // function (database change not applied yet) or a slow database just means no "@name" this time.
+  const [nickname, setNickname] = useState('');
+  useEffect(() => {
+    if (!slug || !profile?.id) { setNickname(''); return undefined; }
+    let alive = true;
+    withTimeout(publicClient.rpc('get_agent_nickname', { p_slug: slug }), 8000)
+      .then((res) => { if (alive) setNickname(!res?.error && typeof res?.data === 'string' ? res.data : ''); })
+      .catch(() => { /* no @name this time */ });
+    return () => { alive = false; };
+  }, [slug, profile?.id]);
+
   useEffect(() => {
     if (bioRef.current) {
       setBioOverflows(bioRef.current.scrollHeight > bioRef.current.clientHeight + 2);
@@ -628,8 +640,9 @@ export default function SalesmanProfilePage() {
   // Title + description from agentSeo.js, the same functions the crawler
   // render (api/og.js) and the Premium settings preview run, so Google, a
   // WhatsApp link preview and the agent's own preview never disagree.
-  const metaDescription = agentPageDescription(profile, listings.length, listings);
-  const pageTitle = agentPageTitle(profile, listings);
+  const seoProfile = { ...profile, nickname };
+  const metaDescription = agentPageDescription(seoProfile, listings.length, listings);
+  const pageTitle = agentPageTitle(seoProfile, listings);
 
   // "#N" is fixed to the query order (newest first), the same array the live
   // presenter walks, so re-sorting by price never renumbers a car mid-live.
@@ -863,6 +876,7 @@ export default function SalesmanProfilePage() {
         .ap h1 svg { width: 22px; height: 22px; flex-shrink: 0; margin-top: -4px; }
         .ap-role { font-size: 14px; color: #4b5563; margin-top: 8px; }
         .ap-my { font-size: 13px; color: #6b7280; margin-top: 2px; font-style: italic; }
+        .ap-nick { font-size: 15px; font-weight: 600; color: #374151; margin: 2px 0 0; letter-spacing: 0.01em; }
         .ap-works { font-size: 13px; color: #4b5563; margin-top: 6px; }
         .ap-works a { font-weight: 600; color: #111827; text-decoration: underline; text-underline-offset: 3px; }
         .ap-creds { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; }
@@ -1100,6 +1114,7 @@ export default function SalesmanProfilePage() {
                     )}
                   </span>
                 </h1>
+                {agentNickname(seoProfile) && <p className="ap-nick">@{agentNickname(seoProfile)}</p>}
                 {profile.job_title && <p className="ap-role">{profile.job_title}</p>}
                 {malayLine && <p className="ap-my">{malayLine}</p>}
                 {/* Backed by a real business: name it and link its storefront. */}

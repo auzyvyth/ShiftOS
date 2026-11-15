@@ -1966,6 +1966,19 @@ under "Shared link". Premium dashboard "visits from shared links" = `shareVisits
 TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
 (`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
 
+## Seller nickname = social media name (NICKNAME-1, owner 2026-11-15, migration `20261116b`, QUEUED)
+`profiles.nickname` ("fedaus"): a DISPLAY + SEARCH name, on EVERY plan (Lite too: being found is never gated), separate
+from `full_name` and from the page name `slug`. **Never make the slug editable to get this:** the slug is the `?ref=`
+attribution key (`resolve_lead_salesman`), the analytics key, the invite code and every shared link (`guard_profile_slug`
+locks it). Rules live in ONE file, `src/utils/nickname.js` (2-30 chars, letters / numbers / . _, unique ignoring case, no
+phone number (CDP-3), no official / verified / drevo / admin words, never another seller's page name; the database repeats
+them in `nickname_problem()` + `guard_profile_nickname`, `npm run test:nickname` checks both say the same). Read publicly
+ONLY through `get_agent_nickname(slug)` (active sellers only, its own call like `get_agent_about`, so the main profile read
+can never fail on it); the page shows "@name" (`.ap-nick`), `agentSeo.js` adds it to the title (location gives way first when
+the title would be cut), description and Person `alternateName` (`api/og.js`). Settings has `NicknameField` (Lite + Premium):
+its own Save button and own query, so the main profile save cannot fail on it. There is NO seller search on Drevo yet, so
+"found" means Google; an in-app search by nickname is a later step.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

@@ -33,6 +33,7 @@ import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
 import CarPickerSheet from "../components/leads/CarPickerSheet";
 import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON, offerAnotherCarMessage } from "../utils/carBuyers";
 import AgentSearchPreview from "../components/AgentSearchPreview";
+import NicknameField from "../components/profile/NicknameField";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
@@ -731,6 +732,7 @@ export default function SalesmanPremium() {
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
+ nickname: "",
  job_title: "",
  whatsapp_number: "",
  telegram_chat_id: "",
@@ -1160,6 +1162,7 @@ export default function SalesmanPremium() {
  if (profile) {
  setSettingsForm({
  full_name: profile.full_name || "",
+ nickname: profile.nickname || "",
  job_title: profile.job_title || "",
  whatsapp_number: profile.whatsapp_number || "",
  telegram_chat_id: profile.telegram_chat_id || "",
@@ -5775,6 +5778,10 @@ export default function SalesmanPremium() {
  <label style={lbl}>{t("salesmanPremium.settings.fullName")}</label>
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder={t("salesmanPremium.settings.fullNamePh")} style={inputStyle} />
  </div>
+ {/* NICKNAME-1: the social media name, saved on its own button (own query), so the main save below can never fail because of it. */}
+ <NicknameField userId={userId} value={settingsForm.nickname} savedValue={profile?.nickname || ""}
+ onChange={(v) => setSettingsForm((p) => ({ ...p, nickname: v }))}
+ onSaved={(v) => { setProfile((p) => ({ ...p, nickname: v })); setSettingsForm((p) => ({ ...p, nickname: v })); }} />
  <div>
  <label style={lbl}>{t("salesmanPremium.settings.jobTitle")}</label>
  <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder={t("salesmanPremium.settings.jobTitlePh")} maxLength={60} style={inputStyle} />
