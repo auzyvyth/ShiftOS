@@ -678,6 +678,43 @@ language sql stable security definer set search_path to 'pg_catalog', 'public' a
    limit 200;
 $$;
 
+-- The dealer's per-broker numbers (BROKER-2). ONE leaf per broker, summed by Overview
+-- (src/utils/brokerTotals.js): buyers, holding, to_approve, sold, owed, paid are all counted here and
+-- nowhere else. Return type changes: drop, create, re-grant.
+drop function if exists public.dealer_my_brokers();
+create function public.dealer_my_brokers()
+returns table(broker_id uuid, name text, slug text, plan text, status text, requested_by text,
+              commission_default numeric, since timestamptz, cars_on_page integer, buyers integer,
+              sold integer, owed numeric, holding integer, to_approve integer, paid numeric)
+language sql stable security definer set search_path to 'pg_catalog', 'public' as $$
+  select b.broker_id, public._broker_name(b.broker_id), p.slug, p.plan::text, b.status, b.requested_by,
+         b.commission_default, coalesce(b.decided_at, b.requested_at),
+         (select count(*)::int from public.salesman_listings sl
+           where sl.salesman_id = b.broker_id and sl.dealer_id = b.dealer_id),
+         (select count(*)::int from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id),
+         (select count(*)::int from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id and r.status = 'sold'),
+         (select coalesce(sum(r.commission_amount), 0) from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id
+             and r.status = 'sold' and r.paid_at is null),
+         (select count(*)::int from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id
+             and r.status = 'registered' and r.hold_until > now() and r.sale_claimed_at is null),
+         (select count(*)::int from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id
+             and r.status = 'registered' and r.sale_claimed_at is not null),
+         (select coalesce(sum(r.commission_amount), 0) from public.broker_registrations r
+           where r.broker_id = b.broker_id and r.dealer_id = b.dealer_id
+             and r.status = 'sold' and r.paid_at is not null)
+    from public.dealer_brokers b
+    join public.profiles p on p.id = b.broker_id
+   where b.dealer_id = auth.uid() and public.broker_is_dealer_owner(b.dealer_id)
+   order by (b.status = 'requested') desc, b.requested_at desc;
+$$;
+revoke all on function public.dealer_my_brokers() from public, anon;
+grant execute on function public.dealer_my_brokers() to authenticated;
+
 -- ── grants: helpers are internal; only the RPCs are callable, and never by anon ──
 revoke all on function public._broker_live(uuid, uuid) from public, anon, authenticated;
 revoke all on function public._page_broker(text, uuid) from public, anon, authenticated;

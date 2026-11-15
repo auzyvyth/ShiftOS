@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
 import OwnerMoney from './overview/OwnerMoney';
+import BrokerTotals from './overview/BrokerTotals';
+import { brokerTotals } from '../utils/brokerTotals';
 import { useCarMoney } from '../hooks/useCarMoney';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
@@ -10,7 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox, Package, Users } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
@@ -142,7 +144,7 @@ function SectionHeader({ title, sub, live }) {
 async function fetchOverview(dealerId) {
   const now = Date.now();
   const today = malaysiaDayBounds();
-  const [l, cl, apt, sm, acts, priceReq, teamAct, exc] = await Promise.all([
+  const [l, cl, apt, sm, acts, priceReq, teamAct, exc, brk] = await Promise.all([
     supabase.from('leads')
       .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id, first_response_at')
       .eq('dealer_id', dealerId)
@@ -177,6 +179,9 @@ async function fetchOverview(dealerId) {
     supabase.rpc('get_team_activity', { p_dealer_id: dealerId }),
     // The exceptions GM Oversight's "Eyes Here" used to list (one alert list now).
     supabase.rpc('gm_exception_alerts', { p_dealer_id: dealerId }),
+    // The broker rows (one per broker); Overview adds them up (src/utils/brokerTotals.js). Only a
+    // dealer / owner gets rows, so a manager's call comes back empty. A failure is "no block", never a throw.
+    supabase.rpc('dealer_my_brokers'),
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
@@ -282,13 +287,15 @@ async function fetchOverview(dealerId) {
     // gm_exception_alerts; a failed read = no exceptions shown, never a fake all-clear
     // for these specifically (they simply do not appear).
     exceptions: exc?.error ? null : (exc?.data || null),
+    // Totals only (no names), so the saved copy on the device holds no broker data.
+    brokers: brk?.error ? null : brokerTotals(brk?.data || []),
   };
 }
 
 const EMPTY_SNAPSHOT = {
   activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
   teamRows: [], coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
-  aptsToday: 0, recentActivities: [],
+  aptsToday: 0, recentActivities: [], brokers: null,
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -395,6 +402,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
 
   const SECTIONS = {
     finance: <OwnerMoney dealerId={dealerId} onNavigate={onNavigate} />,
+    brokers: <BrokerTotals totals={snapshot.brokers} onNavigate={onNavigate} />,
     alerts: (<>
       {/* ── Needs Attention strip ── */}
       {(() => {
@@ -406,6 +414,13 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
           label: `${snapshot.priceWaiting} price${snapshot.priceWaiting === 1 ? '' : 's'} waiting for your OK`,
           detail: snapshot.priceWaiting > 1 ? 'a discount over your limit · opens the oldest' : 'a discount over your limit · tap to decide',
           go: 'crm', query: snapshot.priceLeadId ? { lead: snapshot.priceLeadId } : undefined,
+        });
+        // A broker's "my buyer bought" waits here until the dealer approves it: nothing is owed before that.
+        // Joins this ONE needs-you list; it never gets a second list on another tab.
+        if (snapshot.brokers?.toApprove > 0) alerts.push({
+          key: 'broker_sales', urgent: true, Icon: Users,
+          label: `${snapshot.brokers.toApprove} broker sale${snapshot.brokers.toApprove === 1 ? '' : 's'} to approve`,
+          detail: 'a broker says their buyer bought · commission owed once you approve', go: 'team', query: { sub: 'brokers' },
         });
         if (snapshot.unansweredCount > 0) alerts.push({
           key: 'unanswered', urgent: true, Icon: Inbox,

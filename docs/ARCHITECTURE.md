@@ -341,4 +341,5 @@ flowchart LR
 | Views, taps | `get_dealer_car_analytics(p_days)`, default 30 days, label the window | row, pop-up, Performance, Overview | DRIFT #6: all-time in Performance / Reports > Listings |
 | Asking value / money tied up | sum of asking / sum of buy + recon, unsold cars | Stock strip, Overview | DRIFT #7: wording looks alike |
 | Salesman health | `_team_health()` | Performance, daily push | OK |
+| Broker numbers (brokers, buyers held, sales to approve, sold, commission owed / paid) | one row per broker from `dealer_my_brokers()`, added up by `brokerTotals()` (`src/utils/brokerTotals.js`) | Team > Brokers columns, Overview > Brokers tiles + "sales to approve" alert | OK (2026-11-15; held / to approve / paid need migration `20261116a`). NOT yet inside "Gross this month": broker commission is not a `carPnl()` cost line (see TODO IDEA-37) |
 

@@ -26,7 +26,8 @@ const digits = (v) => String(v).replace(/\D/g, '').slice(0, 6);
 
 // Wraps the existing Team screen: Salespeople (children) | Brokers. Only a dealer / owner gets the switch.
 export default function TeamBrokersSwitch({ canManage, dealerId, children }) {
-  const [view, setView] = useState('people');
+  // Overview's "broker sales to approve" and its Brokers tiles open this screen with ?sub=brokers.
+  const [view, setView] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sub') === 'brokers' ? 'brokers' : 'people'));
   if (!canManage) return children;
   const pill = (on) => ({ minHeight: 44, padding: '0 18px', border: 0, borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit', background: on ? PL.text : PL.hover, color: on ? PL.card : PL.text });
   return (

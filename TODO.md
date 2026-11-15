@@ -3039,6 +3039,17 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-37: Overview by week / month / year, with last year to compare (owner, 2026-11-15; scoped, NOT built)** — a
+  Week | Month | Year switch on Overview money, each compared with the period before AND the same period last year.
+  Reuse `ownerMoney()` (it already totals one month by key): make it take a date window, so no new formula appears.
+  Blockers and decisions: (1) most dealers have NO last-year data in Drevo (platform started mid-2026): last year needs
+  an owner-only `dealer_history_months` table (units, sales, gross per month, labelled "imported", role-checked) filled
+  by a 12-row form or the existing Excel import; (2) weekly numbers swing on 2-3 cars: show units and RM, no % trend
+  under a minimum sample; (3) history uses today's cost settings (floor plan, overhead), say so; (4) leads / views by
+  period need an aggregate RPC (Overview reads only the newest 300 leads); (5) broker commission is not in carPnl
+  yet, so gross ignores it: add a `broker` cost line first (needs a per-car broker commission read a manager can
+  also use). Full write-up was given in chat 2026-11-15.
+
 - **SOCIAL-1 follow-ups (shipped 2026-11-13: Drevo's own Facebook Page + TikTok, console Social queue)** — sellers are asked
   once after submitting a car; the owner posts approved, consenting cars from Console > Work > Social (CLAUDE.md
   "Drevo's OWN pages"). Still open: (1) an in-app switch for a seller to WITHDRAW consent (today: message us, the
