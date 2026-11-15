@@ -1,6 +1,6 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateKey, carLabel,
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateNeedsAsk, rebateKey, carLabel,
   maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
   dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
@@ -315,5 +315,10 @@ is('handle: keeps a typed @', viewerHandle('@@aina'), '@aina');
 is('handle: no spaces', viewerHandle(' kak long '), '@kaklong');
 is('handle: empty stays empty', viewerHandle('  @ '), '');
 is('handle: capped', viewerHandle('x'.repeat(40)).length, HANDLE_MAX);
+is('rebate ask: RM73,400 off RM73,400', rebateNeedsAsk(73400, 73400), true);
+is('rebate ask: a normal RM3,000 off RM73,400', rebateNeedsAsk(73400, 3000), false);
+is('rebate ask: exactly 20% is fine', rebateNeedsAsk(50000, 10000), false);
+is('rebate ask: just over 20% asks', rebateNeedsAsk(50000, 10001), true);
+is('rebate ask: no price, no ask', rebateNeedsAsk(0, 5000), false);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
