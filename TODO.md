@@ -3052,7 +3052,7 @@ Background (from the idea):
   "users can find" = Google first; an in-app search by nickname is a later phase. One migration (queued for the
   midnight window) + `agentSeoIssues` gets one line "Add your social media name".
 
-- **IDEA-37: Overview by week / month / year, with last year to compare (owner, 2026-11-15; scoped, NOT built)** — a
+- **IDEA-37 -> BUILT 2026-11-15 (Week | Month | Year switch + click-any-number breakdowns + broker commission inside gross; staging; migration `20261116a` queued). Not built: leads / views by period (Overview reads only the newest 300 leads, needs its own count query), manager Overview KPIs by period are done but untested live. NO history table, by the owner's call: a new product has no past.** Original scope: **IDEA-37: Overview by week / month / year, with last year to compare (owner, 2026-11-15)** — a
   Week | Month | Year switch on Overview money, each compared with the period before AND the same period last year.
   Reuse `ownerMoney()` (it already totals one month by key): make it take a date window, so no new formula appears.
   Blockers and decisions: (1) most dealers have NO last-year data in Drevo (platform started mid-2026): last year needs

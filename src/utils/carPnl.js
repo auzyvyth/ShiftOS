@@ -43,7 +43,10 @@ export function daysHeld(start, end, now = Date.now()) {
 
 /**
  * @param {object} i
- *  purchase, reconEstimate, reconJobs[{cost}], servicesCost, commission,
+ *  purchase, reconEstimate, reconJobs[{cost}], servicesCost, commission, brokerCommission,
+ *  (brokerCommission = what an outside broker is owed on this car once the dealer approved the sale
+ *  (BROKER-2). It is ONE line with the team's commission, so every screen that shows commission
+ *  shows both; `commissionParts` says how it splits.)
  *  handoverCost  number = the real handover step costs (deal won); null/undefined = not sold yet, estimate it
  *  adSpend, addonRevenue, addonCost, asking, soldPrice, isSold,
  *  startDate, soldDate, engineCc, warrantyMonths, cfg (dealer_cost_settings row)
@@ -64,6 +67,7 @@ export function carPnl(i = {}, now = Date.now()) {
   const roadTax = estimateRoadTax(i.engineCc) || 0;
   const transferEst = JPJ_TRANSFER_FEE + PUSPAKOM_B5_FEE + n(cfg.runner_fee) + roadTax;
   const transfer = hasHandover ? n(i.handoverCost) : transferEst;
+  const brokerComm = n(i.brokerCommission);
   const warrantyPct = n(i.warrantyMonths) > 0 ? n(cfg.warranty_reserve_pct) : 0;
   const warranty = Math.round((revenue * warrantyPct) / 100);
 
@@ -73,7 +77,7 @@ export function carPnl(i = {}, now = Date.now()) {
     { key: 'holding', label: days == null ? 'Holding' : `Holding, ${days} day${days === 1 ? '' : 's'}`, val: holding, kind: 'accruing' },
     { key: 'ads', label: 'Advertising', val: n(i.adSpend), kind: 'actual' },
     { key: 'services', label: 'Included services', val: n(i.servicesCost), kind: 'actual' },
-    { key: 'commission', label: 'Commission', val: n(i.commission), kind: 'actual' },
+    { key: 'commission', label: brokerComm > 0 ? 'Commission, team and broker' : 'Commission', val: n(i.commission) + brokerComm, kind: 'actual' },
     { key: 'transfer', label: hasHandover ? 'Transfer and handover' : 'Transfer, JPJ, B5, road tax', val: transfer, kind: hasHandover ? 'actual' : 'estimate' },
     { key: 'admin', label: 'Admin and documents', val: n(cfg.admin_fee), kind: 'actual' },
     { key: 'warranty', label: 'Warranty reserve', val: warranty, kind: 'estimate' },
@@ -93,6 +97,7 @@ export function carPnl(i = {}, now = Date.now()) {
 
   return {
     revenue, lines, costTotal, front, back, net, margin, isSold,
+    commissionParts: { team: n(i.commission), broker: brokerComm },
     days, perDay, holding, transfer, transferIsEstimate: !hasHandover,
     breakeven, daysUntilZero, projections, startKnown: days != null,
   };

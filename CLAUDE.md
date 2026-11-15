@@ -1659,7 +1659,13 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   is owed until the dealer approves (`broker_mark_sold`, one tap at the agreed amount) or disputes
   (`broker_dispute_claim`, broker told). The dealer's own Won still credits the broker by itself. The lead panel shows the
   dealer car as the lead's car through the registration (`dealerSaleFor`, SalesmanPremium.jsx), never via `car_listing_id`.
-  Dealer Team > Brokers = one COLUMN per broker with their buyers inside (`DealerBrokers.jsx`). "Link a car" shows a "Dealer stock" group
+  Dealer Team > Brokers = one COLUMN per broker with their buyers inside (`DealerBrokers.jsx`).
+  **Broker numbers live INSIDE the dealer's totals, never in a block of their own (owner, 2026-11-15):** broker commission is part
+  of the car's ONE commission line (`carPnl({ brokerCommission })`, read per car by `src/lib/brokerCommission.js`, RPC
+  `dealer_broker_commission_by_car`, same switch as gross profit), so Cars sold / Sales / Commission / Gross on Overview all
+  include it. Any NEW `carPnl()` caller must pass `brokerCommission` or its profit will not match Overview. Overview's
+  numbers are Week | Month | Year (`periodWindow` in `ownerMoney.js`) and EVERY money number opens its breakdown
+  (`MoneyDetailSheet` + `explain()` in `moneyExplain.js`, every list adds to 100%). Last year is shown only when a car really sold in that window. "Link a car" shows a "Dealer stock" group
   (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
 - Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
 - (older note) leads that arrive through a broker's page are not attributed to the broker

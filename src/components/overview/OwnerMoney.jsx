@@ -2,9 +2,16 @@
 // everything about the money and revenue"). Every number is a sum of carPnl() over the cars
 // (src/utils/ownerMoney.js), so it always equals the cars underneath it. No cash balance, bills
 // or receivables: nothing records them yet, and an invented number is worse than none.
+// Week | Month | Year comes from Overview (one switch for the whole tab). EVERY number here opens a
+// breakdown of where it comes from (MoneyDetailSheet, built by src/utils/moneyExplain.js).
+import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useCarMoney } from '../../hooks/useCarMoney';
+import { PERIOD_TEXT } from '../../utils/ownerMoney';
+import { explain } from '../../utils/moneyExplain';
+import MoneyDetailSheet from './MoneyDetailSheet';
 import { premiumLight as PL } from '../../theme/tokens';
+import '../../theme/premiumLight.css';
 
 const rm = (v) => {
   const x = Math.round(Number(v) || 0);
@@ -26,39 +33,50 @@ function Head({ title, sub }) {
     </div>
   );
 }
-function Trend({ v }) {
-  if (v == null || !Number.isFinite(v)) return <span style={{ fontSize: 11.5, color: PL.textMuted }}>none by this day last month</span>;
-  return <span style={{ fontSize: 11.5, fontWeight: 700, color: v >= 0 ? PL.up : PL.accentText }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}% <span style={{ fontWeight: 400, color: PL.textMuted }}>vs this day last month</span></span>;
+// `vs` is the words for the comparison ("vs this day last month"); with nothing to compare, say so.
+function Trend({ v, vs }) {
+  if (v == null || !Number.isFinite(v)) return <span style={{ fontSize: 11.5, color: PL.textMuted }}>nothing to compare yet</span>;
+  return <span style={{ fontSize: 11.5, fontWeight: 700, color: v >= 0 ? PL.up : PL.accentText }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}% <span style={{ fontWeight: 400, color: PL.textMuted }}>{vs}</span></span>;
 }
-function Kpi({ label, value, children, tone }) {
+// A tile you can press: it opens where its number comes from.
+function Kpi({ label, value, children, tone, onOpen }) {
   return (
-    <div style={card}>
+    <button type="button" className="pl-key" onClick={onOpen} aria-label={`${label}: where it comes from`}
+      style={{ ...card, border: 'none', textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer' }}>
       <p style={eyebrow}>{label}</p>
       <p style={{ fontSize: 'clamp(19px, 5.2vw, 26px)', fontWeight: 800, color: tone || PL.text, margin: '8px 0 4px', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{value}</p>
       <div style={{ fontSize: 11.5, color: PL.textMuted }}>{children}</div>
-    </div>
+    </button>
   );
 }
-function Bars({ rows, total }) {
+// Each row is a button when it has an `open` key: tap a bar, see the cars behind it.
+function Bars({ rows, total, onOpen }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      {rows.map((r) => (
-        <div key={r.label}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
-            <span style={{ color: PL.textSec }}>{r.label}</span>
-            <span style={{ fontWeight: 700, color: r.val < 0 ? PL.accentText : PL.text, fontVariantNumeric: 'tabular-nums' }}>{rm(r.val)}{total > 0 && r.val > 0 ? ` · ${Math.round((r.val / total) * 100)}%` : ''}</span>
-          </div>
-          <div style={{ height: 7, background: PL.raised, borderRadius: 99, marginTop: 5, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${total > 0 ? Math.max(0, Math.min(100, (r.val / total) * 100)) : 0}%`, background: r.dark ? PL.text : PL.accent, borderRadius: 99 }} />
-          </div>
-        </div>
-      ))}
+      {rows.map((r) => {
+        const Tag = r.open && onOpen ? 'button' : 'div';
+        return (
+          <Tag key={r.label} {...(Tag === 'button' ? { type: 'button', onClick: () => onOpen(r.open) } : {})}
+            style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', textAlign: 'left', fontFamily: 'inherit', cursor: Tag === 'button' ? 'pointer' : 'default' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
+              <span style={{ color: PL.textSec }}>{r.label}</span>
+              <span style={{ fontWeight: 700, color: r.val < 0 ? PL.accentText : PL.text, fontVariantNumeric: 'tabular-nums' }}>{rm(r.val)}{total > 0 && r.val > 0 ? ` · ${Math.round((r.val / total) * 100)}%` : ''}</span>
+            </div>
+            <div style={{ height: 7, background: PL.raised, borderRadius: 99, marginTop: 5, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${total > 0 ? Math.max(0, Math.min(100, (r.val / total) * 100)) : 0}%`, background: r.dark ? PL.text : PL.accent, borderRadius: 99 }} />
+            </div>
+          </Tag>
+        );
+      })}
     </div>
   );
 }
 
-export default function OwnerMoney({ dealerId, onNavigate }) {
+const SERIES_TEXT = { week: 'last 8 weeks', month: 'last 6 months', year: 'last 12 months' };
+
+export default function OwnerMoney({ dealerId, onNavigate, period = 'month' }) {
   const { money: m, failed, cached } = useCarMoney(dealerId);
+  const [detail, setDetail] = useState(null);
 
   if (!m) {
     return (
@@ -67,8 +85,15 @@ export default function OwnerMoney({ dealerId, onNavigate }) {
       </div>
     );
   }
-  const mo = m.month;
-  const spendTotal = mo.spend.reduce((s, x) => s + x.val, 0) + m.overheadToDate;
+  const P = m.periods[period] || m.periods.month;
+  const T = PERIOD_TEXT[P.kind];
+  const mo = P.cur;
+  const open = (key) => setDetail(explain(m, P.kind, key));
+  const spendTotal = mo.spend.reduce((s, x) => s + x.val, 0) + P.overhead;
+  const addonCount = mo.rowsSold.reduce((c, r) => c + r.addonItems.length, 0);
+  // Last year is shown only when a car really sold in that window: Drevo is new, nothing is made up.
+  const ly = P.lastYear;
+  const LY = ({ children }) => (ly ? <div>Last year: {children}</div> : null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -79,35 +104,51 @@ export default function OwnerMoney({ dealerId, onNavigate }) {
         @media(max-width:900px){.om-kpis{grid-template-columns:1fr 1fr}.om-two{grid-template-columns:1fr}.om-tiles{grid-template-columns:1fr 1fr}}
       `}</style>
 
-      <Head title="Money this month" sub="RM · sold cars, counted from the day each car was added" />
+      <Head title={`Money ${T.name}`} sub="RM · sold cars, counted from the day each car was added. Tap a number to see where it comes from." />
       <div className="om-kpis">
-        <Kpi label="Gross profit" value={rm(mo.gross)} tone={mo.gross < 0 ? PL.accentText : undefined}>
-          <Trend v={pct(mo.gross, m.prevToDate.gross)} />{mo.margin != null && <div>{mo.margin.toFixed(1)}% margin</div>}
+        <Kpi label="Gross profit" value={rm(mo.gross)} tone={mo.gross < 0 ? PL.accentText : undefined} onOpen={() => open('gross')}>
+          <Trend v={pct(mo.gross, P.before.gross)} vs={T.vs} />{mo.margin != null && <div>{mo.margin.toFixed(1)}% margin</div>}
+          <LY>{rm(ly?.gross)}</LY>
         </Kpi>
-        <Kpi label="Sales" value={rm(mo.revenue)}>
-          {mo.units} car{mo.units === 1 ? '' : 's'} sold · <Trend v={pct(mo.revenue, m.prevToDate.revenue)} />
+        <Kpi label="Sales" value={rm(mo.revenue)} onOpen={() => open('sales')}>
+          <Trend v={pct(mo.revenue, P.before.revenue)} vs={T.vs} />
+          <LY>{rm(ly?.revenue)}</LY>
         </Kpi>
-        <Kpi label="After overhead" value={rm(m.netAfterOverhead)} tone={m.netAfterOverhead < 0 ? PL.accentText : undefined}>
-          {m.overheadToDate > 0 ? `${rm(m.overheadToDate)} overhead so far (Settings, Costs)` : 'Set your monthly overhead in Settings, Costs'}
+        <Kpi label="Cars sold" value={String(mo.units)} onOpen={() => open('units')}>
+          <Trend v={pct(mo.units, P.before.units)} vs={T.vs} />
+          {mo.brokerSold > 0 && <div>{mo.brokerSold} through brokers</div>}
+          <LY>{ly?.units} car{ly?.units === 1 ? '' : 's'}</LY>
         </Kpi>
-        <Kpi label="Money tied up in stock" value={rm(m.stock.atCost)}>
+        <Kpi label="Add-ons" value={rm(mo.addonRevenue)} onOpen={() => open('addons')}>
+          {addonCount > 0 ? `${addonCount} sold with the cars` : 'none sold yet'}
+        </Kpi>
+        <Kpi label="Commission" value={rm(mo.commission)} onOpen={() => open('commission')}>
+          {mo.brokerCommission > 0 ? `${rm(mo.brokerCommission)} of it for brokers` : mo.commission > 0 ? 'your salesmen' : 'none on these cars'}
+        </Kpi>
+        <Kpi label="Overhead" value={rm(P.overhead)} onOpen={() => open('overhead')}>
+          {P.overhead > 0 ? 'counted by the day (Settings, Costs)' : 'Set your monthly overhead in Settings, Costs'}
+        </Kpi>
+        <Kpi label="After overhead" value={rm(P.net)} tone={P.net < 0 ? PL.accentText : undefined} onOpen={() => open('net')}>
+          gross profit minus overhead
+        </Kpi>
+        <Kpi label="Money tied up in stock" value={rm(m.stock.atCost)} onOpen={() => open('tied')}>
           {m.stock.perDay > 0 ? `costs about ${rm(m.stock.perDay)} a day` : `${m.stock.count} cars, buy + recon`}
         </Kpi>
       </div>
       {(mo.leftOut > 0 || m.stock.noCost > 0) && (
         <button type="button" onClick={() => onNavigate?.('stock')} style={{ ...card, padding: '12px 16px', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: PL.textSec }}>
           <b style={{ color: PL.text }}>Profit is incomplete.</b>{' '}
-          {[mo.leftOut > 0 && `${mo.leftOut} car${mo.leftOut === 1 ? '' : 's'} sold this month`, m.stock.noCost > 0 && `${m.stock.noCost} car${m.stock.noCost === 1 ? '' : 's'} in stock`].filter(Boolean).join(' and ')} have no buy price, so they are left out. Add it in Stock and costs.
+          {[mo.leftOut > 0 && `${mo.leftOut} car${mo.leftOut === 1 ? '' : 's'} sold ${T.name}`, m.stock.noCost > 0 && `${m.stock.noCost} car${m.stock.noCost === 1 ? '' : 's'} in stock`].filter(Boolean).join(' and ')} {mo.leftOut + m.stock.noCost === 1 ? 'has' : 'have'} no buy price, so {mo.leftOut + m.stock.noCost === 1 ? 'it is' : 'they are'} left out. Add it in Stock and costs.
         </button>
       )}
 
       <div className="om-two">
         <div style={card}>
-          <p style={eyebrow}>Sales vs gross profit, last 6 months</p>
+          <p style={eyebrow}>Sales vs gross profit, {SERIES_TEXT[P.kind]}</p>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={m.months} margin={{ top: 14, right: 10, bottom: 0, left: 0 }}>
+            <LineChart data={P.series} margin={{ top: 14, right: 10, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={PL.raised} vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: PL.textMuted }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: PL.textMuted }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 10, fill: PL.textMuted }} tickLine={false} axisLine={false} width={52} tickFormatter={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}K`)} />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: 'none', boxShadow: PL.shadow }} formatter={(v, k) => [rm(v), k === 'revenue' ? 'Sales' : 'Gross profit']} />
               <Line type="monotone" dataKey="revenue" stroke={PL.accent} strokeWidth={2.5} dot={false} />
@@ -121,28 +162,29 @@ export default function OwnerMoney({ dealerId, onNavigate }) {
         </div>
         <div style={card}>
           <p style={{ ...eyebrow, marginBottom: 14 }}>Where the gross came from</p>
-          <Bars total={mo.carsGross + Math.max(0, mo.addonsGross)} rows={[
-            { label: 'Selling the cars', val: mo.carsGross },
-            { label: 'Add-ons (tint, warranty, insurance...)', val: mo.addonsGross, dark: true },
+          <Bars onOpen={open} total={mo.carsGross + Math.max(0, mo.addonsGross)} rows={[
+            { label: 'Selling the cars', val: mo.carsGross, open: 'gross' },
+            { label: 'Add-ons (tint, warranty, insurance...)', val: mo.addonsGross, dark: true, open: 'addons' },
           ]} />
-          <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '14px 0 0' }}>Cars sold this month with a buy price entered.</p>
+          <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '14px 0 0' }}>Cars sold {T.name} with a buy price entered.</p>
         </div>
       </div>
 
       <Head title="Money tied up" sub="Cars in stock right now" />
       <div className="om-tiles">
         {[
-          ['At cost (buy + recon)', rm(m.stock.atCost)],
-          ['Average days in stock', m.stock.avgDays == null ? '—' : `${m.stock.avgDays} days`],
-          ['Holding cost per day', m.stock.perDay > 0 ? rm(m.stock.perDay) : '—'],
-          ['Over 60 days', String(m.stock.over60), m.stock.over60 > 0],
-          ['Losing at asking price', String(m.stock.losing), m.stock.losing > 0],
-          ['No buy price yet', String(m.stock.noCost)],
-        ].map(([k, v, bad]) => (
-          <div key={k} style={{ ...card, padding: '12px 14px' }}>
+          ['At cost (buy + recon)', rm(m.stock.atCost), false, 'tied'],
+          ['Average days in stock', m.stock.avgDays == null ? '—' : `${m.stock.avgDays} days`, false, 'avgdays'],
+          ['Holding cost per day', m.stock.perDay > 0 ? rm(m.stock.perDay) : '—', false, 'holding'],
+          ['Over 60 days', String(m.stock.over60), m.stock.over60 > 0, 'over60'],
+          ['Losing at asking price', String(m.stock.losing), m.stock.losing > 0, 'losing'],
+          ['No buy price yet', String(m.stock.noCost), false, 'nocost'],
+        ].map(([k, v, bad, key]) => (
+          <button key={k} type="button" className="pl-key" onClick={() => open(key)} aria-label={`${k}: where it comes from`}
+            style={{ ...card, padding: '12px 14px', border: 'none', textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer' }}>
             <p style={{ fontSize: 20, fontWeight: 800, margin: 0, color: bad ? PL.accentText : PL.text, fontVariantNumeric: 'tabular-nums' }}>{v}</p>
             <p style={{ fontSize: 12, color: PL.textMuted, margin: '2px 0 0' }}>{k}</p>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -164,16 +206,17 @@ export default function OwnerMoney({ dealerId, onNavigate }) {
           })}
         </div>
         <div style={card}>
-          <p style={{ ...eyebrow, marginBottom: 14 }}>Where the money went this month</p>
-          {spendTotal === 0 ? <p style={{ fontSize: 13, color: PL.textMuted, margin: 0 }}>Nothing counted yet this month.</p> : (
-            <Bars total={spendTotal} rows={[
-              ...mo.spend.sort((a, b) => b.val - a.val).map((x) => ({ label: SPEND_LABEL[x.key] || x.key, val: x.val, dark: x.key !== 'holding' })),
-              ...(m.overheadToDate > 0 ? [{ label: 'Overhead so far (rent, salaries...)', val: m.overheadToDate, dark: true }] : []),
+          <p style={{ ...eyebrow, marginBottom: 14 }}>Where the money went {T.name}</p>
+          {spendTotal === 0 ? <p style={{ fontSize: 13, color: PL.textMuted, margin: 0 }}>Nothing counted yet {T.name}.</p> : (
+            <Bars total={spendTotal} onOpen={open} rows={[
+              ...[...mo.spend].sort((a, b) => b.val - a.val).map((x) => ({ label: SPEND_LABEL[x.key] || x.key, val: x.val, dark: x.key !== 'holding', open: `spend:${x.key}` })),
+              ...(P.overhead > 0 ? [{ label: 'Overhead so far (rent, salaries...)', val: P.overhead, dark: true, open: 'overhead' }] : []),
             ]} />
           )}
-          <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '14px 0 0' }}>Costs of the cars sold this month, plus your monthly overhead. Buy prices are left out.</p>
+          <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '14px 0 0' }}>Costs of the cars sold {T.name}, plus your monthly overhead. Buy prices are left out. Commission includes brokers.</p>
         </div>
       </div>
+      {detail && <MoneyDetailSheet detail={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }

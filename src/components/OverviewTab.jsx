@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { OVERVIEW_ROLES, NEEDS, overviewRoleFor } from '../config/dealerRoles';
 import OwnerMoney from './overview/OwnerMoney';
-import BrokerTotals from './overview/BrokerTotals';
+import MoneyDetailSheet from './overview/MoneyDetailSheet';
+import { explain, explainCounts } from '../utils/moneyExplain';
+import { PERIOD_TEXT } from '../utils/ownerMoney';
 import { brokerTotals } from '../utils/brokerTotals';
 import { useCarMoney } from '../hooks/useCarMoney';
 import { useCachedFetch } from '../hooks/useCachedFetch';
@@ -92,10 +94,12 @@ const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase'
 
 // A tile states ONE number. No coloured icon square, no border: a white card
 // on the grey canvas. The change vs last month is coloured TEXT, no pill.
-function KpiCard({ label, value, sub, trend }) {
+function KpiCard({ label, value, sub, trend, onOpen }) {
   const up = trend != null && trend >= 0;
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div style={{ background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px', minWidth: 0 }}>
+    <Tag {...(onOpen ? { type: 'button', className: 'pl-key', onClick: onOpen, 'aria-label': `${label}: where it comes from` } : {})}
+      style={{ background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px', minWidth: 0, border: 'none', textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: onOpen ? 'pointer' : 'default' }}>
       <p style={MICRO}>{label}</p>
       <p style={{ fontSize: 26, fontWeight: 700, color: PL.text, margin: '8px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
       <p style={{ fontSize: 11, color: PL.textMuted, margin: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -107,7 +111,7 @@ function KpiCard({ label, value, sub, trend }) {
         )}
         {sub && <span>{sub}</span>}
       </p>
-    </div>
+    </Tag>
   );
 }
 
@@ -326,6 +330,10 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   );
   // No cache and the first read failed: show the empty state, never hang.
   const snapshot = cachedSnapshot || EMPTY_SNAPSHOT;
+  // ONE switch for the whole tab (owner, 2026-11-15): Week | Month | Year. Kept on the device.
+  const [period, setPeriodState] = useState(() => { try { const v = localStorage.getItem('xd_ov_period'); return ['week', 'month', 'year'].includes(v) ? v : 'month'; } catch { return 'month'; } });
+  const setPeriod = (v) => { setPeriodState(v); try { localStorage.setItem('xd_ov_period', v); } catch { /* private mode */ } };
+  const [detail, setDetail] = useState(null);
   const subRef = useRef(null);
   const onlineIds = usePresence(dealerId);
   const refreshRef = useRef(refresh);
@@ -342,8 +350,12 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   }, [dealerId]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const mtd  = money?.month || null;
-  const lmtd = money?.prevToDate || null;
+  // The chosen period (this week / month / year so far) and the same point of the one before it.
+  const Pd = money?.periods?.[period] || null;
+  const mtd  = Pd?.cur || null;
+  const lmtd = Pd?.before || null;
+  const PT = PERIOD_TEXT[period];
+  const openMoney = (key) => setDetail(explain(money, period, key));
   const unitTrend = mtd && lmtd ? delta(mtd.units, lmtd.units) : null;
   const gpTrend   = mtd && lmtd ? delta(mtd.gross, lmtd.gross) : null;
   // "N left out" when a sold car has no buy price: its profit is not invented.
@@ -401,8 +413,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
   const onlineCount = teamRows.filter(r => r.isActive).length;
 
   const SECTIONS = {
-    finance: <OwnerMoney dealerId={dealerId} onNavigate={onNavigate} />,
-    brokers: <BrokerTotals totals={snapshot.brokers} onNavigate={onNavigate} />,
+    finance: <OwnerMoney dealerId={dealerId} onNavigate={onNavigate} period={period} />,
     alerts: (<>
       {/* ── Needs Attention strip ── */}
       {(() => {
@@ -507,14 +518,17 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
       <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
         {view.kpis.filter(allowed).map((id) => {
           const K = {
-            open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline' },
-            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: !money ? 'counting...' : money.stock.over60 ? `${money.stock.over60} on lot 60d+` : 'none over 60 days' },
-            sold_month:      { label: 'Sold this month',  value: mtd ? mtd.units : '-', sub: 'vs this day last month', trend: unitTrend },
-            gross_month:     { label: 'Gross this month', value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend },
+            open_leads:      { label: 'Open leads',       value: snapshot.activeLeads, sub: 'active pipeline', open: () => setDetail(explainCounts('open_leads', 'Open leads', snapshot.activeLeads, [
+              { heading: 'By stage', rows: ACTIVE_STAGES.map((st) => ({ label: stageLabel(st), value: snapshot.stageCounts[st] || 0 })).filter((r) => r.value > 0) },
+              { heading: 'By where they came from', rows: Object.entries(snapshot.sourceCounts).map(([k, v]) => ({ label: SOURCE_LABELS[k] || k.replace(/_/g, ' '), value: v })) },
+            ], 'The newest 300 leads, not yet won or lost.')) },
+            active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: !money ? 'counting...' : money.stock.over60 ? `${money.stock.over60} on lot 60d+` : 'none over 60 days', open: () => money && openMoney('stock_brand') },
+            sold_month:      { label: `Sold ${PT.name}`,  value: mtd ? mtd.units : '-', sub: PT.vs, trend: unitTrend, open: () => money && openMoney('units') },
+            gross_month:     { label: `Gross ${PT.name}`, value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend, open: () => money && openMoney('gross') },
             appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
-            money_tied:      { label: 'Money tied up',    value: money ? fmt(money.stock.atCost) : '-', sub: tiedSub },
+            money_tied:      { label: 'Money tied up',    value: money ? fmt(money.stock.atCost) : '-', sub: tiedSub, open: () => money && openMoney('tied') },
           }[id];
-          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} /> : null;
+          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} onOpen={K.open || (id === 'appts_today' ? () => onNavigate?.('crm', { sub: 'bookings' }) : undefined)} /> : null;
         })}
       </div>
 
@@ -524,7 +538,7 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
       <div className="ov-rev-stock" style={{ display: 'grid', gridTemplateColumns: sparkData.length ? '2fr 1fr' : '1fr', gap: 14 }}>
         {sparkData.length > 0 && (
           <Panel>
-            <SectionHeader title="Revenue, last 30 days" sub={`This month ${fmt(mtd?.revenue)}  ·  same days last month ${fmt(lmtd?.revenue)}`} />
+            <SectionHeader title="Revenue, last 30 days" sub={`This month ${fmt(money?.month.revenue)}  ·  same days last month ${fmt(money?.prevToDate.revenue)}`} />
             <ResponsiveContainer width="100%" height={130}>
               <LineChart data={sparkData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={PL.raised} />
@@ -740,7 +754,24 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
         </div>
       )}
 
+      {/* Week | Month | Year: one switch for every money number on this tab. */}
+      {(view.sections.includes('finance') || view.sections.includes('kpis')) && allowed('finance') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div role="group" aria-label="Period" style={{ display: 'inline-flex', background: PL.raised, borderRadius: PL.radius.pill, padding: 3 }}>
+            {[['week', 'Week'], ['month', 'Month'], ['year', 'Year']].map(([k, label]) => (
+              <button key={k} type="button" aria-pressed={period === k} onClick={() => setPeriod(k)}
+                style={{ height: 34, padding: '0 18px', borderRadius: PL.radius.pill, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                  background: period === k ? PL.card : 'transparent', color: period === k ? PL.text : PL.textMuted, boxShadow: period === k ? '0 1px 3px rgba(17,24,39,0.12)' : 'none' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 12, color: PL.textMuted }}>so far {PT.name}</span>
+        </div>
+      )}
+
       {view.sections.filter(allowed).map((sec) => <Fragment key={sec}>{SECTIONS[sec]}</Fragment>)}
+      {detail && <MoneyDetailSheet detail={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }

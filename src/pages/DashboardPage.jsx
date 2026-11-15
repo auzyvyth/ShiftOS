@@ -226,6 +226,7 @@ import {
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
 import TeamBrokersSwitch from "../components/brokers/DealerBrokers";
+import { loadBrokerCommission, brokerAmount } from "../lib/brokerCommission";
 import { carPnl, daysHeld, AGEING_DAYS } from "../utils/carPnl";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
@@ -4984,7 +4985,7 @@ function stockCostBasis(u) {
 // stockNetProfit() below is just front + addonNet for callers that only want
 // one combined number (row badges, loss filter).
 function stockNetProfitParts(u, ctx = {}) {
-  const { ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  const { ads = {}, handover = {}, addRev = {}, addCost = {}, broker = {} } = ctx;
   // `cfg` is null until dealer_cost_settings answers, and the cars paint first from the
   // device copy, so a default of {} (undefined only) was not enough: Stock crashed on reopen.
   const cfg = ctx.cfg || {};
@@ -4998,7 +4999,7 @@ function stockNetProfitParts(u, ctx = {}) {
   // estimate stands in (effectiveRecon never goes below it).
   const p = carPnl({
     purchase: cost, reconEstimate: u.recon_cost, servicesCost: c.included_services_cost,
-    commission: c.commission_amount, adSpend: ads[u.id] || 0,
+    commission: c.commission_amount, brokerCommission: broker[u.listing_id] || 0, adSpend: ads[u.id] || 0,
     handoverCost: handover[u.listing_id] ?? null,
     asking: Number(u.asking_price) || Number(c.selling_price) || 0, soldPrice: u.sold_price, isSold,
     startDate: u.purchase_date || u.created_at, soldDate: u.sold_date,
@@ -5215,22 +5216,24 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // the full per-unit P&L modal: ad spend (per stock unit), handover processing
   // (per listing), and F&I back-end (per listing). Without these the inline gross
   // was rosy — a 0-margin car with recon/ads/holding never tripped the loss filter.
-  const [costExtras, setCostExtras] = useState({ ads: {}, handover: {}, addRev: {}, addCost: {} });
+  const [costExtras, setCostExtras] = useState({ ads: {}, handover: {}, addRev: {}, addCost: {}, broker: {} });
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const [ads, tasks, dp] = await Promise.all([
+      const [ads, tasks, dp, bc] = await Promise.all([
         supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', userId),
         supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', userId),
         supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', userId),
+        loadBrokerCommission(userId).catch(() => null), // BROKER-2: part of the one commission line
       ]);
       if (cancelled) return;
+      const bk = {}; Object.entries(bc?.byCar || {}).forEach(([id, v]) => { bk[id] = v.amount; });
       const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
       const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
       const ar = {}; const ac = {};
       (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
-      setCostExtras({ ads: a, handover: h, addRev: ar, addCost: ac });
+      setCostExtras({ ads: a, handover: h, addRev: ar, addCost: ac, broker: bk });
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -5255,7 +5258,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // the "In loss" filter, the profit sorts and the P&L button read null (only a tile was hidden).
   const netProfit = (u) => (can('view_gross') ? stockNetProfit(u, {
     cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
-    addRev: costExtras.addRev, addCost: costExtras.addCost,
+    addRev: costExtras.addRev, addCost: costExtras.addCost, broker: costExtras.broker,
   }) : null);
 
   // Predicates for the quick-filter chips (each returns true = unit matches the filter)
@@ -5518,6 +5521,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     ]);
     reconJobsList = rj || [];
     adSpendList = ads || [];
+    // BROKER-2: what an approved broker sale on this car owes the broker (one commission line).
+    let pnlBroker = 0;
+    try { pnlBroker = brokerAmount((await loadBrokerCommission(userId)).byCar, listingId); } catch { /* keep 0, the read failed */ }
     if (listingId) {
       const [{ data: dp }, { data: pst }] = await Promise.all([
         supabase
@@ -5539,6 +5545,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     const e = carPnl({
       purchase: unit.purchase_price, reconEstimate: unit.recon_cost, reconJobs: reconJobsList,
       servicesCost: cl.included_services_cost, commission: cl.commission_amount,
+      brokerCommission: pnlBroker,
       handoverCost: handoverTasks.length ? handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0) : null,
       adSpend: adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0),
       addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0),

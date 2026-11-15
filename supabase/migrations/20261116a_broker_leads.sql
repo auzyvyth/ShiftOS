@@ -24,6 +24,7 @@ alter table public.broker_registrations
   add column if not exists dealer_lead_id uuid references public.leads(id) on delete set null,
   add column if not exists broker_lead_id uuid references public.leads(id) on delete set null,
   add column if not exists sold_by text,
+  add column if not exists sold_listing_id uuid references public.car_listings(id) on delete set null,
   add column if not exists sale_claimed_at timestamptz,
   add column if not exists claim_disputed_at timestamptz;
 
@@ -528,7 +529,8 @@ begin
       v_amt := coalesce(r.commission_agreed,
         (select commission_default from public.dealer_brokers where dealer_id = r.dealer_id and broker_id = r.broker_id), 0);
       update public.broker_registrations
-         set status = 'sold', sold_at = now(), commission_amount = v_amt, sold_by = 'auto', dealer_lead_id = new.id
+         set status = 'sold', sold_at = now(), commission_amount = v_amt, sold_by = 'auto', dealer_lead_id = new.id,
+             sold_listing_id = coalesce(new.car_listing_id, r.listing_id)
        where id = r.id;
       insert into public.salesman_notifications (salesman_id, type, title, body, ref_id)
       values (r.broker_id, 'broker_sale', 'Your buyer bought a car',
@@ -540,7 +542,7 @@ begin
   elsif not v_won and coalesce(old.stage, '') in ('won', 'closed_won') then
     -- Undo sale: an automatic credit that was not yet paid goes back to "registered".
     update public.broker_registrations
-       set status = 'registered', sold_at = null, commission_amount = null, sold_by = null
+       set status = 'registered', sold_at = null, commission_amount = null, sold_by = null, sold_listing_id = null
      where dealer_lead_id = new.id and status = 'sold' and sold_by = 'auto' and paid_at is null;
   end if;
   return null;
@@ -635,7 +637,8 @@ begin
   end if;
   v_amt := coalesce(p_commission, v_floor);
   update public.broker_registrations
-     set status = 'sold', sold_at = now(), commission_amount = v_amt, sold_by = 'dealer' where id = r.id;
+     set status = 'sold', sold_at = now(), commission_amount = v_amt, sold_by = 'dealer',
+         sold_listing_id = r.listing_id where id = r.id;
   insert into public.salesman_notifications (salesman_id, type, title, body, ref_id)
   values (r.broker_id, 'broker_sale', 'Your buyer bought the car',
           'The dealer confirmed the sale of ' || r.car_label || '.', r.id);
@@ -714,6 +717,26 @@ language sql stable security definer set search_path to 'pg_catalog', 'public' a
 $$;
 revoke all on function public.dealer_my_brokers() from public, anon;
 grant execute on function public.dealer_my_brokers() to authenticated;
+
+-- Broker commission PER CAR, for the one profit engine (src/utils/carPnl.js, BROKER-2): an approved broker
+-- sale is owed commission on the car that was sold, so it is part of that car's commission cost and
+-- every profit total. Answers the dealer / owner and a manager whose "view gross profit" switch is on;
+-- nobody else gets a row (a salesman never sees what a car earned or cost).
+create or replace function public.dealer_broker_commission_by_car()
+returns table(listing_id uuid, broker_id uuid, broker_name text, amount numeric, paid boolean, sold_at timestamptz)
+language plpgsql stable security definer set search_path to 'pg_catalog', 'public' as $$
+declare v_dealer uuid := public.get_my_dealer_id();
+begin
+  if v_dealer is null or not public.dealer_can(v_dealer, 'view_gross') then return; end if;
+  return query
+    select coalesce(r.sold_listing_id, r.listing_id), r.broker_id, public._broker_name(r.broker_id),
+           coalesce(r.commission_amount, 0), r.paid_at is not null, r.sold_at
+      from public.broker_registrations r
+     where r.dealer_id = v_dealer and r.status = 'sold'
+       and coalesce(r.sold_listing_id, r.listing_id) is not null;
+end $$;
+revoke all on function public.dealer_broker_commission_by_car() from public, anon;
+grant execute on function public.dealer_broker_commission_by_car() to authenticated;
 
 -- ── grants: helpers are internal; only the RPCs are callable, and never by anon ──
 revoke all on function public._broker_live(uuid, uuid) from public, anon, authenticated;

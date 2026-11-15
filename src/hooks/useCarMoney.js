@@ -9,15 +9,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { usePersistentState } from './usePersistentState';
 import { mergeCars, ownerMoney } from '../utils/ownerMoney';
+import { loadBrokerCommission } from '../lib/brokerCommission';
 
 async function load(dealerId) {
-  const [l, u, a, t, d, c] = await Promise.all([
+  const [l, u, a, t, d, c, bc] = await Promise.all([
     supabase.from('car_listings').select('id, brand, model, variant, year, status, selling_price, sold_price, sold_at, created_at, commission_amount, included_services_cost, engine_cc, warranty_months').eq('dealer_id', dealerId).neq('status', 'archived'),
     supabase.from('stock_units').select('id, listing_id, purchase_price, purchase_date, recon_cost, recon_actual, asking_price, sold_price, sold_date, status, created_at, engine_cc, brand, model, year').eq('dealer_id', dealerId),
     supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
     supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
-    supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
+    supabase.from('deal_products').select('listing_id, sold_price, dealer_products(name, category, cost_price)').eq('dealer_id', dealerId),
     supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
+    // What approved broker sales owe brokers, per car (BROKER-2). Rejects on a real failure, so a
+    // missing read never shows a profit that is too high; a missing function (not applied yet) = none.
+    loadBrokerCommission(dealerId),
   ]);
   // Every read counts: a failed ad-spend, handover, add-on or cost-settings read used to be
   // treated as "no costs", so profit came out HIGHER instead of the last good numbers staying.
@@ -29,10 +33,13 @@ async function load(dealerId) {
   const addons = {};
   for (const r of d.data || []) {
     if (!r.listing_id) continue;
-    const x = addons[r.listing_id] || (addons[r.listing_id] = { rev: 0, cost: 0 });
-    x.rev += Number(r.sold_price) || 0; x.cost += Number(r.dealer_products?.cost_price) || 0;
+    const x = addons[r.listing_id] || (addons[r.listing_id] = { rev: 0, cost: 0, items: [] });
+    const rev = Number(r.sold_price) || 0; const cost = Number(r.dealer_products?.cost_price) || 0;
+    x.rev += rev; x.cost += cost;
+    // One row per add-on sold, so Overview can say WHICH add-ons earn the money.
+    x.items.push({ name: r.dealer_products?.name || 'Other add-on', category: r.dealer_products?.category || null, rev, cost });
   }
-  return { listings: l.data || [], units: u.data || [], ctx: { ads, handover, addons, cfg: c.data || {} } };
+  return { listings: l.data || [], units: u.data || [], ctx: { ads, handover, addons, broker: bc.byCar || {}, cfg: c.data || {} } };
 }
 
 const inflight = new Map();

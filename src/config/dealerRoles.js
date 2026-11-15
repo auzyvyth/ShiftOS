@@ -14,7 +14,7 @@ export const OVERVIEW_ROLES = {
     // 'finance' = the money-first block (src/components/overview/OwnerMoney.jsx, owner 2026-11-12).
     // It replaces 'kpis' + 'money' for the owner: the same figures, summed from every car.
     // Leads, bookings and Puspakom alerts are the manager's: the owner sees money alerts only.
-    sections: ['alerts', 'finance', 'brokers', 'team'],
+    sections: ['alerts', 'finance', 'team'],
     // No 'loss' card: it uses price < buy + recon (gm_exception_alerts), while the money block's
     // "Losing at asking price" uses carPnl (all costs). Two answers on one screen: audit #9.
     alerts: ['price', 'broker_sales', 'hp', 'no_cost', 'stale'],
