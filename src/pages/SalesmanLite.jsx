@@ -6675,7 +6675,7 @@ export default function SalesmanLite() {
           ))}
           {activeTab === "brokers" && (
             <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
-              <BrokerStock userId={userId} isPremium={false} theme="dark" onUpgrade={goPremium} />
+              <BrokerStock userId={userId} slug={profile?.slug} isPremium={false} theme="dark" onUpgrade={goPremium} />
             </React.Suspense>
           )}
           {activeTab === "feedback" && (

@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { Check, Link2, Plus, X } from 'lucide-react';
 import { panel, premiumDark as PD } from '../../theme/tokens';
 import { cdnImg } from '../../utils/img';
 import PhoneInput from '../ui/PhoneInput';
 import { isValidMyPhone } from '../../lib/phone';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { PLAN_CONFIG } from '../../utils/planConfig';
+import { SITE_URL } from '../../config/site';
 import * as api from '../../lib/brokerApi';
 
 // BROKER-1: the broker's "Dealer stock" tab, in Salesman Lite (theme "dark") and
@@ -35,7 +36,7 @@ const THEMES = {
 
 const STATUS_WORD = { active: 'Connected', paused: 'Paused', requested: 'Waiting', revoked: 'Ended' };
 
-export default function BrokerStock({ userId, isPremium, theme = 'dark', onUpgrade }) {
+export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', onUpgrade }) {
   const T = THEMES[theme] || THEMES.dark;
   const [dealers, setDealers] = useState(null); // null = loading
   const [regs, setRegs] = useState([]);
@@ -47,6 +48,7 @@ export default function BrokerStock({ userId, isPremium, theme = 'dark', onUpgra
   const [joinOpen, setJoinOpen] = useState(false);
   const [sub, setSub] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingId, setPendingId] = useState(null); // the car whose add/remove is in flight
   const [sheetCar, setSheetCar] = useState(null);
 
   const loadBase = useCallback(async () => {
@@ -105,11 +107,30 @@ export default function BrokerStock({ userId, isPremium, theme = 'dark', onUpgra
     await loadBase();
   });
 
-  const togglePage = (car) => run(async () => {
-    const res = car.on_my_page ? await api.removeFromPage(car.id) : await api.addToPage(car.id);
+  // Add or remove a dealer car on the broker's own page. Every tap answers: the button shows
+  // what is happening, then a message says what changed (removing offers Undo).
+  const togglePage = (car, quiet = false) => run(async () => {
+    const adding = !car.on_my_page;
+    setPendingId(car.id);
+    const res = adding ? await api.addToPage(car.id) : await api.removeFromPage(car.id);
+    setPendingId(null);
+    const title = [car.year, car.brand, car.model].filter(Boolean).join(' ');
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
-    setStock((rows) => (rows || []).map((c) => (c.id === car.id ? { ...c, on_my_page: !c.on_my_page } : c)));
+    setStock((rows) => (rows || []).map((c) => (c.id === car.id ? { ...c, on_my_page: adding } : c)));
+    if (quiet) return;
+    if (adding) toast.success(`${title} is now on your page.`);
+    else toast(`${title} removed from your page.`, { action: { label: 'Undo', onClick: () => togglePage({ ...car, on_my_page: false }, true) } });
   });
+
+  const copyLink = async (car) => {
+    if (!car.slug) { toast.error('This car has no link yet.'); return; }
+    const url = `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(slug || '')}&src=share`;
+    try {
+      if (navigator.share) { await navigator.share({ url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied. Anyone who enquires from it comes to you.');
+    } catch { /* share sheet closed */ }
+  };
 
   const onPageCount = (stock || []).filter((c) => c.on_my_page).length;
 
@@ -275,11 +296,28 @@ export default function BrokerStock({ userId, isPremium, theme = 'dark', onUpgra
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button type="button" disabled={busy} onClick={() => togglePage(car)} style={{ ...greyKey, flex: 1 }}>
-                        {car.on_my_page ? 'On your page' : 'Add to my page'}
+                      <button
+                        type="button" disabled={busy} onClick={() => togglePage(car)}
+                        aria-pressed={car.on_my_page}
+                        style={{
+                          ...greyKey, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          opacity: busy && pendingId === car.id ? 0.6 : 1,
+                          ...(car.on_my_page ? { background: 'rgba(110,231,183,0.14)', color: T.up, fontWeight: 600 } : null),
+                        }}
+                      >
+                        {pendingId === car.id
+                          ? (car.on_my_page ? 'Removing...' : 'Adding...')
+                          : car.on_my_page
+                            ? (<><Check size={16} strokeWidth={2.6} /> On your page</>)
+                            : (<><Plus size={16} strokeWidth={2.4} /> Add to my page</>)}
                       </button>
                       <button type="button" onClick={() => setSheetCar({ ...car, title })} style={{ ...redKey, flex: 1 }}>Register a buyer</button>
                     </div>
+                    {car.on_my_page && (
+                      <button type="button" onClick={() => copyLink(car)} style={{ ...greyKey, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 40 }}>
+                        <Link2 size={16} /> Share my link for this car
+                      </button>
+                    )}
                   </div>
                 );
               })}

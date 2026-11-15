@@ -151,7 +151,7 @@ import { WindowStickerSheet } from '../components/inventory/WindowSticker';
 import { BulkBar, BulkPriceSheet } from '../components/inventory/BulkBar';
 import { AutoPostButton, AutoPostSheet, AutoPostSettings, useAutoPost } from '../components/autopost/AutoPost';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
-import { isOwnUrl } from '../config/site';
+import { isOwnUrl, loginUrl } from '../config/site';
 import {
   Car,
   PlusCircle,
@@ -7228,7 +7228,7 @@ export default function DashboardPage() {
           if (s?.user?.id && s.user.id === loadedUidRef.current) return;
           loadSession(s);
         } else if (event === 'SIGNED_OUT') {
-          window.location.href = 'https://drevo.my/login';
+          window.location.href = loginUrl();
         }
       });
       unsubscribe = () => subscription.unsubscribe();
@@ -7288,7 +7288,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
-    window.location.href = 'https://drevo.my/login';
+    window.location.href = loginUrl();
   };
   const handleNew = (l) => {
     // Dedup against the realtime INSERT event, which may have already prepended

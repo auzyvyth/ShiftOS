@@ -113,7 +113,7 @@ import {
 import ProfileLoadError from "../components/ProfileLoadError";
 import { CarSoldLine } from "../components/sold/WhoBoughtSheet";
 import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from "../utils/carBuyers";
-import { SITE_URL } from "../config/site";
+import { SITE_URL, loginUrl } from "../config/site";
 
 // Cache namespace for this panel (keys look like `spanel_leads_<uid>`).
 const PANEL_CACHE_KEY = "spanel";
@@ -1378,7 +1378,7 @@ Rules:
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
- window.location.href = "https://drevo.my/login";
+ window.location.href = loginUrl();
  };
 
  // Send a test Telegram message to the salesman's own chat id, via the dealer's

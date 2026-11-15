@@ -45,7 +45,7 @@ import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import "./salesmanLite/keys.css";
 import { buildListingFacts } from "../utils/listingCopy";
 import { copyListingCaption } from "../utils/copyListingCaption";
-import { SITE_URL } from "../config/site";
+import { SITE_URL, loginUrl } from "../config/site";
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
 const CarForm = React.lazy(() => import("../components/CarForm"));
@@ -1900,7 +1900,7 @@ export default function SalesmanPremium() {
  await supabase.auth.signOut();
  // Signing out must not leave this rep's buyer list cached on the device.
  clearPanelDataCache();
- window.location.href = "https://drevo.my/login";
+ window.location.href = loginUrl();
  };
 
  // Danger Zone — self-service account deletion (MOBILE-7), same edge function
@@ -1920,7 +1920,7 @@ export default function SalesmanPremium() {
  }
  await supabase.auth.signOut({ scope: "global" });
  clearPanelDataCache();
- window.location.href = "https://drevo.my/login";
+ window.location.href = loginUrl();
  } catch (e) {
  console.error("delete-account:", e);
  toast.error(t("salesmanPremium.errors.deleteAccount"));
@@ -7539,7 +7539,7 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "brokers" && (
  <Suspense fallback={<TabLoadingFallback />}>
- <BrokerStock userId={userId} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} />
+ <BrokerStock userId={userId} slug={profile?.slug} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
