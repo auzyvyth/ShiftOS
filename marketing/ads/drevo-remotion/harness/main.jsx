@@ -12,5 +12,5 @@ try { localStorage.clear(); } catch { /* fresh every take */ }
 // The brand label still reads XDrive in the app until switch night (BRAND-1); the ad says Drevo.
 new MutationObserver(() => { document.querySelectorAll('.lp-brand').forEach((e) => { if (e.textContent !== 'Drevo') e.textContent = 'Drevo'; }); }).observe(document.body, { childList: true, subtree: true, characterData: true });
 createRoot(document.getElementById('root')).render(
-  <LivePresenter listings={LISTINGS} slug="aida" sellerId="demo" sellerName="Aida" sellerPhone="" onClose={() => {}} officialNew initialLang={lang} />
+  <LivePresenter listings={LISTINGS} slug="aida" sellerId="demo" sellerName="Aida" sellerPhone="" onClose={() => {}} officialNew initialLang={lang} basic={q.get('basic') === '1'} />
 );
