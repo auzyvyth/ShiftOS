@@ -48,6 +48,10 @@ export const NOTIF_TARGETS = {
   like_first: "View likes",
   like_digest: "View likes",
   expiry_reminder: "View buyer",
+  // BROKER-2: handled in SalesmanPremium openNotif (Analytics commission card / Leads).
+  broker_sale: "View commission",
+  broker_paid: "View commission",
+  broker_lead: "View lead",
 };
 
 export const notifTargetLabel = (n) =>

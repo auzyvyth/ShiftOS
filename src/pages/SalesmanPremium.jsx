@@ -2339,6 +2339,16 @@ export default function SalesmanPremium() {
  switchTab("listings");
  setFilterStatus("rejected");
  break;
+ // BROKER-2: the dealer approved a sale / paid the commission: it lives in Analytics, in the
+ // commission card's "Broker commission" row. A buyer from a dealer car on the page lands in Leads.
+ case "broker_sale":
+ case "broker_paid":
+ loadBrokerRegs();
+ switchTab("analytics");
+ break;
+ case "broker_lead":
+ switchTab("leads");
+ break;
  // ref_id is the customer: open the Sold tab's Customers pill on that buyer.
  case "expiry_reminder":
  navigate(`/salesman-premium/customers?c=${n.ref_id}`);
@@ -3409,8 +3419,12 @@ export default function SalesmanPremium() {
  const leadBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "center" };
 
  const renderLeadCard = (lead) => {
- const car = lead.car_listings;
- const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ // BROKER-2: a buyer registered on a DEALER's car has no car_listings row on the lead (the database
+ // refuses another dealer's car there), so the card names the car through the registration, the same
+ // way the lead panel does (dealerSaleFor).
+ const dealerCar = lead.car_listings ? null : dealerSaleFor(lead)?.car || null;
+ const car = lead.car_listings || (dealerCar && !dealerCar._label ? dealerCar : null);
+ const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : (dealerCar?._label || null);
  const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
  const progressStages = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won"];
  const normalizedStage = lead.stage === "closed_won"? "won" : lead.stage;
@@ -7618,6 +7632,7 @@ export default function SalesmanPremium() {
  commission={canSeeCommission ? commission : null} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
+ brokerRegs={isBroker ? brokerRegs : []}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>
