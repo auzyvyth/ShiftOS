@@ -7,7 +7,7 @@ import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles } from "../../utils/kycPurge";
 import { routeForProfile } from "../../hooks/useRoleRedirect";
 import { SITE_URL } from "../../config/site";
-import { accountKind, accessState, reviewState, billingState, headlineState, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
+import { accountKind, accessState, reviewState, billingState, headlineState, isActiveAccount, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
 
 // One accounts table (P5) with an account record (P6).
 //
@@ -206,6 +206,9 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  // Active accounts (using their dashboard) and inactive ones (suspended,
+  // switched off, deleted, never finished signing up) are two lists, not one.
+  const [group, setGroup] = useState("active");
   const [sortBy, setSortBy] = useState("created_at");
   const [reachFilter, setReachFilter] = useState("all");
   const [openId, setOpenId] = useState(null);
@@ -241,6 +244,9 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   useEffect(() => {
     if (!focusId) return;
     setSearch(""); setRoleFilter("all"); setStatusFilter("all"); setReachFilter("all"); setTeamOf(null);
+    // Land on the side the account is actually in, or the row is hidden behind the other tab.
+    const target = accounts.find(x => x.id === focusId);
+    if (target) setGroup(isActiveAccount(target) ? "active" : "inactive");
     setOpenId(focusId);
     onFocusHandledRef.current?.();
   }, [focusId]);
@@ -262,6 +268,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     const q = search.trim().toLowerCase();
     return accounts
       .filter(a => {
+        if (isActiveAccount(a) !== (group === "active")) return false;
         if (teamOf && a.dealer_id !== teamOf) return false;
         if (roleFilter !== "all" && accountKind(a) !== roleFilter) return false;
         if (!matchesStatusFilter(a, statusFilter)) return false;
@@ -276,7 +283,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (sortBy === "name") return (a.dealership || a.full_name || "").localeCompare(b.dealership || b.full_name || "");
         return new Date(b.created_at) - new Date(a.created_at);
       });
-  }, [accounts, stats, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf]);
+  }, [accounts, stats, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf, group]);
 
   const open = openId ? byId[openId] : null;
   // Overlay rule 5: Back closes the top pop-up, never the console under it.
@@ -507,12 +514,27 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     }, "Payment voided.");
   };
 
-  const counts = useMemo(() => ({
-    all: accounts.length,
-    dealer: accounts.filter(a => accountKind(a) === "dealer").length,
-    solo: accounts.filter(a => accountKind(a) === "solo").length,
-    linked: accounts.filter(a => accountKind(a) === "linked").length,
-  }), [accounts]);
+  // Role counts are for the list being shown, so they add up to what the table holds.
+  const groupCounts = useMemo(() => {
+    const active = accounts.filter(a => isActiveAccount(a)).length;
+    return { active, inactive: accounts.length - active };
+  }, [accounts]);
+  const counts = useMemo(() => {
+    const inGroup = accounts.filter(a => isActiveAccount(a) === (group === "active"));
+    return {
+      all: inGroup.length,
+      dealer: inGroup.filter(a => accountKind(a) === "dealer").length,
+      solo: inGroup.filter(a => accountKind(a) === "solo").length,
+      linked: inGroup.filter(a => accountKind(a) === "linked").length,
+    };
+  }, [accounts, group]);
+  const statusOptions = STATUS_FILTERS.filter(s => !s.group || s.group === group);
+  const switchGroup = (g) => {
+    setGroup(g);
+    // A status that only exists on the other side would show an empty table.
+    const keep = STATUS_FILTERS.find(s => s.id === statusFilter);
+    if (keep?.group && keep.group !== g) setStatusFilter("all");
+  };
 
   return (
     <div>
@@ -537,6 +559,20 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
             style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
         </div>
       )}
+
+      <div role="tablist" style={{ display: "inline-flex", gap: 4, padding: 3, borderRadius: 10, background: "rgba(255,255,255,0.04)", marginBottom: 14 }}>
+        {[["active", "Active"], ["inactive", "Inactive"]].map(([id, label]) => {
+          const on = group === id;
+          return (
+            <button key={id} role="tab" aria-selected={on} onClick={() => switchGroup(id)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "inherit",
+                fontSize: 13, fontWeight: on ? 700 : 500, background: on ? "rgba(255,255,255,0.1)" : "transparent", color: on ? "#f1f5f9" : "#9ca3af" }}>
+              {label}
+              <span style={{ fontSize: 11, fontWeight: 700, color: on ? "#f1f5f9" : "#4b5563" }}>{groupCounts[id]}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>
         {ROLE_FILTERS.map(f => {
@@ -568,7 +604,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
           placeholder="Search name, email, dealership, subdomain, phone…"
           className="adm-input adm-search" style={{ width: 300 }} />
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="adm-select">
-          {STATUS_FILTERS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {statusOptions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         <select value={reachFilter} onChange={e => setReachFilter(e.target.value)} className="adm-select" aria-label="Filter by notifications and home screen">
           {REACH_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
@@ -596,7 +632,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               {loading ? (
                 <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No accounts match those filters.</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>{group === "inactive" ? "No inactive accounts match." : "No accounts match those filters."}</td></tr>
               ) : rows.map(a => {
                 const st = headlineState(a);
                 const rv = reviewState(a);
