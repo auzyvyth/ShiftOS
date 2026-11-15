@@ -94,6 +94,7 @@ export function DealerBrokers({ dealerId }) {
     const typed = soldDraft[reg.id];
     const res = await api.markSold(reg.id, typed === undefined || typed === '' ? null : Number(typed));
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
+    toast.success(res.car_closed ? 'Sale confirmed. The car is marked sold. Check Sold for the handover.' : 'Sale confirmed. Commission is owed.');
     setSoldOpen(null);
     await load();
   });
@@ -102,7 +103,9 @@ export function DealerBrokers({ dealerId }) {
   const approve = (reg) => run(async () => {
     const res = await api.markSold(reg.id, null);
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
-    toast.success('Sale approved. Commission is now owed.');
+    toast.success(res.car_closed
+      ? 'Sale approved. The car is marked sold and the commission is owed. Check Sold for the handover.'
+      : 'Sale approved. Commission is now owed. The car was not open for sale, so its status is unchanged.');
     await load();
   });
 
@@ -116,6 +119,7 @@ export function DealerBrokers({ dealerId }) {
   const paid = (reg) => run(async () => {
     const res = await api.markPaid(reg.id);
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
+    toast.success('Marked as paid. The broker sees it in their commission record.');
     await load();
   });
 
@@ -341,7 +345,7 @@ export function DealerBrokers({ dealerId }) {
         </div>
       )}
       <p style={{ margin: 0, maxWidth: 640, fontSize: 13, color: PL.textSec, lineHeight: 1.5 }}>
-        Commission is a record only; Drevo does not move money. The system stamps each registration and nobody can edit it. The first broker to register a buyer holds them on your cars for {api.HOLD_DAYS} days. A broker marking a buyer won only sends the sale to you: it counts when you approve it. Close the sale itself in Sold as you do today.
+        Commission is a record only; Drevo does not move money. The system stamps each registration and nobody can edit it. The first broker to register a buyer holds them on your cars for {api.HOLD_DAYS} days. A broker marking a buyer won only sends the sale to you: it counts when you approve it. Approving marks the car sold at its listed price and opens the handover in Sold; change the price there if it sold for less.
       </p>
     </div>
   );
