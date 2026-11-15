@@ -130,17 +130,27 @@ export function headlineState(a, now = Date.now()) {
   return acc.id === "in" ? billingState(a, now) : acc;
 }
 
+// Active = can use their dashboard right now. Everything else (suspended,
+// switched off, rejected, deleted, never finished signing up) is inactive.
+// Same answer as accessState, so the Accounts tab split can never disagree
+// with the status words in the table.
+export function isActiveAccount(a, now = Date.now()) {
+  return accessState(a, now).id === "in";
+}
+
 // Status filter ids for the Accounts tab. Each matches on the answer it names.
+// `group` says which side of the Active | Inactive split it makes sense on
+// (omitted = both); a filter on the wrong side would only ever show nothing.
 export const STATUS_FILTERS = [
   { id: "all", label: "Any status" },
   { id: "review", label: "Waiting on ID check" },
-  { id: "paid", label: "Paying" },
-  { id: "free", label: "Free trial" },
-  { id: "lite", label: "Lite (free)" },
-  { id: "money", label: "Lapsed / never paid / unconfirmed" },
-  { id: "off", label: "Suspended / switched off" },
-  { id: "unfinished", label: "Never finished signing up" },
-  { id: "deleted", label: "Deleted" },
+  { id: "paid", label: "Paying", group: "active" },
+  { id: "free", label: "Free trial", group: "active" },
+  { id: "lite", label: "Lite (free)", group: "active" },
+  { id: "money", label: "Lapsed / never paid / unconfirmed", group: "active" },
+  { id: "off", label: "Suspended / switched off", group: "inactive" },
+  { id: "unfinished", label: "Never finished signing up", group: "inactive" },
+  { id: "deleted", label: "Deleted", group: "inactive" },
 ];
 
 export function matchesStatusFilter(a, f, now = Date.now()) {
