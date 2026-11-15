@@ -36,7 +36,7 @@ const THEMES = {
 
 const STATUS_WORD = { active: 'Connected', paused: 'Paused', requested: 'Waiting', revoked: 'Ended' };
 
-export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', onUpgrade }) {
+export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', onUpgrade, hasWhatsApp = true }) {
   const T = THEMES[theme] || THEMES.dark;
   const [dealers, setDealers] = useState(null); // null = loading
   const [regs, setRegs] = useState([]);
@@ -169,6 +169,13 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
         <div style={{ ...card, fontSize: 13, color: T.accentText }}>
           {loadError}{' '}
           <button type="button" onClick={loadBase} style={{ ...greyKey, minHeight: 36, marginLeft: 8 }}>Try again</button>
+        </div>
+      )}
+
+      {isPremium && !hasWhatsApp && (
+        <div style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
+          <b style={{ color: T.text || 'inherit' }}>Add your WhatsApp number in Settings.</b> Until you do, a buyer who taps WhatsApp on a
+          dealer's car from your page reaches the dealer, not you, and no lead is filed for you.
         </div>
       )}
 

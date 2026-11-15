@@ -188,7 +188,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
-import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -694,6 +694,28 @@ export default function SalesmanPremium() {
  : { _label: reg.car_label, _dealer: true };
  return { reg, car };
  }, [brokerRegForLead, brokerCars]);
+ // PIN-1: up to 4 cars the seller keeps FIRST on their mini page (own cars and dealer cars alike).
+ // Saved by set_my_pinned_listings (profiles.pinned_listing_ids); a failed save puts the pin back.
+ const [pinnedIds, setPinnedIds] = useState([]);
+ useEffect(() => { setPinnedIds(Array.isArray(profile?.pinned_listing_ids) ? profile.pinned_listing_ids : []); }, [profile?.pinned_listing_ids]);
+ const togglePin = useCallback(async (carId) => {
+ const on = pinnedIds.includes(carId);
+ if (!on && pinnedIds.length >= 4) { toast.error("You can pin 4 cars. Unpin one first."); return; }
+ const prev = pinnedIds;
+ const next = on ? pinnedIds.filter((x) => x !== carId) : [...pinnedIds, carId];
+ setPinnedIds(next);
+ const { data, error } = await supabase.rpc("set_my_pinned_listings", { p_ids: next });
+ if (error || !data?.ok) { setPinnedIds(prev); toast.error("Could not save the pin. Try again."); return; }
+ toast.success(on ? "Unpinned." : "Pinned to the top of your page.");
+ }, [pinnedIds]);
+ // A dealer car comes off the broker's page from the Listings tab too (the same call as Dealer stock).
+ const removeDealerCar = useCallback(async (car) => {
+ const res = await removeBrokerCar(car.id);
+ if (!res.ok) { toast.error(brokerError(res.reason)); return; }
+ applyBrokerPageCar(car, car.dealerId, car.dealerName, false);
+ setPinnedIds((p) => p.filter((x) => x !== car.id));
+ toast.success("Removed from your page.");
+ }, []);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -7558,6 +7580,8 @@ export default function SalesmanPremium() {
       listingCopied={listingCopied} showAddForm={showAddForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
       profile={profile} isMobile={isMobile}
+      pinnedIds={pinnedIds} onTogglePin={togglePin}
+      dealerCars={isBroker ? (brokerCars || []) : []} onRemoveDealerCar={removeDealerCar}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
       setShowAddForm={setShowAddForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
@@ -7662,7 +7686,7 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "brokers" && (
  <Suspense fallback={<TabLoadingFallback />}>
- <BrokerStock userId={userId} slug={profile?.slug} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} />
+ <BrokerStock userId={userId} slug={profile?.slug} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} hasWhatsApp={!!(String(profile?.whatsapp_number || "").trim() || String(profile?.phone || "").trim())} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
