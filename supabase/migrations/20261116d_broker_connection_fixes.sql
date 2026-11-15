@@ -16,8 +16,8 @@
 --                        still decided by broker_registrations, never by this column.
 
 alter table public.leads
-  add column if not exists dealer_car_id uuid references public.car_listings(id) on delete set null,
-  add column if not exists via_broker_id uuid references public.profiles(id) on delete set null;
+  add column if not exists dealer_car_id uuid,   -- NO foreign key: a second leads -> car_listings key makes every plain
+  add column if not exists via_broker_id uuid;   -- `car_listings(...)` embed on leads ambiguous (PGRST201). See 20261116e.
 
 -- Registrations already join both sides: fill the columns for leads that exist today.
 update public.leads l set via_broker_id = r.broker_id
