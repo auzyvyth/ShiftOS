@@ -3039,6 +3039,19 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15; scoped in chat, NOT built)** — a seller's
+  `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
+  "HAKIM PERODUA"). Add ONE field, `profiles.nickname` ("your social media name", e.g. fedaus), on every plan (Lite too:
+  being found is never gated). Show "@fedaus" under the name on `/s/:slug`, add it to `agentPageDescription` + JSON-LD
+  `alternateName` + the Settings search preview + the share card; in the TITLE only when it fits 60 chars. Rules:
+  2-30 chars, letters/numbers/dot/underscore, unique case-insensitive among sellers (`unique index`, like
+  `profiles_slug_unique`), no phone number (CDP-3), no official / authorised / verified / drevo / admin, cannot equal
+  another seller's page name. NOT the page name: `slug` is locked on purpose (`guard_profile_slug`) because it is the
+  `?ref=` attribution key (`resolve_lead_salesman`), the analytics key (`analytics_events.salesman_slug`), the invite
+  code and every link already shared on TikTok. There is NO seller search on Drevo today (searched `pg_proc`), so
+  "users can find" = Google first; an in-app search by nickname is a later phase. One migration (queued for the
+  midnight window) + `agentSeoIssues` gets one line "Add your social media name".
+
 - **IDEA-37: Overview by week / month / year, with last year to compare (owner, 2026-11-15; scoped, NOT built)** — a
   Week | Month | Year switch on Overview money, each compared with the period before AND the same period last year.
   Reuse `ownerMoney()` (it already totals one month by key): make it take a date window, so no new formula appears.
