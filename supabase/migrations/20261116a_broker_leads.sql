@@ -14,7 +14,7 @@
 --  4 a buyer the dealer already knows cannot be registered (staff with a side account)
 --  5 refused tries are counted and capped (no testing phone numbers against a dealer's list)
 --  6 a commission change reaches the broker as a notification and only affects new buyers
---  7 the broker cannot mark a dealer's buyer Won; only the dealer's sale does
+--  7 a broker's Won on a dealer's buyer files a sale claim; money is owed only when the dealer approves it
 --  8 every change is written to broker_audit, which nobody can edit
 
 -- ── columns ──────────────────────────────────────────────────────────────────
@@ -23,7 +23,9 @@ alter table public.broker_registrations
   add column if not exists commission_agreed numeric,
   add column if not exists dealer_lead_id uuid references public.leads(id) on delete set null,
   add column if not exists broker_lead_id uuid references public.leads(id) on delete set null,
-  add column if not exists sold_by text;
+  add column if not exists sold_by text,
+  add column if not exists sale_claimed_at timestamptz,
+  add column if not exists claim_disputed_at timestamptz;
 
 alter table public.broker_registrations
   add constraint broker_registrations_source_check check (source in ('manual', 'page')),
@@ -70,6 +72,15 @@ begin
     values (new.dealer_id, new.broker_id, new.id, auth.uid(),
             case when new.status = 'sold' then 'sold' else 'sale_undone' end,
             jsonb_build_object('commission', new.commission_amount, 'sold_by', new.sold_by));
+  end if;
+  if new.sale_claimed_at is distinct from old.sale_claimed_at then
+    insert into public.broker_audit (dealer_id, broker_id, reg_id, actor, action, detail)
+    values (new.dealer_id, new.broker_id, new.id, auth.uid(),
+            case when new.sale_claimed_at is null then 'claim_cleared' else 'sale_claimed' end, '{}'::jsonb);
+  end if;
+  if new.claim_disputed_at is distinct from old.claim_disputed_at and new.claim_disputed_at is not null then
+    insert into public.broker_audit (dealer_id, broker_id, reg_id, actor, action, detail)
+    values (new.dealer_id, new.broker_id, new.id, auth.uid(), 'claim_disputed', '{}'::jsonb);
   end if;
   if new.paid_at is distinct from old.paid_at then
     insert into public.broker_audit (dealer_id, broker_id, reg_id, actor, action, detail)
@@ -541,23 +552,66 @@ drop trigger if exists trg_zz_broker_lead_sync on public.leads;
 create trigger trg_zz_broker_lead_sync after insert or update of stage on public.leads
   for each row execute function public.broker_lead_sync();
 
--- The broker's own copy of a dealer's buyer cannot be marked Won by the broker: only the dealer's
--- sale closes it. (A lead the broker has linked to one of their OWN cars is their own deal.)
-create or replace function public.broker_own_lead_guard() returns trigger
+-- A broker's Won on a buyer registered on a dealer's car FILES A SALE CLAIM with the dealer. Nothing is
+-- owed yet: the dealer approves (broker_mark_sold) or disputes (broker_dispute_claim). It lives in the
+-- database so it fires from any screen, like the dealer's own won trigger. Taking the lead back out of
+-- Won withdraws an unanswered claim. The broker's pipeline is the broker's: this never touches the dealer's lead.
+create or replace function public.broker_claim_on_won() returns trigger
 language plpgsql security definer set search_path to 'pg_catalog', 'public' as $$
+declare
+  r public.broker_registrations%rowtype;
+  v_phone text := public.normalize_my_phone(new.phone);
 begin
-  if new.stage in ('won', 'closed_won') and coalesce(old.stage, '') not in ('won', 'closed_won')
-     and new.car_listing_id is null
-     and exists (select 1 from public.broker_registrations
-                  where broker_lead_id = new.id and status = 'registered') then
-    raise exception 'broker_dealer_confirms' using errcode = 'P0001',
-      hint = 'The dealer confirms this sale. You are told when they do.';
+  if new.salesman_id is null then return null; end if;
+  if new.stage in ('won', 'closed_won') and coalesce(old.stage, '') not in ('won', 'closed_won') then
+    select * into r from public.broker_registrations
+     where broker_id = new.salesman_id and status = 'registered'
+       and (broker_lead_id = new.id
+            or (v_phone is not null and buyer_phone = v_phone and registered_at > now() - interval '90 days'))
+     order by (broker_lead_id = new.id) desc nulls last, registered_at desc
+     limit 1 for update;
+    if found and r.sale_claimed_at is null then
+      update public.broker_registrations
+         set sale_claimed_at = now(), claim_disputed_at = null, broker_lead_id = coalesce(broker_lead_id, new.id)
+       where id = r.id;
+      insert into public.dealer_notifications (dealer_id, type, title, body, link_to, ref_id)
+      values (r.dealer_id, 'broker_sale_claim', 'A broker says their buyer bought a car',
+              public._broker_name(r.broker_id) || ' on your ' || r.car_label || '. Open Team > Brokers to approve or dispute it.',
+              'team', r.id);
+    end if;
+  elsif coalesce(old.stage, '') in ('won', 'closed_won') and new.stage not in ('won', 'closed_won') then
+    update public.broker_registrations set sale_claimed_at = null
+     where broker_lead_id = new.id and status = 'registered' and sale_claimed_at is not null;
   end if;
-  return new;
+  return null;
+exception when others then
+  raise warning 'broker_claim_on_won: %', sqlerrm;
+  return null;
 end $$;
 drop trigger if exists trg_ac_broker_own_lead_guard on public.leads;
-create trigger trg_ac_broker_own_lead_guard before update of stage on public.leads
-  for each row execute function public.broker_own_lead_guard();
+drop function if exists public.broker_own_lead_guard();
+drop trigger if exists trg_zz_broker_claim_on_won on public.leads;
+create trigger trg_zz_broker_claim_on_won after update of stage on public.leads
+  for each row execute function public.broker_claim_on_won();
+
+-- The dealer says "this was not sold". The claim clears, the broker is told, it is logged.
+create or replace function public.broker_dispute_claim(p_reg uuid) returns jsonb
+language plpgsql security definer set search_path to 'pg_catalog', 'public' as $$
+declare r public.broker_registrations%rowtype;
+begin
+  select * into r from public.broker_registrations where id = p_reg for update;
+  if not found or not public.broker_is_dealer_owner(r.dealer_id) then
+    return jsonb_build_object('ok', false, 'reason', 'forbidden');
+  end if;
+  if r.status <> 'registered' or r.sale_claimed_at is null then
+    return jsonb_build_object('ok', false, 'reason', 'bad_action');
+  end if;
+  update public.broker_registrations set sale_claimed_at = null, claim_disputed_at = now() where id = r.id;
+  insert into public.salesman_notifications (salesman_id, type, title, body, ref_id)
+  values (r.broker_id, 'broker_claim_disputed', 'The dealer did not confirm your sale',
+          'The dealer says ' || r.car_label || ' was not sold to your buyer. Talk to them. The buyer stays held for you until the hold ends.', r.id);
+  return jsonb_build_object('ok', true);
+end $$;
 
 -- The dealer confirming by hand: never below what was agreed when the buyer was registered.
 create or replace function public.broker_mark_sold(p_reg uuid, p_commission numeric default null) returns jsonb
@@ -593,12 +647,14 @@ drop function if exists public.broker_my_regs();
 create function public.broker_my_regs()
 returns table(id uuid, dealer_name text, car_label text, buyer_name text, buyer_phone text,
               registered_at timestamptz, hold_until timestamptz, status text, commission_amount numeric,
-              paid_at timestamptz, source text, commission_agreed numeric, broker_lead_id uuid, sold_by text)
+              paid_at timestamptz, source text, commission_agreed numeric, broker_lead_id uuid, sold_by text,
+              listing_id uuid, sale_claimed_at timestamptz, claim_disputed_at timestamptz)
 language sql stable security definer set search_path to 'pg_catalog', 'public' as $$
   select r.id,
          coalesce(nullif(btrim(p.dealership), ''), nullif(btrim(p.site_name), ''), 'Dealer'),
          r.car_label, r.buyer_name, r.buyer_phone, r.registered_at, r.hold_until, r.status,
-         r.commission_amount, r.paid_at, r.source, r.commission_agreed, r.broker_lead_id, r.sold_by
+         r.commission_amount, r.paid_at, r.source, r.commission_agreed, r.broker_lead_id, r.sold_by,
+         r.listing_id, r.sale_claimed_at, r.claim_disputed_at
     from public.broker_registrations r
     join public.profiles p on p.id = r.dealer_id
    where r.broker_id = auth.uid()
@@ -610,11 +666,12 @@ drop function if exists public.dealer_broker_regs();
 create function public.dealer_broker_regs()
 returns table(id uuid, broker_id uuid, broker_name text, car_label text, buyer_name text, buyer_phone text,
               registered_at timestamptz, hold_until timestamptz, status text, commission_amount numeric,
-              paid_at timestamptz, refused_count integer, source text, commission_agreed numeric, sold_by text)
+              paid_at timestamptz, refused_count integer, source text, commission_agreed numeric, sold_by text,
+              sale_claimed_at timestamptz, claim_disputed_at timestamptz)
 language sql stable security definer set search_path to 'pg_catalog', 'public' as $$
   select r.id, r.broker_id, public._broker_name(r.broker_id), r.car_label, r.buyer_name, r.buyer_phone,
          r.registered_at, r.hold_until, r.status, r.commission_amount, r.paid_at, r.refused_count,
-         r.source, r.commission_agreed, r.sold_by
+         r.source, r.commission_agreed, r.sold_by, r.sale_claimed_at, r.claim_disputed_at
     from public.broker_registrations r
    where r.dealer_id = auth.uid() and public.broker_is_dealer_owner(r.dealer_id)
    order by r.registered_at desc
@@ -629,7 +686,7 @@ revoke all on function public._broker_capture(uuid, text, uuid, text, text) from
 revoke all on function public.broker_audit_reg() from public, anon, authenticated;
 revoke all on function public.broker_audit_conn() from public, anon, authenticated;
 revoke all on function public.broker_lead_sync() from public, anon, authenticated;
-revoke all on function public.broker_own_lead_guard() from public, anon, authenticated;
+revoke all on function public.broker_claim_on_won() from public, anon, authenticated;
 
 revoke all on function public.broker_register_buyer(uuid, text, text, boolean, uuid) from public, anon;
 grant execute on function public.broker_register_buyer(uuid, text, text, boolean, uuid) to authenticated;
@@ -637,6 +694,8 @@ revoke all on function public.broker_my_regs() from public, anon;
 grant execute on function public.broker_my_regs() to authenticated;
 revoke all on function public.dealer_broker_regs() from public, anon;
 grant execute on function public.dealer_broker_regs() to authenticated;
+revoke all on function public.broker_dispute_claim(uuid) from public, anon;
+grant execute on function public.broker_dispute_claim(uuid) to authenticated;
 revoke all on function public.broker_mark_sold(uuid, numeric) from public, anon;
 grant execute on function public.broker_mark_sold(uuid, numeric) to authenticated;
 -- get_seller_whatsapp and create_lead_from_whatsapp keep their grants (same argument list:

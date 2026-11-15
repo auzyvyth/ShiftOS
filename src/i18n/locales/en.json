@@ -1774,6 +1774,7 @@
       "thisBuyer": "This buyer",
       "withCar": "The car is marked sold and removed from the marketplace, your sold count and commission update, the buyer is added to Customers, and the 8-step handover checklist starts.",
       "noCar": "No car is linked to this lead, so nothing will be marked sold. Only the lead closes.",
+      "dealerCar": "This is {{dealer}}'s car, so nothing is marked sold on your side. The sale goes to {{dealer}} to approve first. Your commission (RM {{amount}}) is owed once they confirm.",
       "notYet": "Not yet",
       "yes": "Yes, mark won"
     },

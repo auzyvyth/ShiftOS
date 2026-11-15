@@ -1654,8 +1654,12 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   OWN lead copy. ONE claim rule, `_broker_claim` (manual + page). Anti-cheat, all in the DB: commission fixed at
   registration (`commission_agreed`, the dealer cannot confirm below it); the dealer's Won credits the broker by
   itself (`broker_lead_sync`, 90 days on the tied lead); a buyer the dealer already knows is refused (`known`);
-  refused tries capped 40/day; a commission change notifies the broker; the broker cannot mark a dealer's buyer
-  Won (`broker_dealer_confirms`); `broker_audit` logs everything. "Link a car" shows a "Dealer stock" group
+  refused tries capped 40/day; a commission change notifies the broker; `broker_audit` logs everything.
+  **A broker's Won on a dealer-car buyer FILES A SALE CLAIM** (`trg_zz_broker_claim_on_won`, `sale_claimed_at`): nothing
+  is owed until the dealer approves (`broker_mark_sold`, one tap at the agreed amount) or disputes
+  (`broker_dispute_claim`, broker told). The dealer's own Won still credits the broker by itself. The lead panel shows the
+  dealer car as the lead's car through the registration (`dealerSaleFor`, SalesmanPremium.jsx), never via `car_listing_id`.
+  Dealer Team > Brokers = one COLUMN per broker with their buyers inside (`DealerBrokers.jsx`). "Link a car" shows a "Dealer stock" group
   (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
 - Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
 - (older note) leads that arrive through a broker's page are not attributed to the broker

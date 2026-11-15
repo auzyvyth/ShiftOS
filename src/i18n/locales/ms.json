@@ -1763,6 +1763,7 @@
       "thisBuyer": "Buyer ni",
       "withCar": "Kereta ditanda terjual dan dikeluarkan dari marketplace, kiraan jualan dan komisen anda dikemas kini, buyer dimasukkan ke Pelanggan, dan senarai semak handover 8 langkah bermula.",
       "noCar": "Tiada kereta dilink pada lead ni, jadi tiada apa ditanda terjual. Lead je yang ditutup.",
+      "dealerCar": "Ini kereta {{dealer}}, jadi tiada apa ditanda terjual di sebelah anda. Jualan dihantar kepada {{dealer}} untuk diluluskan dulu. Komisen anda (RM {{amount}}) kena dibayar selepas mereka sahkan.",
       "notYet": "Belum lagi",
       "yes": "Ya, tanda menang"
     },

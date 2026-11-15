@@ -126,6 +126,8 @@ export const setBrokerStatus = (dealerId, brokerId, action, commission = null) =
 export const markSold = (regId, commission = null) =>
   call('broker_mark_sold', { p_reg: regId, p_commission: commission });
 export const markPaid = (regId) => call('broker_mark_paid', { p_reg: regId });
+// The dealer says a broker's sale claim is not true (BROKER-2). The broker is told; it is logged.
+export const disputeClaim = (regId) => call('broker_dispute_claim', { p_reg: regId });
 
 export const money = (n) => `RM ${Number(n || 0).toLocaleString('en-MY')}`;
 export const shortDate = (iso) =>

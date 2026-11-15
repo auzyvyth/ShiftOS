@@ -677,6 +677,20 @@ export default function SalesmanPremium() {
  || (digits ? brokerRegs.find((r) => r.buyer_phone === digits && (r.status === "sold" || new Date(r.hold_until) > new Date())) : null)
  || null;
  }, [brokerRegs]);
+ // The dealer car a buyer is registered on, shaped like a car row so the lead panel, the loan check
+ // and the Won confirm can use it. The car itself is never linked to the lead (the database refuses
+ // another dealer's car on a lead); the registration is the link. Falls back to the label alone when
+ // the car has left the broker's page.
+ const dealerSaleFor = useCallback((lead) => {
+ const reg = brokerRegForLead(lead);
+ if (!reg) return null;
+ const c = (brokerCars || []).find((x) => (reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label);
+ const car = c
+ ? { id: c.id, brand: c.brand, model: c.model, year: c.year, variant: c.variant, selling_price: c.selling_price,
+ mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true }
+ : { _label: reg.car_label, _dealer: true };
+ return { reg, car };
+ }, [brokerRegForLead, brokerCars]);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -782,6 +796,7 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
+ const wonDealerSale = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null;
  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
  const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
@@ -2637,7 +2652,7 @@ export default function SalesmanPremium() {
  console.error("handleMarkWon lead:", leadErr);
  const m = String(leadErr.message || "");
  toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
- : m.includes("broker_dealer_confirms") ? "This buyer is on a dealer's car. The dealer confirms the sale, and you are told when they do."
+
  : m.includes("forbidden") ? "This lead is not yours to close."
  : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
@@ -2678,6 +2693,13 @@ export default function SalesmanPremium() {
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, stage: "won", updated_at: now } : l));
  setWonSaving(false);
  setWonPrompt(null);
+
+ // BROKER-2: a Won on a buyer registered on a dealer's car files a sale claim in the database; nothing
+ // is owed until the dealer approves it. Say so, and pull the registration state forward.
+ if (wonDealerSale) {
+ toast.success(`Sent to ${wonDealerSale.reg.dealer_name} to approve. Your commission is owed once they confirm.`);
+ loadBrokerRegs();
+ }
 
  // The DB trigger auto_create_customer_on_won has already fanned this out by
  // the time the update returns — customer row + 8-step checklist both exist.
@@ -3552,7 +3574,7 @@ export default function SalesmanPremium() {
  const fg = ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
  return (
  <button
- onClick={() => openLoanCheck(lead)}
+ onClick={() => { const ds = lead.car_listings ? null : dealerSaleFor(lead); openLoanCheck(ds?.car && !ds.car._label ? { ...lead, car_listings: ds.car } : lead); }}
  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
@@ -4210,8 +4232,9 @@ export default function SalesmanPremium() {
  {drawerLeadId && (() => {
  const pl = leads.find(l => l.id === drawerLeadId);
  if (!pl) return null;
- const plCar = pl.car_listings;
- const plCarName = plCar? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
+ const dSale = pl.car_listings ? null : dealerSaleFor(pl);
+ const plCar = pl.car_listings || dSale?.car || null;
+ const plCarName = plCar ? (plCar._label || [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ")) : null;
  const plCarPrice = plCar?.selling_price? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
  const plCarImg = Array.isArray(plCar?.images)? plCar.images.find(Boolean) || null : null;
  const plHeat = getHeatScore(pl);
@@ -4284,7 +4307,7 @@ export default function SalesmanPremium() {
  </p>
  {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: PD.text }}>{plCarPrice}</p>}
  <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
+ {[dSale ? `Dealer's car · ${dSale.reg.dealer_name}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
@@ -4293,23 +4316,28 @@ export default function SalesmanPremium() {
  {t("salesmanPremium.drawer.noCarYet")}
  </p>
  )}
- {/* BROKER-2: this buyer is registered on a dealer's car. Facts only: whose car, the
-     hold, the commission fixed at registration. The dealer confirms the sale. */}
+ {/* BROKER-2: this buyer is registered on a dealer's car (shown above as the car). This block is
+     the SALE: the hold, what you earn, and where a Won stands with the dealer. The dealer approves. */}
  {(() => {
- const reg = brokerRegForLead(pl);
+ const reg = dSale?.reg || brokerRegForLead(pl);
  if (!reg) return null;
  const holding = reg.status === "registered" && new Date(reg.hold_until) > new Date();
- const state = reg.status === "sold"
- ? (reg.paid_at ? "Sold by the dealer, commission paid" : `Sold by the dealer, commission owed ${brokerMoney(reg.commission_amount)}`)
- : holding ? `Held for you until ${brokerDate(reg.hold_until)}` : `Hold ended ${brokerDate(reg.hold_until)}`;
+ const claimed = reg.status === "registered" && !!reg.sale_claimed_at;
+ const disputed = reg.status === "registered" && !claimed && !!reg.claim_disputed_at;
+ const earn = Number(reg.status === "sold" ? reg.commission_amount : reg.commission_agreed) || 0;
+ let headline; let tone = PD.textSec;
+ if (reg.status === "sold") { headline = reg.paid_at ? "Sale approved. Commission paid." : `Sale approved. Commission owed: ${brokerMoney(earn)}.`; tone = PD.up; }
+ else if (claimed) { headline = `Waiting for ${reg.dealer_name} to approve this sale.`; tone = PD.text; }
+ else if (disputed) { headline = `${reg.dealer_name} did not confirm this sale. Talk to them.`; tone = PD.accentText; }
+ else if (holding) { headline = `Held for you until ${brokerDate(reg.hold_until)}.`; tone = PD.up; }
+ else headline = `Hold ended ${brokerDate(reg.hold_until)}.`;
  return (
  <div style={{ marginTop: 8, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised }}>
- <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Dealer's car</p>
- <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 600, color: PD.text }}>{reg.car_label} · {reg.dealer_name}</p>
- <p style={{ margin: "3px 0 0", fontSize: 12, color: reg.status === "sold" || holding ? PD.up : PD.textSec }}>{state}</p>
+ <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Dealer sale</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 600, color: tone }}>{headline}</p>
  {reg.status !== "sold" && (
  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.45 }}>
- {Number(reg.commission_agreed) > 0 ? `You earn ${brokerMoney(reg.commission_agreed)} if the dealer sells to them. ` : ""}Only the dealer can mark this sale. You are told when they do.
+ {earn > 0 ? `You earn ${brokerMoney(earn)} once the dealer approves the sale. ` : ""}{claimed ? "They were told when you marked it won." : "Mark this lead won when the buyer buys, and it goes to the dealer to approve."}
  </p>
  )}
  </div>
@@ -4323,7 +4351,7 @@ export default function SalesmanPremium() {
  const fg = !ck ? PD.text : ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
  return (
  <button
- onClick={() => { close(); openLoanCheck(pl); }}
+ onClick={() => { close(); openLoanCheck(dSale?.car && !dSale.car._label ? { ...pl, car_listings: dSale.car } : pl); }}
  style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
  >
  <Banknote size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
@@ -7916,7 +7944,7 @@ export default function SalesmanPremium() {
  <strong style={{ color: PD.text }}>{wonPrompt.lead.buyer_name || t("salesmanPremium.wonPrompt.thisBuyer")}</strong>
  {wonPrompt.lead.car_listings
  ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
- : null}
+ : wonDealerSale ? <> — {wonDealerSale.reg.car_label}</> : null}
  </p>
  {wonPrompt.lead.car_listing_id && (
  <WonVariantPick listingId={wonPrompt.lead.car_listing_id} value={wonPrompt.variantId}
@@ -7925,6 +7953,8 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 18px", fontSize: 13, color: PD.textSec, lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
  ? t("salesmanPremium.wonPrompt.withCar")
+ : wonDealerSale
+ ? t("salesmanPremium.wonPrompt.dealerCar", { dealer: wonDealerSale.reg.dealer_name, amount: Math.round(Number(wonDealerSale.reg.commission_agreed) || 0).toLocaleString("en-MY") })
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
  {isLinked && (() => {
