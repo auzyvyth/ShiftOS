@@ -3052,6 +3052,19 @@ Background (from the idea):
   `telegram-notify`), free and has no 24h window: cheaper first channel; (5) a shared `ai-proxy` exists
   (`FEATURES`, `supabase/functions/ai-proxy/index.ts:9`) and the AI must read `chat_messages_ai`, never raw chat;
   (6) 0 logged payments on 2026-11-15: do not build before people pay for Premium. Not scheduled.
+  **FUTURE, step 0 (owner said keep it, 2026-11-15): hand-sent "top 3 to call" Telegram test, no code.** For 5 working
+  days the owner sends the message below at ~8:30 to the 2 sellers who have real leads, built by eye from This week
+  (`src/utils/thisWeek.js` ranking: never replied > due reminder > going quiet / renewal > trade-up; one line per
+  PERSON). Format, EN: "Good morning, {seller}. Your top 3 to call today: 1. {buyer first name}, {car}: asked {n}
+  days ago, no reply from you yet. 2. {buyer first name}, {car}: you said you would follow up on {date}. 3. {buyer
+  first name}, {car}: quiet {n} days since your last message. Open Drevo: {link}". BM: same lines, "Selamat pagi,
+  {seller}. 3 pelanggan untuk dihubungi hari ini:". Rules: first name + car only (NO phone, IC, address or chat text:
+  Telegram is a third party, CDP-3 / PDPA); every line states a real count or date, never a guess; no price,
+  instalment, discount or approval; fewer than 3 real leads = send fewer, never pad; nothing to say = send nothing;
+  the link is built from `SITE_URL` (`src/config/site.js`), never a typed domain; it only tells the SELLER who to call,
+  the seller messages the buyer. Success check after 5 days, asked by message: "did you call any of them?" and "would
+  you pay to keep getting this?". If both sellers act on it, then build the same text from `thisWeek.js` + a Telegram
+  send (existing `send-telegram`) behind a cron guarded by `where exists` (IO-1), still no WhatsApp and no AI.
 
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
