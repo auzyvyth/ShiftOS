@@ -52,7 +52,23 @@ async function rows(name, args) {
 export const myDealers = () => rows('broker_my_dealers');
 export const myRegistrations = () => rows('broker_my_regs');
 export const dealerStock = (dealerId) => rows('broker_dealer_stock', { p_dealer: dealerId });
-export const requestDealer = (subdomain) => call('broker_request', { p_subdomain: subdomain });
+// People paste "vyth.drevo.my", "https://vyth.drevo.my/cars" or "vyth": all mean "vyth".
+export function cleanStorefrontName(raw) {
+  let v = String(raw || '').trim().toLowerCase();
+  v = v.replace(/^[a-z]+:\/\//, '').replace(/^www\./, '');
+  v = v.split(/[/?#\s]/)[0];
+  return v.split('.')[0].replace(/[^a-z0-9-]/g, '');
+}
+
+// A broker's page name: "premiummotors", or a pasted ".../s/premiummotors" link.
+export function cleanPageName(raw) {
+  let v = String(raw || '').trim().toLowerCase();
+  const m = v.match(/\/s\/([a-z0-9_-]+)/);
+  if (m) return m[1];
+  return v.replace(/^@/, '').replace(/[^a-z0-9_-]/g, '');
+}
+
+export const requestDealer = (subdomain) => call('broker_request', { p_subdomain: cleanStorefrontName(subdomain) });
 export const respondToInvite = (dealerId, userId, action) =>
   call('broker_set_status', { p_dealer: dealerId, p_broker: userId, p_action: action });
 export const addToPage = (listingId) => call('broker_add_to_page', { p_listing: listingId });
@@ -64,7 +80,7 @@ export const registerBuyer = (listingId, name, phone, consent) =>
 export const dealerBrokers = () => rows('dealer_my_brokers');
 export const dealerRegistrations = () => rows('dealer_broker_regs');
 export const inviteBroker = (slug, commission) =>
-  call('broker_invite', { p_slug: slug, p_commission: commission });
+  call('broker_invite', { p_slug: cleanPageName(slug), p_commission: commission });
 export const setBrokerStatus = (dealerId, brokerId, action, commission = null) =>
   call('broker_set_status', { p_dealer: dealerId, p_broker: brokerId, p_action: action, p_commission: commission });
 export const markSold = (regId, commission = null) =>

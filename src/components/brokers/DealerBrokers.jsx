@@ -131,7 +131,7 @@ export function DealerBrokers({ dealerId }) {
           <div style={{ fontSize: 16, fontWeight: 600 }}>Invite a broker</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: PL.textSec, flex: '1 1 200px' }}>
-              Their page name (the end of drevo.my/s/...)
+              Their page name or link (like premiummotors or drevo.my/s/premiummotors)
               <input style={input} value={slug} onChange={(e) => setSlug(e.target.value)} maxLength={40} autoCapitalize="none" autoCorrect="off" />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: PL.textSec }}>

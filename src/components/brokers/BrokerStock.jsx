@@ -192,7 +192,7 @@ export default function BrokerStock({ userId, isPremium, theme = 'dark', onUpgra
 
           {joinOpen && (
             <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <label style={{ fontSize: 13, color: T.sec }} htmlFor="broker-sub">The dealer's storefront name (the part before .drevo.my)</label>
+              <label style={{ fontSize: 13, color: T.sec }} htmlFor="broker-sub">The dealer's storefront name or address (like vyth or vyth.drevo.my)</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input
                   id="broker-sub" type="text" value={sub} onChange={(e) => setSub(e.target.value)}
