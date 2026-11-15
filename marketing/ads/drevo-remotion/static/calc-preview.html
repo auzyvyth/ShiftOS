@@ -1,0 +1,125 @@
+<!doctype html>
+<!-- DESIGN PREVIEW, not the app. A drawn proposal of a cleaner Live calculator on a real new-car card
+     (Perodua Axia). Numbers come from the app's own maths (static/numbers.mjs), the price date, colours
+     and photo from the real new_car_models rows. Render: node static/preview.cjs -->
+<meta charset="utf-8">
+<style>
+@font-face{font-family:Outfit;font-weight:400 500;src:url(../harness/outfit-latin-500-normal.woff)}
+@font-face{font-family:Outfit;font-weight:600 800;src:url(../harness/outfit-latin-700-normal.woff)}
+:root{--a:#e6321c;--ink:#0f1115;--mut:#6b7280;--bg:#EEEDEA;--card:#fff;--soft:#F3F3F1}
+*{box-sizing:border-box;margin:0}
+body{background:#d9d9d6;font-family:Outfit;font-weight:700;color:var(--ink);padding:40px;display:flex;gap:48px;align-items:flex-start;width:max-content}
+.cap{font-size:15px;color:#555;font-weight:500;margin-bottom:10px;letter-spacing:.02em}
+.stage{background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone{width:390px;height:800px;border-radius:34px;box-shadow:0 0 0 9px #111,0 30px 60px rgba(0,0,0,.3)}
+.desk{width:750px;height:667px;border-radius:14px;box-shadow:0 0 0 1px #bbb,0 20px 50px rgba(0,0,0,.2)}
+.bar{display:flex;align-items:center;gap:8px;padding:14px 16px 8px}
+.tabs{display:flex;gap:4px;margin-right:auto;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.tabs span{padding:7px 11px;border-radius:999px;color:var(--mut)}.tabs .on{background:var(--ink);color:#fff}
+.ib{width:34px;height:34px;border-radius:11px;background:#fff;display:grid;place-items:center;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card{background:var(--card);border-radius:22px;margin:0 12px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);flex:1;display:flex;flex-direction:column;gap:10px;min-height:0}
+.title{display:flex;align-items:flex-end;gap:10px}
+.title small{display:block;font-size:11px;letter-spacing:.22em;color:var(--mut);font-weight:600}
+.title h2{font-size:36px;line-height:1;letter-spacing:-1px;font-weight:800}
+.badge{margin-left:auto;background:var(--a);color:#fff;border-radius:11px;padding:6px 11px;font-size:20px;letter-spacing:-.5px}
+.pill{background:var(--ink);color:#fff;border-radius:999px;text-align:center;font-size:11.5px;letter-spacing:.07em;padding:9px 10px;text-transform:uppercase}
+.vars{display:flex;gap:6px}
+.v{flex:1;background:var(--soft);border-radius:12px;padding:7px 4px;text-align:center;font-size:13px;line-height:1.15}
+.v i{display:block;font-style:normal;font-weight:500;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
+.v.on{background:#fde8e4;box-shadow:inset 0 0 0 1.5px var(--a);color:#b3220f}.v.on i{color:#b3220f}
+.photo{position:relative;border-radius:18px;overflow:hidden;flex:none}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.sw{position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.92);border-radius:999px;padding:5px 10px 5px 6px}
+.sw b{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.sw b.on{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ink)}
+.sw span{font-size:12px;margin-left:3px}
+.exp{position:absolute;right:10px;top:10px;width:30px;height:30px;border-radius:9px;background:rgba(15,17,21,.55);color:#fff;display:grid;place-items:center;font-size:13px}
+.big{display:flex;align-items:baseline;gap:8px;color:var(--a);line-height:1}
+.big em{font-style:normal;font-size:.36em;color:var(--a)}.big small{font-size:.3em;color:var(--mut);font-weight:600}
+.sum{font-size:13px;color:#4b5563;font-weight:600}
+.ten{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.t{background:var(--soft);border-radius:13px;padding:8px 11px;font-size:11px;letter-spacing:.08em}
+.t b{display:block;font-size:21px;letter-spacing:-.5px;margin-top:2px}.t b em{font-style:normal;font-size:.6em;color:var(--mut);margin-right:3px}
+.t.on{background:#fde8e4;box-shadow:inset 0 0 0 1.5px var(--a);color:#b3220f}.t.on b em{color:#b3220f}
+.chips{display:flex;gap:7px;align-items:center}
+.chips label{font-size:11px;letter-spacing:.14em;color:var(--mut);margin-right:2px}
+.c{flex:1;text-align:center;background:#fff;border-radius:999px;padding:9px 0;font-size:14px;box-shadow:inset 0 0 0 1.5px #e4e4e0}
+.c.on{background:var(--a);color:#fff;box-shadow:none}
+.fin{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e9e9e5;border-radius:14px;overflow:hidden}
+.fin div{background:var(--soft);padding:8px 11px;font-size:11px;color:var(--mut);font-weight:600}
+.fin b{display:block;color:var(--ink);font-size:17px;letter-spacing:-.3px;margin-top:1px;font-variant-numeric:tabular-nums}
+.fin b em{font-style:normal;font-size:.62em;color:var(--mut);margin-right:2px}
+.fin .loan{background:var(--ink);color:rgba(255,255,255,.7)}.fin .loan b{color:#fff}.fin .loan b em{color:rgba(255,255,255,.7)}
+.fine{font-size:11px;color:var(--mut);font-weight:500;line-height:1.35;margin-top:auto}
+.nav{display:flex;gap:8px;padding:10px 12px 14px}
+.nav div{flex:1;text-align:center;padding:13px;border-radius:15px;background:#fff;font-size:16px}.nav div:last-child{background:var(--ink);color:#fff}
+/* phone */
+.phone .photo{height:176px}.phone .sw{top:10px;bottom:auto}.phone .floatcard .sum{font-size:12px;white-space:nowrap}
+.phone .floatcard{background:#fff;border-radius:16px;margin:-40px 10px 0;position:relative;padding:10px 14px;box-shadow:0 8px 22px rgba(0,0,0,.16);display:flex;align-items:center;gap:12px}
+.phone .big{font-size:54px}.phone .floatcard .sum{margin-left:auto;text-align:right;line-height:1.35}
+/* desktop */
+.desk .card{align-items:stretch}
+.desk .top{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.desk .title{justify-content:center}.desk .title h2{font-size:34px}.desk .badge{margin-left:6px}
+.desk .pill{padding:8px 26px;font-size:12px}
+.desk .big{font-size:84px;justify-content:center}
+.desk .ten{width:520px}.desk .chips{width:520px}
+.desk .low{display:grid;grid-template-columns:330px 1fr;gap:12px;margin-top:4px}
+.desk .photo{height:198px}
+.desk .fin{grid-template-columns:repeat(2,1fr);align-self:stretch}
+.desk .fin div{display:flex;flex-direction:column;justify-content:center}
+</style>
+<body>
+<div><div class="cap">PHONE (the real stage is 9:16, no scroll)</div>
+<div class="stage phone">
+  <div class="bar"><div class="tabs"><span class="on">Kereta</span><span>Bajet</span><span>Dokumen</span></div><div class="ib">BM</div><div class="ib">⚙</div><div class="ib">✕</div></div>
+  <div class="card">
+    <div class="title"><div><small>PERODUA</small><h2>Axia</h2></div><div class="badge">#1</div></div>
+    <div class="vars">
+      <div class="v">E<i>22,000</i></div><div class="v">G<i>33,900</i></div><div class="v">X<i>38,500</i></div><div class="v">SE<i>43,000</i></div><div class="v on">AV<i>49,000</i></div>
+    </div>
+    <div class="pill">Komen #1, deposit &amp; tempoh anda</div>
+    <div class="photo"><img src="shots/axia.jpg"><div class="exp">⤢</div>
+      <div class="sw"><b style="background:#2aa3c4" class="on"></b><b style="background:#b9bcc2"></b><b style="background:#6b6f76"></b><b style="background:#f2efe6"></b><b style="background:#c8201f"></b><span>Coral Blue</span></div></div>
+    <div class="floatcard"><div class="big"><em>RM</em>523<small>/bulan</small></div><div class="sum">9 tahun<br>deposit RM 4,900</div></div>
+    <div class="ten"><div class="t on">9 TAHUN<b><em>RM</em>523</b></div><div class="t">7 TAHUN<b><em>RM</em>642</b></div><div class="t">5 TAHUN<b><em>RM</em>859</b></div></div>
+    <div class="chips"><label>DEPOSIT</label><div class="c">Lain ✎</div><div class="c">Tiada</div><div class="c on">10%</div><div class="c">20%</div><div class="c">30%</div></div>
+    <div class="fin">
+      <div>Harga OTR<b><em>RM</em>49,000</b></div><div>Insurans (ang.)<b><em>RM</em>1,654</b></div><div>NCD<b>0%</b></div>
+      <div>Rebat<b><em>RM</em>0 ✎</b></div><div>Deposit<b><em>RM</em>4,900</b></div><div class="loan">Pinjaman<b><em>RM</em>45,754</b></div>
+    </div>
+    <div class="fine">Harga rasmi Perodua, dikemas kini 3 Ogos 2026. Kadar 4.8% EIR. Anggaran, bank yang tentukan.</div>
+  </div>
+  <div class="nav"><div>‹ #6</div><div>#2 ›</div></div>
+</div></div>
+
+<div><div class="cap">DESKTOP / FILMED MONITOR (numbers stay in the top-centre camera-safe zone)</div>
+<div class="stage desk">
+  <div class="bar"><div class="tabs"><span class="on">Kereta</span><span>Bajet</span><span>Dokumen</span></div><div class="ib">BM</div><div class="ib">⛶</div><div class="ib">⚙</div><div class="ib">✕</div></div>
+  <div class="card">
+    <div class="top">
+      <div class="title"><div style="display:flex;align-items:baseline;gap:10px"><small style="display:inline">PERODUA</small><h2>Axia 1.0 AV</h2></div><div class="badge">#1</div></div>
+      <div class="pill">Komen #1, deposit &amp; tempoh anda · Semua kereta saya: link di bio</div>
+      <div class="big"><em>RM</em>523<small>/bulan</small></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div class="ten"><div class="t on">9 TAHUN<b><em>RM</em>523</b></div><div class="t">7 TAHUN<b><em>RM</em>642</b></div><div class="t">5 TAHUN<b><em>RM</em>859</b></div></div>
+      <div class="chips"><label>DEPOSIT</label><div class="c">Lain ✎</div><div class="c">Tiada</div><div class="c on">10%</div><div class="c">20%</div><div class="c">30%</div></div>
+    </div>
+    <div class="low">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="photo"><img src="shots/axia.jpg"><div class="exp">⤢</div>
+          <div class="sw"><b style="background:#2aa3c4" class="on"></b><b style="background:#b9bcc2"></b><b style="background:#6b6f76"></b><b style="background:#f2efe6"></b><b style="background:#c8201f"></b><span>Coral Blue</span></div></div>
+        <div class="vars"><div class="v">E</div><div class="v">G</div><div class="v">X</div><div class="v">SE</div><div class="v on">AV</div></div>
+      </div>
+      <div class="fin">
+        <div>Harga OTR<b><em>RM</em>49,000</b></div><div>Insurans (anggaran)<b><em>RM</em>1,654</b></div>
+        <div>NCD<b>0% ▾</b></div><div>Rebat<b><em>RM</em>0 ✎</b></div>
+        <div>Deposit<b><em>RM</em>4,900</b></div><div class="loan">Pinjaman<b><em>RM</em>45,754</b></div>
+      </div>
+    </div>
+    <div class="fine">Harga rasmi Perodua, dikemas kini 3 Ogos 2026. Kadar 4.8% EIR. Anggaran, bank yang tentukan.</div>
+  </div>
+  <div style="height:12px"></div>
+</div></div>
+</body>
