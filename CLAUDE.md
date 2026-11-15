@@ -1647,7 +1647,18 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   `salesman_listings` without the same check.
 - Never reward a broker for bringing another broker (Act 500). Commission is a record only
   (`broker_mark_paid`); Drevo moves no money. Pushes carry no buyer name or number.
-- Not built yet: leads that arrive through a broker's page are not attributed to the broker
+- **BROKER-2 (owner 2026-11-15, migration `20261116a_broker_leads.sql`, QUEUED, not applied, not probed):** the two
+  businesses stay apart. A broker never reads or writes the dealer's `leads`. A buyer who uses a broker's page
+  (`?ref=`) on a dealer car: WhatsApp opens the BROKER's number (`_page_broker` in `get_seller_whatsapp`), the
+  dealer's lead is made as before, and `_broker_capture` files a registration (`source='page'`) plus the broker's
+  OWN lead copy. ONE claim rule, `_broker_claim` (manual + page). Anti-cheat, all in the DB: commission fixed at
+  registration (`commission_agreed`, the dealer cannot confirm below it); the dealer's Won credits the broker by
+  itself (`broker_lead_sync`, 90 days on the tied lead); a buyer the dealer already knows is refused (`known`);
+  refused tries capped 40/day; a commission change notifies the broker; the broker cannot mark a dealer's buyer
+  Won (`broker_dealer_confirms`); `broker_audit` logs everything. "Link a car" shows a "Dealer stock" group
+  (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
+- Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
+- (older note) leads that arrive through a broker's page are not attributed to the broker
   (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side
   "who holds this buyer" lookup. Screens: `src/components/brokers/{BrokerStock,DealerBrokers}.jsx`,
   tab "Dealer stock" in Premium (`seller_type = 'broker'`), "Dealers" in Lite, Team > Brokers on the dealer dashboard.

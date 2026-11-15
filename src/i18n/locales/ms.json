@@ -2718,6 +2718,8 @@
     "offerTitle": "Tawar kereta lain",
     "offerSub": "Pilih kereta untuk {{name}}. Lepas itu mesej WhatsApp sedia untuk dihantar.",
     "linkedToast": "{{car}} dipautkan kepada {{name}}",
-    "linkFailed": "Tidak dapat pautkan kereta. Cuba lagi."
+    "linkFailed": "Tidak dapat pautkan kereta. Cuba lagi.",
+    "dealerStock": "Stok dealer",
+    "dealerStockSub": "Pilih satu untuk daftarkan pembeli ini dengan dealer. Dealer yang sahkan jualan."
   }
 }

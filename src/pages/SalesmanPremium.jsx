@@ -67,6 +67,8 @@ const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 const BrokerStock = React.lazy(() => import("../components/brokers/BrokerStock"));
+// BROKER-2: the same "Register a buyer" pop-up, opened from a lead's "Link a car" picker.
+const BrokerRegisterSheet = React.lazy(() => import("../components/brokers/BrokerStock").then((m) => ({ default: m.RegisterSheet })));
 // LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
 const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
 const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
@@ -185,6 +187,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
+import { myPageDealerCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -649,6 +652,29 @@ export default function SalesmanPremium() {
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  // "link" = attach a car; "offer" = SOLD-1 offer another car, then a WhatsApp draft.
  const [linkCarMode, setLinkCarMode] = useState("link");
+ // BROKER-2: a broker (standalone seller working a dealer's stock). brokerCars = the dealer cars
+ // on their page, for the picker; brokerRegs = their registered buyers, to name the dealer car on
+ // a lead; dealerPick = the dealer car just picked for a lead (opens the register step).
+ const isBroker = !profile?.dealer_id && profile?.seller_type === "broker";
+ const [brokerCars, setBrokerCars] = useState(null);
+ const [brokerRegs, setBrokerRegs] = useState([]);
+ const [dealerPick, setDealerPick] = useState(null);
+ const loadBrokerRegs = useCallback(() => { myBrokerRegs().then((r) => { if (!r.error) setBrokerRegs(r.rows); }); }, []);
+ useEffect(() => { if (isBroker) loadBrokerRegs(); }, [isBroker, loadBrokerRegs]);
+ useEffect(() => {
+ if (!isBroker || !linkCarLeadId) return;
+ let on = true;
+ myPageDealerCars().then((rows) => { if (on) setBrokerCars(rows); }).catch(() => {});
+ return () => { on = false; };
+ }, [isBroker, linkCarLeadId]);
+ // A lead's registration: the one filed against it, else a live one for the same number.
+ const brokerRegForLead = useCallback((lead) => {
+ if (!lead || !brokerRegs.length) return null;
+ const digits = String(lead.phone || "").replace(/\D/g, "");
+ return brokerRegs.find((r) => r.broker_lead_id && r.broker_lead_id === lead.id)
+ || (digits ? brokerRegs.find((r) => r.buyer_phone === digits && (r.status === "sold" || new Date(r.hold_until) > new Date())) : null)
+ || null;
+ }, [brokerRegs]);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -2609,6 +2635,7 @@ export default function SalesmanPremium() {
  console.error("handleMarkWon lead:", leadErr);
  const m = String(leadErr.message || "");
  toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
+ : m.includes("broker_dealer_confirms") ? "This buyer is on a dealer's car. The dealer confirms the sale, and you are told when they do."
  : m.includes("forbidden") ? "This lead is not yours to close."
  : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
@@ -4061,6 +4088,8 @@ export default function SalesmanPremium() {
  cars={myListings}
  linkedId={offer ? null : target?.car_listing_id}
  excludeSold={offer}
+ dealerCars={isBroker && !offer ? brokerCars : null}
+ onPickDealer={(car) => { setLinkCarLeadId(null); setLinkCarMode("link"); setDealerPick({ car, lead: target }); }}
  onClose={() => { setLinkCarLeadId(null); setLinkCarMode("link"); }}
  onPick={(car) => {
  const leadId = linkCarLeadId;
@@ -4072,6 +4101,23 @@ export default function SalesmanPremium() {
  />
  );
  })()}
+
+ {/* BROKER-2: a dealer car picked for a lead = register that buyer with the dealer (the
+     buyer's consent is ticked there). The car is never linked to the lead itself: a broker
+     cannot mark a dealer's car sold. */}
+ {dealerPick && (
+ <Suspense fallback={null}>
+ <BrokerRegisterSheet
+ car={dealerPick.car}
+ dealerName={dealerPick.car.dealerName || "the dealer"}
+ initialName={dealerPick.lead?.buyer_name || ""}
+ initialPhone={dealerPick.lead?.phone || ""}
+ leadId={dealerPick.lead?.id || null}
+ onClose={() => setDealerPick(null)}
+ onDone={() => { setDealerPick(null); loadBrokerRegs(); }}
+ />
+ </Suspense>
+ )}
 
  {/* SET A FOLLOW-UP REMINDER — third time this exact shape has bitten this
      file. "Set reminder" set followUpModalLead and NOTHING rendered for it, so
@@ -4245,6 +4291,28 @@ export default function SalesmanPremium() {
  {t("salesmanPremium.drawer.noCarYet")}
  </p>
  )}
+ {/* BROKER-2: this buyer is registered on a dealer's car. Facts only: whose car, the
+     hold, the commission fixed at registration. The dealer confirms the sale. */}
+ {(() => {
+ const reg = brokerRegForLead(pl);
+ if (!reg) return null;
+ const holding = reg.status === "registered" && new Date(reg.hold_until) > new Date();
+ const state = reg.status === "sold"
+ ? (reg.paid_at ? "Sold by the dealer, commission paid" : `Sold by the dealer, commission owed ${brokerMoney(reg.commission_amount)}`)
+ : holding ? `Held for you until ${brokerDate(reg.hold_until)}` : `Hold ended ${brokerDate(reg.hold_until)}`;
+ return (
+ <div style={{ marginTop: 8, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised }}>
+ <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Dealer's car</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 600, color: PD.text }}>{reg.car_label} · {reg.dealer_name}</p>
+ <p style={{ margin: "3px 0 0", fontSize: 12, color: reg.status === "sold" || holding ? PD.up : PD.textSec }}>{state}</p>
+ {reg.status !== "sold" && (
+ <p style={{ margin: "3px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.45 }}>
+ {Number(reg.commission_agreed) > 0 ? `You earn ${brokerMoney(reg.commission_agreed)} if the dealer sells to them. ` : ""}Only the dealer can mark this sale. You are told when they do.
+ </p>
+ )}
+ </div>
+ );
+ })()}
  </div>
 
  {/* LOAN CHECK (IDEA-23): what to fix before any bank sees the file. */}

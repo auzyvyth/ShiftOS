@@ -2701,6 +2701,8 @@
     "offerTitle": "Offer another car",
     "offerSub": "Pick the car for {{name}}. Next you get a WhatsApp message ready to send.",
     "linkedToast": "{{car}} linked to {{name}}",
-    "linkFailed": "Could not link the car. Try again."
+    "linkFailed": "Could not link the car. Try again.",
+    "dealerStock": "Dealer stock",
+    "dealerStockSub": "Picking one registers this buyer with the dealer. The dealer confirms the sale."
   }
 }
