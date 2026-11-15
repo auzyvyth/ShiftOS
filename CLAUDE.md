@@ -929,6 +929,12 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   and do not apply it. Exceptions that ship anyway: a security hole, and anything broken
   for users who exist today. A change to a shared table (`car_listings`, `leads`,
   `profiles`) counts as used if any live surface touches it.
+- **Only the last 7 days of migration files stay in `supabase/migrations/` (owner, 2026-11-15; the repo is public).**
+  Older ones were removed from the branch tip on 2026-11-15 (236 files, everything before `20261108`); the
+  live DB's own migration list (`list_migrations`) is the record of what ran, and git history still holds the
+  old files (removing them from the tip does NOT un-publish them). Do not recreate them from memory. When
+  a file is referenced by name in this file or TODO.md and is missing, read the function or table from the
+  live DB instead (`pg_get_functiondef`, `information_schema`). `supabase/parked/` is kept: it is unapplied work.
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
