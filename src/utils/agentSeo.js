@@ -17,6 +17,15 @@ export function agentName(p) {
   return clean(p?.full_name) || clean(p?.dealership) || clean(p?.slug);
 }
 
+// The seller's social media name (NICKNAME-1), without a leading @. Read from `p.nickname`, which the public
+// page and the crawler render fetch with get_agent_nickname() on every plan, Lite included.
+export function agentNickname(p) {
+  const nick = clean(p?.nickname).replace(/^@+/, "");
+  const key = (v) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // The same word as the name, or the page name, says nothing new.
+  return nick && key(nick) !== key(agentName(p)) ? nick : "";
+}
+
 export function agentLocation(p) {
   return [p?.city, p?.state].map(clean).filter(Boolean).join(", ");
 }
@@ -44,7 +53,19 @@ export function agentBusiness(p) {
 export function agentPageTitle(p, cars) {
   const loc = agentLocation(p);
   const biz = agentBusiness(p);
-  return `${agentName(p)}${biz ? ` (${biz})` : ""} — ${agentRole(cars) || "Car Agent"}${loc ? ` in ${loc}` : ""} | Drevo`;
+  const nick = agentNickname(p);
+  const role = agentRole(cars) || "Car Agent";
+  const tail = (withLoc) => ` — ${role}${withLoc && loc ? ` in ${loc}` : ""} | Drevo`;
+  const base = `${agentName(p)}${biz ? ` (${biz})` : ""}${tail(true)}`;
+  if (!nick) return base;
+  // The nickname is what a buyer who knows the seller by their TikTok name types, so it stays and the
+  // LOCATION gives way first when the title would be cut (it also sits in the description and the page).
+  const head = `${agentName(p)} (@${nick})${biz ? ` · ${biz}` : ""}`;
+  for (const withLoc of [true, false]) {
+    const t = `${head}${tail(withLoc)}`;
+    if (t.length <= TITLE_LIMIT) return t;
+  }
+  return base; // even the short form is too long (a very long name + business): leave the title as it was
 }
 
 // The agent's own bio, else a sentence built only from facts we hold.
@@ -57,7 +78,7 @@ export function agentPageDescription(p, carCount = 0, carList) {
     ? ` Browse ${carCount} ${carCount === 1 ? "car" : "cars"} for sale and message them directly.`
     : "";
   const role = agentRole(carList);
-  return `${agentName(p)} is a ${role ? `${role.replace(/Sales Advisor$/, "sales advisor")}` : "car sales agent"}${loc ? ` in ${loc}` : ""} on Drevo.${cars}`;
+  return `${agentName(p)}${agentNickname(p) ? ` (@${agentNickname(p)})` : ""} is a ${role ? `${role.replace(/Sales Advisor$/, "sales advisor")}` : "car sales agent"}${loc ? ` in ${loc}` : ""} on Drevo.${cars}`;
 }
 
 // Plain-English problems with how the result will read, worst first. Each is
@@ -69,6 +90,7 @@ export function agentSeoIssues(p) {
   if (!name) issues.push({ key: "name", text: "Add your name. Without it Google shows your username instead." });
   else if (name === name.toLowerCase() && /[a-z]/.test(name)) issues.push({ key: "name", text: "Your name is all lowercase. Capitalise it the way you write it, e.g. \"Ali Hassan\"." });
   else if (name === name.toUpperCase() && /[A-Z]{3}/.test(name)) issues.push({ key: "name", text: "Your name is in capitals, which reads like shouting in a search result. Write it as \"Ali Hassan\"." });
+  if (!clean(p?.nickname)) issues.push({ key: "nickname", text: "Add your social media name (the one you use on TikTok or Facebook). Buyers who know you by it can then find your page." });
   if (!bio) issues.push({ key: "bio", text: "Add a bio. It is the grey text under your name on Google, and the words in it are what buyers search for (car models, area)." });
   else if (bio.length > DESC_LIMIT) issues.push({ key: "bio", text: `Google shows about the first ${DESC_LIMIT} characters of your bio. Put the cars you sell and your area first.` });
   if (!agentLocation(p)) issues.push({ key: "location", text: "Add your city and state (Contact & Location). Buyers search \"car agent <area>\"." });

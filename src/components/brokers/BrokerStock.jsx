@@ -117,6 +117,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
     const title = [car.year, car.brand, car.model].filter(Boolean).join(' ');
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
     setStock((rows) => (rows || []).map((c) => (c.id === car.id ? { ...c, on_my_page: adding } : c)));
+    api.applyPageCar(car, dealerId, (active.find((d) => d.dealer_id === dealerId) || {}).name, adding);
     if (quiet) return;
     if (adding) toast.success(`${title} is now on your page.`);
     else toast(`${title} removed from your page.`, { action: { label: 'Undo', onClick: () => togglePage({ ...car, on_my_page: false }, true) } });
@@ -351,6 +352,10 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: stateColor }}>{state}</div>
                 </div>
+                {r.source === 'page' && <div style={{ fontSize: 13, color: T.sec }}>Came through your page</div>}
+                {r.status !== 'sold' && Number(r.commission_agreed) > 0 && (
+                  <div style={{ fontSize: 13, color: T.sec }}>If the dealer sells to them: {api.money(r.commission_agreed)}. The dealer cannot lower this.</div>
+                )}
                 {r.status === 'sold' && Number(r.commission_amount) > 0 && (
                   <div style={{ fontSize: 13, color: T.sec }}>Your commission: {api.money(r.commission_amount)}</div>
                 )}
@@ -379,10 +384,11 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
 
 // The "Register a buyer" pop-up. Portalled with a scroll lock; Back closes it
 // (CLAUDE.md overlay rules). Shows the result inside the sheet so a clash is read, not toasted away.
-function RegisterSheet({ T, car, dealerName, onClose, onDone }) {
+// Also opened from a lead's "Link a car" picker (BROKER-2) with the lead's name + number filled in.
+export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, onDone, initialName = '', initialPhone = '', leadId = null }) {
   useModalHistory(true, onClose);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(initialName);
+  const [phone, setPhone] = useState(initialPhone);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -400,7 +406,7 @@ function RegisterSheet({ T, car, dealerName, onClose, onDone }) {
     if (!valid || busy) return;
     setBusy(true);
     setMsg('');
-    const res = await api.registerBuyer(car.id, name.trim(), phone, consent);
+    const res = await api.registerBuyer(car.id, name.trim(), phone, consent, leadId);
     setBusy(false);
     if (res.ok) { setDone(res); return; }
     if (res.reason === 'held') {
@@ -433,7 +439,7 @@ function RegisterSheet({ T, car, dealerName, onClose, onDone }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: T.sec }}>If it sells</span><span style={{ color: T.up, fontWeight: 500 }}>You earn {api.money(car.commission)}</span></div>
               )}
             </div>
-            <button type="button" onClick={onDone} style={{ minHeight: 52, border: 0, borderRadius: 14, background: T.accent, color: T.onAccent, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Done</button>
+            <button type="button" onClick={() => onDone(done)} style={{ minHeight: 52, border: 0, borderRadius: 14, background: T.accent, color: T.onAccent, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Done</button>
           </>
         ) : (
           <>

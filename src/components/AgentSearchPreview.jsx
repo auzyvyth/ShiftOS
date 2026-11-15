@@ -7,10 +7,13 @@
 import { ROOT_DOMAIN } from '../config/site';
 import { premiumDark as PD } from '../theme/tokens';
 import { agentPageTitle, agentPageDescription, agentSeoIssues, TITLE_LIMIT } from '../utils/agentSeo';
+import { cleanNickname, nicknameProblem } from '../utils/nickname';
 
 const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 3).trimEnd()}...` : s);
 
-export default function AgentSearchPreview({ profile, slug, carCount = 0, cars }) {
+export default function AgentSearchPreview({ profile: typed, slug, carCount = 0, cars }) {
+  // A nickname that breaks the rules cannot go live, so the preview does not show it (NICKNAME-1).
+  const profile = { ...typed, nickname: nicknameProblem(typed?.nickname) ? '' : cleanNickname(typed?.nickname) };
   const title = cut(agentPageTitle({ ...profile, slug }, cars), TITLE_LIMIT);
   const description = agentPageDescription({ ...profile, slug }, carCount, cars);
   const issues = agentSeoIssues(profile);

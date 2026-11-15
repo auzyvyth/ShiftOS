@@ -26,11 +26,22 @@ is('no cars keeps Car Agent', agentPageTitle({ full_name: 'Ali' }, []), 'Ali —
 is('advisor sentence names the brand', agentPageDescription({ full_name: 'Yazeed', city: 'Selayang', state: 'Selangor' }, 2, proton), 'Yazeed is a Proton sales advisor in Selayang, Selangor on Drevo. Browse 2 cars for sale and message them directly.');
 is('no-bio sentence counts cars', agentPageDescription({ full_name: 'Ali' }, 1), 'Ali is a car sales agent on Drevo. Browse 1 car for sale and message them directly.');
 
-is('clean profile has no issues', keys({ full_name: 'Ali Hassan', city: 'Klang', state: 'Selangor', bio: 'Recon Alphard' }), []);
-is('lowercase name flagged', keys({ full_name: 'diara', city: 'Klang', state: 'Selangor', bio: 'x' }), ['name']);
-is('caps name flagged', keys({ full_name: 'AISY AZIM', city: 'Klang', state: 'Selangor', bio: 'x' }), ['name']);
-is('missing bio + location flagged', keys({ full_name: 'Ali' }), ['bio', 'location']);
-is('long title flagged', keys({ full_name: 'Airy Motors', city: 'Wilayah persekutuan', state: 'Kuala Lumpur', bio: 'x' }), ['title']);
+is('clean profile has no issues', keys({ full_name: 'Ali Hassan', nickname: 'ali.cars', city: 'Klang', state: 'Selangor', bio: 'Recon Alphard' }), []);
+is('no nickname is a tip, not an error', keys({ full_name: 'Ali Hassan', city: 'Klang', state: 'Selangor', bio: 'Recon Alphard' }), ['nickname']);
+// NICKNAME-1: the social media name is told to Google, only while it fits.
+is('nickname joins the title', agentPageTitle({ full_name: 'Ali', nickname: 'fedaus', city: 'Klang', state: 'Selangor' }), 'Ali (@fedaus) — Car Agent in Klang, Selangor | Drevo');
+is('a long location gives way before the nickname does', agentPageTitle({ full_name: 'Mohamad Firdaus', nickname: 'fedaus', city: 'Kuala Kangsar', state: 'Perak' }), 'Mohamad Firdaus (@fedaus) — Car Agent | Drevo');
+is('a leading @ is not doubled', agentPageTitle({ full_name: 'Ali', nickname: '@ali.cars' }), 'Ali (@ali.cars) — Car Agent | Drevo');
+is('nickname + business', agentPageTitle({ full_name: 'Ali', nickname: 'ali88', dealership: 'Ali Motors' }), 'Ali (@ali88) · Ali Motors — Car Agent | Drevo');
+const longNick = agentPageTitle({ full_name: 'Mohamad Firdaus Bin Nor Aizam', nickname: 'fedaus.perodua.sales', dealership: 'Fedaus Perodua Sales', city: 'Kuala Kangsar', state: 'Perak' });
+is('a name + nickname + business too long even without the location leaves the title as it was', longNick, 'Mohamad Firdaus Bin Nor Aizam (Fedaus Perodua Sales) — Car Agent in Kuala Kangsar, Perak | Drevo');
+is('the same word as the name adds nothing', agentPageTitle({ full_name: 'Auzyvyth', nickname: 'auzyvyth' }), 'Auzyvyth — Car Agent | Drevo');
+is('description names the nickname when there is no bio', agentPageDescription({ full_name: 'Ali', nickname: 'ali88' }).startsWith('Ali (@ali88) is a car sales agent'), true);
+is('a bio still wins the description', agentPageDescription({ full_name: 'Ali', nickname: 'ali88', bio: 'Recon Alphard' }), 'Recon Alphard');
+is('lowercase name flagged', keys({ full_name: 'diara', nickname: 'diara88', city: 'Klang', state: 'Selangor', bio: 'x' }), ['name']);
+is('caps name flagged', keys({ full_name: 'AISY AZIM', nickname: 'aisy.azim', city: 'Klang', state: 'Selangor', bio: 'x' }), ['name']);
+is('missing bio + location flagged', keys({ full_name: 'Ali', nickname: 'ali88' }), ['bio', 'location']);
+is('long title flagged', keys({ full_name: 'Airy Motors', city: 'Wilayah persekutuan', state: 'Kuala Lumpur', bio: 'x' }), ['nickname', 'title']);
 
 console.log(`agentSeo: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

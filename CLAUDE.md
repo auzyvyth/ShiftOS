@@ -1647,7 +1647,28 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   `salesman_listings` without the same check.
 - Never reward a broker for bringing another broker (Act 500). Commission is a record only
   (`broker_mark_paid`); Drevo moves no money. Pushes carry no buyer name or number.
-- Not built yet: leads that arrive through a broker's page are not attributed to the broker
+- **BROKER-2 (owner 2026-11-15, migration `20261116a_broker_leads.sql`, QUEUED, not applied, not probed):** the two
+  businesses stay apart. A broker never reads or writes the dealer's `leads`. A buyer who uses a broker's page
+  (`?ref=`) on a dealer car: WhatsApp opens the BROKER's number (`_page_broker` in `get_seller_whatsapp`), the
+  dealer's lead is made as before, and `_broker_capture` files a registration (`source='page'`) plus the broker's
+  OWN lead copy. ONE claim rule, `_broker_claim` (manual + page). Anti-cheat, all in the DB: commission fixed at
+  registration (`commission_agreed`, the dealer cannot confirm below it); the dealer's Won credits the broker by
+  itself (`broker_lead_sync`, 90 days on the tied lead); a buyer the dealer already knows is refused (`known`);
+  refused tries capped 40/day; a commission change notifies the broker; `broker_audit` logs everything.
+  **A broker's Won on a dealer-car buyer FILES A SALE CLAIM** (`trg_zz_broker_claim_on_won`, `sale_claimed_at`): nothing
+  is owed until the dealer approves (`broker_mark_sold`, one tap at the agreed amount) or disputes
+  (`broker_dispute_claim`, broker told). The dealer's own Won still credits the broker by itself. The lead panel shows the
+  dealer car as the lead's car through the registration (`dealerSaleFor`, SalesmanPremium.jsx), never via `car_listing_id`.
+  Dealer Team > Brokers = one COLUMN per broker with their buyers inside (`DealerBrokers.jsx`).
+  **Broker numbers live INSIDE the dealer's totals, never in a block of their own (owner, 2026-11-15):** broker commission is part
+  of the car's ONE commission line (`carPnl({ brokerCommission })`, read per car by `src/lib/brokerCommission.js`, RPC
+  `dealer_broker_commission_by_car`, same switch as gross profit), so Cars sold / Sales / Commission / Gross on Overview all
+  include it. Any NEW `carPnl()` caller must pass `brokerCommission` or its profit will not match Overview. Overview's
+  numbers are Week | Month | Year (`periodWindow` in `ownerMoney.js`) and EVERY money number opens its breakdown
+  (`MoneyDetailSheet` + `explain()` in `moneyExplain.js`, every list adds to 100%). Last year is shown only when a car really sold in that window. "Link a car" shows a "Dealer stock" group
+  (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
+- Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
+- (older note) leads that arrive through a broker's page are not attributed to the broker
   (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side
   "who holds this buyer" lookup. Screens: `src/components/brokers/{BrokerStock,DealerBrokers}.jsx`,
   tab "Dealer stock" in Premium (`seller_type = 'broker'`), "Dealers" in Lite, Team > Brokers on the dealer dashboard.
@@ -1944,6 +1965,19 @@ under "Shared link". Premium dashboard "visits from shared links" = `shareVisits
 (`src/utils/detectChannel.js`): channels share, copy, whatsapp, telegram only (Facebook / IG /
 TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
 (`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
+
+## Seller nickname = social media name (NICKNAME-1, owner 2026-11-15, migration `20261116b`, QUEUED)
+`profiles.nickname` ("fedaus"): a DISPLAY + SEARCH name, on EVERY plan (Lite too: being found is never gated), separate
+from `full_name` and from the page name `slug`. **Never make the slug editable to get this:** the slug is the `?ref=`
+attribution key (`resolve_lead_salesman`), the analytics key, the invite code and every shared link (`guard_profile_slug`
+locks it). Rules live in ONE file, `src/utils/nickname.js` (2-30 chars, letters / numbers / . _, unique ignoring case, no
+phone number (CDP-3), no official / verified / drevo / admin words, never another seller's page name; the database repeats
+them in `nickname_problem()` + `guard_profile_nickname`, `npm run test:nickname` checks both say the same). Read publicly
+ONLY through `get_agent_nickname(slug)` (active sellers only, its own call like `get_agent_about`, so the main profile read
+can never fail on it); the page shows "@name" (`.ap-nick`), `agentSeo.js` adds it to the title (location gives way first when
+the title would be cut), description and Person `alternateName` (`api/og.js`). Settings has `NicknameField` (Lite + Premium):
+its own Save button and own query, so the main profile save cannot fail on it. There is NO seller search on Drevo yet, so
+"found" means Google; an in-app search by nickname is a later step.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,

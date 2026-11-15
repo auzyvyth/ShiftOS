@@ -5,6 +5,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { carPnl } from '../../utils/carPnl';
 import { supabase } from '../../supabaseClient';
 import { usePersistentState } from '../../hooks/usePersistentState';
+import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { Target, ChevronRight } from 'lucide-react';
 
 const fmtRM = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
@@ -246,14 +247,14 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
 // P&L modal exactly (purchase + recon + services + commission + handover +
 // holding + ad spend, plus F&I back-end). Assembled client-side from a handful of
 // dealer-scoped, grouped queries (no N+1) rather than a fragile SQL RPC.
-function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost) {
+function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost, brokerComm = 0) {
   // The ONE profit engine (src/utils/carPnl.js). "handover" here carries transfer + admin +
   // warranty reserve, so the drill-down rows still add up to the gross.
   const sold = !!(l.sold_date || l.sold_at || l.status === 'sold');
   const e = carPnl({
     purchase: Number(stock?.purchase_price) || Number(l.purchase_price) || 0,
     reconEstimate: Number(stock?.recon_cost) || Number(l.recon_cost) || 0,
-    servicesCost: l.included_services_cost, commission: l.commission_amount, adSpend,
+    servicesCost: l.included_services_cost, commission: l.commission_amount, brokerCommission: brokerComm, adSpend,
     handoverCost: sold ? handover : null, addonRevenue: addonRev, addonCost,
     asking: l.selling_price, soldPrice: l.sold_price, isSold: sold,
     startDate: stock?.purchase_date || stock?.created_at || l.created_at, soldDate: l.sold_date || l.sold_at,
@@ -282,7 +283,7 @@ export function RevenueBreakdown({ dealerId }) {
     if (!dealerId) return;
     let cancelled = false;
     (async () => {
-      const [sold, stock, leads, ads, addons, tasks, cfg, team] = await Promise.all([
+      const [sold, stock, leads, ads, addons, tasks, cfg, team, bc] = await Promise.all([
         supabase.from('car_listings').select('id, brand, model, year, sold_date, sold_at, sold_price, selling_price, assigned_to, commission_amount, included_services_cost, purchase_price, recon_cost, created_at').eq('dealer_id', dealerId).eq('status', 'sold'),
         supabase.from('stock_units').select('listing_id, purchase_price, recon_cost, purchase_date, created_at').eq('dealer_id', dealerId).not('listing_id', 'is', null),
         supabase.from('leads').select('car_listing_id').eq('dealer_id', dealerId).not('car_listing_id', 'is', null),
@@ -291,6 +292,7 @@ export function RevenueBreakdown({ dealerId }) {
         supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
         supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
         supabase.from('profiles').select('id, full_name').eq('dealer_id', dealerId),
+        loadBrokerCommission(dealerId).catch(() => null), // BROKER-2: part of the one commission line
       ]);
       if (cancelled) return;
       const stockBy = {}; (stock.data || []).forEach((s) => { stockBy[s.listing_id] = s; });
@@ -301,7 +303,7 @@ export function RevenueBreakdown({ dealerId }) {
       (addons.data || []).forEach((d) => { addRevBy[d.listing_id] = (addRevBy[d.listing_id] || 0) + (Number(d.sold_price) || 0); addCostBy[d.listing_id] = (addCostBy[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); });
       const nameBy = {}; (team.data || []).forEach((p) => { nameBy[p.id] = p.full_name; });
       const out = (sold.data || []).map((l) => {
-        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] || 0, addRevBy[l.id] || 0, addCostBy[l.id] || 0);
+        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] || 0, addRevBy[l.id] || 0, addCostBy[l.id] || 0, brokerAmount(bc?.byCar, l.id));
         return {
           ...l,
           ...m,

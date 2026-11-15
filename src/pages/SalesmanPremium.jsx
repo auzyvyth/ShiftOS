@@ -33,6 +33,7 @@ import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
 import CarPickerSheet from "../components/leads/CarPickerSheet";
 import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON, offerAnotherCarMessage } from "../utils/carBuyers";
 import AgentSearchPreview from "../components/AgentSearchPreview";
+import NicknameField from "../components/profile/NicknameField";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
@@ -67,6 +68,8 @@ const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 const BrokerStock = React.lazy(() => import("../components/brokers/BrokerStock"));
+// BROKER-2: the same "Register a buyer" pop-up, opened from a lead's "Link a car" picker.
+const BrokerRegisterSheet = React.lazy(() => import("../components/brokers/BrokerStock").then((m) => ({ default: m.RegisterSheet })));
 // LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
 const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
 const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
@@ -185,6 +188,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -649,6 +653,45 @@ export default function SalesmanPremium() {
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  // "link" = attach a car; "offer" = SOLD-1 offer another car, then a WhatsApp draft.
  const [linkCarMode, setLinkCarMode] = useState("link");
+ // BROKER-2: a broker (standalone seller working a dealer's stock). brokerCars = the dealer cars
+ // on their page, for the picker; brokerRegs = their registered buyers, to name the dealer car on
+ // a lead; dealerPick = the dealer car just picked for a lead (opens the register step).
+ const isBroker = !profile?.dealer_id && profile?.seller_type === "broker";
+ const [brokerCars, setBrokerCars] = useState(() => getPageCars());
+ const [dealerPick, setDealerPick] = useState(null);
+ const [brokerRegs, setBrokerRegs] = useState([]);
+ const loadBrokerRegs = useCallback(() => { myBrokerRegs().then((r) => { if (!r.error) setBrokerRegs(r.rows); }); }, []);
+ // Loaded up front and kept live, so "Dealer stock" in Link a car is there the moment it opens.
+ useEffect(() => {
+ if (!isBroker) return undefined;
+ loadBrokerRegs();
+ refreshPageCars();
+ return subscribePageCars(setBrokerCars);
+ }, [isBroker, loadBrokerRegs]);
+ // A quiet refresh each time the picker opens, in case a connection changed elsewhere.
+ useEffect(() => { if (isBroker && linkCarLeadId) refreshPageCars(); }, [isBroker, linkCarLeadId]);
+ // A lead's registration: the one filed against it, else a live one for the same number.
+ const brokerRegForLead = useCallback((lead) => {
+ if (!lead || !brokerRegs.length) return null;
+ const digits = String(lead.phone || "").replace(/\D/g, "");
+ return brokerRegs.find((r) => r.broker_lead_id && r.broker_lead_id === lead.id)
+ || (digits ? brokerRegs.find((r) => r.buyer_phone === digits && (r.status === "sold" || new Date(r.hold_until) > new Date())) : null)
+ || null;
+ }, [brokerRegs]);
+ // The dealer car a buyer is registered on, shaped like a car row so the lead panel, the loan check
+ // and the Won confirm can use it. The car itself is never linked to the lead (the database refuses
+ // another dealer's car on a lead); the registration is the link. Falls back to the label alone when
+ // the car has left the broker's page.
+ const dealerSaleFor = useCallback((lead) => {
+ const reg = brokerRegForLead(lead);
+ if (!reg) return null;
+ const c = (brokerCars || []).find((x) => (reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label);
+ const car = c
+ ? { id: c.id, brand: c.brand, model: c.model, year: c.year, variant: c.variant, selling_price: c.selling_price,
+ mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true }
+ : { _label: reg.car_label, _dealer: true };
+ return { reg, car };
+ }, [brokerRegForLead, brokerCars]);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -689,6 +732,7 @@ export default function SalesmanPremium() {
  // settings
  const [settingsForm, setSettingsForm] = useState({
  full_name: "",
+ nickname: "",
  job_title: "",
  whatsapp_number: "",
  telegram_chat_id: "",
@@ -754,6 +798,7 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
+ const wonDealerSale = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null;
  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
  const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
@@ -1117,6 +1162,7 @@ export default function SalesmanPremium() {
  if (profile) {
  setSettingsForm({
  full_name: profile.full_name || "",
+ nickname: profile.nickname || "",
  job_title: profile.job_title || "",
  whatsapp_number: profile.whatsapp_number || "",
  telegram_chat_id: profile.telegram_chat_id || "",
@@ -2609,6 +2655,7 @@ export default function SalesmanPremium() {
  console.error("handleMarkWon lead:", leadErr);
  const m = String(leadErr.message || "");
  toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
+
  : m.includes("forbidden") ? "This lead is not yours to close."
  : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
@@ -2649,6 +2696,13 @@ export default function SalesmanPremium() {
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, stage: "won", updated_at: now } : l));
  setWonSaving(false);
  setWonPrompt(null);
+
+ // BROKER-2: a Won on a buyer registered on a dealer's car files a sale claim in the database; nothing
+ // is owed until the dealer approves it. Say so, and pull the registration state forward.
+ if (wonDealerSale) {
+ toast.success(`Sent to ${wonDealerSale.reg.dealer_name} to approve. Your commission is owed once they confirm.`);
+ loadBrokerRegs();
+ }
 
  // The DB trigger auto_create_customer_on_won has already fanned this out by
  // the time the update returns — customer row + 8-step checklist both exist.
@@ -3523,7 +3577,7 @@ export default function SalesmanPremium() {
  const fg = ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
  return (
  <button
- onClick={() => openLoanCheck(lead)}
+ onClick={() => { const ds = lead.car_listings ? null : dealerSaleFor(lead); openLoanCheck(ds?.car && !ds.car._label ? { ...lead, car_listings: ds.car } : lead); }}
  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
@@ -4061,6 +4115,8 @@ export default function SalesmanPremium() {
  cars={myListings}
  linkedId={offer ? null : target?.car_listing_id}
  excludeSold={offer}
+ dealerCars={isBroker && !offer ? brokerCars : null}
+ onPickDealer={(car) => { setLinkCarLeadId(null); setLinkCarMode("link"); setDealerPick({ car, lead: target }); }}
  onClose={() => { setLinkCarLeadId(null); setLinkCarMode("link"); }}
  onPick={(car) => {
  const leadId = linkCarLeadId;
@@ -4072,6 +4128,23 @@ export default function SalesmanPremium() {
  />
  );
  })()}
+
+ {/* BROKER-2: a dealer car picked for a lead = register that buyer with the dealer (the
+     buyer's consent is ticked there). The car is never linked to the lead itself: a broker
+     cannot mark a dealer's car sold. */}
+ {dealerPick && (
+ <Suspense fallback={null}>
+ <BrokerRegisterSheet
+ car={dealerPick.car}
+ dealerName={dealerPick.car.dealerName || "the dealer"}
+ initialName={dealerPick.lead?.buyer_name || ""}
+ initialPhone={dealerPick.lead?.phone || ""}
+ leadId={dealerPick.lead?.id || null}
+ onClose={() => setDealerPick(null)}
+ onDone={() => { setDealerPick(null); loadBrokerRegs(); }}
+ />
+ </Suspense>
+ )}
 
  {/* SET A FOLLOW-UP REMINDER — third time this exact shape has bitten this
      file. "Set reminder" set followUpModalLead and NOTHING rendered for it, so
@@ -4162,8 +4235,9 @@ export default function SalesmanPremium() {
  {drawerLeadId && (() => {
  const pl = leads.find(l => l.id === drawerLeadId);
  if (!pl) return null;
- const plCar = pl.car_listings;
- const plCarName = plCar? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
+ const dSale = pl.car_listings ? null : dealerSaleFor(pl);
+ const plCar = pl.car_listings || dSale?.car || null;
+ const plCarName = plCar ? (plCar._label || [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ")) : null;
  const plCarPrice = plCar?.selling_price? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
  const plCarImg = Array.isArray(plCar?.images)? plCar.images.find(Boolean) || null : null;
  const plHeat = getHeatScore(pl);
@@ -4236,7 +4310,7 @@ export default function SalesmanPremium() {
  </p>
  {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: PD.text }}>{plCarPrice}</p>}
  <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
+ {[dSale ? `Dealer's car · ${dSale.reg.dealer_name}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
@@ -4245,6 +4319,33 @@ export default function SalesmanPremium() {
  {t("salesmanPremium.drawer.noCarYet")}
  </p>
  )}
+ {/* BROKER-2: this buyer is registered on a dealer's car (shown above as the car). This block is
+     the SALE: the hold, what you earn, and where a Won stands with the dealer. The dealer approves. */}
+ {(() => {
+ const reg = dSale?.reg || brokerRegForLead(pl);
+ if (!reg) return null;
+ const holding = reg.status === "registered" && new Date(reg.hold_until) > new Date();
+ const claimed = reg.status === "registered" && !!reg.sale_claimed_at;
+ const disputed = reg.status === "registered" && !claimed && !!reg.claim_disputed_at;
+ const earn = Number(reg.status === "sold" ? reg.commission_amount : reg.commission_agreed) || 0;
+ let headline; let tone = PD.textSec;
+ if (reg.status === "sold") { headline = reg.paid_at ? "Sale approved. Commission paid." : `Sale approved. Commission owed: ${brokerMoney(earn)}.`; tone = PD.up; }
+ else if (claimed) { headline = `Waiting for ${reg.dealer_name} to approve this sale.`; tone = PD.text; }
+ else if (disputed) { headline = `${reg.dealer_name} did not confirm this sale. Talk to them.`; tone = PD.accentText; }
+ else if (holding) { headline = `Held for you until ${brokerDate(reg.hold_until)}.`; tone = PD.up; }
+ else headline = `Hold ended ${brokerDate(reg.hold_until)}.`;
+ return (
+ <div style={{ marginTop: 8, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised }}>
+ <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Dealer sale</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 600, color: tone }}>{headline}</p>
+ {reg.status !== "sold" && (
+ <p style={{ margin: "3px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.45 }}>
+ {earn > 0 ? `You earn ${brokerMoney(earn)} once the dealer approves the sale. ` : ""}{claimed ? "They were told when you marked it won." : "Mark this lead won when the buyer buys, and it goes to the dealer to approve."}
+ </p>
+ )}
+ </div>
+ );
+ })()}
  </div>
 
  {/* LOAN CHECK (IDEA-23): what to fix before any bank sees the file. */}
@@ -4253,7 +4354,7 @@ export default function SalesmanPremium() {
  const fg = !ck ? PD.text : ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
  return (
  <button
- onClick={() => { close(); openLoanCheck(pl); }}
+ onClick={() => { close(); openLoanCheck(dSale?.car && !dSale.car._label ? { ...pl, car_listings: dSale.car } : pl); }}
  style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
  >
  <Banknote size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
@@ -5677,6 +5778,10 @@ export default function SalesmanPremium() {
  <label style={lbl}>{t("salesmanPremium.settings.fullName")}</label>
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder={t("salesmanPremium.settings.fullNamePh")} style={inputStyle} />
  </div>
+ {/* NICKNAME-1: the social media name, saved on its own button (own query), so the main save below can never fail because of it. */}
+ <NicknameField userId={userId} value={settingsForm.nickname} savedValue={profile?.nickname || ""}
+ onChange={(v) => setSettingsForm((p) => ({ ...p, nickname: v }))}
+ onSaved={(v) => { setProfile((p) => ({ ...p, nickname: v })); setSettingsForm((p) => ({ ...p, nickname: v })); }} />
  <div>
  <label style={lbl}>{t("salesmanPremium.settings.jobTitle")}</label>
  <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder={t("salesmanPremium.settings.jobTitlePh")} maxLength={60} style={inputStyle} />
@@ -7846,7 +7951,7 @@ export default function SalesmanPremium() {
  <strong style={{ color: PD.text }}>{wonPrompt.lead.buyer_name || t("salesmanPremium.wonPrompt.thisBuyer")}</strong>
  {wonPrompt.lead.car_listings
  ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
- : null}
+ : wonDealerSale ? <> — {wonDealerSale.reg.car_label}</> : null}
  </p>
  {wonPrompt.lead.car_listing_id && (
  <WonVariantPick listingId={wonPrompt.lead.car_listing_id} value={wonPrompt.variantId}
@@ -7855,6 +7960,8 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 18px", fontSize: 13, color: PD.textSec, lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
  ? t("salesmanPremium.wonPrompt.withCar")
+ : wonDealerSale
+ ? t("salesmanPremium.wonPrompt.dealerCar", { dealer: wonDealerSale.reg.dealer_name, amount: Math.round(Number(wonDealerSale.reg.commission_agreed) || 0).toLocaleString("en-MY") })
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
  {isLinked && (() => {

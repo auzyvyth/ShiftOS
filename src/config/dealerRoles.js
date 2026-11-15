@@ -17,7 +17,7 @@ export const OVERVIEW_ROLES = {
     sections: ['alerts', 'finance', 'team'],
     // No 'loss' card: it uses price < buy + recon (gm_exception_alerts), while the money block's
     // "Losing at asking price" uses carPnl (all costs). Two answers on one screen: audit #9.
-    alerts: ['price', 'hp', 'no_cost', 'stale'],
+    alerts: ['price', 'broker_sales', 'hp', 'no_cost', 'stale'],
     kpis: ['gross_month', 'sold_month', 'money_tied', 'open_leads'],
   },
   // "What do we push today?"

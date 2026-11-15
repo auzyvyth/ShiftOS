@@ -15,7 +15,10 @@ import { cdnImg } from '../../utils/img';
 // - A pick closes the sheet at once and the caller saves in the background:
 //   waiting for the save left a sheet that looked like nothing happened, the
 //   seller tapped 9 times, and that pile-up made the next win time out.
-export default function CarPickerSheet({ title, subtitle, cars, linkedId, excludeSold = false, onPick, onClose }) {
+// - BROKER-2: `dealerCars` = the dealer cars on a broker's page, in their own group. Picking one
+//   calls onPickDealer (it registers the buyer with that dealer; it never links the car to the lead,
+//   the database refuses that so a broker cannot mark a dealer's car sold).
+export default function CarPickerSheet({ title, subtitle, cars, linkedId, excludeSold = false, onPick, onClose, dealerCars = null, onPickDealer }) {
   const { t } = useTranslation();
   const vv = useVisualViewport();
   const [q, setQ] = useState('');
@@ -34,6 +37,12 @@ export default function CarPickerSheet({ title, subtitle, cars, linkedId, exclud
       .sort((a, b) => (a.status === 'sold' ? 1 : 0) - (b.status === 'sold' ? 1 : 0));
   }, [cars, q, excludeSold]);
 
+  const dealerOptions = useMemo(() => {
+    if (!dealerCars || !onPickDealer) return [];
+    const needle = q.trim().toLowerCase();
+    return dealerCars.filter((c) => !needle || `${c.title} ${c.dealerName || ''}`.toLowerCase().includes(needle));
+  }, [dealerCars, onPickDealer, q]);
+
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', left: 0, right: 0, top: vv.offsetTop, height: vv.height, zIndex: 1100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}
@@ -51,7 +60,7 @@ export default function CarPickerSheet({ title, subtitle, cars, linkedId, exclud
             style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: PD.text, fontSize: 16, fontFamily: 'inherit' }} />
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 8px calc(10px + env(safe-area-inset-bottom))' }}>
-          {options.length === 0 ? (
+          {options.length === 0 && dealerOptions.length > 0 ? null : options.length === 0 ? (
             <p style={{ margin: 0, padding: '28px 16px', fontSize: 13, color: PD.textMuted, textAlign: 'center' }}>{(cars || []).length ? t('carPicker.noMatch') : t('carPicker.noCars')}</p>
           ) : options.map((c) => {
             const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
@@ -73,6 +82,26 @@ export default function CarPickerSheet({ title, subtitle, cars, linkedId, exclud
               </button>
             );
           })}
+          {dealerOptions.length > 0 && (
+            <>
+              <p style={{ margin: '14px 8px 2px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: PD.textMuted }}>{t('carPicker.dealerStock', { defaultValue: 'Dealer stock' })}</p>
+              <p style={{ margin: '0 8px 6px', fontSize: 12, color: PD.textMuted, lineHeight: 1.4 }}>{t('carPicker.dealerStockSub', { defaultValue: "Picking one registers this buyer with the dealer. The dealer confirms the sale." })}</p>
+              {dealerOptions.map((c) => (
+                <button key={c.id} onClick={() => onPickDealer(c)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '10px 8px', background: 'transparent', border: 'none', borderRadius: PD.radius.row, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 2 }}>
+                  {c.image
+                    ? <img src={cdnImg(c.image, 160, 65)} alt="" style={{ width: 60, height: 44, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: PD.raised }} />
+                    : <div style={{ width: 60, height: 44, borderRadius: 8, flexShrink: 0, background: PD.raised, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car size={15} color={PD.textMuted} /></div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: PD.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12.5, color: PD.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString('en-MY')}` : t('carPicker.noPrice')} · {c.dealerName}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>,

@@ -19,7 +19,7 @@ import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
-import { agentName, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
+import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 
@@ -665,6 +665,8 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
       mainEntity: {
         "@type": "Person",
         name,
+        // The name buyers know them by on TikTok / Facebook (NICKNAME-1): how a search for it lands here.
+        alternateName: agentNickname(s) || undefined,
         jobTitle,
         description: bio || undefined,
         image: s.avatar_url || undefined,
@@ -682,6 +684,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   );
   const body = `  <main>
     <h1>${esc(name)}</h1>
+    ${agentNickname(s) ? `<p>@${esc(agentNickname(s))}</p>` : ""}
     <p>${esc(jobTitle)}${s.dealership ? ` at ${esc(s.dealership)}` : ""}${location ? `, ${esc(location)}` : ""}</p>
     ${bio ? `<p>${esc(bio)}</p>` : ""}
     ${s.specializations?.length ? `<p>Specialises in: ${esc(s.specializations.join(", "))}.</p>` : ""}
@@ -1177,6 +1180,10 @@ export default async function handler(req) {
     // Same hard-404 contract as the car-detail branch above.
     if (!s) return new Response("Not found", { status: 404 });
     const { cars, soldCount } = await getSalesmanCars(s.id);
+    // NICKNAME-1: the seller's social media name, every plan. Its own call: a missing function or a slow
+    // answer leaves the page exactly as it was.
+    const [nick] = await sbRpc("get_agent_nickname", { p_slug: s.slug });
+    if (typeof nick === "string") s.nickname = nick;
     // Canonical is ALWAYS the root domain + the stored slug, matching the SPA.
     // The agent page is a marketplace address (sitemap lists it on root only);
     // self-canonicalising on www. or a dealer subdomain split it into copies.

@@ -1763,6 +1763,7 @@
       "thisBuyer": "Buyer ni",
       "withCar": "Kereta ditanda terjual dan dikeluarkan dari marketplace, kiraan jualan dan komisen anda dikemas kini, buyer dimasukkan ke Pelanggan, dan senarai semak handover 8 langkah bermula.",
       "noCar": "Tiada kereta dilink pada lead ni, jadi tiada apa ditanda terjual. Lead je yang ditutup.",
+      "dealerCar": "Ini kereta {{dealer}}, jadi tiada apa ditanda terjual di sebelah anda. Jualan dihantar kepada {{dealer}} untuk diluluskan dulu. Komisen anda (RM {{amount}}) kena dibayar selepas mereka sahkan.",
       "notYet": "Belum lagi",
       "yes": "Ya, tanda menang"
     },
@@ -2706,6 +2707,19 @@
       "deposit_taken": "Deposit diterima"
     }
   },
+  "nickname": {
+    "label": "Nama media sosial anda",
+    "placeholder": "fedaus",
+    "hint": "Nama yang anda guna di TikTok atau Facebook, supaya pembeli yang kenal anda dengan nama itu boleh jumpa halaman anda. Dipaparkan sebagai @nama, tidak pernah nombor telefon anda. Pautan halaman anda tidak berubah.",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "checking": "Menyemak...",
+    "free": "Boleh guna. Tekan Simpan untuk ambil.",
+    "saved": "Disimpan. Ia dipaparkan di halaman anda dan di Google.",
+    "removed": "Dibuang.",
+    "saveFailed": "Tidak dapat simpan. Cuba lagi.",
+    "notReady": "Ini belum dihidupkan. Cuba lagi esok."
+  },
   "carPicker": {
     "search": "Cari kereta anda",
     "noMatch": "Tiada kereta yang sepadan.",
@@ -2718,6 +2732,8 @@
     "offerTitle": "Tawar kereta lain",
     "offerSub": "Pilih kereta untuk {{name}}. Lepas itu mesej WhatsApp sedia untuk dihantar.",
     "linkedToast": "{{car}} dipautkan kepada {{name}}",
-    "linkFailed": "Tidak dapat pautkan kereta. Cuba lagi."
+    "linkFailed": "Tidak dapat pautkan kereta. Cuba lagi.",
+    "dealerStock": "Stok dealer",
+    "dealerStockSub": "Pilih satu untuk daftarkan pembeli ini dengan dealer. Dealer yang sahkan jualan."
   }
 }

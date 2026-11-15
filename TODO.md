@@ -3039,6 +3039,30 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
+  `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
+  "HAKIM PERODUA"). Add ONE field, `profiles.nickname` ("your social media name", e.g. fedaus), on every plan (Lite too:
+  being found is never gated). Show "@fedaus" under the name on `/s/:slug`, add it to `agentPageDescription` + JSON-LD
+  `alternateName` + the Settings search preview + the share card; in the TITLE only when it fits 60 chars. Rules:
+  2-30 chars, letters/numbers/dot/underscore, unique case-insensitive among sellers (`unique index`, like
+  `profiles_slug_unique`), no phone number (CDP-3), no official / authorised / verified / drevo / admin, cannot equal
+  another seller's page name. NOT the page name: `slug` is locked on purpose (`guard_profile_slug`) because it is the
+  `?ref=` attribution key (`resolve_lead_salesman`), the analytics key (`analytics_events.salesman_slug`), the invite
+  code and every link already shared on TikTok. There is NO seller search on Drevo today (searched `pg_proc`), so
+  "users can find" = Google first; an in-app search by nickname is a later phase. One migration (queued for the
+  midnight window) + `agentSeoIssues` gets one line "Add your social media name".
+
+- **IDEA-37 -> BUILT 2026-11-15 (Week | Month | Year switch + click-any-number breakdowns + broker commission inside gross; staging; migration `20261116a` queued). Not built: leads / views by period (Overview reads only the newest 300 leads, needs its own count query), manager Overview KPIs by period are done but untested live. NO history table, by the owner's call: a new product has no past.** Original scope: **IDEA-37: Overview by week / month / year, with last year to compare (owner, 2026-11-15)** — a
+  Week | Month | Year switch on Overview money, each compared with the period before AND the same period last year.
+  Reuse `ownerMoney()` (it already totals one month by key): make it take a date window, so no new formula appears.
+  Blockers and decisions: (1) most dealers have NO last-year data in Drevo (platform started mid-2026): last year needs
+  an owner-only `dealer_history_months` table (units, sales, gross per month, labelled "imported", role-checked) filled
+  by a 12-row form or the existing Excel import; (2) weekly numbers swing on 2-3 cars: show units and RM, no % trend
+  under a minimum sample; (3) history uses today's cost settings (floor plan, overhead), say so; (4) leads / views by
+  period need an aggregate RPC (Overview reads only the newest 300 leads); (5) broker commission is not in carPnl
+  yet, so gross ignores it: add a `broker` cost line first (needs a per-car broker commission read a manager can
+  also use). Full write-up was given in chat 2026-11-15.
+
 - **SOCIAL-1 follow-ups (shipped 2026-11-13: Drevo's own Facebook Page + TikTok, console Social queue)** — sellers are asked
   once after submitting a car; the owner posts approved, consenting cars from Console > Work > Social (CLAUDE.md
   "Drevo's OWN pages"). Still open: (1) an in-app switch for a seller to WITHDRAW consent (today: message us, the

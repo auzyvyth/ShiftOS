@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { carPnl } from '../../utils/carPnl';
+import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { premiumLight as PL } from '../../theme/tokens';
 import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
 
@@ -68,6 +69,8 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const [addons, setAddons] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [costCfg, setCostCfg] = useState(null);
+  // Broker commission on this car once the dealer approved the sale (BROKER-2): part of the one commission line.
+  const [brokerComm, setBrokerComm] = useState(0);
   const [creating, setCreating] = useState(false);
 
   // tool form state
@@ -95,6 +98,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       supabase.from('post_sale_tasks').select('step_key, status, cost').eq('listing_id', listing.id).eq('dealer_id', userId),
     ]);
     setCostCfg(rcfg.data || null);
+    loadBrokerCommission(userId).then((b) => setBrokerComm(brokerAmount(b.byCar, listing.id))).catch(() => { /* keep what is shown */ });
     setAddons(dp.data || []);
     setTasks(pst.data || []);
     if (u) {
@@ -147,6 +151,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     reconJobs: recon,
     servicesCost: listing.included_services_cost,
     commission: listing.commission_amount,
+    brokerCommission: brokerComm,
     // The handover checklist exists only after the win; until then transfer costs are estimated.
     handoverCost: tasks.length ? tasks.filter((t) => t.status !== 'na').reduce((sum, t) => sum + (Number(t.cost) || 0), 0) : null,
     adSpend: ads.reduce((sum, a) => sum + (Number(a.amount) || 0), 0),
