@@ -3069,6 +3069,14 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   blocked: custom domains per dealer (Vercel Hobby + sign-in per origin), online booking deposits
   (PAY-2, no SSM entity), WhatsApp/Facebook lead intake (Meta business verification), valuations
   and vehicle history (no data source), multi-branch (no dealer to design it with).
+  **Pricing (owner, 2026-11-15: "charge brokers"):** no new plan. Browse + one dealer + a few dealer cars
+  on Lite; buyer registration with the 14-day hold, several dealers and the full car allowance in
+  Premium (it is "working the lead", CLAUDE.md Lite vs Premium split). Do NOT charge before at least
+  one real dealer's stock is connected (selling access to stock that does not exist = misleading
+  offer), and do not take a cut of commission (deals close on WhatsApp, Drevo cannot enforce it).
+  Never pay or reward a broker for bringing another broker (Act 500). Legal read of Act 500 and CPA
+  1999 s.9/s.10 still to do (a web search on 2026-11-15 did not return the statute text); SSM
+  registration comes before any payment is taken.
 
 - **IDEA-35: AI-generated "one to one" photos for the new-car models (owner, 2026-11-12)** — the 13
   Toyota/Honda models in `new_car_models` have 0 photos (`new_car_model_media`); idea is to generate
