@@ -1627,7 +1627,7 @@ the tab used to be, unchanged).
   a query, and it selects three columns — no buyer name, phone or note.
 
 ## Brokers (BROKER-1, owner 2026-11-15) — a dealer's stock, sold by outside sellers
-Migration `20261115a_broker_network.sql` (QUEUED, not applied: after midnight, nobody live). A broker is
+Migration `20261115a_broker_network` APPLIED 2026-11-15 ~02:02 UTC (owner said "apply it now"; nobody live). Its SQL file is deleted from the repo on purpose (public repo); the source of truth is the live DB (`pg_get_functiondef` on `broker_*`, `_broker_ok`, `dealer_my_brokers`) and git history. Probed in a rolled-back transaction: connect, add to page, register, clash refused, pause/resume/revoke, anon blocked. Not click-tested in the UI. A broker is
 a STANDALONE seller (`dealer_id` null), never a linked salesman: they keep their own cars and may work
 for several dealers. Tables `dealer_brokers` (requested / active / paused / revoked / declined) and
 `broker_registrations`; every write is a SECURITY DEFINER `broker_*` function, no direct DML.
