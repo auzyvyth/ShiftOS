@@ -1820,8 +1820,14 @@ export default function CarDetailPage() {
     // is in the page (CDP-3): /api/wa resolves it for this car on tap, the
     // same way the lead is attributed.
     const ctxUrl = buildWaUrl(ctaCtx, null, message);
+    // A ?ref= link (a broker's page, an agent's share) with no agent profile loaded: the slug still
+    // goes to /api/wa, which sends the buyer to that seller's number (a broker on the dealer's car
+    // via _page_broker) and falls back to the dealer's when the slug is not a seller for this car.
+    // Before, only the car went, so a broker's link opened the dealer's WhatsApp.
+    const refForWa = getRef();
     const waUrl = target?.slug
       ? sellerWaUrl({ car: car.id, slug: target.slug, text: message })
+      : refForWa && hasContact ? sellerWaUrl({ car: car.id, slug: refForWa, text: message })
       : ctxUrl !== "#" ? ctxUrl
       : hasContact ? sellerWaUrl({ car: car.id, text: message })
       : "#";
