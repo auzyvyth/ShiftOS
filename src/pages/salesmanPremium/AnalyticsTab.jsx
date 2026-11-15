@@ -52,8 +52,15 @@ export default function AnalyticsTab({
  carStatsMap, commission, soldCount, myListings,
  channelMap, commissionDetails, isMobile, onAddListing, leads = [], onOpenTab,
  minipageStats = { visits: 0, cardClicks: 0, byChannel: [] },
+ // BROKER-2: a broker's registrations (broker_my_regs). The sold ones are income of their own,
+ // shown beside the car commission and never added into it: it is owed by a dealer, not a sale of theirs.
+ brokerRegs = [],
 }) {
   const [sub, setSub] = useState("selling");
+  const [showBroker, setShowBroker] = useState(false);
+  const brokerSold = (brokerRegs || []).filter((r) => r.status === "sold" && Number(r.commission_amount) > 0);
+  const brokerPaid = brokerSold.filter((r) => r.paid_at).reduce((s, r) => s + Number(r.commission_amount), 0);
+  const brokerOwed = brokerSold.filter((r) => !r.paid_at).reduce((s, r) => s + Number(r.commission_amount), 0);
   // Which slice of "where did my traffic come from" is on screen. Car pages and
   // the mini page are two different journeys — a tap from an Instagram bio link
   // lands on the mini page, a shared listing link lands on a car — so they are
@@ -638,6 +645,36 @@ export default function AnalyticsTab({
             <b style={{ color: PD.text }}>{soldCount}</b> {t("salesmanPremium.perf.carsLower")} · {t("salesmanPremium.perf.allTimeLower")}
           </p>
         </div>
+        {brokerSold.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowBroker((v) => !v)}
+              aria-expanded={showBroker}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 18px", background: "transparent", border: "none", borderTop: `1px solid ${PD.line}`, cursor: "pointer", fontFamily: "inherit", color: PD.textSec, fontSize: T.size.base, fontWeight: T.weight.semibold }}
+            >
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
+                <span>Broker commission <b style={{ color: PD.text }}>{money(brokerPaid + brokerOwed)}</b></span>
+                <span style={{ fontSize: T.size.sm, fontWeight: T.weight.medium, color: PD.textMuted }}>
+                  {brokerPaid > 0 ? `${money(brokerPaid)} paid` : ""}{brokerPaid > 0 && brokerOwed > 0 ? " · " : ""}{brokerOwed > 0 ? `${money(brokerOwed)} owed by the dealer` : ""}
+                </span>
+              </span>
+              {showBroker ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+            {showBroker && brokerSold.map((r) => (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 18px", borderTop: `1px solid ${PD.line}` }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: T.size.base, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.car_label}</span>
+                  <span style={{ display: "block", fontSize: T.size.sm, color: PD.textMuted }}>
+                    {r.dealer_name} · {r.buyer_name} · {r.paid_at ? `paid ${new Date(r.paid_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}` : "owed"}
+                  </span>
+                </span>
+                <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: r.paid_at ? PD.up : PD.text }}>
+                  +{money(r.commission_amount)}
+                </span>
+              </div>
+            ))}
+          </>
+        )}
         {commissionDetails.length > 0 && (
           <>
             <button

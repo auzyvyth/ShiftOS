@@ -433,6 +433,20 @@ export default function SalesmanProfilePage() {
         return true;
       });
 
+      // PIN-1: the seller's pinned cars (up to 4, Premium page only) come first, in the order they pinned
+      // them. Its own call: a slow or missing function just leaves the usual order.
+      if (!p.page_basic) {
+        try {
+          const pr = await withTimeout(publicClient.rpc('get_agent_pins', { p_slug: slug }), 6000);
+          const pins = !pr?.error && Array.isArray(pr?.data) ? pr.data : [];
+          if (pins.length) {
+            const rank = (id) => { const i = pins.indexOf(id); return i === -1 ? 999 : i; };
+            lst.sort((a, b) => rank(a.id) - rank(b.id)); // stable: everything else keeps its order
+          }
+        } catch { /* keep the default order */ }
+        if (cancelled) return;
+      }
+
       const sold = Number(soldStatsRes.data?.sold_count) || 0;
       setSoldCount(sold);
       setListings(lst);

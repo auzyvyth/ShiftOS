@@ -188,7 +188,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
-import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -684,14 +684,38 @@ export default function SalesmanPremium() {
  // the car has left the broker's page.
  const dealerSaleFor = useCallback((lead) => {
  const reg = brokerRegForLead(lead);
- if (!reg) return null;
- const c = (brokerCars || []).find((x) => (reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label);
+ // No registration (a buyer from the page who typed no phone): the lead itself names the dealer car.
+ if (!reg && !lead?.dealer_car_id) return null;
+ const c = (brokerCars || []).find((x) => (reg ? ((reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label) : x.id === lead.dealer_car_id));
+ if (!reg && !c) return null;
  const car = c
  ? { id: c.id, brand: c.brand, model: c.model, year: c.year, variant: c.variant, selling_price: c.selling_price,
- mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true }
+ mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true, _dealerName: c.dealerName }
  : { _label: reg.car_label, _dealer: true };
  return { reg, car };
  }, [brokerRegForLead, brokerCars]);
+ // PIN-1: up to 4 cars the seller keeps FIRST on their mini page (own cars and dealer cars alike).
+ // Saved by set_my_pinned_listings (profiles.pinned_listing_ids); a failed save puts the pin back.
+ const [pinnedIds, setPinnedIds] = useState([]);
+ useEffect(() => { setPinnedIds(Array.isArray(profile?.pinned_listing_ids) ? profile.pinned_listing_ids : []); }, [profile?.pinned_listing_ids]);
+ const togglePin = useCallback(async (carId) => {
+ const on = pinnedIds.includes(carId);
+ if (!on && pinnedIds.length >= 4) { toast.error("You can pin 4 cars. Unpin one first."); return; }
+ const prev = pinnedIds;
+ const next = on ? pinnedIds.filter((x) => x !== carId) : [...pinnedIds, carId];
+ setPinnedIds(next);
+ const { data, error } = await supabase.rpc("set_my_pinned_listings", { p_ids: next });
+ if (error || !data?.ok) { setPinnedIds(prev); toast.error("Could not save the pin. Try again."); return; }
+ toast.success(on ? "Unpinned." : "Pinned to the top of your page.");
+ }, [pinnedIds]);
+ // A dealer car comes off the broker's page from the Listings tab too (the same call as Dealer stock).
+ const removeDealerCar = useCallback(async (car) => {
+ const res = await removeBrokerCar(car.id);
+ if (!res.ok) { toast.error(brokerError(res.reason)); return; }
+ applyBrokerPageCar(car, car.dealerId, car.dealerName, false);
+ setPinnedIds((p) => p.filter((x) => x !== car.id));
+ toast.success("Removed from your page.");
+ }, []);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -798,7 +822,8 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
- const wonDealerSale = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null;
+ // Only a buyer REGISTERED with the dealer files a sale claim on a Won; a page lead with no phone has none.
+ const wonDealerSale = (() => { const s = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null; return s?.reg ? s : null; })();
  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
  const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
@@ -2339,6 +2364,16 @@ export default function SalesmanPremium() {
  switchTab("listings");
  setFilterStatus("rejected");
  break;
+ // BROKER-2: the dealer approved a sale / paid the commission: it lives in Analytics, in the
+ // commission card's "Broker commission" row. A buyer from a dealer car on the page lands in Leads.
+ case "broker_sale":
+ case "broker_paid":
+ loadBrokerRegs();
+ switchTab("analytics");
+ break;
+ case "broker_lead":
+ switchTab("leads");
+ break;
  // ref_id is the customer: open the Sold tab's Customers pill on that buyer.
  case "expiry_reminder":
  navigate(`/salesman-premium/customers?c=${n.ref_id}`);
@@ -3409,8 +3444,12 @@ export default function SalesmanPremium() {
  const leadBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "center" };
 
  const renderLeadCard = (lead) => {
- const car = lead.car_listings;
- const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
+ // BROKER-2: a buyer registered on a DEALER's car has no car_listings row on the lead (the database
+ // refuses another dealer's car there), so the card names the car through the registration, the same
+ // way the lead panel does (dealerSaleFor).
+ const dealerCar = lead.car_listings ? null : dealerSaleFor(lead)?.car || null;
+ const car = lead.car_listings || (dealerCar && !dealerCar._label ? dealerCar : null);
+ const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : (dealerCar?._label || null);
  const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
  const progressStages = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won"];
  const normalizedStage = lead.stage === "closed_won"? "won" : lead.stage;
@@ -4310,7 +4349,7 @@ export default function SalesmanPremium() {
  </p>
  {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: PD.text }}>{plCarPrice}</p>}
  <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[dSale ? `Dealer's car · ${dSale.reg.dealer_name}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
+ {[dSale ? `Dealer's car · ${dSale.reg?.dealer_name || dSale.car._dealerName || "dealer"}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
@@ -7541,6 +7580,8 @@ export default function SalesmanPremium() {
       listingCopied={listingCopied} showAddForm={showAddForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
       profile={profile} isMobile={isMobile}
+      pinnedIds={pinnedIds} onTogglePin={togglePin}
+      dealerCars={isBroker ? (brokerCars || []) : []} onRemoveDealerCar={removeDealerCar}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
       setShowAddForm={setShowAddForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
@@ -7618,6 +7659,7 @@ export default function SalesmanPremium() {
  commission={canSeeCommission ? commission : null} soldCount={soldCount} myListings={myListings}
  channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
+ brokerRegs={isBroker ? brokerRegs : []}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>
@@ -7644,7 +7686,7 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "brokers" && (
  <Suspense fallback={<TabLoadingFallback />}>
- <BrokerStock userId={userId} slug={profile?.slug} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} />
+ <BrokerStock userId={userId} slug={profile?.slug} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} hasWhatsApp={!!(String(profile?.whatsapp_number || "").trim() || String(profile?.phone || "").trim())} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}

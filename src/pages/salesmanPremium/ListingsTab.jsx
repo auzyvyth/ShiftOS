@@ -4,7 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
  Calculator, Car, Check, ChevronDown, Download,
- Film, Play, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
+ Film, Play, Share2, Megaphone, Pencil, Pin, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
 import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
@@ -90,6 +90,7 @@ export default function ListingsTab({
  onOpenNewCars,
  myListings, carStatsMap, filterStatus, sortBy, listingCopied, showAddForm,
  statusMenuCarId, actionMenuCarId, confirmDeleteId, profile, isMobile,
+ pinnedIds = [], onTogglePin, dealerCars = [], onRemoveDealerCar,
  setMyListings, setFilterStatus, setSortBy, setShowAddForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
@@ -112,7 +113,10 @@ export default function ListingsTab({
  };
  const filtered = enriched.filter((e) => normStatus(e.car.status) === filterStatus);
 
+ // Pinned cars (PIN-1) always sit first, in the order they were pinned; the sort picked applies after.
+ const pinRank = (id) => { const i = pinnedIds.indexOf(id); return i === -1 ? 99 : i; };
  const sorted = [...filtered].sort((a, b) => {
+ if (pinRank(a.car.id) !== pinRank(b.car.id)) return pinRank(a.car.id) - pinRank(b.car.id);
  if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
  if (sortBy === "price_asc") return (a.car.selling_price || 0) - (b.car.selling_price || 0);
  if (sortBy === "oldest") return new Date(a.car.created_at) - new Date(b.car.created_at);
@@ -202,6 +206,52 @@ export default function ListingsTab({
  />
  </React.Suspense>
  </ListingFormModal>
+
+ {/* BROKER-2: the dealer cars this broker has put on their page, FIRST (owner, 2026-11-15: they showed on
+     the mini page and nowhere in Listings). Read-only: the dealer owns the car, so no edit or status here.
+     Share carries the broker's ?ref=, Pin keeps it first on the mini page, Remove takes it off the page. */}
+ {dealerCars.length > 0 && (
+ <div style={{ background: P.card, borderRadius: P.radius.card, marginBottom: 14, overflow: "hidden" }}>
+ <p style={{ margin: 0, padding: "14px 16px 8px", fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: P.textMuted }}>
+ Dealer cars on my page · {dealerCars.length}
+ </p>
+ {dealerCars.map((c) => {
+ const pinned = pinnedIds.includes(c.id);
+ const title = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+ return (
+ <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderTop: `1px solid ${P.line}` }}>
+ <div style={{ width: 56, height: 42, borderRadius: 8, background: P.raised, overflow: "hidden", flexShrink: 0 }}>
+ {c.image && <img src={c.image} alt="" loading="lazy" width="56" height="42" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+ </div>
+ <div style={{ minWidth: 0, flex: 1 }}>
+ <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: P.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: P.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : ""}{c.dealerName ? ` · ${c.dealerName}'s car` : ""}{Number(c.commission) > 0 ? ` · earn RM ${Number(c.commission).toLocaleString("en-MY")}` : ""}
+ </p>
+ </div>
+ {onTogglePin && (
+ <button onClick={() => onTogglePin(c.id)} title={pinned ? "Unpin from my page" : "Pin to top of my page"} aria-label={pinned ? "Unpin from my page" : "Pin to top of my page"} aria-pressed={pinned}
+ style={{ width: 36, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", background: pinned ? P.hover : P.raised, color: pinned ? P.text : P.textMuted, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Pin size={14} />
+ </button>
+ )}
+ {handleListingShare && (
+ <button onClick={() => handleListingShare(c)} title="Share with my link" aria-label="Share with my link"
+ style={{ width: 36, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", background: P.raised, color: P.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Share2 size={14} />
+ </button>
+ )}
+ {onRemoveDealerCar && (
+ <button onClick={() => onRemoveDealerCar(c)} title="Remove from my page" aria-label="Remove from my page"
+ style={{ height: 36, padding: "0 12px", borderRadius: P.radius.row, border: "none", cursor: "pointer", background: P.raised, color: P.textSec, fontSize: 12, fontWeight: 600, fontFamily: "inherit", flexShrink: 0 }}>
+ Remove
+ </button>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ )}
 
  {myListings.length > 0 && (
  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
@@ -466,6 +516,14 @@ export default function ListingsTab({
  </button>
  {actionMenuCarId === car.id && (
  <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, bottom: "calc(100% + 6px)" }}>
+ {!isSold && onTogglePin && (
+ <>
+ <button onClick={() => { onTogglePin(car.id); setActionMenuCarId(null); }} style={menuItem}>
+ <Pin size={13} /> {pinnedIds.includes(car.id) ? "Unpin from my page" : "Pin to top of my page"}
+ </button>
+ {menuRule}
+ </>
+ )}
  {!isSold && (
  <>
  <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={menuItem}>
