@@ -3039,6 +3039,20 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-39: Drevo AI, a WhatsApp AI sales assistant (owner, 2026-11-15)** — a seller talks to an assistant in plain
+  language ("hottest leads", "move Ahmad to negotiation", "post my Civic tomorrow") and gets a morning briefing;
+  tools over the existing CRM, Claude Haiku 5.5 (US$0.10 in / 0.50 out per MTok, checked in the claude-api skill),
+  Zernio for posts; plans Free / Pro RM49 / AI RM99 / AI Plus RM149 (CLAUDE.md "Founding price" says Premium is RM35
+  now). Blockers, verified 2026-11-15: (1) CLAUDE.md "AI trust boundary": AI drafts, a HUMAN sends; the concept's
+  "eventually send customer replies" and Phase 5 break that rule; (2) SOCIAL-1: sellers no longer post, the OWNER
+  presses Post on Drevo's own Pages, TikTok needs a human preview, so "Post my Civic tomorrow" cannot be built as
+  written; (3) WhatsApp Business API: Meta's terms from 15 Jan 2026 bar AI-provider/general-purpose assistants, but allow
+  a business using AI for its own workflow; read Meta's own terms before building, a 8:30 briefing is business-initiated so
+  it needs an approved template and costs per message; (4) Telegram is already integrated (`send-telegram`,
+  `telegram-notify`), free and has no 24h window: cheaper first channel; (5) a shared `ai-proxy` exists
+  (`FEATURES`, `supabase/functions/ai-proxy/index.ts:9`) and the AI must read `chat_messages_ai`, never raw chat;
+  (6) 0 logged payments on 2026-11-15: do not build before people pay for Premium. Not scheduled.
+
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
   "HAKIM PERODUA"). Add ONE field, `profiles.nickname` ("your social media name", e.g. fedaus), on every plan (Lite too:
