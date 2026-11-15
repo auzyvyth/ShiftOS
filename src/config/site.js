@@ -22,6 +22,16 @@ export const SITE_URL = `https://${ROOT_DOMAIN}`;
 export const STAGING_HOST = "shift-os-git-staging-shift-os.vercel.app";
 
 // Every domain we serve (or redirect) from. ROOT_DOMAIN first.
+// Where "log out" lands. A Vercel preview (staging or a per-push build) must stay on itself:
+// it was sending everyone to production drevo.my/login, so testing on staging kept ending up
+// on the live site. Production and the dealer subdomains keep going to drevo.my.
+export function loginUrl() {
+  try {
+    if (typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")) return "/login";
+  } catch { /* no window */ }
+  return `https://${ROOT_DOMAIN}/login`;
+}
+
 export const OWN_DOMAINS = [...new Set([ROOT_DOMAIN, "drevo.my", "xdrive.my"])];
 
 function clean(hostname) {

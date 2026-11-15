@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { isOpenLead } from '../../utils/carBuyers';
+import { BrokerChip } from '../brokers/BrokerCredit';
 import {
   getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale, canonicalStage,
 } from '../../lib/leadsHelpers';
@@ -120,6 +121,8 @@ export default function LeadGridCard({ lead, onOpen }) {
         </div>
       )}
 
+      {lead.broker_credit && <div style={{ marginBottom: 8 }}><BrokerChip credit={lead.broker_credit} /></div>}
+
       {/* Divider */}
       <div style={{ height: 1, background: '#f1f3f5', margin: carPrice ? '0 0 8px' : '6px 0 8px' }} />
 
@@ -143,7 +146,7 @@ export default function LeadGridCard({ lead, onOpen }) {
             </span>
           </div>
         ) : (
-          <span style={{ fontSize: 10, color: '#9ca3af' }}>Unassigned</span>
+          <span style={{ fontSize: 10, color: '#9ca3af' }}>{lead.broker_credit ? 'Broker\'s lead' : 'Unassigned'}</span>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

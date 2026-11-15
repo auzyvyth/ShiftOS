@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageCircle, Calendar } from 'lucide-react';
 import LeadSourceBadge from './LeadSourceBadge';
+import { BrokerChip } from '../brokers/BrokerCredit';
 import {
   getInitials, avatarGradient, getLeadAgeDays,
   ageTextColor, formatWhatsAppURL, STAGE_CONFIG,
@@ -111,6 +112,7 @@ export default function LeadCard({ lead, onOpen }) {
                 </span>
               </div>
             )}
+            {lead.broker_credit && <BrokerChip credit={lead.broker_credit} compact />}
             {ownerName && (
               <div title={`Lead by ${ownerName}`} style={{
                 display: 'flex', alignItems: 'center', gap: 4,

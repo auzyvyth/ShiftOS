@@ -171,11 +171,11 @@ function ShowroomLoader({ slug }) {
 // ShowroomCard: that one carries an "Agent/Dealer" chip (meaningless on the
 // agent's own page) and its own WhatsApp gate, which would compete with this
 // page's single contact button. "#N" is the live-presentation number.
-function AgentCarCard({ car, num, onClick }) {
+function AgentCarCard({ car, num, onClick, refSlug }) {
   const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
   const cond = car.condition ? car.condition.charAt(0).toUpperCase() + car.condition.slice(1) : null;
   return (
-    <Link to={`/showroom/${car.slug || car.id}`} {...carWarmProps(car)} onClick={onClick} className="ap-card ap-car">
+    <Link to={`/showroom/${car.slug || car.id}${refSlug ? `?ref=${encodeURIComponent(refSlug)}` : ''}`} {...carWarmProps(car)} onClick={onClick} className="ap-card ap-car">
       <div className="ap-ph">
         {imgs[0]
           ? <img src={cdnImg(imgs[0], 480, 72)} srcSet={cdnSrcSet(imgs[0], [320, 480, 640], 72)}
@@ -1194,7 +1194,7 @@ export default function SalesmanProfilePage() {
                   <div className="ap-sec"><h2>On my live now</h2></div>
                   <div className="ap-card ap-live">
                     <p className="ap-live-h"><i />Showing #{liveIdx + 1}</p>
-                    <Link to={`/showroom/${liveCar.slug || liveCar.id}`} {...carWarmProps(liveCar)} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
+                    <Link to={`/showroom/${liveCar.slug || liveCar.id}?ref=${encodeURIComponent(profile?.slug || slug)}`} {...carWarmProps(liveCar)} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
                       <div className="ap-live-ph">
                         {Array.isArray(liveCar.images) && liveCar.images[0] && <img src={cdnImg(liveCar.images[0], 320, 72)} alt="" />}
                       </div>
@@ -1256,7 +1256,7 @@ export default function SalesmanProfilePage() {
               ) : listings.length > 0 ? (
                 <div className="ap-grid">
                   {sortedListings.map((car) => (
-                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} onClick={() => trackCardClick(car)} />
+                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
                   ))}
                 </div>
               ) : (

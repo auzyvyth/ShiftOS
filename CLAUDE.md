@@ -929,6 +929,12 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   and do not apply it. Exceptions that ship anyway: a security hole, and anything broken
   for users who exist today. A change to a shared table (`car_listings`, `leads`,
   `profiles`) counts as used if any live surface touches it.
+- **Only the last 7 days of migration files stay in `supabase/migrations/` (owner, 2026-11-15; the repo is public).**
+  Older ones were removed from the branch tip on 2026-11-15 (236 files, everything before `20261108`); the
+  live DB's own migration list (`list_migrations`) is the record of what ran, and git history still holds the
+  old files (removing them from the tip does NOT un-publish them). Do not recreate them from memory. When
+  a file is referenced by name in this file or TODO.md and is missing, read the function or table from the
+  live DB instead (`pg_get_functiondef`, `information_schema`). `supabase/parked/` is kept: it is unapplied work.
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
@@ -1619,6 +1625,32 @@ the tab used to be, unchanged).
   is no "this is costing you RM x" (same rule as AI drafts).
 - `useStageHistory` only runs when the lazy tab mounts, so no other surface gains
   a query, and it selects three columns — no buyer name, phone or note.
+
+## Brokers (BROKER-1, owner 2026-11-15) — a dealer's stock, sold by outside sellers
+Migration `20261115a_broker_network` APPLIED 2026-11-15 ~02:02 UTC (owner said "apply it now"; nobody live). Its SQL file is deleted from the repo on purpose (public repo); the source of truth is the live DB (`pg_get_functiondef` on `broker_*`, `_broker_ok`, `dealer_my_brokers`) and git history. Probed in a rolled-back transaction: connect, add to page, register, clash refused, pause/resume/revoke, anon blocked. Not click-tested in the UI. A broker is
+a STANDALONE seller (`dealer_id` null), never a linked salesman: they keep their own cars and may work
+for several dealers. Tables `dealer_brokers` (requested / active / paused / revoked / declined) and
+`broker_registrations`; every write is a SECURITY DEFINER `broker_*` function, no direct DML.
+- **The paywall is Premium** (`is_salesman_premium`, checked inside `_broker_ok`), no new plan. Seeing a
+  dealer's cars, adding them to the page and registering a buyer all need it; Lite shows the pitch
+  (`BrokerStock isPremium={false}`). Never sell it before a real dealer's stock is connected, and take no
+  cut of commission (deals close on WhatsApp, Drevo cannot enforce it).
+- **A broker never closes a deal on a dealer's car.** No `leads` row is made for a registered buyer:
+  `guard_lead_car_dealer` forces a lead's dealer to equal its car's dealer, and a won / deposit lead
+  would flip the DEALER's car. The dealer confirms with `broker_mark_sold`, closes the sale in Sold as usual.
+- **First registration holds a buyer for 14 days** on that dealer's stock (advisory lock on dealer+phone).
+  Identity columns are locked by `trg_broker_reg_lock`; a second broker is refused and never told who.
+  Revoking a broker deletes their `salesman_listings` rows for that dealer (cars leave their page now)
+  but keeps registrations and commission owed. 30 dealer cars max on a page (`BROKER_CAR_CAP`, also in SQL).
+- The public page reads `get_salesman_featured_listings`, which hides a standalone seller's dealer car
+  unless the connection is active AND `salesman_has_full_page`. Do not add a second reader of
+  `salesman_listings` without the same check.
+- Never reward a broker for bringing another broker (Act 500). Commission is a record only
+  (`broker_mark_paid`); Drevo moves no money. Pushes carry no buyer name or number.
+- Not built yet: leads that arrive through a broker's page are not attributed to the broker
+  (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side
+  "who holds this buyer" lookup. Screens: `src/components/brokers/{BrokerStock,DealerBrokers}.jsx`,
+  tab "Dealer stock" in Premium (`seller_type = 'broker'`), "Dealers" in Lite, Team > Brokers on the dealer dashboard.
 
 ## Seller referrals + payment log (REFER-1, 2026-10-04) — one path, in the DB
 Migration `20261004a_seller_referrals.sql`. Owner's terms: 30 days of Premium per

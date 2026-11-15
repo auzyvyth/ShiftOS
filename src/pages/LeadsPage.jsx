@@ -4,6 +4,8 @@ import { Plus, Search, X, Inbox } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useLeads } from '../hooks/useLeads';
 import LeadGridCard from '../components/leads/LeadGridCard';
+import { useBrokerCredits } from '../hooks/useBrokerCredits';
+import { creditForLead } from '../utils/brokerCredit';
 import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
 import { useModalHistory } from '../hooks/useModalHistory';
@@ -215,8 +217,15 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
     load();
   }, []);
 
+  // BROKER-1: name the outside broker (if any) on every lead, one rule for every card and the drawer.
+  const brokerData = useBrokerCredits();
+  const creditedLeads = useMemo(() => leads.map((l) => {
+    const credit = creditForLead(l, brokerData);
+    return credit ? { ...l, broker_credit: credit } : l;
+  }), [leads, brokerData]);
+
   const filtered = useMemo(() => {
-    let result = leads;
+    let result = creditedLeads;
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(l =>
@@ -228,7 +237,7 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
     if (filterSource)   result = result.filter(l => l.lead_source === filterSource);
     if (filterAssigned) result = result.filter(l => l.assigned_to === filterAssigned);
     return result;
-  }, [leads, search, filterSource, filterAssigned]);
+  }, [creditedLeads, search, filterSource, filterAssigned]);
 
   const byStage = useMemo(() => {
     const map = {};

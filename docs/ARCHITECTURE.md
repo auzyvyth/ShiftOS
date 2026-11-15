@@ -250,6 +250,7 @@ change them; each is applied on its own.
 | What to fix before a loan goes to a bank (Premium) | `loan_checks` (one row per lead), `src/utils/loanReadiness.js`, `src/components/loans/LoanCheck.jsx` |
 | What a buyer can see about a seller | `get_salesman_by_slug`, `sellerWaUrl` (`src/utils/sellerWhatsApp.js`) |
 | Plans and caps | `plan_config`, `enforce_listing_cap`, `src/utils/planConfig.js` |
+| Why can a broker (not) see / sell a dealer's car? | `dealer_brokers` (connection), `broker_registrations` (14-day buyer hold, identity columns locked), `_broker_ok`, `broker_*` RPCs, `get_salesman_featured_listings` (page shows a dealer car only while active + Premium); `src/lib/brokerApi.js`, `src/components/brokers/` (migration `20261115a`, queued) |
 
 ---
 

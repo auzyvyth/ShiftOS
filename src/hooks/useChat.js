@@ -5,6 +5,7 @@ import useAuthCaptcha from './useAuthCaptcha';
 import { isRealBuyer } from '../lib/buyerAuth';
 import { isSubdomain } from './useTenant';
 import { liveChannel } from "../lib/liveChannel";
+import { getRef } from '../utils/refTracking';
 
 // In-app buyer <-> seller chat.
 //
@@ -251,7 +252,12 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
         }
         user = data.user;
       }
-      const { data: id, error: rpcErr } = await supabase.rpc('start_chat_thread', { p_listing_id: listingId });
+      // The visit's ?ref= (a seller's page the buyer came from) credits that seller. Until the
+      // database knows the extra argument, retry without it so chat never breaks.
+      let { data: id, error: rpcErr } = await supabase.rpc('start_chat_thread', { p_listing_id: listingId, p_ref_slug: getRef() || null });
+      if (rpcErr && (rpcErr.code === 'PGRST202' || /could not find the function/i.test(rpcErr.message || ''))) {
+        ({ data: id, error: rpcErr } = await supabase.rpc('start_chat_thread', { p_listing_id: listingId }));
+      }
       if (rpcErr) { console.error('start_chat_thread:', rpcErr); return null; }
       setThreadId(id);
       return id;
