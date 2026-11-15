@@ -225,6 +225,7 @@ import {
   Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
+import TeamBrokersSwitch from "../components/brokers/DealerBrokers";
 import { carPnl, daysHeld, AGEING_DAYS } from "../utils/carPnl";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
@@ -9187,7 +9188,9 @@ export default function DashboardPage() {
           )}
           {activeTab === "team" && (
             <>
-              <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+              <TeamBrokersSwitch canManage={["dealer", "owner"].includes(profile?.role)} dealerId={getDealerIdFromProfile(profile)}>
+                <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+              </TeamBrokersSwitch>
               {/* Who did what, when (was GM Oversight's Activity Trail). Overview's
                   "unusual edits" alert opens it with ?trail=anomaly. */}
               <div style={{ marginTop: 24 }}>

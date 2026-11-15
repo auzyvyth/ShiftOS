@@ -118,6 +118,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Star,
+  Store,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -139,6 +140,7 @@ const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPoster
 // when it opens, not with the dashboard.
 const CarForm = React.lazy(() => import("../components/CarForm"));
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
+const BrokerStock = React.lazy(() => import("../components/brokers/BrokerStock"));
 
 // Cache namespace for this panel (keys look like `slite_leads_<uid>`).
 const PANEL_CACHE_KEY = "slite";
@@ -3079,6 +3081,13 @@ export default function SalesmanLite() {
       icon: <User style={{ width: 14, height: 14 }} />,
       badge: leads.filter((l) => !TERMINAL_STAGES.includes(l.stage)).length || null,
     },
+    // BROKER-1: a broker sees the Dealer stock tab. Lite shows the pitch (seeing a dealer's cars
+    // needs Premium, which this panel hands off to /salesman-premium); the tab is the way in.
+    ...(profile?.seller_type === "broker" ? [{
+      tab: "brokers",
+      label: t("salesmanLite.tabs.brokers", { defaultValue: "Dealers" }),
+      icon: <Store style={{ width: 14, height: 14 }} />,
+    }] : []),
     {
       tab: "enquiries",
       label: t("salesmanLite.tabs.inbox"),
@@ -3117,6 +3126,11 @@ export default function SalesmanLite() {
       icon: <User size={18} />,
       badge: leads.filter((l) => !TERMINAL_STAGES.includes(l.stage)).length || null,
     },
+    ...(profile?.seller_type === "broker" ? [{
+      tab: "brokers",
+      label: t("salesmanLite.tabs.brokers", { defaultValue: "Dealers" }),
+      icon: <Store size={18} />,
+    }] : []),
     {
       tab: "enquiries",
       label: t("salesmanLite.tabs.inbox"),
@@ -6659,6 +6673,11 @@ export default function SalesmanLite() {
               bottomInset={isMobile ? 80 : 24}
             />
           ))}
+          {activeTab === "brokers" && (
+            <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
+              <BrokerStock userId={userId} isPremium={false} theme="dark" onUpgrade={goPremium} />
+            </React.Suspense>
+          )}
           {activeTab === "feedback" && (
             <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
               <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="dark" />

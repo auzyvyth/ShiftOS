@@ -3054,7 +3054,7 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
-- **IDEA-36: Broker network for dealers (owner, 2026-11-14, from a "copy the West" feature list)** —
+- **IDEA-36 -> BUILT 2026-11-15 as BROKER-1 (see CLAUDE.md "Brokers"; code on branch `ccr-73d57ff9-pwm10o`, migration `20261115a` queued, nothing on staging, nothing click-tested). Owner todo: apply the migration after midnight, click-test on staging with one real dealer + one Premium broker, legal read of Act 500 / CPA before the first broker pays, SSM first.** Original note: **IDEA-36: Broker network for dealers (owner, 2026-11-14, from a "copy the West" feature list)** —
   the one real gap after checking that list against the code. A dealer invites outside brokers,
   each gets a private stock sheet link (no cost prices, revocable at once, including stock already
   shared), registers a buyer against a car so two brokers cannot claim the same buyer, and the

@@ -66,6 +66,7 @@ const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
 const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
 const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
+const BrokerStock = React.lazy(() => import("../components/brokers/BrokerStock"));
 // LINKED-PREMIUM dealer connections (only rendered for a salesman under a dealer)
 const DealerInventory = React.lazy(() => import("../components/linked/DealerInventory"));
 const IncomingLeads = React.lazy(() => import("../components/linked/IncomingLeads"));
@@ -241,7 +242,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory", "team"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings", "incoming", "inventory", "team", "brokers"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -3137,6 +3138,11 @@ export default function SalesmanPremium() {
  icon: <User style={{ width: 16, height: 16 }} />,
  badge: leadsNeedingFollowUp || null,
  },
+ // BROKER-1: dealer stock for a broker working with outside dealers. A linked salesman
+ // already has "Dealer cars" below; this is for a standalone broker.
+ ...(!isLinked && profile?.seller_type === "broker" ? [
+ { tab: "brokers", label: t("salesmanPremium.tabs.brokers", { defaultValue: "Dealer stock" }), icon: <Store style={{ width: 16, height: 16 }} /> },
+ ] : []),
  // Dealer connections, only for a salesman under a dealer (LINKED-PREMIUM).
  ...(isLinked ? [
  { tab: "incoming", label: "Incoming", icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
@@ -7529,6 +7535,11 @@ export default function SalesmanPremium() {
  {activeTab === "feedback" && (
  <Suspense fallback={<TabLoadingFallback />}>
  <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="premium" />
+ </Suspense>
+ )}
+ {activeTab === "brokers" && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <BrokerStock userId={userId} isPremium={isPremium} theme="premium" onUpgrade={() => switchTab("settings")} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
