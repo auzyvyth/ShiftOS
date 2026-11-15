@@ -88,6 +88,24 @@ export async function registerBuyer(listingId, name, phone, consent, leadId = nu
 }
 
 // The dealer cars on the broker's own page, for the lead "Link a car" picker (BROKER-2).
+// Kept in ONE shared store so the picker never opens empty: the page loads it up front, and the
+// Dealer stock tab updates it the moment a car is added or removed (no waiting on the server).
+let pageCars = null;
+const pageCarSubs = new Set();
+export const getPageCars = () => pageCars;
+export const subscribePageCars = (fn) => { pageCarSubs.add(fn); return () => pageCarSubs.delete(fn); };
+export function setPageCars(rows) { pageCars = rows; pageCarSubs.forEach((f) => f(rows)); }
+export async function refreshPageCars() {
+  try { setPageCars(await myPageDealerCars()); } catch { /* keep what is on screen */ }
+}
+// One car in or out right now, before the server round trip finishes.
+export function applyPageCar(car, dealerId, dealerName, on) {
+  const cur = pageCars || [];
+  if (!on) { setPageCars(cur.filter((c) => c.id !== car.id)); return; }
+  if (cur.some((c) => c.id === car.id)) return;
+  setPageCars([{ ...car, on_my_page: true, images: car.image ? [car.image] : [], dealerId, dealerName,
+    title: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(' ') }, ...cur]);
+}
 export async function myPageDealerCars() {
   const d = await myDealers();
   const live = (d.rows || []).filter((x) => x.status === 'active');

@@ -117,6 +117,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
     const title = [car.year, car.brand, car.model].filter(Boolean).join(' ');
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
     setStock((rows) => (rows || []).map((c) => (c.id === car.id ? { ...c, on_my_page: adding } : c)));
+    api.applyPageCar(car, dealerId, (active.find((d) => d.dealer_id === dealerId) || {}).name, adding);
     if (quiet) return;
     if (adding) toast.success(`${title} is now on your page.`);
     else toast(`${title} removed from your page.`, { action: { label: 'Undo', onClick: () => togglePage({ ...car, on_my_page: false }, true) } });

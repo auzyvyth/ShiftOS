@@ -187,7 +187,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
-import { myPageDealerCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -656,17 +656,19 @@ export default function SalesmanPremium() {
  // on their page, for the picker; brokerRegs = their registered buyers, to name the dealer car on
  // a lead; dealerPick = the dealer car just picked for a lead (opens the register step).
  const isBroker = !profile?.dealer_id && profile?.seller_type === "broker";
- const [brokerCars, setBrokerCars] = useState(null);
- const [brokerRegs, setBrokerRegs] = useState([]);
+ const [brokerCars, setBrokerCars] = useState(() => getPageCars());
  const [dealerPick, setDealerPick] = useState(null);
+ const [brokerRegs, setBrokerRegs] = useState([]);
  const loadBrokerRegs = useCallback(() => { myBrokerRegs().then((r) => { if (!r.error) setBrokerRegs(r.rows); }); }, []);
- useEffect(() => { if (isBroker) loadBrokerRegs(); }, [isBroker, loadBrokerRegs]);
+ // Loaded up front and kept live, so "Dealer stock" in Link a car is there the moment it opens.
  useEffect(() => {
- if (!isBroker || !linkCarLeadId) return;
- let on = true;
- myPageDealerCars().then((rows) => { if (on) setBrokerCars(rows); }).catch(() => {});
- return () => { on = false; };
- }, [isBroker, linkCarLeadId]);
+ if (!isBroker) return undefined;
+ loadBrokerRegs();
+ refreshPageCars();
+ return subscribePageCars(setBrokerCars);
+ }, [isBroker, loadBrokerRegs]);
+ // A quiet refresh each time the picker opens, in case a connection changed elsewhere.
+ useEffect(() => { if (isBroker && linkCarLeadId) refreshPageCars(); }, [isBroker, linkCarLeadId]);
  // A lead's registration: the one filed against it, else a live one for the same number.
  const brokerRegForLead = useCallback((lead) => {
  if (!lead || !brokerRegs.length) return null;
