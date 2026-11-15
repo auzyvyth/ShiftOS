@@ -35,6 +35,13 @@ export function creditForLead(lead, { brokers = [], regs = [], now = Date.now() 
     }
   }
 
+  // A buyer who used a broker's page but typed no phone has no registration and no salesman on the
+  // dealer's copy: the database stamps the broker on the lead itself (leads.via_broker_id).
+  if (!page && lead.via_broker_id) {
+    const b = byId.get(lead.via_broker_id);
+    page = { brokerId: lead.via_broker_id, name: b ? b.name : null };
+  }
+
   const phone = leadPhone(lead);
   let reg = null;
   if (phone) {

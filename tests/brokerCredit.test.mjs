@@ -16,6 +16,8 @@ eq(leadPhone({}), '', 'no number');
 
 eq(creditForLead({ salesman_id: 'bA', phone: '0111111111' }, { brokers, now: NOW })?.owner, { brokerId: 'bA', name: 'Aiman', via: 'page' }, 'page link credits the broker');
 eq(creditForLead({ salesman_id: 'tm1', salesman_profile: { full_name: 'Sam' } }, { brokers, now: NOW }), null, 'a team salesman is not a broker');
+eq(creditForLead({ salesman_id: null, via_broker_id: 'bA' }, { brokers, now: NOW })?.owner, { brokerId: 'bA', name: 'Aiman', via: 'page' }, 'via_broker_id names the broker when the buyer gave no phone');
+eq(creditForLead({ salesman_id: null, via_broker_id: 'bX' }, { brokers, now: NOW })?.owner, { brokerId: 'bX', name: null, via: 'page' }, 'via_broker_id of an unlisted broker still reads as a broker');
 eq(creditForLead({ salesman_id: null, assigned_to: null }, { brokers, now: NOW }), null, 'unassigned stays unassigned');
 eq(creditForLead({ salesman_id: 'zzz' }, { brokers: [], now: NOW })?.owner, { brokerId: 'zzz', name: null, via: 'page' }, 'unknown outside seller (manager view)');
 
