@@ -684,11 +684,13 @@ export default function SalesmanPremium() {
  // the car has left the broker's page.
  const dealerSaleFor = useCallback((lead) => {
  const reg = brokerRegForLead(lead);
- if (!reg) return null;
- const c = (brokerCars || []).find((x) => (reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label);
+ // No registration (a buyer from the page who typed no phone): the lead itself names the dealer car.
+ if (!reg && !lead?.dealer_car_id) return null;
+ const c = (brokerCars || []).find((x) => (reg ? ((reg.listing_id && x.id === reg.listing_id) || x.title === reg.car_label) : x.id === lead.dealer_car_id));
+ if (!reg && !c) return null;
  const car = c
  ? { id: c.id, brand: c.brand, model: c.model, year: c.year, variant: c.variant, selling_price: c.selling_price,
- mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true }
+ mileage: c.mileage, transmission: c.transmission, images: c.image ? [c.image] : [], status: "available", _dealer: true, _dealerName: c.dealerName }
  : { _label: reg.car_label, _dealer: true };
  return { reg, car };
  }, [brokerRegForLead, brokerCars]);
@@ -798,7 +800,8 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
- const wonDealerSale = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null;
+ // Only a buyer REGISTERED with the dealer files a sale claim on a Won; a page lead with no phone has none.
+ const wonDealerSale = (() => { const s = wonPrompt && !wonPrompt.lead?.car_listing_id ? dealerSaleFor(wonPrompt.lead) : null; return s?.reg ? s : null; })();
  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
  const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
@@ -4324,7 +4327,7 @@ export default function SalesmanPremium() {
  </p>
  {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: PD.text }}>{plCarPrice}</p>}
  <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[dSale ? `Dealer's car · ${dSale.reg.dealer_name}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
+ {[dSale ? `Dealer's car · ${dSale.reg?.dealer_name || dSale.car._dealerName || "dealer"}` : null, plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
