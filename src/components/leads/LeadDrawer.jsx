@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { BrokerCreditPanel, brokerCreditSummary } from '../brokers/BrokerCredit';
 import {
   X, MessageCircle, Phone, Calendar, Trash2, ExternalLink, User,
   Pencil, Check, ChevronRight, ChevronDown, ChevronUp, Send, Search,
@@ -820,12 +821,16 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── Assign salesman ──────────────────────────────────────────────────────────
   async function handleAssign(uid) {
+    // BROKER-1: a lead an outside broker brought is theirs for commission. Moving it to a team member
+    // never silently erases that: the dealer must say so, and the history keeps who it came from.
+    const credit = initialLead?.broker_credit;
+    if (credit && uid && !window.confirm(`${brokerCreditSummary(credit)}\n\nGive it to a team member anyway? The broker's claim does not go away.`)) return;
     setAssignedTo(uid);
     try {
       const updated = await onUpdate(lead.id, { assigned_to: uid || null, salesman_id: uid || null });
       if (updated) setLead(updated);
       const name = teamMembers.find(m => m.id === uid)?.full_name || 'nobody';
-      await addActivity({ activity_type: 'assigned', note: `Assigned to ${name}` });
+      await addActivity({ activity_type: 'assigned', note: `Assigned to ${name}${credit ? ` (credited to broker ${credit.owner.name || 'outside seller'} via ${credit.owner.via === 'registration' ? 'registration' : 'their page'})` : ''}` });
       toast.success('Assigned');
     } catch { toast.error('Error saving'); }
   }
@@ -1275,6 +1280,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 </div>
               </div>
             )}
+
+            <BrokerCreditPanel credit={initialLead?.broker_credit} />
 
             {/* ── Info strip: Assign + Follow-up ── */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
