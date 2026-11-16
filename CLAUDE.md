@@ -53,6 +53,7 @@ Full plan and status: `TODO.md` BRAND-1.
   those redirects while xdrive.my is renewed.
 - "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
   becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+  The photo/poster editor is "Drevo Studio" (owner, 2026-11-16); its buttons say so.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
   the temporary "Split D" lockup.** One red wordmark for Drevo AND the seller software, the same
   file on light and dark surfaces: `public/drevo-logo-white.png` (dark surfaces) and

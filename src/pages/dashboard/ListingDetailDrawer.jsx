@@ -180,10 +180,10 @@ export default function ListingDetailDrawer({
                   ].join('\n')}
                 />
 
-                {/* ShiftOS Studio — slide/content generator for this listing */}
+                {/* Drevo Studio — slide/content generator for this listing */}
                 {openStudio && (
                   <button onClick={() => openStudio(listing)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
-                    <Film style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
+                    <Film style={{ width: 14, height: 14, flexShrink: 0 }} />Drevo Studio
                   </button>
                 )}
 

@@ -3901,7 +3901,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  {actionBtn(
  <>
- <Film size={13} style={{ flexShrink: 0 }} />ShiftOS Studio
+ <Film size={13} style={{ flexShrink: 0 }} />Drevo Studio
  </>,
  "#f472b6",
  "rgba(219,39,119,0.08)",
