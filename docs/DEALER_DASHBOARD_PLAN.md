@@ -5,6 +5,13 @@ Decided after five read-only research passes (navigation, code structure, data l
 speed). Two of them independently said: **fix the numbers BEFORE merging more screens** (moving tabs
 while two screens show two figures only moves the confusion). Steps, in order, one commit each:
 
+> **Status check 2026-11-16 (code read, not assumed):** steps 1, 2 and 3 are DONE in the code. Step 1: AnalyticsTab
+> checks `error` and keeps the last value; DocumentsTab keeps the list on a failed read. Step 2: Overview and Revenue
+> sum `carPnl()` through `useCarMoney`, and `costMissing` exists (`ownerMoney.js:77`). Step 3: one clock (`daysHeld`)
+> and one threshold (`AGEING_DAYS`); the last hardcoded 60 in `moneyExplain.js` now uses it. Left on their own
+> numbers on purpose: `AccountantPanel.jsx` (stored `days_in_stock`, unused role). Fast List was removed from the app.
+> Open: steps 4 and 5 (merges, splitting `DashboardPage.jsx`).
+
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
      paints zeros, and a rejected promise leaves `eventsLoading` true forever. Check `error`, keep the last
