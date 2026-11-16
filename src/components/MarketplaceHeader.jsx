@@ -302,8 +302,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
         .mh-logo { text-decoration:none; display:flex; align-items:center; flex-shrink:0; }
-        /* The dark wordmark file (drevo-logo-dark.png) is the one for light
-           surfaces like this bar. width:auto off
+        /* drevo-logo.svg: the wordmark traced from drevo-logo-dark.png (same
+           688x120 box, same red), so it stays sharp at any zoom. width:auto off
            a fixed height keeps the ratio; the width/height ATTRIBUTES on the tag
            reserve the box before the file loads so the nav does not jump. */
         .mh-logo-img { height:21px; width:auto; display:block; }
@@ -438,7 +438,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar" ref={barRef}>
           <Link to="/" className="mh-logo" aria-label="Drevo home">
-            <img src="/drevo-logo-dark.png" alt="Drevo" className="mh-logo-img" width="688" height="120" />
+            <img src="/drevo-logo.svg" alt="Drevo" className="mh-logo-img" width="688" height="120" />
           </Link>
 
           {/* LEFT — links + mega dropdowns */}
