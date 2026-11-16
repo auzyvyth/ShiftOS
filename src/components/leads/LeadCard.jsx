@@ -12,14 +12,14 @@ function followUpStyle(dateStr) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   const diff = Math.round((d - today) / 86400000);
-  if (diff < 0)   return { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
-  if (diff === 0) return { color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+  if (diff < 0)   return { color: '#dc2626', bg: '#f5f6f8', border: 'transparent' };
+  if (diff === 0) return { color: '#b91c1c', bg: '#f5f6f8', border: 'transparent' };
   return            { color: '#6b7280',  bg: '#f9fafb',  border: '#e5e7eb'  };
 }
 
 const HIGHLIGHT_SOURCES = {
-  drevo_enquiry: { label: 'Enquiry', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-  booking:       { label: 'Booking', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+  drevo_enquiry: { label: 'Enquiry', color: '#4b5563', bg: '#f5f6f8', border: 'transparent' },
+  booking:       { label: 'Booking', color: '#4b5563', bg: '#f5f6f8', border: 'transparent' },
 };
 
 export default function LeadCard({ lead, onOpen }) {
@@ -117,7 +117,7 @@ export default function LeadCard({ lead, onOpen }) {
               <div title={`Lead by ${ownerName}`} style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 padding: '1px 6px 1px 2px', borderRadius: 20,
-                background: '#ede9fe', border: '1px solid #ddd6fe',
+                background: '#f5f6f8', border: 'none',
               }}>
                 <div style={{
                   width: 16, height: 16, borderRadius: '50%',
@@ -127,7 +127,7 @@ export default function LeadCard({ lead, onOpen }) {
                 }}>
                   {ownerName[0]?.toUpperCase()}
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#4b5563', whiteSpace: 'nowrap' }}>
                   {ownerFirst}
                 </span>
               </div>
@@ -153,7 +153,7 @@ export default function LeadCard({ lead, onOpen }) {
         style={{
           width: 32, height: 32, borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, background: '#f0fdf4', border: '1px solid #bbf7d0',
+          flexShrink: 0, background: '#f5f6f8', border: 'none',
           touchAction: 'manipulation',
         }}
         className="lc-wa"

@@ -22,10 +22,10 @@ function EmptyState({ onAdd }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 text-center">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-        style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.12)' }}>
-        <Inbox className="w-7 h-7 text-red-500/40" />
+        style={{ background: '#f5f6f8', border: 'none' }}>
+        <Inbox className="w-7 h-7 text-gray-500" />
       </div>
-      <h3 className="text-white font-bold text-lg mb-2">No leads yet</h3>
+      <h3 className="text-gray-900 font-bold text-lg mb-2">No leads yet</h3>
       <p className="text-gray-500 text-sm max-w-xs leading-relaxed mb-6">
         Add your first lead manually or share your Drevo listing to start capturing enquiries.
       </p>

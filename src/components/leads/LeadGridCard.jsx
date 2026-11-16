@@ -66,7 +66,7 @@ export default function LeadGridCard({ lead, onOpen }) {
             title="Overdue for follow-up"
             style={{
               flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em',
-              color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a',
+              color: '#b91c1c', background: '#f5f6f8', border: 'none',
               borderRadius: 20, padding: '1px 7px',
             }}
           >
@@ -114,7 +114,7 @@ export default function LeadGridCard({ lead, onOpen }) {
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
           fontSize: 10, fontWeight: 700, color: '#b91c1c',
-          background: '#fef2f2', border: '1px solid #fecaca',
+          background: '#f5f6f8', border: 'none',
           borderRadius: 6, padding: '2px 7px', marginBottom: 8,
         }}>
           Car sold by another seller
@@ -132,7 +132,7 @@ export default function LeadGridCard({ lead, onOpen }) {
           <div title={`Lead by ${ownerName}`} style={{
             display: 'flex', alignItems: 'center', gap: 4, minWidth: 0,
             padding: '1px 7px 1px 2px', borderRadius: 20,
-            background: '#ede9fe', border: '1px solid #ddd6fe',
+            background: '#f5f6f8', border: 'none',
           }}>
             <div style={{
               width: 15, height: 15, borderRadius: '50%', background: '#7c3aed',
@@ -141,7 +141,7 @@ export default function LeadGridCard({ lead, onOpen }) {
             }}>
               {ownerName[0]?.toUpperCase()}
             </div>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#4b5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {ownerFirst}
             </span>
           </div>

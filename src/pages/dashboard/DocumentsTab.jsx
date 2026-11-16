@@ -417,7 +417,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
     const row  = (label, val) => val ? `<tr><td style="padding:5px 0;font-size:13px;color:#555;width:190px;vertical-align:top;">${label}</td><td style="padding:5px 0;font-size:13px;">${val}</td></tr>` : '';
     const sect = (title, content) => `<div style="margin-bottom:24px;"><h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:#999;border-bottom:1px solid #e5e5e5;padding-bottom:5px;margin:0 0 12px;">${title}</h3>${content}</div>`;
-    const tick = (label, done) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;"><div style="width:15px;height:15px;border:1.5px solid ${done?'#16a34a':'#aaa'};border-radius:3px;flex-shrink:0;background:${done?'#dcfce7':'transparent'};display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#16a34a;">${done?'✓':''}</span></div><span style="font-size:13px;">${label}</span></div>`;
+    const tick = (label, done) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;"><div style="width:15px;height:15px;border:1.5px solid ${done?'#16a34a':'#aaa'};border-radius:3px;flex-shrink:0;background:${done?'#f5f6f8':'transparent'};display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;color:#16a34a;">${done?'✓':''}</span></div><span style="font-size:13px;">${label}</span></div>`;
 
     const dealerHeader = (dealerName || dealerSsm) ? `
       <div style="text-align:right;font-size:12px;color:#555;line-height:1.6;">
@@ -601,7 +601,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
         ${sect('Handover Items', handoverItems.map(item => tick(item, false)).join(''))}
 
-        ${exceptions ? sect('Noted Exceptions / Agreed Defects', `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px;font-size:13px;line-height:1.7;">${exceptions}</div>`) : ''}
+        ${exceptions ? sect('Noted Exceptions / Agreed Defects', `<div style="background:#f5f6f8;border:1px solid transparent;border-radius:6px;padding:12px;font-size:13px;line-height:1.7;">${exceptions}</div>`) : ''}
 
         ${sect('Odometer Declaration', `<p style="font-size:13px;margin:0;line-height:1.8;">I, the Sales Advisor, declare that the odometer reading at the time of vehicle handover is <strong>${carMileage ? Number(carMileage).toLocaleString() + ' km' : '_______ km'}</strong> and has not been tampered with or altered.</p>`)}
 
@@ -755,7 +755,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                             <div style={{ padding: '12px 14px', fontSize: 13, color: '#9ca3af' }}>No listings match</div>
                           ) : filteredListings.map(l => (
                             <button key={l.id} type="button" onClick={() => handleListingSelect(l)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(220,38,38,0.07)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "system-ui, sans-serif" }}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: genForm.listing_id === l.id ? 'rgba(17,24,39,0.06)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: "system-ui, sans-serif" }}
                               onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
                               onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
                               {l.images?.[0] ? (
@@ -784,7 +784,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Name</label>
-                  <input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} style={!genForm.buyer_name.trim() ? { borderColor: '#fca5a5' } : {}} />
+                  <input value={genForm.buyer_name} onChange={e => setGenForm(p => ({ ...p, buyer_name: e.target.value }))} placeholder="Ahmad" className={iCls} style={!genForm.buyer_name.trim() ? { borderColor: 'transparent' } : {}} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
@@ -792,7 +792,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
                   </label>
                   <input value={genForm.buyer_ic} onChange={e => setGenForm(p => ({ ...p, buyer_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls}
-                    style={['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() ? { borderColor: '#fca5a5' } : {}} />
+                    style={['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() ? { borderColor: 'transparent' } : {}} />
                   {['Sales Agreement','Deposit Receipt'].includes(genForm.doc_type) && !genForm.buyer_ic.trim() && (
                     <p style={{ fontSize: 10, color: '#dc2626', marginTop: 3 }}>Required for {genForm.doc_type}</p>
                   )}
@@ -935,7 +935,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               return (
                 <div className="p-5 border-t border-gray-100 space-y-3">
                   {encBlocked && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: '#f5f6f8', border: 'none', borderRadius: 10 }}>
                       <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626', flexShrink: 0 }} />
                       <span style={{ fontSize: 12, color: '#dc2626', fontFamily: "system-ui,sans-serif" }}>
                         This vehicle is marked <strong>Under HP</strong> in stock. Clear the encumbrance before issuing a Handover Checklist.
@@ -943,9 +943,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     </div>
                   )}
                   {linkedStock && linkedStock.encumbrance_status === 'unknown' && genForm.doc_type === 'Handover Checklist' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10 }}>
-                      <AlertTriangle style={{ width: 14, height: 14, color: '#f59e0b', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: '#f5f6f8', border: 'none', borderRadius: 10 }}>
+                      <AlertTriangle style={{ width: 14, height: 14, color: '#b91c1c', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: '#b91c1c', fontFamily: "system-ui,sans-serif" }}>Encumbrance status not verified in stock. Confirm before handover.</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -970,8 +970,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <h3 className="font-semibold text-gray-800 text-sm">{printDoc.doc_type}</h3>
                   {printDoc.doc_status !== 'issued'
-                    ? <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 5, padding: '1px 7px' }}>DRAFT</span>
-                    : <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 5, padding: '1px 7px' }}>Issued</span>
+                    ? <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', background: '#f5f6f8', border: 'none', borderRadius: 5, padding: '1px 7px' }}>DRAFT</span>
+                    : <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: '#f5f6f8', border: 'none', borderRadius: 5, padding: '1px 7px' }}>Issued</span>
                   }
                 </div>
                 {printDoc.doc_ref && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0', fontFamily: 'monospace' }}>{printDoc.doc_ref}</p>}
@@ -979,16 +979,16 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               </div>
               <div className="flex items-center gap-2">
                 {printDoc.doc_status !== 'issued' && (
-                  <button onClick={() => handleIssue(printDoc)} style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Issue Document</button>
+                  <button onClick={() => handleIssue(printDoc)} style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', background: '#f5f6f8', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Issue Document</button>
                 )}
                 <button onClick={() => { const escHtml = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); const w = window.open('','_blank'); w.document.write(`<html><head><title>${escHtml(printDoc.doc_ref || printDoc.doc_type)}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>
             {printDoc.doc_status !== 'issued' && (
-              <div style={{ background: 'rgba(245,158,11,0.08)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#92400e', fontFamily: "system-ui,sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
+              <div style={{ background: 'rgba(17,24,39,0.06)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle style={{ width: 13, height: 13, color: '#b91c1c', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: '#b91c1c', fontFamily: "system-ui,sans-serif" }}>This is a draft — review all details then click <strong>Issue Document</strong> to lock and finalise.</span>
               </div>
             )}
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />

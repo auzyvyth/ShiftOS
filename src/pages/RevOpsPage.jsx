@@ -63,12 +63,9 @@ function MetricCard({
         {Icon && (
           <span
             className="flex items-center justify-center w-6 h-6 rounded-md"
-            style={{
-              background: `${accentColor}18`,
-              border: `1px solid ${accentColor}30`,
-            }}
+            style={{ background: '#f5f6f8' }}
           >
-            <Icon style={{ width: 13, height: 13, color: accentColor }} />
+            <Icon style={{ width: 13, height: 13, color: '#4b5563' }} />
           </span>
         )}
       </div>

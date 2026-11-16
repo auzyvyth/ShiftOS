@@ -222,7 +222,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
       sub: avgAge >= 30 ? "⚠ Aging" : "Healthy",
       grad: avgAge >= 30 ? "grad-gold" : "grad-white",
       icon: <Clock className="w-4 h-4" />,
-      glow: avgAge >= 30 ? "rgba(251,191,36,0.08)" : "transparent",
+      glow: avgAge >= 30 ? "rgba(17,24,39,0.06)" : "transparent",
     },
   ];
 
@@ -238,7 +238,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: `radial-gradient(circle at 100% 0%, rgba(59,130,246,0.05) 0%, transparent 55%)`,
+                background: `radial-gradient(circle at 100% 0%, rgba(17,24,39,0.06) 0%, transparent 55%)`,
               }}
             />
             {spark && (
@@ -279,8 +279,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
               <div
                 className="rounded-xl p-4"
                 style={{
-                  background: "rgba(239,68,68,0.04)",
-                  border: "1px solid rgba(239,68,68,0.14)",
+                  background: '#f5f6f8', border: 'none',
                 }}
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -296,7 +295,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div
                         key={l.id}
                         className="flex items-center justify-between py-2 gap-3"
-                        style={{ borderBottom: "1px solid rgba(239,68,68,0.08)" }}
+                        style={{ borderBottom: "1px solid rgba(17,24,39,0.06)" }}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {l.images?.[0] ? (
@@ -310,7 +309,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                             </p>
                             <div className="flex flex-wrap gap-1 mt-0.5">
                               {gaps.map((g) => (
-                                <span key={g} className="text-red-700 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                <span key={g} className="text-red-700 text-[10px] font-semibold bg-gray-100 px-1.5 py-0.5 rounded">
                                   No {g}
                                 </span>
                               ))}
@@ -321,9 +320,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                           <button
                             onClick={() => onEditListing(l)}
                             className="text-xs font-semibold px-3 py-1 rounded-lg transition-all flex-shrink-0"
-                            style={{ background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#dc2626" }}
+                            style={{ background: '#f5f6f8', border: 'none', color: "#dc2626" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.2)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(17,24,39,0.06)"; }}
                           >
                             Finish
                           </button>
@@ -341,12 +340,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
               <div
                 className="rounded-xl p-4"
                 style={{
-                  background: "rgba(251,191,36,0.04)",
-                  border: "1px solid rgba(251,191,36,0.12)",
+                  background: '#f5f6f8', border: 'none',
                 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <AlertCircle className="w-4 h-4 text-red-700" />
                   <p className="text-amber-700 text-sm font-semibold">
                     {visibleStale.length} listing{visibleStale.length > 1 ? "s" : ""} aging 30+ days — needs attention
                   </p>
@@ -356,7 +354,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                     <div
                       key={l.id}
                       className="flex items-center justify-between py-2"
-                      style={{ borderBottom: "1px solid rgba(251,191,36,0.07)" }}
+                      style={{ borderBottom: "1px solid rgba(17,24,39,0.06)" }}
                     >
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
@@ -381,7 +379,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-amber-700 text-xs font-semibold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                        <span className="text-amber-700 text-xs font-semibold bg-gray-100 px-2.5 py-1 rounded-full border border-transparent">
                           {getListingAge(l.created_at)}d
                         </span>
                         {onEditListing && (
@@ -391,12 +389,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                             }}
                             className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
                             style={{
-                              background: "rgba(59,130,246,0.1)",
-                              border: "1px solid rgba(59,130,246,0.25)",
-                              color: "#93c5fd",
+                              background: '#f5f6f8', border: 'none',
+                              color: "transparent",
                             }}
                             onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(17,24,39,0.06)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
                           >
                             Adjust
                           </button>
@@ -411,8 +408,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
               <div
                 className="rounded-xl p-4"
                 style={{
-                  background: "rgba(34,197,94,0.03)",
-                  border: "1px solid rgba(34,197,94,0.15)",
+                  background: '#f5f6f8', border: 'none',
                 }}
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -426,7 +422,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                     <div
                       key={l.id}
                       className="flex items-center justify-between py-2"
-                      style={{ borderBottom: "1px solid rgba(34,197,94,0.07)" }}
+                      style={{ borderBottom: "1px solid rgba(17,24,39,0.06)" }}
                     >
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
@@ -451,7 +447,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-700 text-xs font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        <span className="text-emerald-700 text-xs font-semibold bg-gray-100 px-2.5 py-1 rounded-full border border-transparent">
                           {getListingAge(l.created_at)}d · adjusted
                         </span>
                         {onEditListing && (
@@ -492,20 +488,20 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           .lp-row { border-bottom:1px solid #f3f4f6; transition:background 0.15s; }
           .lp-row:last-child { border-bottom:none; }
           .lp-row:hover { background:#f9fafb; }
-          .lp-row.stale { background:#fffbeb; }
-          .lp-row.stale:hover { background:#fef3c7; }
+          .lp-row.stale { background:#f5f6f8; }
+          .lp-row.stale:hover { background:#f5f6f8; }
           .lp-td { padding:13px 14px; vertical-align:middle; }
           .lp-stat { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:24px; padding:0 8px; border-radius:6px; font-size:12px; font-weight:700; letter-spacing:0.02em; }
-          .lp-stat.sky   { background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; }
-          .lp-stat.green { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-          .lp-stat.purple{ background:#faf5ff; color:#7e22ce; border:1px solid #e9d5ff; }
-          .lp-stat.amber { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+          .lp-stat.sky   { background:#f5f6f8; color:#4b5563; border:1px solid transparent; }
+          .lp-stat.green { background:#f5f6f8; color:#15803d; border:1px solid transparent; }
+          .lp-stat.purple{ background:#f5f6f8; color:#4b5563; border:1px solid transparent; }
+          .lp-stat.amber { background:#f5f6f8; color:#b91c1c; border:1px solid transparent; }
           .lp-stat.dim   { background:#f9fafb; color:#9ca3af; border:1px solid #e5e7eb; }
           .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
           .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
           .lp-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
           .lp-card { border-radius:10px; overflow:hidden; background:#fff; border:1px solid #e5e7eb; transition:border-color 0.15s; }
-          .lp-card.stale { border-color:#fde68a; background:#fffbeb; }
+          .lp-card.stale { border-color:transparent; background:#f5f6f8; }
           .lp-card-top { display:flex; align-items:center; gap:12px; padding:12px 14px 10px; }
           .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
           .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
@@ -600,9 +596,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       const cvrNum = parseFloat(cvr);
                       const isStale = getListingAge(l.created_at) >= 30;
                       const statusKey = l.status || 'available';
-                      const statusCls = statusKey === 'available' ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20'
-                        : statusKey === 'reserved' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                        : 'bg-blue-400/10 text-blue-400 border-blue-400/20';
+                      const statusCls = statusKey === 'available' ? 'bg-gray-100 text-emerald-700 border-transparent'
+                        : statusKey === 'reserved' ? 'bg-gray-100 text-red-700 border-transparent'
+                        : 'bg-gray-100 text-gray-600 border-transparent';
                       return (
                         <tr key={l.id} className={`lp-row${isStale ? ' stale' : ''}`}>
                           {/* Vehicle */}
@@ -741,7 +737,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                                 </p>
                               )}
                             </div>
-                            <span style={{ fontSize:10, fontWeight:700, color:statusColor, background:`${statusColor}18`, border:`1px solid ${statusColor}30`, borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:statusColor, background: '#eceef1', border: 'none', borderRadius:20, padding:'2px 8px', flexShrink:0, letterSpacing:'0.06em', textTransform:'capitalize' }}>
                               {statusKey}
                             </span>
                           </div>
@@ -759,10 +755,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       {/* stats strip */}
                       <div className="lp-card-stats">
                         {[
-                          { label:'Views',    val: views,  color:'#38bdf8' },
+                          { label:'Views',    val: views,  color:'#4b5563' },
                           { label:'WhatsApp', val: wa,     color:'#4ade80' },
                           { label:'Calls',    val: calls,  color:'#c084fc' },
-                          { label:'Bookings', val: books,  color:'#fbbf24' },
+                          { label:'Bookings', val: books,  color:'#b91c1c' },
                           { label:'CVR',      val: eventsLoading ? '…' : (cvr || '—'), color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151', raw: true },
                         ].map(({ label, val, color, raw }) => (
                           <div key={label} className="lp-card-stat">
@@ -806,9 +802,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
+              style={{ background: '#f5f6f8', border: 'none' }}
             >
-              <Bot className="w-4 h-4 text-blue-600" />
+              <Bot className="w-4 h-4 text-gray-600" />
             </div>
             <div className="text-left">
               <p className="text-gray-900 text-sm font-semibold">
@@ -834,9 +830,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                   {m.role === "assistant" && (
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
+                      style={{ background: '#f5f6f8', border: 'none' }}
                     >
-                      <Bot className="w-3 h-3 text-blue-600" />
+                      <Bot className="w-3 h-3 text-gray-600" />
                     </div>
                   )}
                   <div
@@ -855,9 +851,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 <div className="flex gap-2.5">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}
+                    style={{ background: '#f5f6f8', border: 'none' }}
                   >
-                    <Bot className="w-3 h-3 text-blue-600" />
+                    <Bot className="w-3 h-3 text-gray-600" />
                   </div>
                   <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
                     <div className="flex gap-1">
@@ -895,7 +891,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 placeholder="Ask about your listings, pricing, leads…"
                 className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none transition-colors"
                 style={{ background: "#fff", border: "1px solid #e5e7eb", maxHeight: "120px" }}
-                onFocus={(e) => (e.target.style.borderColor = "#93c5fd")}
+                onFocus={(e) => (e.target.style.borderColor = "transparent")}
                 onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
               <button

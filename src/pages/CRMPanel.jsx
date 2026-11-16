@@ -82,13 +82,13 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   const statusMeta = {
     pending: {
-      color: "#d97706",
+      color: "#b91c1c",
       bg: "rgba(217,119,6,0.1)",
       border: "rgba(217,119,6,0.25)",
     },
     confirmed: {
-      color: "#2563eb",
-      bg: "rgba(37,99,235,0.1)",
+      color: "#4b5563",
+      bg: "rgba(17,24,39,0.06)",
       border: "rgba(37,99,235,0.25)",
     },
     completed: {
@@ -103,7 +103,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     },
     no_show: {
       color: "#dc2626",
-      bg: "rgba(220,38,38,0.1)",
+      bg: "rgba(17,24,39,0.06)",
       border: "rgba(220,38,38,0.25)",
     },
   };
@@ -349,7 +349,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     const isNew = now - new Date(b.created_at).getTime() < 7200000;
     const isPast = aptMs && aptMs < now && !isToday;
     const dateColor = isToday ? "#2563eb" : isPast ? "#dc2626" : "#6b7280";
-    const dateBg   = isToday ? "rgba(37,99,235,0.08)" : isPast ? "rgba(220,38,38,0.06)" : "transparent";
+    const dateBg   = isToday ? "rgba(17,24,39,0.06)" : isPast ? "rgba(17,24,39,0.06)" : "transparent";
     const sm_meta  = statusMeta[b.status] || statusMeta.pending;
     const isReminderPicking = reminderPickerAptId === b.id;
     const isRescheduling    = rescheduleAptId === b.id;
@@ -361,7 +361,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       : "—";
 
     return (
-      <div key={b.id} style={{ background: "#fff", border: `1px solid ${isToday ? "#bfdbfe" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px", boxShadow: isToday ? "0 0 0 1px rgba(37,99,235,0.12)" : "0 1px 2px rgba(16,24,40,0.04)" }}>
+      <div key={b.id} style={{ background: "#fff", border: `1px solid ${isToday ? "transparent" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px", boxShadow: isToday ? "0 0 0 1px rgba(17,24,39,0.06)" : "0 1px 2px rgba(16,24,40,0.04)" }}>
         {/* Header: name + badges */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#111827", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -370,7 +370,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               {relativeTime(b.created_at)}
             </span>
           </p>
-          {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", color: "#dc2626", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
+          {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#dc2626", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sm_meta.bg, border: `1px solid ${sm_meta.border}`, color: sm_meta.color, textTransform: "capitalize" }}>
             {b.status}
           </span>
@@ -381,7 +381,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           <Calendar size={12} color={dateColor} />
           <span style={{ fontSize: 13, fontWeight: 700, color: dateColor }}>
             {dateDisplay}
-            {isToday && <span style={{ fontSize: 9, marginLeft: 6, padding: "1px 5px", borderRadius: 99, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.3)", color: "#2563eb" }}>TODAY</span>}
+            {isToday && <span style={{ fontSize: 9, marginLeft: 6, padding: "1px 5px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#4b5563" }}>TODAY</span>}
           </span>
         </div>
 
@@ -391,7 +391,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
           {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", display:'flex', alignItems:'center', gap:4 }}><User size={10} /> {sm.full_name}</p>}
           {b.buyer_state && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#dc2626", fontWeight: 600 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#dc2626", fontWeight: 600 }}>
               <MapPin size={9} />
               {b.buyer_state}
             </span>
@@ -402,7 +402,7 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Telegram reminder indicator */}
         {b.remind_at && !b.remind_sent ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.18)", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: '#f5f6f8', border: 'none', marginBottom: 8 }}>
             <Bell size={11} color="#059669" />
             <span style={{ fontSize: 10, color: "#059669", flex: 1 }}>
               Reminder: {new Date(b.remind_at).toLocaleString("en-MY", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -415,7 +415,7 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Reminder picker */}
         {isReminderPicking && (
-          <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(5,150,105,0.05)", border: "1px solid rgba(5,150,105,0.2)", borderRadius: 8 }}>
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#059669", fontWeight: 600 }}>Schedule Telegram reminder</p>
             <select value={reminderOffset} onChange={e => setReminderOffset(e.target.value)}
               style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", marginBottom: 8, outline: "none", boxSizing: "border-box" }}>
@@ -426,27 +426,27 @@ function BookingsTab({ userId, listings, salesmen }) {
             </select>
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", color: "#059669", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
+              <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#f5f6f8', border: 'none', color: "#059669", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
             </div>
           </div>
         )}
 
         {/* Reschedule picker */}
         {isRescheduling && (
-          <div style={{ marginBottom: 10, padding: "10px 12px", background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 8 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>Choose new date & time</p>
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563", fontWeight: 600 }}>Choose new date & time</p>
             <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
               style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "system-ui,sans-serif" }} />
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)", color: "#7c3aed", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
+              <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#f5f6f8', border: 'none', color: "#4b5563", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
             </div>
           </div>
         )}
 
         {/* Cancel confirm */}
         {isCancelConfirm && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
             <p style={{ margin: 0, fontSize: 11, color: "#dc2626", flex: 1 }}>Cancel this appointment?</p>
             <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 10, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>No</button>
             <button onClick={() => { updateStatus(b.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 10, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Yes, Cancel</button>
@@ -456,24 +456,24 @@ function BookingsTab({ userId, listings, salesmen }) {
         {/* Action buttons */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4 }}>
           {b.status === "pending" && (
-            <button onClick={() => updateStatus(b.id, "confirmed")} style={{ fontSize: 10, color: "#2563eb", background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Confirm</button>
+            <button onClick={() => updateStatus(b.id, "confirmed")} style={{ fontSize: 10, color: "#4b5563", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Confirm</button>
           )}
           {(b.status === "pending" || b.status === "confirmed") && (
-            <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Done</button>
+            <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#059669", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Done</button>
           )}
           {/* A past viewing needs an honest outcome. Without No-show the only way
               to clear it was "Done", so 49 past bookings were left open instead. */}
           {isPast && (b.status === "pending" || b.status === "confirmed") && (
-            <button onClick={() => updateStatus(b.id, "no_show")} style={{ fontSize: 10, color: "#b45309", background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>No-show</button>
+            <button onClick={() => updateStatus(b.id, "no_show")} style={{ fontSize: 10, color: "#b91c1c", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>No-show</button>
           )}
           {notDone && (
-            <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#7c3aed", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Reschedule</button>
+            <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#4b5563", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Reschedule</button>
           )}
           {notDone && !isCancelConfirm && (
             <button onClick={() => setCancelConfirmId(b.id)} style={{ fontSize: 10, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
           )}
           {b.buyer_phone && notDone && (
-            <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>WhatsApp</button>
+            <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#059669", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>WhatsApp</button>
           )}
           {notDone && dealerBkProfile?.telegram_bot_token && (
             <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#059669" : "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
@@ -530,7 +530,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                     cursor: "pointer",
                     border: "none",
                     background:
-                      view === v ? "rgba(37,99,235,0.12)" : "transparent",
+                      view === v ? "rgba(17,24,39,0.06)" : "transparent",
                     color: view === v ? "#2563eb" : "#6b7280",
                     transition: "all 0.15s",
                   }}
@@ -560,7 +560,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", boxShadow: "0 0 6px rgba(217,119,6,0.6)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", letterSpacing: "0.12em", textTransform: "uppercase" }}>Needs approval · {pendingBookings.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", letterSpacing: "0.12em", textTransform: "uppercase" }}>Needs approval · {pendingBookings.length}</span>
                 </div>
                 {pendingBookings.map(b => renderBookingRow(b))}
                 {(todaysBookings.length > 0 || otherBookings.length > 0) && <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />}
@@ -570,7 +570,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563eb", boxShadow: "0 0 6px rgba(37,99,235,0.6)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length}</span>
                 </div>
                 {todaysBookings.map(b => renderBookingRow(b))}
                 {otherBookings.length > 0 && <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />}
@@ -638,7 +638,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                         key={b.id}
                         style={{
                           background:
-                            statusMeta[b.status]?.bg || "rgba(59,130,246,0.1)",
+                            statusMeta[b.status]?.bg || "rgba(17,24,39,0.06)",
                           border: `1px solid ${statusMeta[b.status]?.border || "rgba(59,130,246,0.2)"}`,
                           borderRadius: 5,
                           padding: "4px 7px",
@@ -648,7 +648,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                         <p
                           style={{
                             fontSize: 10,
-                            color: statusMeta[b.status]?.color || "#93c5fd",
+                            color: statusMeta[b.status]?.color || "transparent",
                             fontWeight: 600,
                             margin: 0,
                           }}
@@ -912,8 +912,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   onClick={() => setReminderTarget(null)}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
                   style={{
-                    background: "rgba(37,211,102,0.12)",
-                    border: "1px solid rgba(37,211,102,0.3)",
+                    background: '#f5f6f8', border: 'none',
                     color: "#4ade80",
                     textDecoration: "none",
                   }}
@@ -926,8 +925,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   disabled={bkTmplSaving}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-500 hover:text-white transition-colors"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: '#f5f6f8', border: 'none',
                   }}
                 >
                   <Save className="w-3.5 h-3.5" />

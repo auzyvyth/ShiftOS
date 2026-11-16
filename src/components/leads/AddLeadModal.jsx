@@ -115,7 +115,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #f3f4f6' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#f5f6f8', border: 'none' }}>
               <UserPlus className="w-4 h-4 text-red-600" />
             </div>
             <div>
@@ -137,7 +137,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
             <input
               value={form.buyer_name}
               onChange={e => set('buyer_name', e.target.value)}
-              className={`${inp} ${errors.buyer_name ? 'border-red-400 bg-red-50' : ''}`}
+              className={`${inp} ${errors.buyer_name ? 'border-red-400 bg-gray-100' : ''}`}
               placeholder="e.g. Ahmad Faiz"
             />
             {errors.buyer_name && <p className="text-xs text-red-500 mt-1">{errors.buyer_name}</p>}
@@ -197,7 +197,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               <select
                 value={form.lead_source}
                 onChange={e => set('lead_source', e.target.value)}
-                className={`${sel} ${errors.lead_source ? 'border-red-400 bg-red-50' : ''}`}
+                className={`${sel} ${errors.lead_source ? 'border-red-400 bg-gray-100' : ''}`}
               >
                 <option value="" disabled>Select…</option>
                 {LEAD_SOURCE_DB_VALUES.map(k => (

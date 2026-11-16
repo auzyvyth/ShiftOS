@@ -262,9 +262,9 @@ const STYLES = `
   body { background: ${premiumLight.canvas}; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
 
   /* ── Sidebar nav ── */
-  .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
-  .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; border-left-color: #D1D5DB; color: #0F172A !important; }
-  .nav-active { background: #FEF2F2 !important; border-left: 2px solid #DC2626 !important; color: #DC2626 !important; }
+  .nav-item { transition: all 0.15s; border-radius: 7px; }
+  .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; color: #0F172A !important; }
+  .nav-active { background: #E4E7EC !important; color: #111827 !important; font-weight: 600; }
 
   /* ── Cards ── */
   .dash-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
@@ -287,7 +287,7 @@ const STYLES = `
   .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); animation:shimmer 3s ease infinite; }
   @keyframes shimmer { to { left:150%; } }
 
-  .sold-btn:hover { background: rgba(34,197,94,0.08) !important; border-color: rgba(34,197,94,0.4) !important; color: #16a34a !important; }
+  .sold-btn:hover { background: #F1F3F5 !important; border-color: transparent !important; color: #047857 !important; }
   .discount-chip { transition: box-shadow 0.15s; }
 
   /* ── Gradient text (keep for charts/badges) ── */
@@ -455,19 +455,15 @@ function SettingsSection({
   title,
   subtitle,
   icon: Icon,
-  iconColor = "text-blue-400",
-  iconBg = "rgba(59,130,246,0.1)",
-  iconBorder = "rgba(59,130,246,0.18)",
   children,
 }) {
   return (
     <div className="settings-section">
       <div className="flex items-center gap-3 px-5 py-4" style={T.divider}>
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: iconBg, border: `1px solid ${iconBorder}` }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 pl-well"
         >
-          <Icon className={`w-4 h-4 ${iconColor}`} />
+          <Icon className="w-4 h-4" />
         </div>
         <div>
           <p className="text-gray-900 text-sm font-semibold">{title}</p>
@@ -1478,7 +1474,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             )}
           </div>
           {nextPlanCfg && (
-            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, textDecoration: 'none' }}>
+            <a href="mailto:support@xdrive.my?subject=Upgrade to Plan" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f5f6f8', border: 'none', borderRadius: 8, textDecoration: 'none' }}>
               <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>Upgrade to {nextPlanCfg.label}</span>
               <span style={{ fontSize: 13, color: '#6b7280' }}>RM {nextPlanCfg.price.toLocaleString()}/mo →</span>
             </a>
@@ -1492,15 +1488,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
       >
         {/* Change count badge */}
         <div
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dealershipLocked ? "text-blue-400" : changesLeft === 1 ? "text-amber-400" : "text-emerald-400"}`}
-          style={{
-            background: dealershipLocked
-              ? "rgba(59,130,246,0.07)"
-              : changesLeft === 1
-                ? "rgba(251,191,36,0.07)"
-                : "rgba(52,211,153,0.07)",
-            border: `1px solid ${dealershipLocked ? "rgba(59,130,246,0.18)" : changesLeft === 1 ? "rgba(251,191,36,0.18)" : "rgba(52,211,153,0.18)"}`,
-          }}
+          className={`flex items-center gap-2 px-3 py-2 text-xs font-medium ${changesLeft === 1 && !dealershipLocked ? "pl-note-bad" : "pl-note"}`}
         >
           {dealershipLocked ? (
             <>
@@ -1555,7 +1543,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
                 <span className="px-3 text-gray-500 text-sm select-none border-l border-gray-200 py-2 bg-gray-50">.drevo.my</span>
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
-              {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
+              {subdomainStatus === 'taken' && <span className="text-xs text-red-600 whitespace-nowrap">Already taken</span>}
               {subdomainStatus === 'available' && <span className="text-xs text-green-400 whitespace-nowrap">✓ Available</span>}
             </div>
             {profile?.subdomain && (
@@ -1646,9 +1634,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Contact & Socials"
         subtitle="What customers see when they click enquire or visit your profile"
         icon={Phone}
-        iconColor="text-sky-400"
-        iconBg="rgba(56,189,248,0.08)"
-        iconBorder="rgba(56,189,248,0.18)"
       >
         {/* Buyers judge a listing on whether a real business is behind it, and
             these fields are the only place that comes from. Naming the gaps beats
@@ -1663,9 +1648,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           ].filter(Boolean);
           if (missing.length === 0) return null;
           return (
-            <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-              <AlertCircle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-900 leading-relaxed m-0">
+            <div className="flex items-start gap-2.5 p-3.5 pl-note">
+              <AlertCircle size={15} className="text-gray-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-700 leading-relaxed m-0">
                 Buyers see an <strong>About this dealer</strong> block on every one of your
                 listings. It only shows what you have filled in — right now it is missing your{' '}
                 {missing.join(', ')}.
@@ -1771,9 +1756,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
                 key={v}
                 type="button"
                 onClick={() => setDepositPolicy(depositPolicy === v ? '' : v)}
-                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${depositPolicy === v ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${depositPolicy === v ? 'bg-white border-gray-900' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
               >
-                <span className={`mt-0.5 h-4 w-4 rounded-full border flex-shrink-0 ${depositPolicy === v ? 'border-red-600 bg-red-600' : 'border-gray-300 bg-white'}`} />
+                <span className={`mt-0.5 h-4 w-4 rounded-full border flex-shrink-0 ${depositPolicy === v ? 'border-gray-900 bg-gray-900' : 'border-gray-300 bg-white'}`} />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-gray-900">{l}</span>
                   <span className="block text-xs text-gray-500 mt-0.5">{d}</span>
@@ -1851,21 +1836,15 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Front Page Control"
         subtitle="Full control over what customers see on your public site"
         icon={Globe}
-        iconColor="text-purple-400"
-        iconBg="rgba(167,139,250,0.08)"
-        iconBorder="rgba(167,139,250,0.18)"
       >
         {/* Announcement bar */}
         <div
           className="rounded-xl p-4 space-y-3"
-          style={{
-            background: "rgba(56,189,248,0.04)",
-            border: "1px solid rgba(56,189,248,0.1)",
-          }}
+          style={{ background: "#f5f6f8" }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-sky-500" />
+              <Megaphone className="w-4 h-4 text-gray-600" />
               <p className="text-gray-900 text-sm font-semibold">
                 Announcement Bar
               </p>
@@ -2023,9 +2002,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Account Security"
         subtitle="Change your login password"
         icon={KeyRound}
-        iconColor="text-amber-400"
-        iconBg="rgba(251,191,36,0.08)"
-        iconBorder="rgba(251,191,36,0.18)"
       >
         <SettingsField label="New Password">
           <input
@@ -2061,7 +2037,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
               </p>
             </div>
             {!mfaLoading && mfaFactors.some(f => f.status === "verified") && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 6, padding: "3px 10px", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", background: '#f5f6f8', borderRadius: 6, padding: "3px 10px", whiteSpace: "nowrap" }}>
                 ENABLED
               </span>
             )}
@@ -2072,10 +2048,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           ) : mfaFactors.some(f => f.status === "verified") ? (
             <div style={{ marginTop: 12 }}>
               {mfaFactors.filter(f => f.status === "verified").map(f => (
-                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
+                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: '#f5f6f8', borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}>
                   <span style={{ fontSize: 13, color: "#e5e7eb" }}>{f.friendly_name || "Authenticator app"}</span>
                   <button onClick={() => removeMfaFactor(f.id)} disabled={mfaBusy}
-                    style={{ fontSize: 12, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                    style={{ fontSize: 12, color: "#f87171", background: '#f5f6f8', borderRadius: 6, padding: "5px 12px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
                     Disable
                   </button>
                 </div>
@@ -2116,7 +2092,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             <div style={{ marginTop: 12 }}>
               {mfaError && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>⚠ {mfaError}</p>}
               <button onClick={startMfaEnroll} disabled={mfaBusy}
-                style={{ fontSize: 13, fontWeight: 600, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, padding: "9px 18px", cursor: "pointer", opacity: mfaBusy ? 0.6 : 1 }}>
+                className="pl-btn-grey" style={{ fontSize: 13, padding: "9px 18px", opacity: mfaBusy ? 0.6 : 1 }}>
                 {mfaBusy ? "Setting up…" : "Enable 2FA"}
               </button>
             </div>
@@ -2132,7 +2108,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             </p>
           </div>
           <button onClick={logoutAllDevices} disabled={logoutBusy}
-            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
+            style={{ fontSize: 13, fontWeight: 600, color: "#f87171", background: '#f5f6f8', borderRadius: 8, padding: "9px 16px", cursor: "pointer", whiteSpace: "nowrap", opacity: logoutBusy ? 0.6 : 1 }}>
             {logoutBusy ? "Signing out…" : "Log out all devices"}
           </button>
         </div>
@@ -2141,11 +2117,8 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Danger Zone"
         subtitle="Permanently close your dealer account"
         icon={Trash2}
-        iconColor="text-red-500"
-        iconBg="rgba(220,38,38,0.08)"
-        iconBorder="rgba(220,38,38,0.2)"
       >
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+        <div className="pl-note p-4">
           <p className="text-gray-700 text-xs leading-relaxed mb-3">
             Deleting your account hides your storefront and listings immediately.
             Nothing is destroyed for 30 days — logging back in within that window
@@ -2154,7 +2127,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           </p>
           <button
             onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
-            className="text-red-600 text-xs font-semibold border border-red-300 rounded-lg px-3.5 py-2 bg-white hover:bg-red-50"
+            className="pl-btn-grey text-red-600 text-xs px-3.5 py-2"
           >
             Delete my account
           </button>
@@ -2164,9 +2137,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Team Permissions"
         subtitle="Control what each staff role can see and do"
         icon={Lock}
-        iconColor="text-indigo-400"
-        iconBg="rgba(129,140,248,0.08)"
-        iconBorder="rgba(129,140,248,0.18)"
       >
         <PermissionsMatrix dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>}
@@ -2174,9 +2144,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="WhatsApp Templates"
         subtitle="Customise the quick-message templates your team sends to leads"
         icon={MessageCircle}
-        iconColor="text-green-500"
-        iconBg="rgba(34,197,94,0.08)"
-        iconBorder="rgba(34,197,94,0.18)"
       >
         <WaTemplatesEditor dealerId={getDealerIdFromProfile(profile)} actor={profile} />
       </SettingsSection>}
@@ -2184,9 +2151,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Deal Sheet"
         subtitle="Your logo (from Dealership Identity) and a custom disclaimer appear on every deal sheet"
         icon={FileText}
-        iconColor="text-amber-400"
-        iconBg="rgba(251,191,36,0.08)"
-        iconBorder="rgba(251,191,36,0.18)"
       >
         <SettingsField label="Deal Sheet Disclaimer" hint="Shown at the bottom of every deal sheet">
           <textarea
@@ -2205,9 +2169,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Commission Structure"
         subtitle="Default rule used to suggest salesman commission on new listings"
         icon={DollarSign}
-        iconColor="text-green-500"
-        iconBg="rgba(34,197,94,0.08)"
-        iconBorder="rgba(34,197,94,0.18)"
       >
         <div className="grid grid-cols-2 gap-3">
           <SettingsField label="Type">
@@ -2239,9 +2200,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Handover Operations"
         subtitle="Which post-sale work your dealership handles in-house"
         icon={ClipboardCheck}
-        iconColor="text-amber-500"
-        iconBg="rgba(245,158,11,0.08)"
-        iconBorder="rgba(245,158,11,0.18)"
       >
         <div className="flex items-center justify-between">
           <div style={{ minWidth: 0, paddingRight: 12 }}>
@@ -2270,9 +2228,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Cost Floor Settings"
         subtitle="Silent per-unit costs applied automatically to every car's cost floor and P&L"
         icon={Calculator}
-        iconColor="text-blue-500"
-        iconBg="rgba(59,130,246,0.08)"
-        iconBorder="rgba(59,130,246,0.18)"
       >
         <p className="text-xs text-gray-500" style={{ marginBottom: 4 }}>
           Set these once. They apply to every car automatically — no per-unit typing. Leave a field at 0 to skip it.
@@ -2343,9 +2298,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Auto-post"
         subtitle="Set it once. Every car you add goes out to the accounts you switch on."
         icon={Share2}
-        iconColor="text-gray-700"
-        iconBg="#f5f6f8"
-        iconBorder="#f5f6f8"
       >
         <AutoPostSettings dealerId={settingsDealerId} />
       </SettingsSection>}
@@ -2353,9 +2305,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         title="Notifications"
         subtitle="Push alerts on your devices, and Telegram auto-posting for new listings"
         icon={Send}
-        iconColor="text-sky-400"
-        iconBg="rgba(56,189,248,0.08)"
-        iconBorder="rgba(56,189,248,0.18)"
       >
         {/* Push sits with Telegram because both are "how alerts reach me".
             theme="light" — this whole settings surface is white cards.
@@ -2366,10 +2315,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             to the person holding it, not to the dealership. */}
         <PushToggle userId={profile?.id} theme="light" />
 
-        <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(56,189,248,0.04)", border: "1px solid rgba(56,189,248,0.1)" }}>
+        <div className="rounded-xl p-4 space-y-3" style={{ background: "#f5f6f8" }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-sky-400" />
+              <Send className="w-4 h-4 text-gray-600" />
               <p className="text-gray-900 text-sm font-semibold">Auto-Post New Listings</p>
             </div>
             <button
@@ -2397,7 +2346,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             {tokenConfigured ? (
               <span className="text-green-600">Token saved (hidden for security). Leave blank to keep it, or enter a new token to replace.</span>
             ) : (
-              <>Create a bot via <span className="text-sky-500">@BotFather</span> → /newbot → copy the token here.</>
+              <>Create a bot via <span className="font-semibold text-gray-900">@BotFather</span> → /newbot → copy the token here.</>
             )}
           </p>
         </SettingsField>
@@ -2433,7 +2382,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         <ErrMsg k="telegram" errors={errors} />
 
         {tgTestResult === "ok" && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-emerald-400" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)" }}>
+          <div className="flex items-center gap-2 px-3 py-2 text-xs pl-note-good">
             <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
             Test message sent! Check your Telegram channel.
           </div>
@@ -2443,11 +2392,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           <button
             onClick={testTelegram}
             disabled={tgTesting || !tgToken.trim() || !tgChannel.trim()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-sky-400 disabled:onpacity-40 transition-all"
-            style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.18)" }}
+            className="pl-btn-grey inline-flex items-center gap-2 px-4 py-2 text-sm transition-all"
           >
             {tgTesting
-              ? <><div className="w-3.5 h-3.5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />Testing…</>
+              ? <><div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin" />Testing…</>
               : <><Send className="w-3.5 h-3.5" />Test Connection</>
             }
           </button>
@@ -2592,9 +2540,8 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
                       borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
-                      background: active ? '#f9fafb' : 'transparent',
-                      color: active ? '#dc2626' : '#4b5563',
-                      borderLeft: active ? '2px solid #dc2626' : '2px solid transparent',
+                      background: active ? '#f5f6f8' : 'transparent',
+                      color: active ? '#111827' : '#4b5563',
                       fontFamily: 'system-ui, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
                       transition: 'all 0.12s',
                     }}
@@ -2744,7 +2691,7 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
                 RM {cur.toLocaleString()}
               </span>
               {orig && (
-                <span className="text-blue-400 text-xs font-medium bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/20">
+                <span className="text-gray-700 text-xs font-medium pl-well px-2 py-0.5 rounded-full">
                   -{Math.round(((orig - cur) / orig) * 100)}%
                 </span>
               )}
@@ -2773,7 +2720,7 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
           </div>
           {npv > 0 && npv !== cur && (
             <div
-              className={`px-4 py-3 rounded-xl border text-sm ${isReset ? "bg-cyan-50 border-cyan-200 text-cyan-700" : isUp ? "bg-amber-50 border-amber-200 text-amber-700" : isHot ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
+              className={`px-4 py-3 text-sm ${isUp ? "pl-note-bad" : "pl-note"}`}
             >
               {isReset && (
                 <p className="font-medium">
@@ -2811,7 +2758,7 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
             </div>
           )}
           {err && (
-            <p className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="pl-note-bad text-xs px-3 py-2">
               ⚠ {err}
             </p>
           )}
@@ -3497,18 +3444,14 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   };
 
   const ROLE_COLORS = {
-    salesman:   '#3b82f6',
-    manager:    '#f97316',
-    accountant: '#22c55e',
-    fi_officer: '#a855f7',
-    admin:      '#94a3b8',
+    salesman: '#111827', manager: '#111827', accountant: '#111827', fi_officer: '#111827', admin: '#111827',
   };
   const ROLE_TABS = [
-    { role: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
-    { role: 'manager',    label: 'Managers',    color: '#f97316' },
-    { role: 'accountant', label: 'Accountants', color: '#22c55e' },
-    { role: 'fi_officer', label: 'F&I',         color: '#a855f7' },
-    { role: 'admin',      label: 'Admins',      color: '#94a3b8' },
+    { role: 'salesman',   label: 'Salesmen',    color: '#111827' },
+    { role: 'manager',    label: 'Managers',    color: '#111827' },
+    { role: 'accountant', label: 'Accountants', color: '#111827' },
+    { role: 'fi_officer', label: 'F&I',         color: '#111827' },
+    { role: 'admin',      label: 'Admins',      color: '#111827' },
   ];
 
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
@@ -3524,28 +3467,26 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       <div
         className="rounded-xl px-4 py-3 flex items-center gap-3"
         style={{
-          background: "rgba(34,197,94,0.05)",
-          border: "1px solid rgba(34,197,94,0.15)",
+          background: '#f5f6f8',
         }}
       >
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{
-            background: "rgba(34,197,94,0.12)",
-            border: "1px solid rgba(34,197,94,0.2)",
+            background: '#f5f6f8',
           }}
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
         </div>
         <div className="flex-1">
-          <p className="text-emerald-700 text-sm font-semibold">
+          <p className="text-gray-900 text-sm font-semibold">
             {teamSoldCount} car{teamSoldCount !== 1 ? "s" : ""} sold
           </p>
-          <p className="text-emerald-600 text-xs">
+          <p className="text-gray-500 text-xs">
             Live count · updates automatically
           </p>
         </div>
-        <p className="text-3xl font-black grad-green tabular-nums">
+        <p className="text-3xl font-black text-emerald-700 tabular-nums">
           {teamSoldCount}
         </p>
       </div>
@@ -3608,7 +3549,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                 <span style={{
                   fontSize: 11, fontWeight: 700,
                   padding: '1px 7px', borderRadius: 10,
-                  background: teamTab === role ? `${color}18` : '#f3f4f6',
+                  background: teamTab === role ? '#eceef1' : '#f3f4f6',
                   color: teamTab === role ? color : '#6b7280',
                 }}>{count}</span>
               </button>
@@ -3618,7 +3559,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
         {teamError && (
           <div
             className="m-4 rounded-lg px-3 py-2.5 text-amber-700 text-xs"
-            style={{ background: "#fffbeb", border: "1px solid #fde68a" }}
+            style={{ background: '#f5f6f8' }}
           >
             ⚠ {teamError}
           </div>
@@ -3632,8 +3573,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
             <div
               className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
               style={{
-                background: "rgba(59,130,246,0.07)",
-                border: "1px solid rgba(59,130,246,0.12)",
+                background: '#f5f6f8',
               }}
             >
               <Users className="w-5 h-5 text-blue-500/40" />
@@ -3669,9 +3609,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                     .sort((a, b) => b.sold - a.sold || b.gross - a.gross || b.clicks - a.clicks)
                 : null;
               const rankColors = [
-                { bg: 'rgba(250,204,21,0.12)', color: '#fbbf24', border: 'rgba(250,204,21,0.22)' },
-                { bg: 'rgba(148,163,184,0.10)', color: '#94a3b8', border: 'rgba(148,163,184,0.18)' },
-                { bg: 'rgba(180,83,9,0.12)', color: '#f97316', border: 'rgba(180,83,9,0.20)' },
+                { bg: '#f5f6f8', color: '#111827', border: 'transparent' },
+                { bg: '#f5f6f8', color: '#4b5563', border: 'transparent' },
+                { bg: '#f5f6f8', color: '#6b7280', border: 'transparent' },
               ];
               const canAssign = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
               return (
@@ -3687,7 +3627,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {leaderboard.map((s, i) => {
-                          const rc = rankColors[i] || { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' };
+                          const rc = rankColors[i] || { bg: '#f5f6f8', color: '#9ca3af', border: 'transparent' };
                           return (
                             <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{
@@ -3727,13 +3667,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               if (pendingSetup) return (
                 <div key={s.id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
-                      <Mail className="w-4 h-4" style={{ color: '#ea580c' }} />
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#f5f6f8' }}>
+                      <Mail className="w-4 h-4" style={{ color: '#6b7280' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-semibold text-gray-900 truncate">{s.full_name}</p>
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>Pending setup</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#f5f6f8', color: '#b91c1c' }}>Pending setup</span>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
                         <span className="font-medium text-gray-700 break-all">{s.email}</span> hasn't finished setting up their account.
@@ -3777,7 +3717,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                       style={{
-                        background: "linear-gradient(135deg,#3b82f6,#7c3aed)",
+                        background: "#374151",
                       }}
                     >
                       {(s.full_name || "S")[0].toUpperCase()}
@@ -3790,7 +3730,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         {s.full_name}
                       </p>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${s.is_active !== false ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 ${s.is_active !== false ? "text-emerald-700" : "text-gray-500"}`}
                       >
                         {s.is_active !== false ? "Active" : "Inactive"}
                       </span>
@@ -3801,7 +3741,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         // 5-minute-old account wrongly showed as stale.
                         const ref = lastActivityMap[s.id] || s.created_at;
                         if (!ref || (Date.now() - new Date(ref)) / 86400000 <= 30) return null;
-                        return <span style={{ fontSize: 10, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '1px 7px' }}>Inactive 30d+</span>;
+                        return <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', background: '#f5f6f8', borderRadius: 10, padding: '1px 7px' }}>Inactive 30d+</span>;
                       })()}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500">
@@ -3839,8 +3779,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             >
                               {copiedId === s.id ? (
                                 <>
-                                  <Check className="w-3 h-3 text-emerald-400" />
-                                  <span className="text-emerald-400">Copied</span>
+                                  <Check className="w-3 h-3 text-emerald-700" />
+                                  <span className="text-emerald-700">Copied</span>
                                 </>
                               ) : (
                                 <>
@@ -3853,13 +3793,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         ) : (
                           <div className="mb-3">
                             <span
-                              className="text-xs text-amber-500/70 px-2.5 py-1.5 rounded-lg"
-                              style={{
-                                background: "rgba(251,191,36,0.06)",
-                                border: "1px solid rgba(251,191,36,0.12)",
-                              }}
+                              className="text-xs pl-note-bad px-2.5 py-1.5"
                             >
-                              ⚠ No slug — referral link unavailable
+                              No slug — referral link unavailable
                             </span>
                           </div>
                         )}
@@ -3875,7 +3811,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                               style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
                             >
                               <p
-                                className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "grad-green" : "text-gray-900"}`}
+                                className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "text-emerald-700" : "text-gray-900"}`}
                               >
                                 {v}
                               </p>
@@ -4023,7 +3959,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             {(soldMap[s.id]?.pending > 0) && (
                               <button
                                 onClick={() => setCommissionApproveTarget(s.id)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#d97706', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: '#f5f6f8', color: '#d97706', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
                                 Approve Payout
                               </button>
@@ -4031,7 +3967,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             {(soldMap[s.id]?.approved > 0) && (
                               <button
                                 onClick={() => setCommissionPayTarget(s.id)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: '#f5f6f8', color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
                                 Mark Paid
                               </button>
@@ -4133,7 +4069,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "#ecfdf5", border: "1px solid #6ee7b7" }}
+                  style={{ background: '#f5f6f8' }}
                 >
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
@@ -4161,7 +4097,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               <>
                 <div
                   className="rounded-xl px-4 py-4 mb-4 text-center"
-                  style={{ background: "#f0fdf4", border: "1px solid #86efac" }}
+                  style={{ background: '#f5f6f8' }}
                 >
                   <Mail className="w-7 h-7 text-emerald-600 mx-auto mb-2.5" />
                   <p className="text-gray-900 text-sm font-semibold mb-1">Email sent to {createdAccount.full_name}</p>
@@ -4176,7 +4112,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               <>
                 <div
                   className="rounded-xl px-3.5 py-2.5 mb-4 flex items-start gap-2.5"
-                  style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.16)" }}
+                  style={{ background: '#f5f6f8' }}
                 >
                   <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <p className="text-amber-700 text-xs leading-relaxed">
@@ -4194,7 +4130,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       }}
                       className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-all"
                       style={copiedPw
-                        ? { color: "#34d399", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }
+                        ? { color: "#34d399", background: '#f5f6f8' }
                         : { color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb" }}
                     >
                       {copiedPw ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
@@ -4219,11 +4155,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       {(() => {
         const MSG_ROLES = [
           { value: 'all',        label: 'Everyone',    color: '#111827' },
-          { value: 'salesman',   label: 'Salesmen',    color: '#3b82f6' },
-          { value: 'manager',    label: 'Managers',    color: '#f97316' },
-          { value: 'accountant', label: 'Accountants', color: '#22c55e' },
-          { value: 'fi_officer', label: 'F&I',         color: '#a855f7' },
-          { value: 'admin',      label: 'Admins',      color: '#94a3b8' },
+          { value: 'salesman',   label: 'Salesmen',    color: '#6b7280' },
+          { value: 'manager',    label: 'Managers',    color: '#6b7280' },
+          { value: 'accountant', label: 'Accountants', color: '#6b7280' },
+          { value: 'fi_officer', label: 'F&I',         color: '#6b7280' },
+          { value: 'admin',      label: 'Admins',      color: '#6b7280' },
         ];
         const recipients = salespeople.filter(s =>
           (msgTarget === 'all' || s.role === msgTarget) && s.is_active !== false
@@ -4271,7 +4207,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       style={{
                         padding: '6px 14px', borderRadius: 20,
                         border: `1px solid ${msgTarget === value ? color : '#e5e7eb'}`,
-                        background: msgTarget === value ? `${color}18` : '#f9fafb',
+                        background: msgTarget === value ? '#eceef1' : '#f9fafb',
                         color: msgTarget === value ? color : '#6b7280',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         fontFamily: "system-ui,sans-serif",
@@ -4282,7 +4218,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       {label}
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
-                        background: msgTarget === value ? `${color}22` : '#f3f4f6',
+                        background: msgTarget === value ? '#eceef1' : '#f3f4f6',
                         color: msgTarget === value ? color : '#4b5563',
                       }}>{cnt}</span>
                     </button>
@@ -4327,7 +4263,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   fontFamily: "system-ui,sans-serif", fontSize: 14, fontWeight: 600,
                   border: 'none', transition: 'all 0.15s',
                   ...(msgDone
-                    ? { background: '#ecfdf5', color: '#15803d', border: '1px solid #86efac' }
+                    ? { background: '#f5f6f8', color: '#047857', border: 'none' }
                     : (!msgText.trim() || recipients.length === 0)
                       ? { background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', cursor: 'not-allowed' }
                       : T.btnRed),
@@ -4378,8 +4314,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
                     style={{
-                      background: "#ecfdf5",
-                      border: "1px solid #6ee7b7",
+                      background: '#f5f6f8',
                     }}
                   >
                     <Check className="w-6 h-6 text-emerald-600" />
@@ -4412,11 +4347,11 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-2.5">Select Role</p>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { role: 'salesman',   label: 'Salesman',    color: '#3b82f6', desc: 'Sells cars, manages leads' },
-                        { role: 'manager',    label: 'Manager',     color: '#f97316', desc: 'Manages sales team' },
-                        { role: 'accountant', label: 'Accountant',  color: '#22c55e', desc: 'Financial view only' },
-                        { role: 'fi_officer', label: 'F&I Officer', color: '#a855f7', desc: 'Finance & insurance' },
-                        { role: 'admin',      label: 'Admin',       color: '#94a3b8', desc: 'Listings management' },
+                        { role: 'salesman',   label: 'Salesman',    color: '#111827', desc: 'Sells cars, manages leads' },
+                        { role: 'manager',    label: 'Manager',     color: '#111827', desc: 'Manages sales team' },
+                        { role: 'accountant', label: 'Accountant',  color: '#111827', desc: 'Financial view only' },
+                        { role: 'fi_officer', label: 'F&I Officer', color: '#111827', desc: 'Finance & insurance' },
+                        { role: 'admin',      label: 'Admin',       color: '#111827', desc: 'Listings management' },
                       ].filter(({ role }) => (role !== 'manager' || managerOn) && (isOwnerTeam || role === 'salesman' || role === 'admin')).map(({ role, label, color, desc }) => (
                         <button
                           key={role}
@@ -4426,7 +4361,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             padding: '8px 14px',
                             borderRadius: 8,
                             border: `1px solid ${newRole === role ? color : '#e5e7eb'}`,
-                            background: newRole === role ? `${color}18` : '#f9fafb',
+                            background: newRole === role ? '#eceef1' : '#f9fafb',
                             cursor: 'pointer',
                             fontFamily: "system-ui,sans-serif",
                             transition: 'all 0.15s',
@@ -4499,8 +4434,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                         <div
                           className="w-full rounded-xl px-3 py-2.5 text-xs text-emerald-700"
                           style={{
-                            background: "#f0fdf4",
-                            border: "1px solid #86efac",
+                            background: '#f5f6f8',
                           }}
                         >
                           {isOwnerTeam
@@ -4538,7 +4472,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   {addError && (
                     <div
                       className="rounded-xl px-3 py-2.5 text-red-600 text-xs"
-                      style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
+                      style={{ background: '#f5f6f8' }}
                     >
                       ⚠ {addError}
                     </div>
@@ -4663,7 +4597,7 @@ function ListingDetailDrawer({
   const monthly = calcMonthly(sp);
   const isSold   = listing.status === 'sold';
   const age      = getListingAge(listing.created_at);
-  const sCfg = ({ available: { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' }, reserved: { bg: 'rgba(251,191,36,0.12)', bd: 'rgba(251,191,36,0.3)', tx: '#fbbf24', dot: '#fbbf24' }, sold: { bg: 'rgba(156,163,175,0.12)', bd: 'rgba(156,163,175,0.2)', tx: '#9ca3af', dot: '#9ca3af' } })[listing.status || 'available'] || { bg: 'rgba(74,222,128,0.12)', bd: 'rgba(74,222,128,0.3)', tx: '#4ade80', dot: '#4ade80' };
+  const sCfg = ({ available: { dot: '#047857' }, reserved: { dot: '#6b7280' }, sold: { dot: '#9ca3af' } })[listing.status || 'available'] || { dot: '#047857' };
 
   // ESC to close
   useEffect(() => {
@@ -4830,7 +4764,7 @@ function ListingDetailDrawer({
                         </button>
                       )}
                       {salesmen.map(s => (
-                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? 'rgba(220,38,38,0.06)' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#DC2626' : '#374151', fontSize: 12, cursor: 'pointer' }}>
+                        <button key={s.id} onClick={() => { handleAssign(listing.id, s.id, s.full_name); setShowAssign(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: listing.assigned_to === s.id ? '#F5F6F8' : 'none', border: 'none', color: listing.assigned_to === s.id ? '#DC2626' : '#374151', fontSize: 12, cursor: 'pointer' }}>
                           <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(s.full_name || 'S')[0].toUpperCase()}</div>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.full_name || 'Unknown'}</span>
                           {listing.assigned_to === s.id && <Check style={{ width: 11, height: 11, marginLeft: 'auto', flexShrink: 0 }} />}
@@ -5820,25 +5754,25 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   };
 
   const statusBadge = (s) => {
-    const map = { in_stock: ['#34d399','rgba(52,211,153,0.12)'], sold: ['#9ca3af','rgba(156,163,175,0.1)'], reserved: ['#fbbf24','rgba(251,191,36,0.12)'] };
-    const [color, bg] = map[s] || ['#9ca3af','#f3f4f6'];
-    return <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, border: `1px solid ${color}33`, borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s?.replace('_',' ') || '—'}</span>;
+    const map = { in_stock: '#047857', sold: '#6b7280', reserved: '#4b5563' };
+    const color = map[s] || '#6b7280';
+    return <span style={{ fontSize: 10, fontWeight: 700, color, background: '#f5f6f8', borderRadius: 6, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s?.replace('_',' ') || '—'}</span>;
   };
 
   const summaryCards = [
-    { label: 'Revenue (sold)',       val: `RM ${soldRevenue.toLocaleString()}`, Icon: Banknote,     glow: 'rgba(110,231,183,0.13)',                                           grad: soldRevenue > 0 ? 'grad-green' : 'grad-cyan'                          },
-    { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      glow: 'rgba(251,191,36,0.13)',                                            grad: 'grad-red'                                                           },
-    { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         glow: 'rgba(167,139,250,0.13)',                                           grad: avgDays > 60 ? 'grad-red' : avgDays > 30 ? 'grad-gold' : 'grad-purple' },
-    { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    glow: 'rgba(110,231,183,0.13)',                                           grad: totalGP > 0 ? 'grad-green' : 'grad-white', spark: gpSparkData, sparkColor: '#34d399' },
-    { label: 'Sold This Month',      val: thisMonth.length,                     Icon: CheckCircle2,  glow: 'rgba(110,231,183,0.13)',                                           grad: 'grad-green'                                                         },
-    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, glow: agingUnits.length > 0 ? 'rgba(248,113,113,0.08)' : 'transparent', grad: agingUnits.length > 0 ? 'grad-red' : ''              },
+    { label: 'Revenue (sold)',       val: `RM ${soldRevenue.toLocaleString()}`, Icon: Banknote,     grad: ''                          },
+    { label: 'Stock Value',          val: `RM ${totalValue.toLocaleString()}`,  Icon: Banknote,      grad: ''                                                           },
+    { label: 'Avg Days in Stock',    val: avgDays,                              Icon: Clock,         grad: avgDays > 60 ? 'text-red-700' : '' },
+    { label: 'Gross Profit (month)', val: `RM ${totalGP.toLocaleString()}`,     Icon: TrendingUp,    grad: '', spark: gpSparkData, sparkColor: '#111827' },
+    { label: 'Sold This Month',      val: thisMonth.length,                     Icon: CheckCircle2,  grad: ''                                                         },
+    { label: 'Aging Stock (60d+)',   val: agingUnits.length,                    Icon: AlertTriangle, grad: agingUnits.length > 0 ? 'text-red-700' : ''              },
   ];
 
   return (
     <>
     <div className="space-y-6">
       {!hideSummary && <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-        {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
+        {summaryCards.map(({ label, val, Icon: Ic, grad, spark, sparkColor }) => (
           <div key={label} className="stat-card card-top rounded-2xl overflow-hidden glass" style={{ position: 'relative' }}>
             {spark && (
               <div className="px-3.5 pt-3">
@@ -5848,7 +5782,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             <div className={spark ? 'p-3 sm:p-4 pt-2' : 'p-3 sm:p-4'}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-gray-500 text-xs font-medium tracking-widest uppercase">{label}</p>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: glow, boxShadow: `0 0 14px ${glow}` }}><Ic className="w-4 h-4 opacity-80" /></div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center pl-well"><Ic className="w-4 h-4" /></div>
               </div>
               <p className={`text-xl sm:text-2xl font-black leading-none tabular-nums ${grad || 'text-gray-900'}`}>{val}</p>
             </div>
@@ -6632,7 +6566,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                               </div>
                             </div>
                             <select value={job.status} onChange={e => handleReconStatus(job.id, e.target.value)}
-                              style={{ fontSize: 10, fontWeight: 600, color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}40`, borderRadius: 5, padding: '3px 7px', cursor: 'pointer', appearance: 'none', outline: 'none' }}>
+                              style={{ fontSize: 10, fontWeight: 600, color: statusColor, background: '#eceef1', border: 'none', borderRadius: 5, padding: '3px 7px', cursor: 'pointer', appearance: 'none', outline: 'none' }}>
                               <option value="pending">Pending</option>
                               <option value="in_progress">In Progress</option>
                               <option value="done">Done</option>
@@ -6870,10 +6804,7 @@ function Avatar({ size = "md", profile }) {
     <div
       className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
       style={{
-        background: "linear-gradient(135deg, rgba(59,130,246,0.8), rgba(99,102,241,0.8))",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.15)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+        background: "#374151",
       }}
     >
       {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
@@ -7891,7 +7822,7 @@ export default function DashboardPage() {
             RM {sp.toLocaleString()}
           </span>
           <span
-            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-blue-500/15 text-blue-400 border-blue-500/25 blue-glow" : "bg-amber-500/15 text-amber-400 border-amber-500/25"}`}
+            className={`discount-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border ${isHot ? "bg-gray-100 text-gray-900 border-transparent" : "bg-gray-100 text-red-700 border-transparent"}`}
           >
             {isHot && <Flame className="w-3 h-3" />}−{pct}%
           </span>
@@ -8092,7 +8023,7 @@ export default function DashboardPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f6f8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 420, textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f5f6f8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
             <Trash2 size={24} color="#dc2626" />
           </div>
           <p className="text-gray-900 text-lg font-bold mb-2">Account scheduled for deletion</p>
@@ -8151,8 +8082,8 @@ export default function DashboardPage() {
     <>
     <SuspendedBanner />
     {trialDaysLeft !== null && ['dealer', 'owner'].includes(profile?.role) && (
-      <div style={{ background: trialDaysLeft <= 3 ? '#fef2f2' : '#fffbeb', borderBottom: `1px solid ${trialDaysLeft <= 3 ? '#fecaca' : '#fde68a'}`, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'system-ui,sans-serif' }}>
-        <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
+      <div style={{ background: '#f5f6f8', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'system-ui,sans-serif' }}>
+        <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#b91c1c' : '#374151', fontWeight: 600 }}>
           Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left. Your data is safe either way.
         </span>
         <a href="https://wa.me/601111521742?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
@@ -8288,7 +8219,7 @@ export default function DashboardPage() {
                           {badge !== undefined && (
                             <span
                               className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums"
-                              style={{ background: isActive ? '#FEE2E2' : '#F1F3F5', color: isActive ? '#DC2626' : color.textMuted }}
+                              style={{ background: isActive ? '#FFFFFF' : '#F1F3F5', color: isActive ? '#111827' : color.textMuted }}
                             >
                               {badge}
                             </span>
@@ -8339,9 +8270,9 @@ export default function DashboardPage() {
               rel="noopener noreferrer"
               title="Open your public storefront"
               className="flex items-center gap-2 rounded-lg px-3 py-2 mx-1 group"
-              style={{ background: '#F7F8FA', border: '1px solid #EAECF0', textDecoration: 'none', transition: 'background 0.15s, border-color 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.25)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F7F8FA'; e.currentTarget.style.borderColor = '#EAECF0'; }}
+              style={{ background: '#F7F8FA', textDecoration: 'none', transition: 'background 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#E4E7EC'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#F7F8FA'; }}
             >
               <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#DC2626' }} />
               <div className="flex-1 min-w-0">
@@ -8362,7 +8293,7 @@ export default function DashboardPage() {
             <div style={{ background: '#F7F8FA', border: '1px solid #EAECF0', borderRadius: 8, padding: '8px 10px', margin: '0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: color.textMuted, textTransform: 'uppercase' }}>Plan</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#111827', background: '#F1F3F5', borderRadius: 4, padding: '1px 5px' }}>{planCfg.label}</span>
               </div>
               {nextPlanCfg && (
                 <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 10, fontWeight: 600, color: '#DC2626', textDecoration: 'none' }}>
@@ -8453,7 +8384,7 @@ export default function DashboardPage() {
                   {notifications.length === 0 ? (
                     <p style={{ fontSize: 13, color: color.textMuted, padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#FEF2F2', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#FEF2F2'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#F5F6F8', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#F5F6F8'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                         {!n.is_read && <div style={{ width: 6, height: 6, background: '#DC2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -8473,12 +8404,12 @@ export default function DashboardPage() {
 
         {/* ── Onboarding Banner ── */}
         {showOnboardingBanner && (
-          <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '14px 24px', fontFamily: "system-ui,sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
+          <div style={{ background: '#F5F6F8', padding: '14px 24px', fontFamily: "system-ui,sans-serif", position: 'sticky', top: 0, zIndex: 15 }}>
             <div style={{ maxWidth: 900, margin: '0 auto' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 28, height: 28, background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare className="w-3.5 h-3.5" style={{ color: '#D97706' }} />
+                  <div style={{ width: 28, height: 28, background: '#FFFFFF', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare className="w-3.5 h-3.5" style={{ color: '#374151' }} />
                   </div>
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 600, color: color.ink, margin: 0, lineHeight: 1.2 }}>Setup Progress</p>
@@ -8493,8 +8424,8 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div style={{ height: 4, background: '#FDE68A', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: '#D97706', borderRadius: 4, transition: 'width 0.4s ease' }} />
+              <div style={{ height: 4, background: '#E4E7EC', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(onboardingDoneCount / onboardingItems.length) * 100}%`, background: '#111827', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -8508,14 +8439,13 @@ export default function DashboardPage() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 7,
                       padding: '6px 12px',
-                      background: item.done ? '#F0FDF4' : '#FFFFFF',
-                      border: `1px solid ${item.done ? '#BBF7D0' : '#EAECF0'}`,
+                      background: '#FFFFFF',
                       borderRadius: 8,
                       cursor: (!item.done || item.isCopy) ? 'pointer' : 'default',
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.borderColor = item.done ? '#86EFAC' : '#D1D5DB'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? '#BBF7D0' : '#EAECF0'; }}
+                    onMouseEnter={e => { if (!item.done || item.isCopy) e.currentTarget.style.background = '#F1F3F5'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; }}
                   >
                     {item.done
                       ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#16A34A' }} />
@@ -9072,24 +9002,24 @@ export default function DashboardPage() {
 
                     {savedDraft && (
                       <button onClick={() => setAddMode(savedDraft.mode || 'internal')}
-                        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: '2px solid #fde68a', background: '#fffbeb', cursor: 'pointer', marginBottom: 16 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: 'none', background: '#f5f6f8', cursor: 'pointer', marginBottom: 16 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#92400e' }}>Resume {draftLabel} draft</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#b45309' }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827' }}>Resume {draftLabel} draft</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
                             Saved {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} · Step {savedDraft.step || 1} of 4
                           </p>
                         </div>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                       </button>
                     )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <button onClick={() => setAddMode('marketplace')}
-                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: '2px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
-                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.15)'}
+                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: 'none', background: '#f5f6f8', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
+                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(17,24,39,0.12)'}
                         onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
                         <div style={{ width: 38, height: 38, borderRadius: 10, background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -9101,7 +9031,7 @@ export default function DashboardPage() {
                         </div>
                       </button>
                       <button onClick={() => setAddMode('internal')}
-                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: '2px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
+                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: 'none', background: '#f5f6f8', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
                         onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'}
                         onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
                         <div style={{ width: 38, height: 38, borderRadius: 10, background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -9122,10 +9052,10 @@ export default function DashboardPage() {
                 <>
                   {/* Phase strip — shows the 2-phase flow and current position */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 24, background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: !marketplaceDraftListing ? '#FEF2F2' : '#f9fafb', borderRight: '1px solid #e5e7eb' }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: !marketplaceDraftListing ? '#dc2626' : '#d1fae5', border: `2px solid ${!marketplaceDraftListing ? '#dc2626' : '#10b981'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: !marketplaceDraftListing ? '#f5f6f8' : '#fff', borderRight: '1px solid #e5e7eb' }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: !marketplaceDraftListing ? '#dc2626' : '#f5f6f8', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {marketplaceDraftListing
-                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                           : <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>1</span>}
                       </div>
                       <div>
@@ -9133,8 +9063,8 @@ export default function DashboardPage() {
                         <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Identity · Procurement · Pricing</p>
                       </div>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: marketplaceDraftListing ? '#FEF2F2' : '#f9fafb' }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: marketplaceDraftListing ? '#dc2626' : '#e5e7eb', border: `2px solid ${marketplaceDraftListing ? '#dc2626' : '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: marketplaceDraftListing ? '#f5f6f8' : '#fff' }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: marketplaceDraftListing ? '#dc2626' : '#f5f6f8', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: marketplaceDraftListing ? '#fff' : '#9ca3af' }}>2</span>
                       </div>
                       <div>

@@ -262,7 +262,15 @@ Project ID: lemdkdizdlcirhbzqlos
   + search + the ONE red button (New document); rows not a 7-column table; a draft's Issue is the dark key;
   the three pop-ups are portalled with a scroll lock. Still uncached (IC + address). The pop-ups' insides
   are the old light look. Sold is now done.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings.
+  **No tints, anywhere on the dealer dashboard (owner, 2026-11-16: "remove all tint colours").** A tinted fill with a matching
+  border (pink / amber / blue / green / purple boxes and pills, tinted icon wells, red-tint active nav + red left bar, gradient avatars
+  and gradient number text, colour glows) is gone from `DashboardPage.jsx`, `dashboard/AnalyticsTab.jsx`, `DocumentsTab.jsx`,
+  `RevOpsPage.jsx`, `ServicesPage.jsx`, `LeadsPage.jsx`, `CRMPanel.jsx` and `components/leads/*`. Use the classes in
+  `src/theme/premiumLight.css`: `.pl-note` (info), `.pl-note-bad` (problem), `.pl-note-good` (done), `.pl-well` (icon well),
+  `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning. Selected = `#eceef1`. New code
+  never writes a tinted background or `${hex}18` alpha suffix. Shared with the salesman panels and NOT changed: `OutreachHub`,
+  `ServicePackages`, `NudgeQueue`. Left over: CRMPanel's appointment pop-ups still have dark-theme white text (not a tint issue).
+  Not yet redesigned (layout, not colour): Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings forms.
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
