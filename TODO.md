@@ -3039,6 +3039,13 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
+  motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
+  a pure-red "CONTACT NOW" on every card, "0 - 4k" km bands) and called the Malaysian marketplace underserved. Angle:
+  most live Drevo stock is RM170k-900k recon from KL agents, exactly the buyer who notices clutter. A public "no
+  third-party ads, ever" promise + the marketplace redesign previewed 2026-11-16 (one card, crimson gradient,
+  structured titles). Constraint: design alone does not win buyers, stock count does (40 live cars vs thousands); a
+  no-ads promise also closes off ad revenue for good, so it is an owner call before it is ever stated publicly.
 - **IDEA-40: "Build your own deal" + "Send my deal" on the car page (owner, 2026-11-16; seen at AutoBandit.com, US, by @raffimoosh)** — a buyer
   picks deposit + tenure on a car, presses submit, and the seller gets a lead with those terms filled in. AutoBandit's pitch: dealers
   list cars with the monthly price, the buyer "builds their own deal", then picks up the car and signs. Drevo already has the pieces
