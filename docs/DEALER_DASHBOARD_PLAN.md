@@ -65,10 +65,8 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    the listings grid uses it) `dashboard/StockTab.jsx` (StockTab, StockStatsStrip as a named export, stock* helpers, STOCK_* constants,
    bucketGPByMonth) (all byte-identical, mock-rendered). DashboardPage 9,131 -> 3,070 lines.
    Next: the shared-state hooks (about 69 states; no context until asked).
-   Also seen, not changed: in ListingDetailDrawer at 375px the close X covers the "Analytics" tab, and the
-   status pill ("Available") is a green tint with a border.
-   Seen while moving, not changed: MarkSoldModal's "Confirm Sold" is a green gradient (breaks premiumLight: only the
-   main action is red, no tints) and CostProcurementForm's "No stock record yet" line is amber.
+   Design items seen while moving were fixed 2026-11-16 (8127abb): Mark sold red key, grey notes, the car
+   drawer action rail as grey rows with one red Mark as Sold, status pill on grey, close X clear of the tabs.
 6. **Smaller items found by the research:** Fast List modal (`DashboardPage.jsx` `showFastModal`) is a fixed
    overlay with no portal and no scroll lock (overlay rules 1-2); parallelise the profile fetch with the
    cars/salesmen/stock queries; trim the ~70-column `car_listings` select; `vendor-charts` 457 KB is on the
