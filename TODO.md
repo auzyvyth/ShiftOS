@@ -3077,6 +3077,14 @@ Background (from the idea):
   view for the AI like `chat_messages_ai`, read-only tools first, a human sends every reply; Zernio inbox is a SEPARATE
   connect from posting (extra permissions screen for the seller, test); list Zernio + networks in Privacy / DPA before
   launch. App stores: Play yes later, Apple not now (see chat 2026-11-16); stays paused until revenue (MOBILE note).
+  **How a seller connects (owner asked 2026-11-16):** the owner has ONE Zernio account + ONE API key (edge function secret).
+  Sellers never get a Zernio login. Seller taps Connect in Drevo -> edge function `zernio-connect` (planned, NOT built;
+  only `zernio-post` exists) finds/creates the seller's Zernio PROFILE (`externalId` = owner id) and returns `authUrl` ->
+  seller logs in on Facebook/TikTok's own page and approves -> Zernio keeps the token, Drevo keeps ids only -> webhook
+  `account.connected` (signature + event-id dedupe) -> `social_accounts`. Every connected account is billed to the owner.
+  No own Meta/TikTok developer app needed; consent screen is co-branded with Zernio. Inbox/DM access is a SEPARATE connect
+  from posting (a second permissions screen): test with the owner's own Page before promising it. Details:
+  `docs/DREVO_ACTION_PLAN.md:140-150`.
 
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
