@@ -773,7 +773,7 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 // field is simply undefined, nothing errors, and "Cars like this" is where a
 // buyer is comparing sellers hardest.
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price, is_model_card";
 
 /* ─── skeleton ─── */
 // The loading screen. When the buyer came from a card, `preview` holds that
@@ -1020,7 +1020,7 @@ function SellerStrip({ cars, title, th }) {
         {cars.map((c) => {
           const img   = cdnImg(Array.isArray(c.images) ? c.images[0] : null, 400, 70);
           const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
-          const price = c.selling_price ? "RM " + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
+          const price = c.selling_price ? (c.is_model_card ? "From RM " : "RM ") + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
           return (
             <button key={c.id} className="cdp-ss-card" onClick={() => go(c)} style={{ flexShrink: 0, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
               <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
@@ -1128,6 +1128,12 @@ export default function CarDetailPage() {
   const simRefDesktop = useRef(null);
   const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
+  // New cars (brand price-list cards and condition "new") get their own row
+  // UNDER the used & recon row (owner, 2026-11-16): mixed in one row, a
+  // RM90k new Vios sat between recon Vellfires and read as stock.
+  const isNewCar = (c) => !!c.is_model_card || c.condition === "new";
+  const sellerUsedCars = sellerCars.filter((c) => !isNewCar(c)).slice(0, 12);
+  const sellerNewCars  = sellerCars.filter(isNewCar).slice(0, 12);
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
@@ -1498,7 +1504,7 @@ export default function CarDetailPage() {
                 .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
-                .limit(12)
+                .limit(24)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
@@ -3041,9 +3047,14 @@ export default function CarDetailPage() {
 
 
         {/* More from this seller (mobile) — above the "More {brand}" section */}
-        {sellerCars.length > 0 && (
+        {sellerUsedCars.length > 0 && (
           <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
-            <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+            <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />
+          </div>
+        )}
+        {sellerNewCars.length > 0 && (
+          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
+            <SellerStrip cars={sellerNewCars} title={sellerUsedCars.length > 0 ? "Brand New Cars" : "More From This Seller"} th={th} />
           </div>
         )}
 
@@ -3829,9 +3840,14 @@ export default function CarDetailPage() {
             stopped by here. */}
         <div className="cdp-d-after">
           {/* MORE FROM THIS SELLER — above the "More {brand}" section */}
-          {sellerCars.length > 0 && (
+          {sellerUsedCars.length > 0 && (
             <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-              <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+              <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />
+            </div>
+          )}
+          {sellerNewCars.length > 0 && (
+            <div style={{ marginTop: sellerUsedCars.length > 0 ? 24 : 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
+              <SellerStrip cars={sellerNewCars} title={sellerUsedCars.length > 0 ? "Brand New Cars" : "More From This Seller"} th={th} />
             </div>
           )}
 
