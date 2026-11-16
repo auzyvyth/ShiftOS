@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component, Suspense } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Suspense } from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
@@ -29,33 +29,8 @@ import AppLoader from "../components/AppLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import { liveChannel } from "../lib/liveChannel";
 import { T, iCls, getListingAge } from "./dashboard/shared";
-import { AgeBadge } from "./dashboard/widgets";
-class TabErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(e) { return { error: e }; }
-  render() {
-    if (this.state.error) {
-      const msg = this.state.error?.message || '';
-      if (
-        msg.includes('Failed to fetch dynamically imported module') ||
-        msg.includes('Importing a module script failed') ||
-        msg.includes('error loading dynamically imported module')
-      ) {
-        window.location.reload();
-        return null;
-      }
-      return (
-        <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
-          <p className="text-red-400 text-sm font-medium">This tab ran into an error.</p>
-          <p className="text-gray-500 text-xs">{this.state.error?.message || "Unknown error"}</p>
-          <button onClick={() => this.setState({ error: null })} className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700">Retry</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-// Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
+import { DASHBOARD_STYLES as STYLES } from "./dashboard/styles";
+import { AgeBadge, TabErrorBoundary, SubTabBar, SelectTick, Avatar } from "./dashboard/widgets";
 const INVENTORY_VIEW_KEY = "xd_inventory_view";
 const INVENTORY_TABS = [
   { id: "listings", label: "Listings" },
@@ -72,27 +47,6 @@ const SOLD_TABS = [
   { id: "documents", label: "Documents" },
 ];
 const SOLD_IDS = new Set(SOLD_TABS.map(t => t.id));
-function SubTabBar({ tabs, active, onChange }) {
-  return (
-    <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          style={{
-            padding: '6px 11px', fontSize: 12.5, fontWeight: 500,
-            borderBottom: active === t.id ? '2px solid #DC2626' : '2px solid transparent',
-            color: active === t.id ? '#DC2626' : '#9AA1AD',
-            background: 'none', border: 'none',
-            cursor: 'pointer', transition: 'color 0.15s', marginBottom: -1,
-          }}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 const CarForm          = React.lazy(() => import("../components/CarForm"));
 const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
@@ -199,122 +153,7 @@ const TAB_TO_GROUP = {
 };
 
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const STYLES = `
 
-  *, *::before, *::after { box-sizing: border-box; }
-
-  body { background: ${premiumLight.canvas}; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
-
-  /* ── Sidebar nav ── */
-  .nav-item { transition: all 0.15s; border-radius: 7px; }
-  .nav-item:hover:not(.nav-active) { background: #EAECF0 !important; color: #0F172A !important; }
-  .nav-active { background: #E4E7EC !important; color: #111827 !important; font-weight: 600; }
-
-  /* ── Cards ── */
-  /* premiumLight (owner, 2026-11-16: "check the Overview tab, that's how it is now"): white, floating on a soft shadow, no border. */
-  .dash-card { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; }
-  .stat-card { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; transition: box-shadow 0.18s; }
-  .stat-card:hover { box-shadow: ${premiumLight.shadowHover}; }
-
-  /* ── Table rows ── */
-  .data-row { transition: background 0.12s; }
-  .data-row:hover { background: ${premiumLight.raised} !important; }
-
-  /* ── Modals ── */
-  .glass-modal, .modal-top { background: #FFFFFF; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: 0 20px 60px rgba(15,23,42,0.22); }
-
-  /* ── Misc ── */
-  /* ONE form-field recipe for every Settings screen (owner, 2026-11-16: Overview is the design): grey fill, no border, ink focus ring. */
-  .settings-section :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), select, textarea) { background: #f5f6f8 !important; border: none !important; box-shadow: none !important; border-radius: 12px; color: #111827; }
-  .settings-section :is(input, select, textarea):focus { outline: none; box-shadow: 0 0 0 2px rgba(17,24,39,0.18) !important; }
-  .settings-section :is(input, select, textarea)::placeholder { color: #9ca3af; }
-  .settings-section { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; overflow: hidden; }
-  .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:24px; background:linear-gradient(to left,rgba(247,248,250,0.9),transparent); pointer-events:none; }
-
-  .btn-shimmer { position: relative; overflow: hidden; }
-  .btn-shimmer::after { display:none; } /* no shimmer sweep on the dealer dashboard (flat red keys) */
-  @keyframes shimmer { to { left:150%; } }
-
-  .sold-btn:hover { background: #F1F3F5 !important; border-color: transparent !important; color: #047857 !important; }
-  .discount-chip { transition: box-shadow 0.15s; }
-
-  /* ── Gradient text (keep for charts/badges) ── */
-  .grad-red    { background: linear-gradient(135deg,#dc2626,#f87171); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-blue   { background: linear-gradient(135deg,#2563eb,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-green  { background: linear-gradient(135deg,#16a34a,#4ade80); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .grad-gold   { background: linear-gradient(135deg,#d97706,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #9AA1AD; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-
-  @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes hotpulse { 0%,100%{opacity:1}50%{opacity:.55} }
-  .blue-glow { animation: hotpulse 2.2s ease-in-out infinite; }
-`;
-
-
-
-// Inline SVG icon for the Hero Carousel sidebar nav item
-const HeroCarouselIcon = ({ className }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M3 9h18" />
-    <path d="M9 21V9" />
-  </svg>
-);
-
-
-// Tick shown on a listing tile while picking cars for the bulk bar.
-function SelectTick({ on }) {
-  return (
-    <span style={{ position: 'absolute', top: 4, left: 4, zIndex: 1, width: 20, height: 20, borderRadius: 6, background: on ? premiumLight.text : '#fff', boxShadow: '0 0 0 1.5px ' + (on ? premiumLight.text : '#9ca3af'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {on && <Check style={{ width: 13, height: 13, color: '#fff' }} />}
-    </span>
-  );
-}
-
-
-// ─── StockTab ─────────────────────────────────────────────────────────────────
-// Quick-filter chips for the stock list (keys map to stockFilterFns predicates)
-
-// ─── Customers Tab ───────────────────────────────────────────────────────────
-
-function Avatar({ size = "md", profile }) {
-  const sz = size === "lg" ? "w-9 h-9 text-sm" : "w-7 h-7 text-xs";
-  if (profile?.avatar_url)
-    return (
-      <img
-        src={profile.avatar_url}
-        alt=""
-        className={`${sz} rounded-full object-cover flex-shrink-0`}
-      />
-    );
-  return (
-    <div
-      className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
-      style={{
-        background: "#374151",
-      }}
-    >
-      {(profile?.full_name || profile?.email || "A")[0].toUpperCase()}
-    </div>
-  );
-}
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {

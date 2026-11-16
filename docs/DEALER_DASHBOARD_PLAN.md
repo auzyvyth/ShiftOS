@@ -63,7 +63,9 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    clicked through in a mocked render), `dashboard/CostProcurementForm.jsx`, `dashboard/PriceEditModal.jsx`,
    `dashboard/MarkSoldModal.jsx` `dashboard/TeamTab.jsx` (+ lastActiveText, staffAddError), `dashboard/ListingDetailDrawer.jsx` (SelectTick stays:
    the listings grid uses it) `dashboard/StockTab.jsx` (StockTab, StockStatsStrip as a named export, stock* helpers, STOCK_* constants,
-   bucketGPByMonth) (all byte-identical, mock-rendered). DashboardPage 9,131 -> 3,070 lines.
+   bucketGPByMonth), then TabErrorBoundary / SubTabBar / SelectTick / Avatar into `dashboard/widgets.jsx` and the CSS
+   string into `dashboard/styles.js` (all byte-identical; the unused HeroCarouselIcon deleted). DashboardPage 9,131 -> 2,909
+   lines. Whole dashboard rendered with mocked data, all 13 tabs at 1280 and 375 wide, no crash, no page error.
    Next: the shared-state hooks (about 69 states; no context until asked).
    Design items seen while moving were fixed 2026-11-16 (8127abb): Mark sold red key, grey notes, the car
    drawer action rail as grey rows with one red Mark as Sold, status pill on grey, close X clear of the tabs.
