@@ -24,6 +24,7 @@ import { offerUndoSale } from '../../utils/undoSale';
 import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from '../../utils/carBuyers';
 import { SITE_URL } from '../../config/site';
 import { localInputToIso } from '../../utils/myDay';
+import { REJECTION_CATEGORIES } from '../../utils/loanRejection';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -49,15 +50,7 @@ const calcEIR = (principal, annualRate, months) => {
   return principal * r / (1 - Math.pow(1 + r, -months));
 };
 
-const REJECTION_CATEGORIES = [
-  { value: 'dsr',            label: 'DSR (Debt Service Ratio)' },
-  { value: 'ccris_issue',    label: 'CCRIS Issue' },
-  { value: 'valuation_gap',  label: 'Valuation Gap' },
-  { value: 'employment_type',label: 'Employment Type' },
-  { value: 'vehicle_age',    label: 'Vehicle Age' },
-  { value: 'margin',         label: 'Margin / LTV' },
-  { value: 'other',          label: 'Other' },
-];
+
 
 const EMP_TEMPLATES = {
   employed:         ['ic','payslip','bank_stmt','epf','driving_license','grant','insurance','roadtax'],

@@ -5,6 +5,7 @@ import {
   Users,
   Package,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
 import { useCarMoney } from "../hooks/useCarMoney";
@@ -191,7 +192,6 @@ export default function RevOpsPage({ userId }) {
   const [leadData, setLeadData] = usePersistentState(ck('lead'), null);
   const [leadFetching, setLeadLoading] = useState(true);
   const leadLoading = leadFetching && !leadData;
-  const [salesmanScores, setSalesmanScores] = usePersistentState(ck('scores'), []);
 
   // ── Add-on revenue ───────────────────────────────────────────────────────
   const [addonData, setAddonData] = usePersistentState(ck('addon'), null);
@@ -281,14 +281,6 @@ export default function RevOpsPage({ userId }) {
       }
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
-
-      const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
-      if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
-      else setSalesmanScores(
-        (scores || [])
-          .filter(s => s.avg_response_min != null)
-          .sort((a, b) => a.avg_response_min - b.avg_response_min)
-      );
 
       setLeadLoading(false);
     };
@@ -608,39 +600,9 @@ export default function RevOpsPage({ userId }) {
           </div>
         </div>
 
-        {salesmanScores.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
-              Response Time by Salesman
-            </span>
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {salesmanScores.map(s => {
-                const mins = s.avg_response_min;
-                const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
-                const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
-                // bar width relative to the slowest responder in the set, not a magic constant
-                const maxMins = Math.max(...salesmanScores.map(x => x.avg_response_min || 0), 1);
-                const pct = Math.min(100, Math.round((mins / maxMins) * 100));
-                return (
-                  <div key={s.salesman_id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: '#374151', width: 90, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name || '—'}
-                    </span>
-                    <div style={{ flex: 1, height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: color }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36, textAlign: 'right' }}>
-                      {label}
-                    </span>
-                    <span style={{ fontSize: 11, color: '#9ca3af', minWidth: 60, textAlign: 'right' }}>
-                      {s.leads_30d} leads
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <p style={{ marginTop: 16, marginBottom: 0, fontSize: 12, color: "#6b7280" }}>
+          Each salesman's reply time is on <Link to="/dashboard/team" style={{ color: "#111827", fontWeight: 600 }}>Team</Link>.
+        </p>
       </SectionCard>
 
 

@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight as PL } from '../theme/tokens';
 import '../theme/premiumLight.css';
+import { REJECTION_CATEGORIES, rejectionLabel } from '../utils/loanRejection';
 
 // hp_docs holds the buyer's loan documents (IC, payslips) — never to disk.
 const redactHp = (rows) => (rows || []).map(({ hp_docs, ...rest }) => rest);
@@ -17,15 +18,7 @@ const HP_STATUS = {
   disbursed: { label: 'Disbursed', color: PL.text,       bg: PL.raised, border: 'transparent' },
 };
 
-const REJECTION_CATEGORIES = [
-  { value: 'ccris_issue',          label: 'CCRIS / Blacklist' },
-  { value: 'income_insufficient',  label: 'Income Insufficient' },
-  { value: 'dsr_exceeded',         label: 'DSR Exceeded' },
-  { value: 'age_limit',            label: 'Age Limit' },
-  { value: 'employment_type',      label: 'Employment Type' },
-  { value: 'vehicle_age',          label: 'Vehicle Too Old' },
-  { value: 'other',                label: 'Other' },
-];
+
 
 function fmtRM(n) {
   return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -57,7 +50,7 @@ function BankScorecard({ rows }) {
         b.rejected++;
         const d = daysBetween(r.submitted_at, r.rejected_at);
         if (d !== null) b.decisionDays.push(d);
-        const cat = r.rejection_reason_category || 'other';
+        const cat = rejectionLabel(r.rejection_reason_category) || 'Other';
         b.rejectionReasons[cat] = (b.rejectionReasons[cat] || 0) + 1;
       }
     }
@@ -83,7 +76,7 @@ function BankScorecard({ rows }) {
               const approvalRate = b.total > 0 ? Math.round((b.approved / b.total) * 100) : 0;
               const avgDays = b.decisionDays.length > 0 ? Math.round(b.decisionDays.reduce((s, d) => s + d, 0) / b.decisionDays.length) : null;
               const topRejection = Object.entries(b.rejectionReasons).sort((a, z) => z[1] - a[1])[0];
-              const topRejLabel = topRejection ? REJECTION_CATEGORIES.find(c => c.value === topRejection[0])?.label ?? topRejection[0] : '—';
+              const topRejLabel = topRejection ? topRejection[0] : '—';
               const rateColor = approvalRate >= 70 ? PL.up : approvalRate >= 40 ? PL.text : PL.accentText;
               return (
                 <tr key={b.name} style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
@@ -293,7 +286,7 @@ export default function HPBoard({ dealerId }) {
             const s = HP_STATUS[row.status] || HP_STATUS.pending;
             const recentlyUpdated = row.status_changed_at && new Date(row.status_changed_at) >= recentCutoff;
             const rejLabel = row.rejection_reason_category
-              ? REJECTION_CATEGORIES.find(c => c.value === row.rejection_reason_category)?.label ?? row.rejection_reason_category
+              ? rejectionLabel(row.rejection_reason_category)
               : null;
             const figure = (label, value, strong) => (
               <div style={{ minWidth: 0 }}>
@@ -320,7 +313,7 @@ export default function HPBoard({ dealerId }) {
                 {/* The numbers */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '12px 0', padding: '10px 0', borderTop: '1px solid rgba(17,24,39,0.06)', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                   {figure('Amount', fmtRM(row.loan_amount), true)}
-                  {figure('Tenure', `${row.tenure_months}m`)}
+                  {figure('Tenure', row.tenure_months ? `${row.tenure_months} months` : '—')}
                   {figure('Monthly', row.monthly_install ? fmtRM(row.monthly_install) : '—')}
                 </div>
 
