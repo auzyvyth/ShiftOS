@@ -262,6 +262,11 @@ Project ID: lemdkdizdlcirhbzqlos
   + search + the ONE red button (New document); rows not a 7-column table; a draft's Issue is the dark key;
   the three pop-ups are portalled with a scroll lock. Still uncached (IC + address). The pop-ups' insides
   are the old light look. Sold is now done.
+  **The Overview tab IS the design (owner, 2026-11-16: "check the Overview tab, that's how it is now").** Every dealer card = white,
+  `PL.radius.card` (20px) corners, `PL.shadow`, NO border (OwnerMoney's `card`). It is set in ONE place for the shared styles:
+  `T` in `src/pages/dashboard/shared.js` and `.dash-card` / `.stat-card` / `.settings-section` / `.glass-modal` in DashboardPage's CSS
+  string; a new inline card copies those, never `border: 1px solid #e5e7eb`. Dividers inside a card = `rgba(17,24,39,0.06)`.
+  Numbers are bold sans with tabular figures (RevOpsPage had Bebas Neue, which renders as a serif on the light dashboard).
   **No tints, anywhere on the dealer dashboard (owner, 2026-11-16: "remove all tint colours").** A tinted fill with a matching
   border (pink / amber / blue / green / purple boxes and pills, tinted icon wells, red-tint active nav + red left bar, gradient avatars
   and gradient number text, colour glows) is gone from `DashboardPage.jsx`, `dashboard/AnalyticsTab.jsx`, `DocumentsTab.jsx`,

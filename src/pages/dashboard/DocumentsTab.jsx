@@ -742,7 +742,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     <>
                       <div onClick={() => { setListingDropOpen(false); setListingSearch(''); }} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, zIndex: 50, maxHeight: 280, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}>
-                        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+                        <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(17,24,39,0.06)', flexShrink: 0 }}>
                           <input
                             value={listingSearch} onChange={e => setListingSearch(e.target.value)}
                             placeholder="Search by car or plate…"
@@ -831,7 +831,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               )}
 
               {/* Sales Advisor */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
@@ -841,7 +841,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
               </div>
 
               {/* Vehicle Details */}
-              <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ paddingTop: 4, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Vehicle Details</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Engine No.</label><input value={genForm.engine_number} onChange={e => setGenForm(p => ({ ...p, engine_number: e.target.value }))} placeholder="e.g. 2AR-FE 123456" className={iCls} /></div>
@@ -861,7 +861,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
               {/* Handover Checklist item editor */}
               {genForm.doc_type === 'Handover Checklist' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Handover Items</p>
                   <div className="space-y-1.5">
                     {genForm.handover_items.map((item, idx) => (
@@ -887,7 +887,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
               {/* Compliance declarations — Sales Agreement only */}
               {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                   <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Compliance Declarations</p>
                   <div className="space-y-2">
                     {[
@@ -895,7 +895,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                       ['puspakom_b7_done', 'Puspakom B7 inspection completed (engine, valid 30 days)'],
                       ['encumbrance_declared', 'Vehicle free from hire purchase / encumbrance'],
                     ].map(([field, label]) => (
-                      <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '7px 10px', background: genForm[field] ? 'rgba(22,163,74,0.06)' : '#f9fafb', borderRadius: 7, border: `1px solid ${genForm[field] ? 'rgba(22,163,74,0.2)' : '#e5e7eb'}` }}>
+                      <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '7px 10px', background: genForm[field] ? 'rgba(22,163,74,0.06)' : '#f9fafb', borderRadius: 7, border: 'none' }}>
                         <input type="checkbox" checked={genForm[field]} onChange={e => setGenForm(p => ({ ...p, [field]: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#16a34a', flexShrink: 0 }} />
                         <span style={{ fontSize: 12, color: '#374151', fontFamily: "system-ui, sans-serif" }}>{label}</span>
                       </label>
@@ -906,7 +906,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
               {/* Financing — Sales Agreement only */}
               {genForm.doc_type === 'Sales Agreement' && (
-                <div style={{ paddingTop: 4, borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ paddingTop: 4, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: genForm.include_financing ? 12 : 0 }}>
                     <input type="checkbox" checked={genForm.include_financing} onChange={e => setGenForm(p => ({ ...p, include_financing: e.target.checked }))} style={{ width: 15, height: 15, accentColor: '#dc2626' }} />
                     <span style={{ fontSize: 13, color: '#374151', fontFamily: "system-ui, sans-serif" }}>Include Financing Details</span>

@@ -494,7 +494,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "14px 20px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid rgba(17,24,39,0.06)",
             flexWrap: "wrap",
             gap: 8,
           }}

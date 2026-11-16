@@ -81,7 +81,7 @@ const SOLD_TABS = [
 const SOLD_IDS = new Set(SOLD_TABS.map(t => t.id));
 function SubTabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
+    <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -267,19 +267,20 @@ const STYLES = `
   .nav-active { background: #E4E7EC !important; color: #111827 !important; font-weight: 600; }
 
   /* ── Cards ── */
-  .dash-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
-  .stat-card { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,0.06); transition: box-shadow 0.18s, transform 0.18s; }
-  .stat-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.10); transform: translateY(-1px); }
+  /* premiumLight (owner, 2026-11-16: "check the Overview tab, that's how it is now"): white, floating on a soft shadow, no border. */
+  .dash-card { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; }
+  .stat-card { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; transition: box-shadow 0.18s; }
+  .stat-card:hover { box-shadow: ${premiumLight.shadowHover}; }
 
   /* ── Table rows ── */
-  .data-row { border-left: 2px solid transparent; transition: background 0.12s, border-left-color 0.12s; }
-  .data-row:hover { background: #F7F8FA !important; border-left-color: #DC2626; }
+  .data-row { transition: background 0.12s; }
+  .data-row:hover { background: ${premiumLight.raised} !important; }
 
   /* ── Modals ── */
-  .glass-modal, .modal-top { background: #FFFFFF; border: 1px solid #EAECF0; box-shadow: 0 20px 60px rgba(15,23,42,0.15); }
+  .glass-modal, .modal-top { background: #FFFFFF; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: 0 20px 60px rgba(15,23,42,0.22); }
 
   /* ── Misc ── */
-  .settings-section { background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 12px; overflow: hidden; }
+  .settings-section { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; overflow: hidden; }
   .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:24px; background:linear-gradient(to left,rgba(247,248,250,0.9),transparent); pointer-events:none; }
 
@@ -1939,7 +1940,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         </div>
 
         {/* ── Hero Video ── */}
-        <div style={{ paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: heroVideoEnabled ? 12 : 0 }}>
             <div>
               <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Frontpage Video Section</p>
@@ -2467,7 +2468,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
 
   return (
     <>
-    <div style={{ background: '#f5f6f8', borderRadius: 12, border: '1px solid #e5e7eb' }}>
+    <div style={{ background: '#f5f6f8', borderRadius: 20, border: 'none' }}>
       {/* ── MOBILE ── */}
       <div className="md:hidden">
         {!settingsNav ? (
@@ -2476,7 +2477,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             {settingsNavGroups.map(({ group, items }) => (
               <div key={group} style={{ marginTop: 20 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 6, paddingLeft: 4 }}>{group}</p>
-                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ background: '#fff', borderRadius: 16, boxShadow: premiumLight.shadow, overflow: 'hidden' }}>
                   {items.map(({ key, icon: Icon, label, desc }, idx) => (
                     <button
                       key={key}
@@ -2484,7 +2485,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 13, width: '100%',
                         padding: '11px 14px', background: 'none', border: 'none',
-                        borderTop: idx > 0 ? '1px solid #f3f4f6' : 'none',
+                        borderTop: idx > 0 ? '1px solid rgba(17,24,39,0.06)' : 'none',
                         cursor: 'pointer', textAlign: 'left',
                       }}
                     >
@@ -2505,7 +2506,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         ) : (
           /* Section panel with back button */
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderBottom: '1px solid rgba(17,24,39,0.06)', background: '#fff' }}>
               <button
                 onClick={() => setSettingsNav(null)}
                 style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 13, fontWeight: 500, padding: '4px 0' }}
@@ -2527,7 +2528,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
 
       {/* ── DESKTOP ── */}
       <div className="hidden md:flex" style={{ minHeight: 560 }}>
-        <nav style={{ width: 196, flexShrink: 0, borderRight: '1px solid #e5e7eb', padding: '20px 10px', background: '#fff', borderRadius: '12px 0 0 12px' }}>
+        <nav style={{ width: 196, flexShrink: 0, borderRight: '1px solid rgba(17,24,39,0.06)', padding: '20px 10px', background: '#fff', borderRadius: '20px 0 0 20px' }}>
           {settingsNavGroups.map(({ group, items }, gi) => (
             <div key={group} style={{ marginBottom: 24, paddingTop: gi > 0 ? 0 : 0 }}>
               <p style={{ fontSize: 10, letterSpacing: '0.1em', color: '#b0b7c3', fontWeight: 700, textTransform: 'uppercase', padding: '0 10px', marginBottom: 3 }}>{group}</p>
@@ -3465,10 +3466,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   return (
     <div className="space-y-4">
       <div
-        className="rounded-xl px-4 py-3 flex items-center gap-3"
-        style={{
-          background: '#f5f6f8',
-        }}
+        className="px-4 py-3 flex items-center gap-3"
+        style={{ background: '#fff', borderRadius: 20, boxShadow: premiumLight.shadow }}
       >
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -3519,7 +3518,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           </button>
         </div>
         {/* Role tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(17,24,39,0.06)', overflowX: 'auto' }}>
           {ROLE_TABS.map(({ role, label, color }) => {
             const count = salespeople.filter(s => s.role === role).length;
             return (
@@ -3617,7 +3616,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               return (
                 <>
                   {leaderboard && (
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                         <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Leaderboard</p>
                         <div style={{ display: 'flex', gap: 18 }}>
@@ -3889,7 +3888,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                                     key={c.id}
                                     onClick={() => handleAssignCar(c.id, s.id, s.full_name)}
                                     disabled={assignWorking === c.id}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: 12, cursor: 'pointer', textAlign: 'left' }}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid rgba(17,24,39,0.06)', color: '#374151', fontSize: 12, cursor: 'pointer', textAlign: 'left' }}
                                   >
                                     <Car style={{ width: 12, height: 12, color: '#9ca3af', flexShrink: 0 }} />
                                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -4184,7 +4183,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
         return (
           <div className="rounded-xl overflow-hidden" style={T.cardDark}>
             {/* Header */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(17,24,39,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Message Team</h2>
                 <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Sends to each member's dashboard notification</p>
@@ -4206,9 +4205,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       onClick={() => setMsgTarget(value)}
                       style={{
                         padding: '6px 14px', borderRadius: 20,
-                        border: `1px solid ${msgTarget === value ? color : '#e5e7eb'}`,
-                        background: msgTarget === value ? '#eceef1' : '#f9fafb',
-                        color: msgTarget === value ? color : '#6b7280',
+                        border: 'none',
+                        background: msgTarget === value ? '#111827' : '#f5f6f8',
+                        color: msgTarget === value ? '#fff' : '#4b5563',
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         fontFamily: "system-ui,sans-serif",
                         display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
@@ -4218,8 +4217,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       {label}
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
-                        background: msgTarget === value ? '#eceef1' : '#f3f4f6',
-                        color: msgTarget === value ? color : '#4b5563',
+                        background: msgTarget === value ? 'rgba(255,255,255,0.18)' : '#fff',
+                        color: msgTarget === value ? '#fff' : '#4b5563',
                       }}>{cnt}</span>
                     </button>
                   );
@@ -4360,8 +4359,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                           style={{
                             padding: '8px 14px',
                             borderRadius: 8,
-                            border: `1px solid ${newRole === role ? color : '#e5e7eb'}`,
-                            background: newRole === role ? '#eceef1' : '#f9fafb',
+                            border: 'none',
+                            background: newRole === role ? '#e4e7ec' : '#f5f6f8',
                             cursor: 'pointer',
                             fontFamily: "system-ui,sans-serif",
                             transition: 'all 0.15s',
@@ -4855,7 +4854,7 @@ function ListingDetailDrawer({
           className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "system-ui,sans-serif" }}
         >
           <div style={{ width: '100%', maxWidth: 860, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(17,24,39,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
                 <p style={{ color: '#111827', fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Financing &amp; Cost Calculator</p>
                 <p style={{ color: '#6b7280', fontSize: 12, margin: 0 }}>{listing.brand} {listing.model}{listing.variant ? ` ${listing.variant}` : ''}</p>
@@ -5936,7 +5935,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   );
                 })}
                 {hasMore && (
-                  <div style={{ padding: '14px', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ padding: '14px', textAlign: 'center', borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                     <button
                       onClick={() => setVisibleCount(c => c + 30)}
                       style={{ ...INV_GHOST_BTN }}
@@ -6029,7 +6028,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               )}
 
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                 <div style={{ width: 72, height: 52, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {thumb ? (
                     <img src={cdnImg(thumb, 160, 70)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (!e.target.dataset.fb) { e.target.dataset.fb = '1'; e.target.src = thumb; } else { e.target.style.display = 'none'; } }} />
@@ -6058,7 +6057,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               </div>
 
               {/* Financial stats strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${[1, can('view_cost') ? 1 : 0, can('view_gross') ? 1 : 0].reduce((a, b) => a + b)}, 1fr)`, gap: 1, background: '#f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${[1, can('view_cost') ? 1 : 0, can('view_gross') ? 1 : 0].reduce((a, b) => a + b)}, 1fr)`, gap: 1, background: '#f3f4f6', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                 {[
                   { label: 'Asking',   val: (Number(u.asking_price) || Number(u.car_listings?.selling_price)) ? `RM ${(Number(u.asking_price) || Number(u.car_listings?.selling_price)).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
@@ -6076,7 +6075,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               {/* LEFT column: Car details spec grid — all fields from car_listings */}
               <div style={{ borderRight: isMobile ? 'none' : '1px solid #f3f4f6' }}>
               {SPEC_ROWS.length > 0 && (
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 10px' }}>Car Details</p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
                     {SPEC_ROWS.map((s, i) => (
@@ -6094,7 +6093,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div>
               {/* Certifications & status — clickable to update inline */}
               {u.status === 'in_stock' && (
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={plPill(ps.color)}>B7 · {ps.label.replace('B7 ', '')}</button>
@@ -6124,7 +6123,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               </div>{/* /body grid */}
 
               {/* T2-3: editable condition appraisal (full width) */}
-              <div style={{ padding: '14px 16px', borderTop: '1px solid #f3f4f6' }}>
+              <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                 <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
                 <div style={{ marginTop: 12 }}>
                   <button onClick={() => handleSaveAppraisal(u)} disabled={apprSaving}
@@ -6384,7 +6383,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                     );
                   })()}
                   {/* Front end */}
-                  <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Front End (Vehicle)</p>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                       <span style={{ color: '#374151' }}>{pnlData.isSold ? 'Sale price' : 'Asking price'}</span>
@@ -6427,7 +6426,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   </div>
                   {/* Back end */}
                   {(pnlData.addonRevenue > 0 || pnlData.addonCost > 0) && (
-                    <div style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Back End (F&I / Add-ons)</p>
                       {pnlData.addonRevenue > 0 && (
                         <>
@@ -6652,7 +6651,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e5e7eb' }}>
                     <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                           {['Brand','Model','Year','Plate','Buy Price','Recon','Asking'].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
@@ -6660,7 +6659,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       </thead>
                       <tbody>
                         {csvRows.slice(0, 20).map((r, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={i} style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                             {[r.brand, r.model, r.year, r.plate_number,
                               r.purchase_price ? `RM ${r.purchase_price.toLocaleString()}` : '—',
                               r.recon_cost ? `RM ${r.recon_cost.toLocaleString()}` : '—',
@@ -6764,7 +6763,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       {stockPublishListing && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 16px', overflowY: 'auto' }}>
           <div style={{ width: '100%', maxWidth: 920, background: '#fff', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.35)', minHeight: 'min-content', marginBottom: 20 }}>
-            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid rgba(17,24,39,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
               <button onClick={() => setStockPublishListing(null)} style={{ padding: '6px 10px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', fontSize: 13, cursor: 'pointer' }}>← Back</button>
               <div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>Complete listing — {stockPublishListing.brand} {stockPublishListing.model} {stockPublishListing.year}</p>
@@ -8116,7 +8115,7 @@ export default function DashboardPage() {
         className={`fixed top-0 left-0 h-dvh overflow-hidden z-30 flex flex-col w-full lg:w-60 transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ background: '#FFFFFF', borderRight: '1px solid #EAECF0' }}
       >
-        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #EAECF0' }}>
+        <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
           <div className="flex-1 min-w-0">
             {/* Ink variant, not the supplied white one: this sidebar is a LIGHT
                 surface (#EAECF0 borders, dark ink), so the white lockup would be
@@ -8248,7 +8247,7 @@ export default function DashboardPage() {
         </nav>
 
         {/* ── Sidebar bottom ── */}
-        <div className="shrink-0 p-3 space-y-1" style={{ borderTop: '1px solid #EAECF0' }}>
+        <div className="shrink-0 p-3 space-y-1" style={{ borderTop: '1px solid rgba(17,24,39,0.06)' }}>
           {/* Profile row */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
             <Avatar size="lg" profile={profile} />
@@ -8329,7 +8328,7 @@ export default function DashboardPage() {
         {/* Mobile topbar */}
         <div
           className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5"
-          style={{ background: '#FFFFFF', borderBottom: '1px solid #EAECF0', boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
+          style={{ background: '#FFFFFF', borderBottom: '1px solid rgba(17,24,39,0.06)', boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
         >
           <button
             onClick={() => startTransition(() => setSidebarOpen(true))}
@@ -8377,14 +8376,14 @@ export default function DashboardPage() {
               <>
                 <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                 <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 50, width: 320, maxHeight: 420, overflowY: 'auto', background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,23,42,0.12)', fontFamily: "system-ui, sans-serif" }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #EAECF0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: color.ink }}>Notifications</span>
                     {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: color.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
                   </div>
                   {notifications.length === 0 ? (
                     <p style={{ fontSize: 13, color: color.textMuted, padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
                   ) : notifications.slice(0, 10).map(n => (
-                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #EAECF0', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#F5F6F8', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#F5F6F8'}>
+                    <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); setNotifOpen(false); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#F5F6F8', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'} onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : '#F5F6F8'}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                         {!n.is_read && <div style={{ width: 6, height: 6, background: '#DC2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -9295,14 +9294,14 @@ export default function DashboardPage() {
             fontFamily: "system-ui, sans-serif",
             zIndex: 9999,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>Notifications</span>
               {notifCount > 0 && <button onClick={markAllRead} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Mark all read</button>}
             </div>
             {notifications.length === 0 ? (
               <p style={{ fontSize: 13, color: '#4b5563', padding: '20px 16px', textAlign: 'center' }}>No notifications</p>
             ) : notifications.slice(0, 10).map(n => (
-              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#f9fafb' }}>
+              <div key={n.id} onClick={() => { if (n.link_to) { handleTabChange(n.link_to); closeNotif(); } markNotifRead(n); }} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)', cursor: n.link_to ? 'pointer' : 'default', background: n.is_read ? 'transparent' : '#f9fafb' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   {!n.is_read && <div style={{ width: 6, height: 6, background: '#dc2626', borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -9490,7 +9489,7 @@ export default function DashboardPage() {
               </button>
             </div>
             {/* Tabs: public listing details (CarForm) vs cost/procurement (stock unit) */}
-            <div className="flex gap-1 px-5 flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb' }}>
+            <div className="flex gap-1 px-5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
               {[
                 { key: 'listing', label: 'Listing details' },
                 { key: 'cost',    label: 'Cost & procurement' },

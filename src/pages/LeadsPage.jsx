@@ -304,7 +304,7 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
 
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5"
-        style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+        style={{ borderBottom: '1px solid rgba(17,24,39,0.06)', background: '#fff' }}>
         <div>
           <h1 className="text-sm font-bold text-gray-900">Pipeline</h1>
           <p className="text-xs text-gray-400">{filtered.length}{filtered.length !== leads.length ? `/${leads.length}` : ''} lead{leads.length !== 1 ? 's' : ''}</p>
@@ -319,7 +319,7 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
       </div>
 
       {/* ── Filter + Stage bar ── */}
-      <div className="flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+      <div className="flex-shrink-0" style={{ borderBottom: '1px solid rgba(17,24,39,0.06)', background: '#fff' }}>
         {/* Search + dropdowns */}
         <div className="lp-filter-bar flex items-center gap-2 px-3 pt-2 pb-1.5 overflow-x-auto">
           <div className="relative flex-1" style={{ minWidth: 120 }}>

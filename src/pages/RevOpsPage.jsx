@@ -9,6 +9,7 @@ import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
 import { useCarMoney } from "../hooks/useCarMoney";
 import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
+import { premiumLight as PL } from "../theme/tokens";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtRM = (n) =>
@@ -45,7 +46,8 @@ function MetricCard({
       className="relative flex flex-col gap-1.5 p-4 rounded-lg stat-card"
       style={{
         background: "#FFFFFF",
-        border: "1px solid #EAECF0",
+        border: "none",
+        borderRadius: PL.radius.card, boxShadow: PL.shadow,
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -74,7 +76,7 @@ function MetricCard({
       ) : (
         <span
           style={{
-            fontFamily: "'Bebas Neue',cursive",
+            fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
             fontSize: 28,
             letterSpacing: "0.04em",
             color: "#111827",
@@ -99,13 +101,14 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
       className="rounded-lg overflow-hidden"
       style={{
         background: "#FFFFFF",
-        border: "1px solid #EAECF0",
+        border: "none",
+        borderRadius: PL.radius.card, boxShadow: PL.shadow,
       }}
     >
       {title && (
         <div
           className="px-5 py-3.5 flex items-center gap-2"
-          style={{ borderBottom: "1px solid #EAECF0" }}
+          style={{ borderBottom: "1px solid rgba(17,24,39,0.06)" }}
         >
           <span className="text-sm font-semibold" style={{ color: "#111827" }}>{title}</span>
         </div>
@@ -131,10 +134,10 @@ function SourcePill({ source, count }) {
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
       style={{
-        background: "rgba(59,130,246,0.1)",
-        border: "1px solid rgba(59,130,246,0.2)",
+        background: "#f5f6f8",
+        border: "none",
         fontSize: 11,
-        color: "#93c5fd",
+        color: "#4b5563",
         fontWeight: 600,
       }}
     >
@@ -365,7 +368,7 @@ export default function RevOpsPage({ userId }) {
       <div>
         <h1
           style={{
-            fontFamily: "'Bebas Neue',cursive",
+            fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
             fontSize: 32,
             letterSpacing: "0.06em",
             color: "#111827",
@@ -434,8 +437,8 @@ export default function RevOpsPage({ userId }) {
               className="grid grid-cols-3 gap-3 mt-3"
               style={{
                 background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 12,
+                border: "none",
+                borderRadius: PL.radius.card, boxShadow: PL.shadow,
                 padding: "12px 16px",
               }}
             >
@@ -443,7 +446,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Sales
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
                   {fmtRM(vehicleRev)}
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -454,7 +457,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Add-ons & F&I
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
                   {fmtRM(addonRev)}
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -465,7 +468,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Margin
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
                   {marginPct}%
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -499,7 +502,7 @@ export default function RevOpsPage({ userId }) {
             </span>
             <span
               style={{
-                fontFamily: "'Bebas Neue',cursive",
+                fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                 fontSize: 26,
                 color: "#111827",
               }}
@@ -523,7 +526,7 @@ export default function RevOpsPage({ userId }) {
             </span>
             <span
               style={{
-                fontFamily: "'Bebas Neue',cursive",
+                fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                 fontSize: 26,
                 color: "#111827",
               }}
@@ -578,7 +581,7 @@ export default function RevOpsPage({ userId }) {
                   <ResponseTimeDot minutes={leadData.avgResponseMin} />
                   <span
                     style={{
-                      fontFamily: "'Bebas Neue',cursive",
+                      fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                       fontSize: 26,
                       color: "#111827",
                     }}
@@ -709,8 +712,8 @@ export default function RevOpsPage({ userId }) {
           <div
             className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg"
             style={{
-              background: "#F7F8FA",
-              border: "1px solid #EAECF0",
+              background: "#f5f6f8",
+              border: "none",
             }}
           >
             <span
@@ -730,10 +733,10 @@ export default function RevOpsPage({ userId }) {
                 key={name}
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
                 style={{
-                  background: "rgba(167,139,250,0.1)",
-                  border: "1px solid rgba(167,139,250,0.2)",
+                  background: "#f5f6f8",
+                  border: "none",
                   fontSize: 11,
-                  color: "#c4b5fd",
+                  color: "#4b5563",
                   fontWeight: 600,
                 }}
               >

@@ -820,7 +820,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           />
         </button>
         {chatOpen && (
-          <div style={{ borderTop: "1px solid #e5e7eb" }}>
+          <div style={{ borderTop: "1px solid rgba(17,24,39,0.06)" }}>
             <div className="h-72 overflow-y-auto p-4 space-y-3">
               {messages.map((m, i) => (
                 <div
@@ -880,7 +880,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 ))}
               </div>
             )}
-            <div className="p-3 flex gap-2 items-end" style={{ borderTop: "1px solid #e5e7eb" }}>
+            <div className="p-3 flex gap-2 items-end" style={{ borderTop: "1px solid rgba(17,24,39,0.06)" }}>
               <textarea
                 rows={1}
                 value={input}

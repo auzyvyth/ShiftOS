@@ -1862,7 +1862,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                           <span style={{ fontSize: 11, color: '#9ca3af' }}>Puspakom</span>
                           <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>RM 150</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(17,24,39,0.06)' }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>On-Road Total</span>
                           <span style={{ fontSize: 13, fontWeight: 800, color: '#dc2626' }}>RM {dealOnRoad.toLocaleString()}</span>
                         </div>
@@ -1998,7 +1998,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               )}
 
               {/* Log form */}
-              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+              <div style={{ borderTop: '1px solid rgba(17,24,39,0.06)', paddingTop: 12 }}>
                 <p style={{ ...w.label, marginBottom: 8 }}>Log Activity</p>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                   <select value={logType} onChange={e => setLogType(e.target.value)} style={{ ...w.inp, appearance: 'none', flex: 1 }} className="ld-inp">
