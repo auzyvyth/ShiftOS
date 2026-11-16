@@ -7,6 +7,7 @@ import { supabase } from '../../supabaseClient';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { Target, ChevronRight } from 'lucide-react';
+import { premiumLight as PL } from '../../theme/tokens';
 
 const fmtRM = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
 const fmtRMShort = (n) => {
@@ -48,7 +49,7 @@ export function AuditTrail({ dealerId, initialFilter = 'all' }) {
     recon_jobs: 'Recon',
     profiles: 'Account',
   };
-  const actionColor = { create: '#16a34a', update: '#3b82f6', delete: '#dc2626' };
+  const actionColor = { create: '#111827', update: '#9ca3af', delete: PL.accentText };
 
   return (
     <div>
@@ -69,8 +70,8 @@ export function AuditTrail({ dealerId, initialFilter = 'all' }) {
               padding: '6px 14px',
               borderRadius: 18,
               cursor: 'pointer',
-              background: filter === k ? '#111827' : '#fff',
-              border: `1px solid ${filter === k ? '#111827' : '#e5e7eb'}`,
+              background: filter === k ? '#111827' : PL.raised,
+              border: 'none',
               color: filter === k ? '#fff' : '#374151',
               fontWeight: filter === k ? 600 : 500,
             }}
@@ -84,7 +85,7 @@ export function AuditTrail({ dealerId, initialFilter = 'all' }) {
       ) : logs.length === 0 ? (
         <p style={{ fontSize: 13, color: '#9ca3af', padding: '20px 0' }}>No activity for this filter.</p>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, overflowX: 'auto', overflowY: 'hidden' }}>
           {logs.map((log, i) => (
             <div key={log.id} style={{
               padding: '13px 18px',
@@ -92,11 +93,11 @@ export function AuditTrail({ dealerId, initialFilter = 'all' }) {
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              background: log.is_anomaly ? '#fffbeb' : '#fff',
+              background: log.is_anomaly ? PL.raised : '#fff',
             }}>
               <div style={{
                 width: 8, height: 8, borderRadius: 4,
-                background: log.is_anomaly ? '#d97706' : actionColor[log.action] || '#9ca3af',
+                background: log.is_anomaly ? PL.accentText : actionColor[log.action] || '#9ca3af',
                 flexShrink: 0,
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -105,7 +106,7 @@ export function AuditTrail({ dealerId, initialFilter = 'all' }) {
                 </p>
                 <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>
                   {log.actor_name || 'System'} · {log.actor_role || '—'} · {fmtAgo(log.created_at)}
-                  {log.is_anomaly && <span style={{ color: '#d97706', fontWeight: 600 }}> · {log.anomaly_reason}</span>}
+                  {log.is_anomaly && <span style={{ color: PL.accentText, fontWeight: 600 }}> · {log.anomaly_reason}</span>}
                 </p>
               </div>
             </div>
@@ -156,7 +157,8 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
     if (!target || target <= 0) return null;
     const pct = Math.min(100, (actual / target) * 100);
     const onPace = pct >= pace * 100 - 5;
-    return { pct, color: onPace ? '#16a34a' : pct >= pace * 100 - 15 ? '#d97706' : '#dc2626', onPace };
+    const near = pct >= pace * 100 - 15;
+    return { pct, onPace, color: onPace ? '#111827' : near ? '#9ca3af' : PL.accentText, text: onPace ? PL.up : near ? PL.textSec : PL.accentText };
   };
 
   const rUnits = ring(mtdUnits, goal?.target_units);
@@ -165,7 +167,7 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
 
   if (!goal && !editing) {
     return (
-      <div style={{ background: '#fff', border: '1px dashed #d1d5db', borderRadius: 12, padding: '24px 26px', textAlign: 'center' }}>
+      <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '24px 26px', textAlign: 'center' }}>
         <Target style={{ width: 28, height: 28, color: '#9ca3af', margin: '0 auto 8px' }} />
         <p style={{ fontSize: 13, color: '#374151', margin: 0, fontWeight: 500 }}>No monthly target set</p>
         <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 14px' }}>Set goals to track pace in real-time.</p>
@@ -178,7 +180,7 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
 
   if (editing) {
     return (
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '22px 26px' }}>
+      <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '22px 26px' }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 14 }}>Set Monthly Targets</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
           {[
@@ -194,14 +196,14 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
                   type="number"
                   value={draft[k]}
                   onChange={e => setDraft(p => ({ ...p, [k]: e.target.value }))}
-                  style={{ width: '100%', padding: `8px 12px 8px ${prefix ? 40 : 12}px`, border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, color: '#111827', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: `8px 12px 8px ${prefix ? 40 : 12}px`, border: 'none', background: PL.raised, borderRadius: 10, fontSize: 13, color: '#111827', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '9px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '9px', background: PL.raised, border: 'none', borderRadius: 10, color: '#4b5563', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSave} style={{ flex: 1, padding: '9px', background: '#111827', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save Targets</button>
         </div>
       </div>
@@ -209,7 +211,7 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '22px 26px' }}>
+    <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '22px 26px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>Monthly Pace · Day {daysElapsed} of {totalDays}</p>
         <button onClick={() => setEditing(true)} style={{ fontSize: 12, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
@@ -231,7 +233,7 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
                 <div style={{ flex: 1, height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ width: `${g.ring.pct}%`, height: '100%', background: g.ring.color, borderRadius: 3, transition: 'width 0.4s' }} />
                 </div>
-                <span style={{ fontSize: 11, color: g.ring.color, fontWeight: 600 }}>{Math.round(g.ring.pct)}%</span>
+                <span style={{ fontSize: 11, color: g.ring.text, fontWeight: 600 }}>{Math.round(g.ring.pct)}%</span>
               </div>
             )}
           </div>
@@ -370,13 +372,13 @@ export function RevenueBreakdown({ dealerId }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 6 }}>
           {PERIODS.map((p) => (
-            <button key={p.key} onClick={() => setPeriod(p.key)} style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid ' + (period === p.key ? '#111827' : '#e5e7eb'), background: period === p.key ? '#111827' : '#fff', color: period === p.key ? '#fff' : '#6b7280' }}>{p.label}</button>
+            <button key={p.key} onClick={() => setPeriod(p.key)} style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', border: 'none', background: period === p.key ? '#111827' : PL.raised, color: period === p.key ? '#fff' : '#6b7280' }}>{p.label}</button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 18, fontSize: 12, color: '#6b7280' }}>
           <span>{filtered.length} sold</span>
           <span>Revenue <b style={{ color: '#111827' }}>{fmtRM(totalRev)}</b></span>
-          <span>Gross <b style={{ color: totalGross >= 0 ? '#16a34a' : '#dc2626' }}>{fmtRM(totalGross)}</b></span>
+          <span>Gross <b style={{ color: totalGross >= 0 ? PL.up : PL.accentText }}>{fmtRM(totalGross)}</b></span>
         </div>
       </div>
 
@@ -384,31 +386,31 @@ export function RevenueBreakdown({ dealerId }) {
       {filtered.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {topModel && (
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '12px 14px' }}>
               <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Top model</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{topModel.key}</p>
               <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{topModel.units} sold · {fmtRM(topModel.gross)} gross</p>
             </div>
           )}
           {topSalesman && (
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '12px 14px' }}>
               <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Top salesperson</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{topSalesman.name}</p>
               <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{topSalesman.units} sold · {fmtRM(topSalesman.gross)} gross</p>
             </div>
           )}
           {bestSale && (
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '12px 14px' }}>
               <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Best single sale</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{bestSale.brand} {bestSale.model}</p>
-              <p style={{ fontSize: 12, color: '#16a34a', margin: '2px 0 0' }}>{fmtRM(bestSale.gross)} gross</p>
+              <p style={{ fontSize: 12, color: PL.up, margin: '2px 0 0' }}>{fmtRM(bestSale.gross)} gross</p>
             </div>
           )}
         </div>
       )}
 
       {/* Contributors table */}
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, overflowX: 'auto', overflowY: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>
@@ -442,7 +444,7 @@ export function RevenueBreakdown({ dealerId }) {
                       <td style={td}>{r.days != null ? `${r.days}d` : '—'}</td>
                       <td style={td}>{r.leadsCount}</td>
                       <td style={td}>{r.adSpend ? fmtRMShort(r.adSpend) : '—'}</td>
-                      <td style={{ ...td, fontWeight: 700, color: r.gross >= 0 ? '#16a34a' : '#dc2626' }}>{r.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(r.gross))}</td>
+                      <td style={{ ...td, fontWeight: 700, color: r.gross >= 0 ? PL.up : PL.accentText }}>{r.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(r.gross))}</td>
                     </tr>
                     {open && (
                       <tr style={{ background: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
@@ -461,7 +463,7 @@ export function RevenueBreakdown({ dealerId }) {
                             ].filter(([, v]) => v).map(([label, val, neg]) => (
                               <div key={label}>
                                 <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>{label}</p>
-                                <p style={{ fontSize: 13, fontWeight: 600, color: neg ? '#dc2626' : '#111827', margin: '2px 0 0' }}>{neg ? '− ' : ''}{fmtRM(Math.abs(Number(val)))}</p>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: neg ? PL.accentText : '#111827', margin: '2px 0 0' }}>{neg ? '− ' : ''}{fmtRM(Math.abs(Number(val)))}</p>
                               </div>
                             ))}
                           </div>
@@ -478,7 +480,7 @@ export function RevenueBreakdown({ dealerId }) {
 
       {/* Trends by model */}
       {trends.length > 0 && (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, overflowX: 'auto', overflowY: 'hidden' }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, padding: '16px 16px 10px' }}>What sells — by model</p>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
@@ -499,8 +501,8 @@ export function RevenueBreakdown({ dealerId }) {
                     <td style={td}>{g.units}</td>
                     <td style={td}>{fmtRMShort(g.avgPrice)}</td>
                     <td style={td}>{g.avgDays != null ? `${g.avgDays}d` : '—'}</td>
-                    <td style={{ ...td, color: g.avgGross >= 0 ? '#16a34a' : '#dc2626' }}>{g.avgGross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.avgGross))}</td>
-                    <td style={{ ...td, fontWeight: 700, color: g.gross >= 0 ? '#16a34a' : '#dc2626' }}>{g.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.gross))}</td>
+                    <td style={{ ...td, color: g.avgGross >= 0 ? PL.up : PL.accentText }}>{g.avgGross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.avgGross))}</td>
+                    <td style={{ ...td, fontWeight: 700, color: g.gross >= 0 ? PL.up : PL.accentText }}>{g.gross < 0 ? '− ' : ''}{fmtRMShort(Math.abs(g.gross))}</td>
                   </tr>
                 ))}
               </tbody>
