@@ -3039,6 +3039,13 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-40: "Build your own deal" + "Send my deal" on the car page (owner, 2026-11-16; seen at AutoBandit.com, US, by @raffimoosh)** — a buyer
+  picks deposit + tenure on a car, presses submit, and the seller gets a lead with those terms filled in. AutoBandit's pitch: dealers
+  list cars with the monthly price, the buyer "builds their own deal", then picks up the car and signs. Drevo already has the pieces
+  (`financing.js`, `BudgetFinder.jsx`, Live presenter chips); the missing step is the buyer's submit. Small version: a button on the car
+  page that files a lead (existing `resolve_lead_salesman` + lead notes + push), no new table. Limits: never worded as an approval ("the
+  bank decides", HP-EIR rules); no lease (US product); the JPJ transfer needs both people in person, so "online" ends at the handover.
+  Owner: draft only, "just an idea we can copy over"; the focus is the dealer dashboard redesign first. Not scheduled.
 - **IDEA-39: Drevo AI, a WhatsApp AI sales assistant (owner, 2026-11-15)** — a seller talks to an assistant in plain
   language ("hottest leads", "move Ahmad to negotiation", "post my Civic tomorrow") and gets a morning briefing;
   tools over the existing CRM, Claude Haiku 5.5 (US$0.10 in / 0.50 out per MTok, checked in the claude-api skill),
