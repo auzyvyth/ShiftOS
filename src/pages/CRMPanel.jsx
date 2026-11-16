@@ -931,7 +931,7 @@ export default function CRMPanel({ userId, listings = [], salesmen = [], initial
       </div>
       {crmTab === 'leads'    && <LeadsPage dealerId={userId} openLeadId={openLeadId} onOpenDoc={onOpenDoc} />}
       {crmTab === 'bookings' && <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />}
-      {crmTab === 'outreach' && <OutreachHub dealerId={userId} />}
+      {crmTab === 'outreach' && <OutreachHub dealerId={userId} theme="plight" />}
     </div>
   );
 }

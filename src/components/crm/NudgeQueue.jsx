@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BellRing, Clock, MessageCircle, MoreVertical, Sparkles, X } from 'lucide-react';
-import { premiumDark as PD } from '../../theme/tokens';
+import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
 
 // RAPTOR-1 — the review queue for follow-up nudges that have come due.
 //
@@ -33,6 +33,13 @@ const PALETTES = {
     accent:PD.accentText, accentSoft:PD.raised,
     okText:PD.up, violetText:PD.textSec, warnText:PD.accentText,
   },
+  // Dealer dashboard (premiumLight): floating white card, grey rows, no tints.
+  plight: {
+    surface:PL.card, surfaceAlt:PL.raised, fill:PL.line, border:'transparent',
+    text:PL.text, textSec:PL.textSec, textMuted:PL.textSec, textDim:PL.textMuted,
+    accent:PL.accentText, accentSoft:PL.raised,
+    okText:PL.up, violetText:PL.textSec, warnText:PL.accentText,
+  },
 };
 
 const fmtWhen = (iso) => {
@@ -52,7 +59,10 @@ const fmtDate = (iso) => new Date(iso).toLocaleString('en-MY', {
 export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss, theme = 'light' }) {
   const P = PALETTES[theme] || PALETTES.light;
   const prem = theme === 'premium';
-  const FONT = prem ? 'inherit' : "system-ui,sans-serif";
+  const plight = theme === 'plight';
+  const K = prem ? PD : plight ? PL : null;
+  const slim = !!K;
+  const FONT = slim ? 'inherit' : "system-ui,sans-serif";
   const [openId, setOpenId]   = useState(null);   // expanded row (editable draft)
   const [menuId, setMenuId]   = useState(null);   // which row's overflow menu is open
   const [edits, setEdits]     = useState({});     // per-nudge edited draft text
@@ -62,8 +72,8 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
   const draftOf = (n) => (edits[n.id] !== undefined ? edits[n.id] : n.draft_message);
 
   return (
-    <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: prem ? PD.radius.card : 16, marginBottom:20, overflow:'hidden' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', padding:'13px 16px', borderBottom: due.length ? `1px solid ${prem ? PD.line : P.border}` : 'none' }}>
+    <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: slim ? K.radius.card : 16, boxShadow: plight ? PL.shadow : undefined, marginBottom:20, overflow:'hidden' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', padding:'13px 16px', borderBottom: due.length ? `1px solid ${slim ? K.line : P.border}` : 'none' }}>
         <BellRing size={15} style={{ color:P.accent, flexShrink:0 }} />
         <p style={{ fontSize:13, fontWeight:700, color:P.text, margin:0, flex:1 }}>
           Follow-ups due
@@ -99,11 +109,11 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
                   <span style={{ fontSize:13.5, fontWeight:600, color:P.text }}>{lead.buyer_name || 'Unknown'}</span>
-                  <span style={{ fontSize:10, fontWeight:700, color:P.warnText, background: prem ? PD.raised : 'rgba(217,119,6,0.1)', borderRadius:5, padding:'1px 6px' }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:P.warnText, background: slim ? K.raised : 'rgba(217,119,6,0.1)', borderRadius:5, padding:'1px 6px' }}>
                     {fmtWhen(n.scheduled_for)}
                   </span>
                   {n.ai_drafted && (
-                    <span style={{ fontSize:10, fontWeight:700, color:P.violetText, background: prem ? PD.raised : 'rgba(124,58,237,0.09)', borderRadius:5, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:P.violetText, background: slim ? K.raised : 'rgba(124,58,237,0.09)', borderRadius:5, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3 }}>
                       <Sparkles size={9} /> AI draft
                     </span>
                   )}
@@ -127,7 +137,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
                   <>
                     {/* click-catcher so the menu closes on an outside tap */}
                     <div onClick={() => setMenuId(null)} style={{ position:'fixed', inset:0, zIndex:20 }} />
-                    <div style={{ position:'absolute', right:0, top:26, zIndex:21, background: prem ? PD.hover : P.surface, border:`1px solid ${P.border}`, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden', minWidth:150 }}>
+                    <div style={{ position:'absolute', right:0, top:26, zIndex:21, background: slim ? K.hover : P.surface, border:`1px solid ${P.border}`, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden', minWidth:150 }}>
                       {[
                         { label: 'Snooze 1 day',  days: 1 },
                         { label: 'Snooze 3 days', days: 3 },
@@ -162,7 +172,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
 
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:9, flexWrap:'wrap' }}>
               <button onClick={() => onSend(n, draftOf(n))}
-                style={{ flex:'1 1 200px', padding:'10px 14px', borderRadius: prem ? 999 : 10, background: prem ? PD.accent : 'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', color: prem ? PD.onAccent : P.surface, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                style={{ flex:'1 1 200px', padding:'10px 14px', borderRadius: slim ? 999 : 10, background: slim ? K.accent : 'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', color: slim ? K.onAccent : P.surface, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                 <MessageCircle size={14} /> Review &amp; send in WhatsApp
               </button>
               {expanded && (

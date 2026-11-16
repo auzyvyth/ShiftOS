@@ -7,7 +7,7 @@ import {
   Users, Flame, Snowflake, CheckCircle2, TrendingUp, Clipboard, RefreshCw,
   MessageCircle, Megaphone, Send, ArrowRight, Sparkles, CalendarClock, Car,
 } from 'lucide-react';
-import { premiumDark as PD } from '../../theme/tokens';
+import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
 import { supabase } from '../../supabaseClient';
 import { callClaude } from '../../lib/callClaude';
 import { useNudges, NUDGE_PRESETS } from '../../hooks/useNudges';
@@ -59,6 +59,17 @@ const PALETTES = {
     violetBorder:'transparent', violetText:PD.text, violetStrong:PD.accent,
     dangerBorder:'transparent', dangerText:PD.accentText,
   },
+  // Dealer dashboard (premiumLight): same rules on the light surface. White cards
+  // float on a shadow, grey rows inside, no borders, no tints; red only for fills.
+  plight: {
+    surface:PL.card, surfaceAlt:PL.raised, fill:PL.hover, imgFill:PL.raised, ring:PL.hover,
+    border:'transparent', text:PL.text, textSec:PL.textSec, textMuted:PL.textSec, textDim:PL.textMuted,
+    inkBtn:PL.text, inkBtnText:PL.onAccent,
+    okBg:PL.raised, okBorder:'transparent', okText:PL.up, okTick:PL.up,
+    infoBg:PL.hover, infoBorder:'transparent', infoText:PL.text,
+    violetBorder:'transparent', violetText:PL.text, violetStrong:PL.text,
+    dangerBorder:'transparent', dangerText:PL.accentText,
+  },
 };
 
 // salesmanId (optional): when set, the hub is scoped to that salesman's own
@@ -68,10 +79,13 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   // Premium also drops what this screen repeated (the four count tiles, the
   // time-since-contact "score" ring, the footer count) and its extra hues.
   const prem = theme === 'premium';
-  const FONT = prem ? 'inherit' : "system-ui,sans-serif";
+  const plight = theme === 'plight';
+  const K = prem ? PD : plight ? PL : null;
+  const slim = !!K;
+  const FONT = slim ? 'inherit' : "system-ui,sans-serif";
   // The WhatsApp button: one red fill in Premium, the green gradient elsewhere.
-  const WA_BTN = prem
-    ? { background:PD.accent, boxShadow:'none', color:PD.onAccent }
+  const WA_BTN = slim
+    ? { background:K.accent, boxShadow:'none', color:K.onAccent }
     : { background:'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow:'0 4px 20px rgba(34,197,94,0.3)', color:'white' };
   // Painted from the device's last copy, refreshed behind it (PERF-LOAD). The
   // select carries no IC or address, so nothing needs redacting.
@@ -134,10 +148,10 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   }), [leadsData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const SEGS = {
-    hot:  { label: 'Hot',  color: prem ? PD.text : '#ef4444', Icon: Flame,      filter: e => e.ageDays < 1 },
-    warm: { label: 'Warm', color: prem ? PD.text : '#f97316', Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
-    cold: { label: 'Cold', color: prem ? PD.text : '#60a5fa', Icon: Snowflake,  filter: e => e.ageDays >= 7 },
-    all:  { label: 'All',  color: prem ? PD.text : '#94a3b8', Icon: Clipboard,  filter: () => true },
+    hot:  { label: 'Hot',  color: slim ? K.text : '#ef4444', Icon: Flame,      filter: e => e.ageDays < 1 },
+    warm: { label: 'Warm', color: slim ? K.text : '#f97316', Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
+    cold: { label: 'Cold', color: slim ? K.text : '#60a5fa', Icon: Snowflake,  filter: e => e.ageDays >= 7 },
+    all:  { label: 'All',  color: slim ? K.text : '#94a3b8', Icon: Clipboard,  filter: () => true },
   };
 
   const visibleLeads = useMemo(() =>
@@ -173,8 +187,8 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
 
   // Premium: only a lead that has gone quiet a week or more is red (it needs
   // you); everything else is neutral. Elsewhere, the old six-hue scale.
-  const urgencyColor = prem
-    ? { critical:PD.textSec, high:PD.textSec, medium:PD.textSec, low:PD.textSec, warm:PD.textSec, cold:PD.accentText }
+  const urgencyColor = slim
+    ? { critical:K.textSec, high:K.textSec, medium:K.textSec, low:K.textSec, warm:K.textSec, cold:K.accentText }
     : { critical:'#ef4444', high:'#f97316', medium:'#fbbf24', low:'#a3e635', warm:'#60a5fa', cold:'#94a3b8' };
 
   const fmtAge = e => {
@@ -335,7 +349,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
     <div style={{ fontFamily:FONT }}>
       {/* Pulse bar. Premium: three of the four counts are the Hot / Cold / All
           switch below, so only "contacted today" stays, as a line. */}
-      {prem ? (
+      {slim ? (
         <p style={{ margin:'0 0 14px', fontSize:13, color:P.textSec }}>
           <b style={{ color:P.text, fontVariantNumeric:'tabular-nums' }}>{sentToday}</b> contacted today
         </p>
@@ -362,30 +376,30 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
           onDismiss={(id) => closeNudge(id, 'dismissed')} theme={theme} />
       )}
 
-      <style>{`.oh-body{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-bottom:14px}.oh-empty{min-height:300px}@media(max-width:768px){.oh-body{grid-template-columns:1fr}.oh-prem .oh-empty{min-height:0;padding:8px 0}}`}</style>
-      <div className={prem ? 'oh-body oh-prem' : 'oh-body'}>
+      <style>{`.oh-body{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;margin-bottom:14px}.oh-body>*{min-width:0}.oh-empty{min-height:300px}@media(max-width:768px){.oh-body{grid-template-columns:minmax(0,1fr)}.oh-slim .oh-empty{min-height:0;padding:8px 0}}`}</style>
+      <div className={slim ? 'oh-body oh-slim' : 'oh-body'}>
         {/* LEFT — Lead list */}
-        <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: prem ? PD.radius.card : 16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-          <div data-tour-id="oh-segments" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:`1px solid ${prem ? PD.line : P.border}` }}>
+        <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: slim ? K.radius.card : 16, boxShadow: plight ? PL.shadow : undefined, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+          <div data-tour-id="oh-segments" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:`1px solid ${slim ? K.line : P.border}` }}>
             {Object.entries(SEGS).map(([key, seg]) => {
               const count = scored.filter(seg.filter).length;
               const active = segment === key;
               return (
                 <button key={key} onClick={() => setSegment(key)}
-                  style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${prem ? PD.accent : seg.color}` : '2px solid transparent', color: active ? seg.color : P.textSec, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, fontFamily:FONT }}>
+                  style={{ padding:'10px 6px 12px', background:'none', border:'none', borderBottom: active ? `2px solid ${slim ? K.accent : seg.color}` : '2px solid transparent', color: active ? seg.color : P.textSec, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:3, marginBottom:-1, fontFamily:FONT }}>
                   <seg.Icon size={14} />
                   <span style={{ fontSize:10, fontWeight: active ? 700 : 500 }}>{seg.label}</span>
-                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? (prem ? PD.hover : `${seg.color}18`) : P.fill, color: active ? seg.color : P.textSec }}>{count}</span>
+                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:4, background: active ? (slim ? K.hover : `${seg.color}18`) : P.fill, color: active ? seg.color : P.textSec }}>{count}</span>
                 </button>
               );
             })}
           </div>
           {/* Premium: the cap follows the screen's HEIGHT; 55vw left a phone about
               three rows inside a 200px box. */}
-          <div style={{ overflowY:'auto', flex:1, maxHeight: prem ? 'min(520px, 60vh)' : 'min(440px, 55vw)', padding:8 }}>
+          <div style={{ overflowY:'auto', flex:1, maxHeight: slim ? 'min(520px, 60vh)' : 'min(440px, 55vw)', padding:8 }}>
             {visibleLeads.length === 0 ? (
               <div style={{ padding:'40px 16px', textAlign:'center', color:P.textSec, fontSize:13 }}>
-                {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: prem ? PD.textMuted : SEGS[segment].color } })}
+                {React.createElement(SEGS[segment].Icon, { size: 28, style: { marginBottom: 8, color: slim ? K.textMuted : SEGS[segment].color } })}
                 <p>No {SEGS[segment].label.toLowerCase()} leads</p>
               </div>
             ) : visibleLeads.map(lead => {
@@ -395,10 +409,10 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               const dash = (lead.score / 100) * circ;
               return (
                 <button key={lead.id} onClick={() => setSelectedId(isActive ? null : lead.id)}
-                  style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:10, background: isActive ? (prem ? PD.raised : 'rgba(59,130,246,0.1)') : 'transparent', border: isActive && !prem ? '1px solid rgba(59,130,246,0.28)' : '1px solid transparent', cursor:'pointer', textAlign:'left', marginBottom:3, fontFamily:FONT }}>
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'9px 10px', borderRadius:10, background: isActive ? (slim ? K.raised : 'rgba(59,130,246,0.1)') : 'transparent', border: isActive && !slim ? '1px solid rgba(59,130,246,0.28)' : '1px solid transparent', cursor:'pointer', textAlign:'left', marginBottom:3, fontFamily:FONT }}>
                   {/* The ring's 0-100 "score" is only time since last contact,
                       which the age chip already says; Premium shows the chip alone. */}
-                  {!prem && <div style={{ flexShrink:0, position:'relative', width:34, height:34 }}>
+                  {!slim && <div style={{ flexShrink:0, position:'relative', width:34, height:34 }}>
                     <svg width="34" height="34" viewBox="0 0 34 34" style={{ transform:'rotate(-90deg)' }}>
                       <circle cx="17" cy="17" r="14" fill="none" stroke={P.ring} strokeWidth="3" />
                       <circle cx="17" cy="17" r="14" fill="none" stroke={uc} strokeWidth="3" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
@@ -411,11 +425,11 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                         {lead.buyer_name || 'Unknown'}
                         {lead.last_contacted_at && <CheckCircle2 size={12} style={{ color:P.okTick, flexShrink:0 }} />}
                       </span>
-                      <span style={{ fontSize: prem ? 11 : 9, fontWeight:700, color:uc, flexShrink:0, padding: prem ? '1px 7px' : '1px 6px', background: prem ? PD.raised : `${uc}14`, borderRadius: prem ? 999 : 4 }}>{fmtAge(lead)}</span>
+                      <span style={{ fontSize: slim ? 11 : 9, fontWeight:700, color:uc, flexShrink:0, padding: slim ? '1px 7px' : '1px 6px', background: slim ? K.raised : `${uc}14`, borderRadius: slim ? 999 : 4 }}>{fmtAge(lead)}</span>
                     </div>
                     <span style={{ fontSize:11, color:P.textSec, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
                       {lead.car_listing ? `${lead.car_listing.brand} ${lead.car_listing.model}` : 'Car enquiry'}
-                      {lead.stage === 'enquiry' && <span style={{ marginLeft:6, fontSize:9, fontWeight:700, color: prem ? PD.onAccent : '#a78bfa', background: prem ? PD.accent : 'rgba(167,139,250,0.12)', padding:'1px 5px', borderRadius:4 }}>NEW</span>}
+                      {lead.stage === 'enquiry' && <span style={{ marginLeft:6, fontSize:9, fontWeight:700, color: slim ? K.onAccent : '#a78bfa', background: slim ? K.accent : 'rgba(167,139,250,0.12)', padding:'1px 5px', borderRadius:4 }}>NEW</span>}
                     </span>
                     {lead.last_contacted_at && (
                       <span style={{ fontSize:10, color:P.okTick, fontWeight:600, display:'block', marginTop:1 }}>
@@ -427,8 +441,8 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               );
             })}
           </div>
-          <div style={{ borderTop:`1px solid ${prem ? PD.line : P.border}`, padding:'8px 12px', display:'flex', alignItems:'center', justifyContent: prem ? 'flex-end' : 'space-between' }}>
-            {!prem && <span style={{ fontSize:11, color:P.textSec }}>{scored.length} active contacts</span>}
+          <div style={{ borderTop:`1px solid ${slim ? K.line : P.border}`, padding:'8px 12px', display:'flex', alignItems:'center', justifyContent: slim ? 'flex-end' : 'space-between' }}>
+            {!slim && <span style={{ fontSize:11, color:P.textSec }}>{scored.length} active contacts</span>}
             <button onClick={() => setRefreshKey(k => k + 1)} style={{ background:'none', border:'none', color:P.textSec, cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:FONT }}>
               <RefreshCw size={11} /> Refresh
             </button>
@@ -436,16 +450,16 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
         </div>
 
         {/* RIGHT — Message studio */}
-        <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: prem ? PD.radius.card : 16, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: slim ? K.radius.card : 16, boxShadow: plight ? PL.shadow : undefined, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
           {!selected ? (
             <div className="oh-empty" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, gap:12, color:P.textSec }}>
-              <div style={{ width:56, height:56, borderRadius:16, background: prem ? PD.raised : 'rgba(59,130,246,0.07)', border: prem ? 'none' : '1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageCircle size={24} color={prem ? PD.textSec : '#60a5fa'} /></div>
+              <div style={{ width:56, height:56, borderRadius:16, background: slim ? K.raised : 'rgba(59,130,246,0.07)', border: slim ? 'none' : '1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageCircle size={24} color={slim ? K.textSec : '#60a5fa'} /></div>
               <p style={{ fontSize:13, color:P.textMuted, textAlign:'center', lineHeight:1.6 }}>Select a contact to message,<br/>or launch a bulk campaign below.</p>
             </div>
           ) : (
             <>
-              <div style={{ display:'flex', alignItems:'center', gap:12, padding: prem ? 0 : '12px 16px', background: prem ? 'transparent' : 'rgba(59,130,246,0.07)', border: prem ? 'none' : '1px solid rgba(59,130,246,0.18)', borderRadius:12 }}>
-                <div style={{ width:40, height:40, borderRadius:'50%', background: prem ? PD.raised : 'linear-gradient(135deg,rgba(59,130,246,0.8),rgba(99,102,241,0.8))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, fontWeight:800, color: prem ? PD.textSec : 'white', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding: slim ? 0 : '12px 16px', background: slim ? 'transparent' : 'rgba(59,130,246,0.07)', border: slim ? 'none' : '1px solid rgba(59,130,246,0.18)', borderRadius:12 }}>
+                <div style={{ width:40, height:40, borderRadius:'50%', background: slim ? K.raised : 'linear-gradient(135deg,rgba(59,130,246,0.8),rgba(99,102,241,0.8))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, fontWeight:800, color: slim ? K.textSec : 'white', flexShrink:0 }}>
                   {(selected.buyer_name || '?')[0].toUpperCase()}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -453,7 +467,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   <p style={{ fontSize:11, color:P.textMuted }}>{selected.phone} · {selected.last_contacted_at ? `contacted ${fmtContacted(selected.last_contacted_at)}` : `enquired ${fmtAge(selected)} ago`}</p>
                 </div>
                 {/* Premium: the car card right below names the car and its price. */}
-                {selected.car_listing && !prem && (
+                {selected.car_listing && !slim && (
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <p style={{ fontSize:11, color:'#60a5fa', marginBottom:1 }}>{selected.car_listing.brand} {selected.car_listing.model}</p>
                     {selected.car_listing.selling_price && <p style={{ fontSize:13, fontWeight:700, color:P.text }}>RM {selected.car_listing.selling_price.toLocaleString()}</p>}
@@ -470,11 +484,11 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, fontWeight:700, color:P.text, margin:'0 0 6px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {selected.car_listing.year || ''} {selected.car_listing.brand} {selected.car_listing.model}
-                      {prem && selected.car_listing.selling_price ? <span style={{ fontWeight:600, color:P.textSec }}> · RM {selected.car_listing.selling_price.toLocaleString()}</span> : null}
+                      {slim && selected.car_listing.selling_price ? <span style={{ fontWeight:600, color:P.textSec }}> · RM {selected.car_listing.selling_price.toLocaleString()}</span> : null}
                     </p>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 10px' }}>
                       {[
-                        ['Year', prem ? null : selected.car_listing.year], // Premium: the title above says the year
+                        ['Year', slim ? null : selected.car_listing.year], // Premium: the title above says the year
                         ['Engine', selected.car_listing.engine_cc ? `${selected.car_listing.engine_cc} cc` : null],
                         ['Colour', selected.car_listing.colour],
                         ['VIN', selected.car_listing.vin_number],
@@ -509,7 +523,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   {salesmanId && (
                     AI_FEATURES_ENABLED ? (
                       <button onClick={aiDraft} disabled={aiLoading}
-                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background: prem ? PD.raised : P.surface, border:`1px solid ${P.violetBorder}`, color:P.violetText, fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:FONT, opacity: aiLoading ? 0.6 : 1 }}>
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background: slim ? K.raised : P.surface, border:`1px solid ${P.violetBorder}`, color:P.violetText, fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:FONT, opacity: aiLoading ? 0.6 : 1 }}>
                         <Sparkles size={11} /> {aiLoading ? 'Writing…' : 'AI draft'}
                       </button>
                     ) : (
@@ -525,7 +539,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               </div>
 
               <button onClick={() => openWA(selected, draft || TEMPLATES[template].gen(selected))}
-                style={{ width:'100%', padding:'14px', borderRadius: prem ? 999 : 12, ...WA_BTN, border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                style={{ width:'100%', padding:'14px', borderRadius: slim ? 999 : 12, ...WA_BTN, border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
 
@@ -533,14 +547,14 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   ready, and you send it yourself when it comes due. */}
               {salesmanId && (
                 <button onClick={() => setScheduleOpen(true)}
-                  style={{ width:'100%', padding:'11px', borderRadius: prem ? 999 : 12, background: prem ? PD.raised : P.surface, border:`1px solid ${P.border}`, color: prem ? PD.text : P.textSec, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                  style={{ width:'100%', padding:'11px', borderRadius: slim ? 999 : 12, background: slim ? K.raised : P.surface, border:`1px solid ${P.border}`, color: slim ? K.text : P.textSec, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                   <CalendarClock size={14} /> Remind me to send this later
                 </button>
               )}
 
               {selected.stage === 'enquiry' ? (
                 <button onClick={() => promoteToPipeline(selected)} disabled={pushing}
-                  style={{ width:'100%', padding:'11px', borderRadius: prem ? 999 : 12, background: prem ? PD.raised : P.surface, border:`1px solid ${P.infoBorder}`, color:P.infoText, fontSize:13, fontWeight:600, cursor: pushing ? 'wait' : 'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7, opacity: pushing ? 0.6 : 1 }}>
+                  style={{ width:'100%', padding:'11px', borderRadius: slim ? 999 : 12, background: slim ? K.raised : P.surface, border:`1px solid ${P.infoBorder}`, color:P.infoText, fontSize:13, fontWeight:600, cursor: pushing ? 'wait' : 'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7, opacity: pushing ? 0.6 : 1 }}>
                   <ArrowRight size={14} /> {pushing ? 'Adding…' : 'Add to Pipeline'}
                 </button>
               ) : (
@@ -554,21 +568,21 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
       </div>
 
       {/* Bulk campaign */}
-      <div style={{ background: prem ? PD.card : 'rgba(167,139,250,0.06)', border: prem ? 'none' : '1px solid rgba(167,139,250,0.18)', borderRadius: prem ? PD.radius.card : 14, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
-        <Megaphone size={18} style={{ color: prem ? PD.textSec : '#a78bfa', flexShrink:0 }} />
+      <div style={{ boxShadow: plight ? PL.shadow : undefined, background: slim ? K.card : 'rgba(167,139,250,0.06)', border: slim ? 'none' : '1px solid rgba(167,139,250,0.18)', borderRadius: slim ? K.radius.card : 14, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+        <Megaphone size={18} style={{ color: slim ? K.textSec : '#a78bfa', flexShrink:0 }} />
         <div style={{ flex:1, minWidth:200 }}>
           <p style={{ fontSize:13, fontWeight:700, color:P.text, marginBottom:2 }}>Bulk Campaign · {SEGS[segment].label} Leads</p>
           <p style={{ fontSize:11, color:P.textMuted, lineHeight:1.5 }}>
-            Guided send to <span style={{ color: prem ? PD.text : '#a78bfa', fontWeight:600 }}>{visibleLeads.length} contacts</span> — one chat per click, you stay in control (no paid blast, nothing popup-blocked).
+            Guided send to <span style={{ color: slim ? K.text : '#a78bfa', fontWeight:600 }}>{visibleLeads.length} contacts</span> — one chat per click, you stay in control (no paid blast, nothing popup-blocked).
           </p>
         </div>
         <div style={{ display:'flex', gap:8, flexShrink:0 }}>
           <select value={template} onChange={e => setTemplate(e.target.value)}
-            style={{ padding:'9px 12px', background: prem ? PD.raised : P.surface, border:`1px solid ${P.border}`, borderRadius: prem ? 999 : 9, color: prem ? PD.text : P.textSec, colorScheme: prem ? 'dark' : undefined, fontSize:12, fontFamily:FONT, cursor:'pointer', outline:'none' }}>
+            style={{ padding:'9px 12px', background: slim ? K.raised : P.surface, border:`1px solid ${P.border}`, borderRadius: slim ? 999 : 9, color: slim ? K.text : P.textSec, colorScheme: prem ? 'dark' : undefined, fontSize:12, fontFamily:FONT, cursor:'pointer', outline:'none' }}>
             {Object.entries(TEMPLATES).map(([k, tpl]) => <option key={k} value={k}>{tpl.label}</option>)}
           </select>
           <button data-tour-id="oh-campaign" onClick={launchCampaign}
-            style={{ padding:'9px 20px', borderRadius: prem ? 999 : 9, background: prem ? PD.accent : 'rgba(167,139,250,0.18)', border: prem ? 'none' : '1px solid rgba(167,139,250,0.35)', color: prem ? PD.onAccent : P.violetText, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
+            style={{ padding:'9px 20px', borderRadius: slim ? 999 : 9, background: plight ? PL.text : slim ? K.accent : 'rgba(167,139,250,0.18)', border: slim ? 'none' : '1px solid rgba(167,139,250,0.35)', color: slim ? K.onAccent : P.violetText, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
             <Send size={13} /> Contact All ({visibleLeads.length})
           </button>
         </div>
@@ -594,10 +608,10 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               <>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                    <Megaphone size={18} style={{ color: prem ? PD.textSec : P.violetStrong }} />
+                    <Megaphone size={18} style={{ color: slim ? K.textSec : P.violetStrong }} />
                     <h3 style={{ fontSize:15, fontWeight:700, color:P.text, margin:0 }}>Guided campaign</h3>
                   </div>
-                  <span style={{ fontSize:12, fontWeight:700, color: prem ? PD.text : P.violetStrong, background: prem ? PD.raised : 'rgba(167,139,250,0.12)', borderRadius:20, padding:'3px 11px' }}>
+                  <span style={{ fontSize:12, fontWeight:700, color: slim ? K.text : P.violetStrong, background: slim ? K.raised : 'rgba(167,139,250,0.12)', borderRadius:20, padding:'3px 11px' }}>
                     {campaignIds.length - campaignIdx} left
                   </span>
                 </div>
@@ -618,7 +632,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   Tap to open WhatsApp, send your message, then come back and continue.
                 </p>
                 <button onClick={contactCurrent}
-                  style={{ width:'100%', padding:'14px', borderRadius: prem ? 999 : 12, ...WA_BTN, ...(prem ? {} : { color:P.surface }), border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
+                  style={{ width:'100%', padding:'14px', borderRadius: slim ? 999 : 12, ...WA_BTN, ...(slim ? {} : { color:P.surface }), border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
                   <MessageCircle size={16} /> Open WhatsApp — {(campaignCurrent?.buyer_name || 'Lead').split(' ')[0]}
                 </button>
                 <div style={{ display:'flex', gap:10 }}>
