@@ -965,7 +965,7 @@ function useCarSchema(listing, dealer) {
    Used for "More From This Seller". On a phone 2 cards and a slice of the
    third show, so it reads as scrollable (owner, 2026-11-03); on desktop the
    round arrows beside the heading scroll it, and only when it overflows. */
-function SellerStrip({ cars, title, th }) {
+function SellerStrip({ cars, title, th, small = false }) {
   const navigate = useNavigate();
   const rowRef = useRef(null);
   const [edge, setEdge] = useState({ can: false, start: true, end: false });
@@ -1006,10 +1006,14 @@ function SellerStrip({ cars, title, th }) {
         @media (max-width: 900px) { .cdp-ss-card { width: calc((100% - 24px) / 2.3); } .cdp-ss-arrows { display: none !important; } }
         @media (hover:hover) and (pointer:fine) { .cdp-ss-arrow:not(:disabled):hover { border-color: ${th.text}; } }
       `}</style>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 16px" }}>
-        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0 }}>
-          {title}
-        </h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: small ? "0 0 10px" : "0 0 16px" }}>
+        {small ? (
+          <h3 style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: th.textSec, margin: 0 }}>{title}</h3>
+        ) : (
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0 }}>
+            {title}
+          </h2>
+        )}
         {edge.can && (
           <div className="cdp-ss-arrows" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             {arrow(-1, edge.start)}
@@ -1144,14 +1148,23 @@ export default function CarDetailPage() {
   const simRefDesktop = useRef(null);
   const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
-  // ONE row, the seller's used & recon cars first and their new cars after
-  // (owner, 2026-11-16: no second row, no divider). A new car carries a NEW
-  // tag so it never reads as stock. The query is by dealer_id = the seller.
+  // One block, two rows (owner, 2026-11-16): the seller's used & recon cars,
+  // then their new cars under a small "New cars" label in the SAME card, not
+  // a second section. A new car also carries a NEW tag. Query is by
+  // dealer_id = the seller on this page.
   const isNewCar = (c) => !!c.is_model_card || c.condition === "new";
-  const sellerRow = [
-    ...sellerCars.filter((c) => !isNewCar(c)).slice(0, 12),
-    ...sellerCars.filter(isNewCar).slice(0, 8),
-  ];
+  const sellerUsedCars = sellerCars.filter((c) => !isNewCar(c)).slice(0, 12);
+  const sellerNewCars  = sellerCars.filter(isNewCar).slice(0, 12);
+  const sellerRows = (sellerUsedCars.length > 0 || sellerNewCars.length > 0) && (
+    <>
+      {sellerUsedCars.length > 0 && <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />}
+      {sellerNewCars.length > 0 && (
+        sellerUsedCars.length > 0
+          ? <div style={{ marginTop: 20 }}><SellerStrip cars={sellerNewCars} title="New cars" small th={th} /></div>
+          : <SellerStrip cars={sellerNewCars} title="More From This Seller" th={th} />
+      )}
+    </>
+  );
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
@@ -3061,9 +3074,9 @@ export default function CarDetailPage() {
 
 
         {/* More from this seller (mobile) — above the "More {brand}" section */}
-        {sellerRow.length > 0 && (
+        {sellerRows && (
           <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
-            <SellerStrip cars={sellerRow} title="More From This Seller" th={th} />
+            {sellerRows}
           </div>
         )}
 
@@ -3839,9 +3852,9 @@ export default function CarDetailPage() {
             stopped by here. */}
         <div className="cdp-d-after">
           {/* MORE FROM THIS SELLER — above the "More {brand}" section */}
-          {sellerRow.length > 0 && (
+          {sellerRows && (
             <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-              <SellerStrip cars={sellerRow} title="More From This Seller" th={th} />
+              {sellerRows}
             </div>
           )}
 
