@@ -3067,6 +3067,16 @@ Background (from the idea):
   Cloud API send (needs Meta business verification, a NEW dedicated number, one approved utility template, each seller's
   opt-in, token in an edge function secret, webhook signature check) behind a cron guarded by `where exists` (IO-1),
   no AI. Start the Meta setup in parallel with the hand test: approval has lead time.
+  **UPDATE 2026-11-16 (owner): NO WhatsApp for now. Build the assistant as a CHAT INSIDE the Premium + dealer dashboards,
+  and pull Zernio analytics / DMs / comments / likes into Drevo.** Budget scoped in chat (1-2 salesmen + 1 dealer):
+  Zernio is per CONNECTED ACCOUNT (first 2 free for the whole Drevo team, 3-10 $6 each, 11-100 $3 each; Drevo's own
+  Facebook Page + TikTok already use the free two; inbox, comments, analytics, webhooks included; first 10,000 sent
+  messages a month free), about RM100 a month lean to RM215 full; AI (Haiku 5.5, US$0.10 / 0.50 per MTok) about RM15-60
+  a month. Rules: the assistant runs as the USER's login (RLS), never the service role, so a linked salesman cannot ask it
+  for buy prices; social comments / DMs are untrusted text (prompt injection) and personal data of third parties: redacted
+  view for the AI like `chat_messages_ai`, read-only tools first, a human sends every reply; Zernio inbox is a SEPARATE
+  connect from posting (extra permissions screen for the seller, test); list Zernio + networks in Privacy / DPA before
+  launch. App stores: Play yes later, Apple not now (see chat 2026-11-16); stays paused until revenue (MOBILE note).
 
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
