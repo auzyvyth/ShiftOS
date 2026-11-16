@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
-import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, ShieldCheck, FileCheck2, Ban, ChevronDown, Check } from 'lucide-react';
+import { RotateCcw, Car, Users, SlidersHorizontal, Search, ArrowLeftRight, ArrowRight, X, FileCheck2, Ban, ChevronDown, Check } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
@@ -846,11 +846,12 @@ export default function MarketplacePage() {
 
         /* Trust strip */
         .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(0,0,0,.07); flex-shrink: 0; position: relative; z-index: 1; }
-        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); display: grid; grid-template-columns: 1fr 1fr; row-gap: 14px; }
-        /* Mobile: balanced 2x2 with content centered in each cell and a single
-           divider down the middle (left-column cells only). */
-        .mp-trust-item  { padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .mp-trust-item:nth-child(odd) { border-right: 1px solid rgba(0,0,0,.08); }
+        .mp-trust-grid  { max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px,4vw,48px); display: grid; grid-template-columns: repeat(3,1fr); row-gap: 14px; }
+        /* Three facts in one row (the "N+ dealers" count went, 2026-11-16: a small
+           number argued against us). Phone drops the icons so the words fit. */
+        .mp-trust-item  { padding: 6px 6px; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+        @media (max-width: 767px) { .mp-trust-item > div:first-child { display: none !important; } }
+        .mp-trust-item:not(:last-child) { border-right: 1px solid rgba(0,0,0,.08); }
 
         /* Hero car rows (replaces the old "Browse by Budget" grid) */
         /* Three sets sit side by side in one transformed group so advancing
@@ -896,17 +897,16 @@ export default function MarketplacePage() {
              the bottom of the hero (trust strip, last tile row) on short laptops
              and at the 900-1024px band. Content decides the height now; the
              viewport is only a floor. */
-          .mp-hero-section  { min-height: calc(100vh - 64px); }
+          .mp-hero-section  { min-height: 0; }
           .mp-hero-main     { flex-direction: row; align-items: center; gap: clamp(28px,3.4vw,64px); max-width: 1360px; margin: 0 auto; padding: 32px clamp(20px,4vw,48px); }
           /* Search is the hero's job; the inventory rows are proof, not a second
              hero — so the left column carries the extra width. */
           .mp-hero-left     { flex: 1.15; min-width: 0; width: auto; }
           .mp-hero-right    { flex: 0.85; min-width: 0; margin-top: 0; }
           .mp-trust-strip   { padding: 20px 0; }
-          .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
+          .mp-trust-grid    { grid-template-columns: repeat(3,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
           .mp-trust-item    { padding: 0 28px; }
           /* Desktop: dividers between all four (last cell has none). */
-          .mp-trust-item:nth-child(even):not(:last-child) { border-right: 1px solid rgba(0,0,0,.08); }
           .mp-carrow-grid   { gap: 10px; }
           .mp-carrow-img    { height: 96px; }
           .mp-filter-fab    { display: flex; }
@@ -1154,7 +1154,7 @@ export default function MarketplacePage() {
                     <SlidersHorizontal size={12}/> More filters
                   </button>
                   {stats.hotDeals > 0 && (
-                    <button type="button" onClick={() => { setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); }}>
+                    <button type="button" onClick={() => navigate('/showroom?hot_deals=true')}>
                       Hot deals
                     </button>
                   )}
@@ -1223,7 +1223,6 @@ export default function MarketplacePage() {
             <div className="mp-trust-grid">
               {[
                 { icon: Car,         number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
-                { icon: ShieldCheck, number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Dealers & agents' },
                 // Only what the platform enforces: CarForm asks for the geran (a
                 // seller can skip it by giving a reason, so never "100%"), and
                 // every car page has a report link. "0 phantom listings" was a
@@ -1278,10 +1277,7 @@ export default function MarketplacePage() {
                         key={label}
                         className="mp-seg-btn"
                         aria-pressed={isActive}
-                        onClick={() => {
-                          setParam(paramKey, isActive ? '' : paramVal);
-                          document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}
+                        onClick={() => navigate(`/showroom?${paramKey}=${encodeURIComponent(paramVal)}`)}
                       >{label}</button>
                     );
                   })}
@@ -1414,22 +1410,13 @@ export default function MarketplacePage() {
                 </div>
               )}
 
-              {/* Two-stage manual control (no auto-load): "Load more" once, then
-                  "See all" -> Showroom. Keeps the footer reachable and stops the
-                  grid from creeping down as you scroll. */}
+              {/* The home page shows the newest 12 only, then ONE way on: "See all"
+                  -> Showroom, which has the filters (MARKET-CLEAN, 2026-11-16). */}
               {!loading && !error && !showingSaved && cars.length > 0 && cars.length < totalCount && (
                 <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
-                  {loadPage < 2 ? (
+                  {(
                     <button
-                      onClick={() => setLoadPage(p => p + 1)}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}
-                      onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#fef2f2'; }}
-                      onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
-                    >
-                      Load more cars <ChevronDown size={16}/>
-                    </button>
-                  ) : (
-                    <button
+                      className="xd-crimson-fill"
                       onClick={() => {
                         const p = new URLSearchParams();
                         if (brand)        p.set('brand', brand);

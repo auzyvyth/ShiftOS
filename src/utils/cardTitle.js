@@ -66,3 +66,17 @@ export function cardPlace(car) {
   if (state && KL_AREAS.has(state.toLowerCase())) return 'Kuala Lumpur';
   return state ? titleCase(state) : '';
 }
+
+// True when the seller's free-text headline only repeats the car's own name
+// ("TOYOTA VELLFIRE 2.5L HYBRID EXECUTIVE LOUNGE 2023" under "Toyota Vellfire
+// 2.5L Executive Lounge"). The car page then shows the title ONCE. A headline
+// that says something new ("Full service record, one owner") still shows.
+const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9.]+/g, ' ').split(' ').filter((w) => w.length > 1 || /\d/.test(w));
+export function isTitleRepeat(headline, car) {
+  const h = words(headline);
+  if (!h.length) return true;
+  const litre = Number(car?.engine_cc) > 0 ? (Number(car.engine_cc) / 1000).toFixed(1) : '';
+  const known = new Set(words([car?.year, car?.brand, car?.model, car?.variant, car?.fuel_type, car?.transmission, car?.body_type, litre].join(' ')));
+  const extra = h.filter((w) => !known.has(w) && !known.has(w.replace(/l$/, '')));
+  return extra.length <= 1;
+}

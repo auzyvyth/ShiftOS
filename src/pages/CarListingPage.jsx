@@ -32,6 +32,7 @@ import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
+import NewBrandRow from '../components/marketplace/NewBrandRow';
 import Pagination from '../components/ui/Pagination';
 import { storefront as SF } from '../theme/tokens';
 import { StorefrontError } from '../components/ErrorScreen';
@@ -871,6 +872,7 @@ export default function CarListingPage() {
                 </button>
               ))}
             </div>
+            {isMarketplace && <NewBrandRow />}
           </div>
         </div>
 

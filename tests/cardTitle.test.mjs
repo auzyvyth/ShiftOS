@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { tidyVariant, cardTitle, cardPlace } from "../src/utils/cardTitle.js";
+import { tidyVariant, cardTitle, cardPlace, isTitleRepeat } from "../src/utils/cardTitle.js";
 
 // Repeat of the model name dropped, all-lower re-cased.
 assert.equal(tidyVariant("golf gti 2.0 se", "Golf"), "GTI 2.0 SE");
@@ -26,5 +26,11 @@ assert.equal(cardPlace({ city: "wilayah persekutuan" }), "Kuala Lumpur");
 assert.equal(cardPlace({ city: "johor bahru" }), "Johor Bahru");
 assert.equal(cardPlace({ city: "", state: "Selangor" }), "Selangor");
 assert.equal(cardPlace({}), "");
+
+const vell = { year: 2023, brand: "Toyota", model: "Vellfire", variant: "2.5 Executive Lounge", fuel_type: "Hybrid" };
+assert.equal(isTitleRepeat("TOYOTA VELLFIRE 2.5L HYBRID EXECUTIVE LOUNGE 2023", vell), true);
+assert.equal(isTitleRepeat("", vell), true);
+assert.equal(isTitleRepeat("TOYOTA VELLFIRE 2.5L HYBRID EXECUTIVE LOUNGE 2023", { year: 2023, brand: "Toyota", model: "Vellfire", variant: "Executive Lounge", fuel_type: "Petrol", engine_cc: 2493 }), true);
+assert.equal(isTitleRepeat("One owner, full Toyota service record", vell), false);
 
 console.log("cardTitle: all passed");

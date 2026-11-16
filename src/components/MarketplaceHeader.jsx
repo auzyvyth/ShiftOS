@@ -356,7 +356,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-promo-eyebrow { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#f87171; margin:0 0 7px; }
         .mh-promo-title { font-size:15.5px; font-weight:800; color:#fff; line-height:1.24; margin:0 0 6px; }
         .mh-promo-sub { font-size:11.5px; color:#9ca3af; line-height:1.45; margin:0 0 auto; }
-        .mh-promo-cta { display:inline-flex; align-items:center; gap:5px; margin-top:14px; background:#dc2626; color:#fff; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9px; text-decoration:none; align-self:flex-start; transition:background .14s,transform .12s; }
+        .mh-promo-cta { display:inline-flex; align-items:center; gap:5px; margin-top:14px; background:#dc2626; background-image:var(--xd-crimson); color:#fff; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9px; text-decoration:none; align-self:flex-start; transition:background .14s,transform .12s; }
         @media (hover:hover) and (pointer:fine) { .mh-promo-cta:hover { background:#ef4444; transform:translateY(-1px); } }
 
         /* right cluster */
@@ -388,7 +388,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         /* An unstyled placeholder inherits the browser's dark-on-light default and
            is unreadable here. */
         .mh-search-field input::placeholder { color:rgba(255,255,255,.4); }
-        .mh-search-go { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:12px; padding:0 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+        .mh-search-go { flex-shrink:0; background:#dc2626; background-image:var(--xd-crimson); color:#fff; border:none; border-radius:12px; padding:0 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 
         /* mobile */
         .mh-burger { display:none; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:#ffffff; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }

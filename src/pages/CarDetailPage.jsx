@@ -57,6 +57,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import AffordabilityCheck from "../components/AffordabilityCheck";
+import { isTitleRepeat } from "../utils/cardTitle";
 import SimilarCars from "../components/car/SimilarCars";
 import { recordCarProgress, scrollProgress } from "../utils/viewProgress";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
@@ -784,7 +785,7 @@ function Skeleton({ preview = null }) {
   const pvImg = preview?.image ? cdnImg(preview.image, 1280, 72) : null;
   const pvSet = preview?.image ? cdnSrcSet(preview.image, HERO_WIDTHS, 72) : undefined;
   const isXdrive = !isSubdomain();
-  const pageBg    = isXdrive ? '#F6F7F9' : '#060c14';
+  const pageBg    = isXdrive ? '#F7F6F2' : '#060c14';
   const card      = isXdrive ? '#ffffff' : '#0a1220';
   const shimmerGr = isXdrive
     ? 'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)'
@@ -1042,6 +1043,19 @@ function SellerStrip({ cars, title, th }) {
 }
 
 /* ─── main ─── */
+// The monthly estimate IS the way into the calculator (MARKET-CLEAN, 2026-11-16):
+// a tinted "Calculate" box sat beside "Can I afford this?", two buttons for one
+// question. Now: the number (tap = calculator) + the one affordability button.
+function MonthlyLink({ amount, th, onOpen }) {
+  return (
+    <button type="button" onClick={onOpen} aria-label="Open financing calculator"
+      style={{ background:'none', border:0, padding:0, cursor:'pointer', fontSize:13, color: th.textSec, fontFamily:'var(--xd-font-body)', display:'inline-flex', alignItems:'center', gap:4 }}>
+      <Calculator size={13} />
+      <span>~<span style={{ color: th.text, fontWeight:600, textDecoration:'underline', textDecorationStyle:'dotted', textUnderlineOffset:3 }}>RM {fmt(amount)}</span>/mo</span>
+    </button>
+  );
+}
+
 export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
   // On a dealer's own site only THAT dealer's cars may open. The route took any
@@ -1052,7 +1066,7 @@ export default function CarDetailPage() {
 
   /* ── Light-theme colour tokens (drevo.my only) ── */
   const th = isXdrive ? {
-    pageBg:    '#F6F7F9',
+    pageBg:    '#F7F6F2',
     card:      '#ffffff',
     card2:     '#EEF1F5',
     text:      '#0F172A',
@@ -2068,7 +2082,7 @@ export default function CarDetailPage() {
   // string in 4.4rem Bebas breaks the page, and every SEO surface (title tag,
   // og:title, JSON-LD, breadcrumb, alt text) has to stay the structured name so
   // Google keeps matching "<model> <chassis code>" queries to this listing.
-  const sellerHeadline = (car.listing_title || '').trim();
+  const sellerHeadline = isTitleRepeat(car.listing_title, car) ? '' : (car.listing_title || '').trim();
   // Display nameplate: model, then trim, then engine size (derived from cc so it
   // reads "6.5L" not the raw "6.5" baked into the variant), then year — e.g.
   // "812 Superfast 6.5L 2021". The variant often carries a leading displacement
@@ -2490,8 +2504,8 @@ export default function CarDetailPage() {
 
       {/* ── Drevo light-theme overrides ── */}
       {isXdrive && <style>{`
-        body { background: #F6F7F9 !important; }
-        .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
+        body { background: #F7F6F2 !important; }
+        .cdp-root { background: #F7F6F2 !important; color: #0F172A !important; }
         .cdp-header {
           background: rgba(246,247,249, calc(0.85 * var(--cdp-progress, 0))) !important;
           backdrop-filter: blur(calc(20px * var(--cdp-progress, 0))) !important;
@@ -2626,15 +2640,7 @@ export default function CarDetailPage() {
             </div>
           )}
           <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8, flexWrap:'wrap' }}>
-            {calcMonthly(shownPrice) ? (
-              <span style={{ fontSize:13, color: th.textSec }}>
-                ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
-              </span>
-            ) : null}
-            <button onClick={() => setCalcOpen(true)} aria-label="Open financing calculator"
-              style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(220,38,38,0.10)', border:'1px solid rgba(220,38,38,0.35)', borderRadius:8, color: isXdrive ? '#dc2626' : '#f87171', fontSize:12.5, fontWeight:700, padding:'5px 10px', cursor:'pointer', fontFamily:"var(--xd-font-body)", whiteSpace:'nowrap' }}>
-              <Calculator size={14} /> Calculate
-            </button>
+            {calcMonthly(shownPrice) ? <MonthlyLink amount={calcMonthly(shownPrice)} th={th} onOpen={() => setCalcOpen(true)} /> : null}
             {!isOwnListing && (
               <AffordabilityCheck
                 carPrice={shownPrice}
@@ -3156,18 +3162,7 @@ export default function CarDetailPage() {
                   </div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                  {calcMonthly(shownPrice) ? (
-                    <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>
-                      ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
-                    </p>
-                  ) : null}
-                  <button
-                    onClick={() => setCalcOpen(true)}
-                    aria-label="Open financing calculator"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(220,38,38,0.10)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 8, color: isXdrive ? "#dc2626" : "#f87171", fontSize: 12.5, fontWeight: 700, padding: "5px 10px", cursor: "pointer", fontFamily: "var(--xd-font-body)", whiteSpace: "nowrap" }}
-                  >
-                    <Calculator size={14} /> Calculate
-                  </button>
+                  {calcMonthly(shownPrice) ? <MonthlyLink amount={calcMonthly(shownPrice)} th={th} onOpen={() => setCalcOpen(true)} /> : null}
                   {!isOwnListing && (
                     <AffordabilityCheck
                       carPrice={shownPrice}
@@ -3848,7 +3843,7 @@ export default function CarDetailPage() {
                 buckets={simBuckets}
                 ctaContext={ctaCtx}
                 th={th}
-                wrapStyle={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}
+                wrapStyle={{ marginTop: 64, padding: '8px 0' }}
               />
             )}
           </div>
