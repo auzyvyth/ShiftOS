@@ -62,7 +62,9 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    Settings (2026-11-16: `dashboard/settings/SettingsTab.jsx`, 2,160 lines, byte-identical move; all 18 sections
    clicked through in a mocked render), `dashboard/CostProcurementForm.jsx`, `dashboard/PriceEditModal.jsx`,
    `dashboard/MarkSoldModal.jsx` `dashboard/TeamTab.jsx` (+ lastActiveText, staffAddError), `dashboard/ListingDetailDrawer.jsx` (SelectTick stays:
-   the listings grid uses it) (all byte-identical, mock-rendered). Next: the StockTab bundle.
+   the listings grid uses it) `dashboard/StockTab.jsx` (StockTab, StockStatsStrip as a named export, stock* helpers, STOCK_* constants,
+   bucketGPByMonth) (all byte-identical, mock-rendered). DashboardPage 9,131 -> 3,070 lines.
+   Next: the shared-state hooks (about 69 states; no context until asked).
    Also seen, not changed: in ListingDetailDrawer at 375px the close X covers the "Analytics" tab, and the
    status pill ("Available") is a green tint with a border.
    Seen while moving, not changed: MarkSoldModal's "Confirm Sold" is a green gradient (breaks premiumLight: only the
