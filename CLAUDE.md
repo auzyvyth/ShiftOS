@@ -275,8 +275,7 @@ Project ID: lemdkdizdlcirhbzqlos
   `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning. Selected = `#eceef1`. New code
   never writes a tinted background or `${hex}18` alpha suffix. Shared with the salesman panels and NOT changed: `OutreachHub`,
   `ServicePackages`, `NudgeQueue`. 2026-11-16 pass 2 (colour + card recipe, rendered with mock data): CRM (`CRMPanel.jsx`: pill switch,
-  Appointments, Add Booking + reminder pop-ups now light), the pipeline board (`LeadsPage.jsx`, `LeadGridCard.jsx`: ONE ink dot per stage,
-  no per-stage hues; `STAGE_CONFIG` hues stay for the salesman panels), `LeadDrawer.jsx`, Analytics > Performance (`PerformanceTab.jsx`,
+  Appointments, Add Booking + reminder pop-ups now light), the pipeline board (`LeadsPage.jsx`, `LeadGridCard.jsx`: stage colours as a dot + header word + selected chip only, owner 2026-11-16 "differentiate every stage by colour"; never a tinted box), `LeadDrawer.jsx`, Analytics > Performance (`PerformanceTab.jsx`,
   chart lines by lightness, traffic dashed) and Listings report. Not yet redesigned (layout, not colour): Settings forms, Outreach
   (`OutreachHub` is shared with the salesman panels).
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
@@ -396,6 +395,7 @@ fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
+**Reports > Listings no longer exists (owner, 2026-11-16: merged into Inventory).** Everything on it was already in Inventory > Listings (status counts, incomplete tags, views + enquiries per car, the car pop-up's Analytics pill) or Stock (aged cars), so it was deleted (`dashboard/AnalyticsTab.jsx`); its CSV export is the Export button in Inventory > Listings; `?sub=listings` redirects. The `tab_reports_listings` switch in `permissions.js` is now unused (left so the DB mirror test keeps passing).
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
   ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.

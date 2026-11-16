@@ -119,7 +119,6 @@ const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
 const DocumentsTab      = React.lazy(() => import("./dashboard/DocumentsTab"));
-const AnalyticsTab      = React.lazy(() => import("./dashboard/AnalyticsTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
@@ -6880,8 +6879,6 @@ export default function DashboardPage() {
   const [editTab, setEditTab] = useState('listing'); // 'listing' (CarForm) | 'cost' (procurement)
   // Every time a different listing is opened, start on the Listing details tab.
   useEffect(() => { if (editListing) setEditTab('listing'); }, [editListing?.id]);
-  const [adjustedStaleIds, setAdjustedStaleIds] = useState(new Set());
-  const handleStaleAdjusted = (id) => setAdjustedStaleIds(prev => new Set([...prev, id]));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("available");
   const [showFilters, setShowFilters] = useState(false);
@@ -7349,8 +7346,21 @@ export default function DashboardPage() {
   useEffect(() => {
     if (tabParam !== 'analytics') return;
     const sub = new URLSearchParams(location.search).get('sub');
+    if (sub === 'listings') { navigate('/dashboard/listings', { replace: true }); return; }
     if (sub && sub !== analyticsSub) setAnalyticsSub(sub);
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The cars on screen as a CSV (was Reports > Listings' export): price, days on lot, views + enquiry taps (30 days).
+  const exportListingsCSV = () => {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Brand', 'Model', 'Year', 'Plate', 'Status', 'Selling price (RM)', 'Days listed', 'Views (30d)', 'Enquiries (30d)'],
+      ...filteredListings.map(l => [l.brand, l.model, l.year, l.plate_number, l.status || 'available', l.selling_price || 0,
+        getListingAge(l.created_at), carInterest?.[l.id]?.views ?? '', carInterest?.[l.id]?.enq ?? ''])];
+    const blob = new Blob([rows.map(r => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `listings-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleDelete = async (id) => {
     // Archive, never a hard DELETE: a real delete unlinks the car from 33 tables
@@ -7540,10 +7550,6 @@ export default function DashboardPage() {
     // panel so edits show instantly instead of only after a close/reopen.
     setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
     setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
-    // Mark as adjusted only after a real save — not when the form is merely opened
-    if (editListing && getListingAge(editListing.created_at) >= 30) {
-      handleStaleAdjusted(u.id);
-    }
     setEditListing(null);
   };
   const handleProfileUpdate = (updated) => setProfile(updated);
@@ -7877,7 +7883,6 @@ export default function DashboardPage() {
     analytics: ({
       revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
       performance: { title: "Performance", sub: "Team and website traffic" },
-      listings:    { title: "Listings",    sub: "Per-car views, enquiries and days on lot" },
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
@@ -7897,7 +7902,6 @@ export default function DashboardPage() {
         { id: "overview",  Icon: Gauge,       label: "Overview" },
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
-        { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
       ],
     },
     {
@@ -8679,6 +8683,12 @@ export default function DashboardPage() {
                       ].filter(t => t.count > 0 || t.key === 'available' || t.key === statusFilter)}
                     />
                     </div>
+                    {filteredListings.length > 0 && (
+                      <button onClick={exportListingsCSV} title="Download the cars on screen as a CSV (price, days listed, views, enquiries)"
+                        style={{ ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12, flexShrink: 0 }}>
+                        <Download style={{ width: 13, height: 13 }} /><span className="inv-sm-hide">Export</span>
+                      </button>
+                    )}
                     {filteredListings.length > 0 && statusFilter !== 'sold' && (
                       <button
                         onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
@@ -9108,17 +9118,6 @@ export default function DashboardPage() {
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
                   <PerformanceTab dealerId={getDealerIdFromProfile(profile)} listings={listings} />
                 </Suspense>
-              )}
-              {analyticsSub === "listings" && userId && (
-                <AnalyticsTab
-                  listings={listings}
-                  profile={profile}
-                  salesmen={salesmen}
-                  onEditListing={setEditListing}
-                  onSelectListing={setDetailListing}
-                  onStaleAdjusted={handleStaleAdjusted}
-                  adjustedStaleIds={adjustedStaleIds}
-                />
               )}
             </>
           )}

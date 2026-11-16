@@ -1166,11 +1166,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <React.Fragment key={s}>
                     <button onClick={() => handleStageChange(s)} title={cfg.label}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 60, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? '#111827' : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? '#111827' : past ? '#f5f6f8' : '#fff', transition: 'all 0.15s' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? cfg.headerBorder : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? cfg.headerBorder : past ? '#f5f6f8' : '#fff', transition: 'all 0.15s' }}>
                         {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
                         {past && <Check style={{ width: 11, height: 11, color: '#9ca3af' }} />}
                       </div>
-                      <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: active ? '#111827' : '#9ca3af', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{cfg.label}</span>
+                      <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: active ? cfg.headerBorder : '#9ca3af', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{cfg.label}</span>
                     </button>
                     {!isLast && <div style={{ flex: 1, height: 1, background: past ? '#d1d5db' : '#e5e7eb', minWidth: 8, marginBottom: 18 }} />}
                   </React.Fragment>

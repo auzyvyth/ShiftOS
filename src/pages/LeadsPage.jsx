@@ -38,8 +38,9 @@ function EmptyState({ onAdd }) {
   );
 }
 
-// One dot colour for every stage on the dealer board (no per-stage hues): ink, grey for lost.
-const dotFor = (cfg) => (/lost/i.test(cfg.label) ? '#9ca3af' : PL.text);
+// Each stage keeps its own colour (owner, 2026-11-16: "differentiate every stage by colour"), shown as a dot,
+// the header word and the selected chip: never a tinted box. Lost is red, Won green.
+const dotFor = (cfg) => cfg.headerBorder;
 
 // Pipeline stages shown as grid columns (legacy test_drive added only if populated).
 const GRID_STAGES = ['new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost'];
@@ -53,7 +54,7 @@ function StageColumnHeader({ cfg, count, onClose }) {
       background: '#fff', borderBottom: `1px solid ${PL.line}`,
     }}>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotFor(cfg), flexShrink: 0 }} />
-      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: PL.text }}>
+      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.headerBorder }}>
         {cfg.label}
       </span>
       <span style={{
@@ -386,12 +387,12 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
               <button key={stage} onClick={() => setActiveStage(stage)} style={{
                 display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 20,
                 fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-                background: active ? PL.text : PL.raised,
+                background: active ? cfg.headerBorder : PL.raised,
                 border: 'none',
                 color: active ? '#fff' : '#374151',
                 touchAction: 'manipulation',
               }}>
-                {cfg.label} <span style={{ opacity: 0.8 }}>{stageTabCounts[stage]}</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? '#fff' : cfg.headerBorder, flexShrink: 0 }} />{cfg.label} <span style={{ opacity: 0.8 }}>{stageTabCounts[stage]}</span>
               </button>
             );
           })}
