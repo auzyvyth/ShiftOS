@@ -3059,7 +3059,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const fetchAnalytics = async () => {
     if (!dealerId) return;
-    const { data } = await supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId });
+    const { data } = await supabase.rpc("get_dealer_slug_analytics", { p_dealer_id: dealerId, p_days: 30 }) // 30: the table says "last 30 days" (default is 90);
     if (!data) return;
     const map = {};
     data.forEach(({ slug, clicks, whatsapp }) => {
