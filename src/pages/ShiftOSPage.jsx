@@ -8,7 +8,7 @@ import {
   Receipt, UserCheck, Calculator, Briefcase, ChevronRight, Car,
   Building2, ChevronDown,
 } from "lucide-react";
-import { PLAN_CONFIG } from "../utils/planConfig";
+import { PLAN_CONFIG, OPS_WHATSAPP } from "../utils/planConfig";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import HeroShowcase from "../components/shiftos/HeroShowcase";
@@ -561,6 +561,8 @@ function PriceCard({ planKey }) {
   const isPopular = meta.popular;
   const isGold    = meta.variant === "gold";
   const isSoon    = meta.soon;
+  // Every plan button opens the owner's WhatsApp for now (owner, 2026-11-16); accounts are set up by hand.
+  const planWa = `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(`Hi, I'm interested in the ${cfg.label} plan on Drevo`)}`;
 
   const borderCol = isPopular ? "#dc2626"
                   : isGold    ? "rgba(217,119,6,0.45)"
@@ -608,14 +610,15 @@ function PriceCard({ planKey }) {
       ) : (
         <>
           {meta.variant === "primary" && (
-            <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</a>
           )}
           {meta.variant === "outline" && (
-            <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</a>
           )}
           {meta.variant === "gold" && (
-            <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</a>
           )}
+          <Link to={meta.to} style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: 12, color: "#6b7280", textDecoration: "underline" }}>Or sign up yourself</Link>
         </>
       )}
     </div>
