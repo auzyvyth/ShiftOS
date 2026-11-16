@@ -63,6 +63,8 @@ Full plan and status: `TODO.md` BRAND-1.
   `drevo-badge-96.png` (white-only notification badge). Old filenames (`xdrivelogo.png`,
   `logo-shiftos*.png`, `pwa-*.png`, `shiftos-notif-*.png`) hold the same art for outside links;
   code points at the drevo-* names. Swapping the logo = replace these files, nothing else.
+  `drevo-logo.svg` (2026-11-16) is the same wordmark traced to a vector from the PNG (same 688x120 box,
+  #F40000, checked pixel by pixel); the marketplace header uses it. A new logo = re-trace it too.
 - Never rename identifiers to match (`ShiftOSPage`, the `/shiftos` route,
   `xd_*` storage keys, DB values like `drevo_enquiry`): renaming a key resets
   every user's saved setting; renaming a route breaks links.
