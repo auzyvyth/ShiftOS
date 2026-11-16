@@ -17,14 +17,14 @@ export const OVERVIEW_ROLES = {
     sections: ['alerts', 'finance', 'team'],
     // No 'loss' card: it uses price < buy + recon (gm_exception_alerts), while the money block's
     // "Losing at asking price" uses carPnl (all costs). Two answers on one screen: audit #9.
-    alerts: ['price', 'broker_sales', 'hp', 'no_cost', 'stale'],
+    alerts: ['gross_down', 'price', 'broker_sales', 'hp', 'no_cost', 'stale'],
     kpis: ['gross_month', 'sold_month', 'money_tied', 'open_leads'],
   },
   // "What do we push today?"
   manager: {
     label: 'Manager',
     sections: ['alerts', 'kpis', 'pipeline', 'team', 'money'],
-    alerts: ['unanswered', 'appt', 'price', 'cold', 'no_cost', 'stale', 'b7', 'hp', 'loss', 'anomaly'],
+    alerts: ['unanswered', 'appt', 'gross_down', 'price', 'cold', 'no_cost', 'stale', 'b7', 'hp', 'loss', 'anomaly'],
     kpis: ['open_leads', 'appts_today', 'sold_month', 'active_listings'],
   },
 };
@@ -32,6 +32,7 @@ export const OVERVIEW_ROLES = {
 // Which permission a money item needs (lib/permissions.js CAPABILITIES keys).
 export const NEEDS = {
   gross_month: 'view_gross',
+  gross_down: 'view_gross',
   money_tied: 'view_cost',
   loss: 'view_cost',
   money: 'view_cost',
