@@ -32,7 +32,7 @@ import { CONFIGURABLE_ROLES, CAPABILITY_GROUPS, capabilitiesForRole, resolvePerm
 import { DEFAULT_WA_TEMPLATES, WA_PLACEHOLDERS } from "../lib/leadsHelpers";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
-import SciFiLoader from "../components/SciFiLoader";
+import AppLoader from "../components/AppLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import { liveChannel } from "../lib/liveChannel";
 import { T, iCls, taCls, SERVER_URL, getListingAge } from "./dashboard/shared";
@@ -8062,7 +8062,7 @@ export default function DashboardPage() {
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (profileLoadFailed) return <ProfileLoadError />;
-  if (!profile) return <SciFiLoader />;
+  if (!profile) return <AppLoader theme="light" />;
 
   // MOBILE-7 follow-up: self-service restore within the 30-day grace window
   // after a delete-account soft delete (SettingsTab's Danger Zone). Same
