@@ -274,8 +274,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         /* GLOSSY WHITE bar (owner, 2026-11-16; it was near-black #0f1115). OPAQUE
            on purpose: body is #080C14, so a translucent bar would composite
            over near-black at the top of the page. The gloss is a white-to-grey
-           gradient plus a sheen on the top half (::before), not transparency. */
-        .mh-root { position:sticky; top:0; z-index:100; background:linear-gradient(180deg,#ffffff 0%,#ffffff 46%,#f3f4f7 100%); border-bottom:1px solid rgba(15,23,42,.08); box-shadow:inset 0 1px 0 #ffffff, 0 1px 2px rgba(15,23,42,.04); transition:box-shadow .25s,border-color .25s,transform .28s ease; font-family:'Outfit',sans-serif; }
+           gradient plus a sheen on the top half (::before), not transparency.
+           On top: a faint red glow from the left edge and a fine grain (an SVG
+           noise tile, ~9% black), both drawn as background layers so they sit
+           UNDER the logo and links. */
+        .mh-root { position:sticky; top:0; z-index:100; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(ellipse 420px 140px at 0% 50%,rgba(220,38,38,.10),rgba(220,38,38,0) 70%), linear-gradient(180deg,#ffffff 0%,#ffffff 46%,#f3f4f7 100%); background-size:160px 160px,auto,auto; border-bottom:1px solid rgba(15,23,42,.08); box-shadow:inset 0 1px 0 #ffffff, 0 1px 2px rgba(15,23,42,.04); transition:box-shadow .25s,border-color .25s,transform .28s ease; font-family:'Outfit',sans-serif; }
         /* translateY, never display/height: taking a sticky bar out of layout
            makes the page jump under the reader's finger.
            Deliberately NO will-change:transform here. It would buy a compositor
