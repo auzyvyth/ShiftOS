@@ -58,7 +58,9 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    -> shared-state hooks last (about 69 states; do not build a context until the leaf moves are done).
    Verify EVERY move with: `eslint` rules `no-undef` AND `react/jsx-no-undef` (the first alone MISSED
    `Sparkline` and `AgeBadge`, caught only by rendering), a `vite build`, and a mocked render of the moved
-   component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`).
+   component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`),
+   Settings (2026-11-16: `dashboard/settings/SettingsTab.jsx`, 2,160 lines, byte-identical move; all 18 sections
+   clicked through in a mocked render). Next: CostProcurementForm.
 6. **Smaller items found by the research:** Fast List modal (`DashboardPage.jsx` `showFastModal`) is a fixed
    overlay with no portal and no scroll lock (overlay rules 1-2); parallelise the profile fetch with the
    cars/salesmen/stock queries; trim the ~70-column `car_listings` select; `vendor-charts` 457 KB is on the
