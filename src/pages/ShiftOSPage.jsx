@@ -464,7 +464,7 @@ const PLAN_META = {
 
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
-const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20Drevo%20for%20my%20dealership";
 
 // ─── Scroll progress bar ──────────────────────────────────────────────────────
 function ScrollProgress() {
@@ -618,7 +618,6 @@ function PriceCard({ planKey }) {
           {meta.variant === "gold" && (
             <a href={planWa} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</a>
           )}
-          <Link to={meta.to} style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: 12, color: "#6b7280", textDecoration: "underline" }}>Or sign up yourself</Link>
         </>
       )}
     </div>
