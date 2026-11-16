@@ -28,7 +28,7 @@ import { localInputToIso } from '../../utils/myDay';
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
   width: '100%', background: '#f5f6f8', border: 'none',
-  borderRadius: 6, padding: '9px 13px', color: 'white', fontSize: 13,
+  borderRadius: 10, padding: '9px 13px', color: '#111827', fontSize: 13,
   fontFamily: "system-ui, sans-serif", outline: 'none', boxSizing: 'border-box',
 };
 const focusRed = { borderColor: 'rgba(220,38,38,0.4)' };
@@ -38,8 +38,8 @@ const MY_BANKS = ['Maybank','CIMB','Public Bank','RHB','Hong Leong','AmBank','Al
 const TENURES  = [12,24,36,48,60,72,84,96];
 const HP_STATUS_CFG = {
   pending:   { label: 'Pending',   color: '#b91c1c' },
-  approved:  { label: 'Approved',  color: '#34d399' },
-  rejected:  { label: 'Rejected',  color: '#f87171' },
+  approved:  { label: 'Approved',  color: '#047857' },
+  rejected:  { label: 'Rejected',  color: '#b91c1c' },
   disbursed: { label: 'Disbursed', color: '#4b5563' },
 };
 const calcEIR = (principal, annualRate, months) => {
@@ -95,11 +95,11 @@ const ACTIVITY_TYPES = [
 ];
 
 const ACT_CFG = {
-  created:          { color: '#34d399', label: 'Lead Created' },
+  created:          { color: '#047857', label: 'Lead Created' },
   stage_changed:    { color: '#4b5563', label: 'Stage Changed' },
   note_added:       { color: '#9ca3af', label: 'Note' },
   assigned:         { color: '#4b5563', label: 'Assigned' },
-  whatsapp_sent:    { color: '#34d399', label: 'WhatsApp Sent' },
+  whatsapp_sent:    { color: '#047857', label: 'WhatsApp Sent' },
   called:           { color: '#4b5563', label: 'Called' },
   visited_showroom: { color: '#b91c1c', label: 'Showroom Visit' },
   made_offer:       { color: '#fb923c', label: 'Made Offer' },
@@ -654,7 +654,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const instalment = car?.selling_price ? calcInstalment(car.selling_price) : null;
   const carThumb   = car?.images?.[0] || null;
   const initials   = getInitials(lead.buyer_name);
-  const avatarBg   = avatarGradient(lead.lead_source);
+  const avatarBg   = '#374151';
   const stageCfg   = STAGE_CONFIG[lead.stage] || STAGE_CONFIG.new;
   const currentStageIdx = STAGE_ORDER.indexOf(lead.stage);
   const nextStage  = currentStageIdx < STAGE_ORDER.length - 1 ? STAGE_ORDER[currentStageIdx + 1] : null;
@@ -1000,10 +1000,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
   // ── White modal styles ──────────────────────────────────────────────────────
   const w = {
-    inp: { width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui, sans-serif", outline: 'none', boxSizing: 'border-box' },
+    inp: { width: '100%', background: '#f5f6f8', border: 'none', borderRadius: 10, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui, sans-serif", outline: 'none', boxSizing: 'border-box' },
     label: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 8px', display: 'block' },
-    section: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', marginBottom: 12 },
-    divider: { height: 1, background: '#f1f3f5', margin: '16px 0' },
+    section: { background: '#fff', border: 'none', borderRadius: 16, padding: '16px 18px', marginBottom: 12, boxShadow: '0 1px 2px rgba(17,24,39,0.06), 0 4px 14px rgba(17,24,39,0.08)' },
+    divider: { height: 1, background: 'rgba(17,24,39,0.06)', margin: '16px 0' },
   };
 
   // One car search, used to link a first car and to offer another after a sale.
@@ -1017,7 +1017,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
                       {carResults.map(c => (
                         <button key={c.id} onClick={() => linkCar(c.id)}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f5f6f8', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
                           <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
                           {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
                         </button>
@@ -1047,10 +1047,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
       {/* Centered modal */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, pointerEvents: 'none' }}>
-        <div style={{ width: '100%', maxWidth: 700, maxHeight: '92vh', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 18, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "system-ui, sans-serif", animation: 'ldPop 0.16s ease', pointerEvents: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: 700, maxHeight: '92vh', background: '#ffffff', border: 'none', borderRadius: 20, boxShadow: '0 24px 80px rgba(17,24,39,0.22)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "system-ui, sans-serif", animation: 'ldPop 0.16s ease', pointerEvents: 'auto' }}>
           <style>{`
             @keyframes ldPop { from { transform: scale(0.97); opacity:0; } to { transform:scale(1); opacity:1; } }
-            .ld-inp:focus { border-color: #dc2626 !important; outline: none; }
+            .ld-inp:focus { box-shadow: 0 0 0 2px rgba(17,24,39,0.18); outline: none; }
           `}</style>
 
           {/* ── HEADER ── */}
@@ -1092,7 +1092,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   )}
                   <LeadSourceBadge source={lead.lead_source} />
                   {lead.buyer_state && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6b7280', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#6b7280', background: '#f5f6f8', border: 'none', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>
                       <MapPin style={{ width: 10, height: 10 }} />{lead.buyer_state}
                     </span>
                   )}
@@ -1101,7 +1101,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               </div>
 
               {/* Close */}
-              <button onClick={onClose} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', flexShrink: 0 }}>
+              <button onClick={onClose} style={{ background: '#f5f6f8', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', flexShrink: 0 }}>
                 <X style={{ width: 14, height: 14 }} />
               </button>
             </div>
@@ -1117,7 +1117,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   fourth accent in one row is noise. */}
               {chatThread && (
                 <button onClick={() => setChatOpen(true)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: '1px solid #d1d5db', color: '#111827', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: 'none', color: '#111827', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <MessageSquare style={{ width: 13, height: 13 }} />Chat
                   {chatThread.seller_unread > 0 && (
                     <span style={{ minWidth: 16, height: 16, borderRadius: 99, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
@@ -1129,7 +1129,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               {lead.phone ? (
                 <>
                   <a href={formatWhatsAppURL(lead.phone)} target="_blank" rel="noopener noreferrer"
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f5f6f8', border: 'none', color: '#16a34a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#f5f6f8', border: 'none', color: '#047857', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
                     <MessageCircle style={{ width: 13, height: 13 }} />WhatsApp
                   </a>
                   <a href={`tel:${lead.phone}`}
@@ -1143,7 +1143,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                    have. It is the control that puts the number on the lead the
                    moment the buyer shares it in the chat. */
                 <button onClick={() => startEdit('phone')}
-                  style={{ flex: chatThread ? 1 : 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: '1px dashed #d1d5db', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: chatThread ? 1 : 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 8, background: '#fff', border: 'none', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Plus style={{ width: 13, height: 13 }} />Add phone
                 </button>
               )}
@@ -1156,7 +1156,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             </div>
 
             {/* Stage progress bar */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0 16px', borderTop: '1px solid #f1f3f5', overflowX: 'auto', gap: 0, scrollbarWidth: 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 0 16px', borderTop: '1px solid rgba(17,24,39,0.06)', overflowX: 'auto', gap: 0, scrollbarWidth: 'none' }}>
               {STAGE_ORDER.filter(s => s !== 'lost').map((s, i, arr) => {
                 const cfg = STAGE_CONFIG[s];
                 const active = s === lead.stage;
@@ -1166,11 +1166,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <React.Fragment key={s}>
                     <button onClick={() => handleStageChange(s)} title={cfg.label}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 60, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? cfg.headerBorder : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? cfg.headerBorder : past ? '#f3f4f6' : '#fff', transition: 'all 0.15s' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${active ? '#111827' : past ? '#d1d5db' : '#e5e7eb'}`, background: active ? '#111827' : past ? '#f5f6f8' : '#fff', transition: 'all 0.15s' }}>
                         {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
                         {past && <Check style={{ width: 11, height: 11, color: '#9ca3af' }} />}
                       </div>
-                      <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: active ? cfg.headerBorder : '#9ca3af', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{cfg.label}</span>
+                      <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, color: active ? '#111827' : '#9ca3af', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{cfg.label}</span>
                     </button>
                     {!isLast && <div style={{ flex: 1, height: 1, background: past ? '#d1d5db' : '#e5e7eb', minWidth: 8, marginBottom: 18 }} />}
                   </React.Fragment>
@@ -1188,11 +1188,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           </div>
 
           {/* ── SCROLLABLE BODY ── */}
-          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px 24px', background: '#f9fafb' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px 24px', background: '#eef0f4' }}>
 
             {/* Loss reason panel */}
             {priceRequest && (
-              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+              <div style={{ background: '#fff', border: 'none', borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: '0 1px 2px rgba(17,24,39,0.06), 0 4px 14px rgba(17,24,39,0.08)' }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>Price waiting for approval</p>
                 <p style={{ fontSize: 12, color: '#374151', margin: '0 0 10px' }}>
                   RM {Number(priceRequest.agreed_price).toLocaleString()} agreed, asking RM {Number(priceRequest.asking_price).toLocaleString()}
@@ -1202,7 +1202,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 {canApprove ? (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => decidePrice(false)} disabled={deciding}
-                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Not approved</button>
+                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f5f6f8', border: 'none', color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Not approved</button>
                     <button onClick={() => decidePrice(true)} disabled={deciding}
                       style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: deciding ? 0.6 : 1 }}>Approve and close the deal</button>
                   </div>
@@ -1213,15 +1213,15 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             )}
 
             {showCloseModal && (
-              <div style={{ background: '#fff', border: '1px solid #a7f3d0', borderRadius: 10, padding: 16, marginBottom: 12 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#059669', margin: '0 0 4px' }}>Who closed this sale?</p>
+              <div style={{ background: '#fff', border: 'none', borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: '0 1px 2px rgba(17,24,39,0.06), 0 4px 14px rgba(17,24,39,0.08)' }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>Who closed this sale?</p>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 12px' }}>
                   {lead.car_listing ? `${lead.car_listing.year || ''} ${lead.car_listing.brand || ''} ${lead.car_listing.model || ''}`.trim() || 'This car' : 'This car'} will be marked as sold.
                 </p>
                 <select
                   value={selectedCloser}
                   onChange={e => setSelectedCloser(e.target.value)}
-                  style={{ width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui,sans-serif", outline: 'none', marginBottom: 12, cursor: 'pointer', appearance: 'none' }}
+                  style={{ width: '100%', background: '#f5f6f8', border: 'none', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, fontFamily: "system-ui,sans-serif", outline: 'none', marginBottom: 12, cursor: 'pointer', appearance: 'none' }}
                 >
                   <option value="">— Unassigned —</option>
                   {teamMembers.map(m => (
@@ -1233,7 +1233,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   type="number" inputMode="numeric" min="1"
                   value={agreedPrice}
                   onChange={e => setAgreedPrice(e.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, outline: 'none', marginBottom: 4 }}
+                  style={{ width: '100%', boxSizing: 'border-box', background: '#f5f6f8', border: 'none', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, outline: 'none', marginBottom: 4 }}
                 />
                 {(() => {
                   const ask = Number(lead.car_listing?.selling_price) || 0;
@@ -1245,14 +1245,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => setShowCloseModal(false)}
-                    style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}
+                    style={{ flex: 1, padding: '8px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmCloseSale}
                     disabled={closeSaving}
-                    style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#059669', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: closeSaving ? 0.6 : 1 }}
+                    style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#111827', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: closeSaving ? 0.6 : 1 }}
                   >
                     {closeSaving ? 'Saving…' : 'Confirm Sale'}
                   </button>
@@ -1261,19 +1261,19 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             )}
 
             {showLossPanel && (
-              <div style={{ background: '#fff', border: '1px solid transparent', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+              <div style={{ background: '#fff', border: 'none', borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: '0 1px 2px rgba(17,24,39,0.06), 0 4px 14px rgba(17,24,39,0.08)' }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 12 }}>Why was this lead lost?</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
                   {LOST_REASONS.map(r => (
                     <button key={r} onClick={() => setSelectedLossReason(r)}
-                      style={{ padding: '7px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, textAlign: 'left', cursor: 'pointer', background: selectedLossReason === r ? '#f5f6f8' : '#f9fafb', border: selectedLossReason === r ? '1px solid transparent' : '1px solid #e5e7eb', color: selectedLossReason === r ? '#dc2626' : '#374151' }}>
+                      style={{ padding: '7px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500, textAlign: 'left', cursor: 'pointer', background: selectedLossReason === r ? '#111827' : '#f5f6f8', border: 'none', color: selectedLossReason === r ? '#fff' : '#374151' }}>
                       {r}
                     </button>
                   ))}
                 </div>
                 <textarea placeholder="Optional notes…" value={lossNotes} onChange={e => setLossNotes(e.target.value)} rows={2} style={{ ...w.inp, resize: 'none', marginBottom: 10 }} className="ld-inp" />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setShowLossPanel(false); setPendingStage(null); setSelectedLossReason(''); }} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => { setShowLossPanel(false); setPendingStage(null); setSelectedLossReason(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                   <button onClick={confirmLoss} disabled={savingLoss || !selectedLossReason} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: !selectedLossReason ? 0.5 : 1 }}>
                     {savingLoss ? 'Saving…' : 'Confirm Loss'}
                   </button>
@@ -1284,9 +1284,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             <BrokerCreditPanel credit={initialLead?.broker_credit} />
 
             {/* ── Info strip: Assign + Follow-up ── */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
               {teamMembers.length > 0 && (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <p style={w.label}>Assigned To</p>
                   <div style={{ position: 'relative' }}>
                     <User style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 12, height: 12, color: '#9ca3af', pointerEvents: 'none' }} />
@@ -1297,13 +1297,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   </div>
                 </div>
               )}
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '2 1 240px', minWidth: 0 }}>
                 <p style={w.label}>Follow-up</p>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input type="datetime-local" value={followUpDate ? followUpDate.slice(0, 16) : ''} onChange={e => setFollowUpDate(e.target.value)}
-                    style={{ ...w.inp, flex: 1, colorScheme: 'light' }} className="ld-inp" />
+                    style={{ ...w.inp, flex: 1, minWidth: 0, colorScheme: 'light' }} className="ld-inp" />
                   <button onClick={() => saveFollowUp(followUpDate)} disabled={savingFollowUp}
-                    style={{ padding: '9px 12px', borderRadius: 8, background: '#dc2626', color: 'white', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: savingFollowUp ? 0.6 : 1 }}>
+                    style={{ padding: '9px 14px', borderRadius: 10, background: '#dc2626', color: 'white', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: savingFollowUp ? 0.6 : 1 }}>
                     {savingFollowUp ? '…' : 'Set'}
                   </button>
                   {followUpDate && <button onClick={() => saveFollowUp('')} style={{ fontSize: 11, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>✕</button>}
@@ -1338,7 +1338,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>RM {Number(car.selling_price).toLocaleString()}</p>}
                     {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo (est.)</p>}
                     {(lead.stage === 'deposit_taken') && (
-                      <p style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#0d9488', background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '2px 7px', margin: '5px 0 0' }}>
+                      <p style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#047857', background: '#f5f6f8', border: 'none', borderRadius: 6, padding: '2px 7px', margin: '5px 0 0' }}>
                         Reserved{(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name) ? ` by ${(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name).split(' ')[0]}` : ''}
                       </p>
                     )}
@@ -1362,7 +1362,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             <div style={w.section}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <p style={{ ...w.label, margin: 0 }}>Notes</p>
-                {notesSaved && <span style={{ fontSize: 10, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3 }}><Check style={{ width: 10, height: 10 }} />Saved</span>}
+                {notesSaved && <span style={{ fontSize: 10, color: '#047857', display: 'flex', alignItems: 'center', gap: 3 }}><Check style={{ width: 10, height: 10 }} />Saved</span>}
               </div>
               <textarea value={notes} onChange={e => handleNotesChange(e.target.value)} placeholder="Add notes about this lead…" rows={3}
                 style={{ ...w.inp, resize: 'vertical', minHeight: 72 }} className="ld-inp" />
@@ -1378,7 +1378,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                 </button>
                 {showHandover && (
                   <div style={{ marginTop: 12 }}>
-                    <p style={{ margin: '0 0 10px', fontSize: 11, color: '#16a34a' }}>Update steps — the buyer sees this live on their account.</p>
+                    <p style={{ margin: '0 0 10px', fontSize: 11, color: '#047857' }}>Update steps — the buyer sees this live on their account.</p>
                     <PostSaleChecklist lead={lead} />
                   </div>
                 )}
@@ -1387,11 +1387,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
             {/* ── Deposit / Booking Fee ── */}
             {(['deposit_taken','won','closed_won'].includes(lead.stage) || depositAmount !== '') && (
-              <div style={{ ...w.section, borderColor: '#99f6e4', background: '#f0fdfa' }}>
+              <div style={{ ...w.section }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <p style={{ ...w.label, margin: 0, color: '#0d9488' }}>Deposit / Booking Fee</p>
+                  <p style={{ ...w.label, margin: 0 }}>Deposit / Booking Fee</p>
                   <button onClick={saveDeposit} disabled={depositSaving}
-                    style={{ fontSize: 11, fontWeight: 600, color: '#0d9488', background: '#ccfbf1', border: '1px solid #99f6e4', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', opacity: depositSaving ? 0.6 : 1 }}>
+                    style={{ fontSize: 11, fontWeight: 600, color: '#047857', background: '#f5f6f8', border: 'none', borderRadius: 6, padding: '3px 12px', cursor: 'pointer', opacity: depositSaving ? 0.6 : 1 }}>
                     {depositSaving ? 'Saving…' : 'Save'}
                   </button>
                 </div>
@@ -1399,17 +1399,17 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <div>
                     <p style={w.label}>Amount (RM)</p>
                     <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="e.g. 2000"
-                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                      style={{ ...w.inp }} className="ld-inp" />
                   </div>
                   <div>
                     <p style={w.label}>Date</p>
                     <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)}
-                      style={{ ...w.inp, background: '#fff', colorScheme: 'light' }} className="ld-inp" />
+                      style={{ ...w.inp, colorScheme: 'light' }} className="ld-inp" />
                   </div>
                   <div>
                     <p style={w.label}>Method</p>
                     <select value={depositMethod} onChange={e => setDepositMethod(e.target.value)}
-                      style={{ ...w.inp, background: '#fff', appearance: 'none', cursor: 'pointer' }} className="ld-inp">
+                      style={{ ...w.inp, appearance: 'none', cursor: 'pointer' }} className="ld-inp">
                       <option value="">— Select —</option>
                       <option value="cash">Cash</option>
                       <option value="transfer">Bank Transfer</option>
@@ -1420,13 +1420,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <div>
                     <p style={w.label}>Receipt No.</p>
                     <input value={depositReceiptNo} onChange={e => setDepositReceiptNo(e.target.value)} placeholder="e.g. REC-0042"
-                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                      style={{ ...w.inp }} className="ld-inp" />
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <p style={w.label}>Balance Due (RM)</p>
                     <input type="number" value={depositBalanceDue} onChange={e => setDepositBalanceDue(e.target.value)}
                       placeholder="Remaining amount after deposit"
-                      style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
+                      style={{ ...w.inp }} className="ld-inp" />
                   </div>
                 </div>
                 {/* Opens Documents with this buyer + car filled in. Closes the
@@ -1440,7 +1440,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                           onClose();
                           onOpenDoc(data);
                         }}
-                        style={{ fontSize: 12, fontWeight: 600, color: '#111827', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>
+                        style={{ fontSize: 12, fontWeight: 600, color: '#111827', background: '#fff', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>
                         Make {docType.toLowerCase()}
                       </button>
                     ))}
@@ -1493,7 +1493,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     ];
                     const docsCollected = HP_DOCS.filter(d => docs[d.key]).length;
                     return (
-                      <div key={row.id} style={{ marginBottom: 8, padding: '10px 12px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                      <div key={row.id} style={{ marginBottom: 8, padding: '10px 12px', background: '#f5f6f8', border: 'none', borderRadius: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                           <span style={{ fontSize: 12, color: '#9ca3af', marginRight: 6 }}>#{idx + 1}</span>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', flex: 1 }}>{row.bank_name}</span>
@@ -1509,13 +1509,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         <details style={{ marginBottom: 8 }}>
                           <summary style={{ fontSize: 11, color: '#6b7280', cursor: 'pointer', userSelect: 'none', marginBottom: 6 }}>
                             Docs {docsCollected}/{HP_DOCS.length}
-                            <span style={{ marginLeft: 6, color: docsCollected === HP_DOCS.length ? '#16a34a' : '#d97706' }}>
+                            <span style={{ marginLeft: 6, color: docsCollected === HP_DOCS.length ? '#047857' : '#b91c1c' }}>
                               {docsCollected === HP_DOCS.length ? '✓ Complete' : `${HP_DOCS.length - docsCollected} missing`}
                             </span>
                           </summary>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 6 }}>
                             {HP_DOCS.map(d => (
-                              <label key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: docs[d.key] ? '#16a34a' : '#6b7280', cursor: 'pointer' }}>
+                              <label key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: docs[d.key] ? '#047857' : '#6b7280', cursor: 'pointer' }}>
                                 <input type="checkbox" checked={!!docs[d.key]} onChange={() => handleToggleDoc(row.id, d.key, docs[d.key])} style={{ accentColor: '#dc2626' }} />
                                 {d.label}
                               </label>
@@ -1524,7 +1524,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         </details>
                         {row.status === 'pending' && rejectingRowId !== row.id && (
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => handleUpdateHPStatus(row.id, 'approved')} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#f5f6f8', border: 'none', color: '#16a34a', fontWeight: 600 }}>
+                            <button onClick={() => handleUpdateHPStatus(row.id, 'approved')} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#f5f6f8', border: 'none', color: '#047857', fontWeight: 600 }}>
                               Approve
                             </button>
                             <button onClick={() => { setRejectingRowId(row.id); setRejectCategory(''); }} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6, cursor: 'pointer', background: '#f5f6f8', border: 'none', color: '#dc2626', fontWeight: 600 }}>
@@ -1543,7 +1543,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                               ))}
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setRejectingRowId(null)} style={{ flex: 1, padding: '6px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                              <button onClick={() => setRejectingRowId(null)} style={{ flex: 1, padding: '6px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>Cancel</button>
                               <button onClick={() => handleUpdateHPStatus(row.id, 'rejected', rejectCategory)} disabled={!rejectCategory} style={{ flex: 1, padding: '6px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: !rejectCategory ? 0.5 : 1 }}>
                                 Confirm Rejection
                               </button>
@@ -1564,7 +1564,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                                   Log LOU Received
                                 </button>
                               ) : (
-                                <div style={{ fontSize: 10, color: louExpired ? '#dc2626' : louUrgent ? '#d97706' : '#16a34a', background: louExpired ? '#f5f6f8' : louUrgent ? '#f5f6f8' : '#f5f6f8', border: `1px solid ${louExpired ? 'transparent' : louUrgent ? 'transparent' : 'transparent'}`, borderRadius: 4, padding: '4px 8px', marginBottom: 6, fontWeight: 600 }}>
+                                <div style={{ fontSize: 10, color: louExpired ? '#dc2626' : louUrgent ? '#b91c1c' : '#047857', background: louExpired ? '#f5f6f8' : louUrgent ? '#f5f6f8' : '#f5f6f8', border: `1px solid ${louExpired ? 'transparent' : louUrgent ? 'transparent' : 'transparent'}`, borderRadius: 4, padding: '4px 8px', marginBottom: 6, fontWeight: 600 }}>
                                   LOU {louExpired ? `expired ${-louDaysLeft}d ago` : `expires in ${louDaysLeft}d`} ({new Date(row.lou_expires_at).toLocaleDateString('en-MY')})
                                 </div>
                               )}
@@ -1601,8 +1601,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                               {remainingBanks.map(b => <option key={b} value={b}>{b}</option>)}
                             </select>
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setNextBankPrompt(false)} style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}>Dismiss</button>
-                              <button onClick={handleSubmitNextBank} disabled={nextBankSaving || !nextBank} style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#d97706', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: (!nextBank || nextBankSaving) ? 0.5 : 1 }}>
+                              <button onClick={() => setNextBankPrompt(false)} style={{ flex: 1, padding: '7px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>Dismiss</button>
+                              <button onClick={handleSubmitNextBank} disabled={nextBankSaving || !nextBank} style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#111827', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: (!nextBank || nextBankSaving) ? 0.5 : 1 }}>
                                 {nextBankSaving ? 'Submitting…' : `Submit to ${nextBank || 'bank'}`}
                               </button>
                             </div>
@@ -1616,12 +1616,12 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       <Plus style={{ width: 12, height: 12 }} />Add HP Submission
                     </button>
                   ) : (
-                    <div style={{ background: '#fff', border: '1px solid transparent', borderRadius: 8, padding: 12 }}>
+                    <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: 12 }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New HP Submission</p>
                       {/* HP-6: employment type */}
                       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
                         {[['employed','Employed'],['self_employed','Self-Employed'],['commission_based','Commission']].map(([val, label]) => (
-                          <button key={val} onClick={() => { setHpEmpType(val); setHpDocCheck({}); }} style={{ flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: hpEmpType === val ? '#f5f6f8' : '#f3f4f6', border: `1px solid ${hpEmpType === val ? '#c4b5fd' : '#e5e7eb'}`, color: hpEmpType === val ? '#7c3aed' : '#6b7280' }}>
+                          <button key={val} onClick={() => { setHpEmpType(val); setHpDocCheck({}); }} style={{ flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: hpEmpType === val ? '#111827' : '#f5f6f8', border: 'none', color: hpEmpType === val ? '#fff' : '#6b7280' }}>
                             {label}
                           </button>
                         ))}
@@ -1631,14 +1631,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         const required = EMP_TEMPLATES[hpEmpType] || EMP_TEMPLATES.employed;
                         const collected = required.filter(k => hpDocCheck[k]).length;
                         return (
-                          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 7, padding: '10px 12px', marginBottom: 8 }}>
+                          <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 7, padding: '10px 12px', marginBottom: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                               <span style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Required Docs</span>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: collected === required.length ? '#16a34a' : '#d97706' }}>{collected}/{required.length}</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: collected === required.length ? '#047857' : '#b91c1c' }}>{collected}/{required.length}</span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                               {required.map(k => (
-                                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: hpDocCheck[k] ? '#16a34a' : '#6b7280', cursor: 'pointer' }}>
+                                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: hpDocCheck[k] ? '#047857' : '#6b7280', cursor: 'pointer' }}>
                                   <input type="checkbox" checked={!!hpDocCheck[k]} onChange={() => setHpDocCheck(d => ({ ...d, [k]: !d[k] }))} style={{ accentColor: '#4b5563' }} />
                                   {HP_DOCS_MAP[k]}
                                 </label>
@@ -1668,8 +1668,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       )}
                       <input value={hpForm.notes} onChange={e => setHpForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ ...w.inp, marginBottom: 8 }} className="ld-inp" />
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { setShowAddHP(false); setHpDocCheck({}); setHpEmpType('employed'); }} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#7c3aed', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
+                        <button onClick={() => { setShowAddHP(false); setHpDocCheck({}); setHpEmpType('employed'); }} style={{ flex: 1, padding: '8px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleAddHP} disabled={hpSaving || !hpForm.bank || !hpForm.amount} style={{ flex: 1, padding: '8px', borderRadius: 7, background: '#111827', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (hpSaving || !hpForm.bank || !hpForm.amount) ? 0.5 : 1 }}>
                           {hpSaving ? 'Submitting…' : (() => { const req = EMP_TEMPLATES[hpEmpType] || []; const missing = req.filter(k => !hpDocCheck[k]).length; return missing > 0 ? `${missing} doc(s) missing` : 'Submit'; })()}
                         </button>
                       </div>
@@ -1695,13 +1695,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     : null;
                   const jpjOverdue = daysAtJPJ !== null && daysAtJPJ > 7;
                   return (
-                    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         {['pending', 'submitted', 'completed'].map((s, i) => (
                           <React.Fragment key={s}>
                             <div style={{
                               width: 22, height: 22, borderRadius: 11,
-                              background: ['pending','submitted','completed'].indexOf(jpj) >= i ? '#7c3aed' : '#e5e7eb',
+                              background: ['pending','submitted','completed'].indexOf(jpj) >= i ? '#111827' : '#e5e7eb',
                               color: ['pending','submitted','completed'].indexOf(jpj) >= i ? '#fff' : '#9ca3af',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontSize: 11, fontWeight: 700,
@@ -1723,12 +1723,12 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                           </button>
                         )}
                         {jpj === 'submitted' && (
-                          <button onClick={() => handleJPJStatus('completed')} style={{ flex: 1, fontSize: 11, padding: '6px', borderRadius: 6, cursor: 'pointer', background: '#f5f6f8', border: 'none', color: '#16a34a', fontWeight: 600 }}>
+                          <button onClick={() => handleJPJStatus('completed')} style={{ flex: 1, fontSize: 11, padding: '6px', borderRadius: 6, cursor: 'pointer', background: '#f5f6f8', border: 'none', color: '#047857', fontWeight: 600 }}>
                             Mark Completed
                           </button>
                         )}
                         {jpj === 'completed' && lead.jpj_completed_at && (
-                          <p style={{ flex: 1, fontSize: 11, color: '#16a34a', margin: 0, padding: '6px 0' }}>
+                          <p style={{ flex: 1, fontSize: 11, color: '#047857', margin: 0, padding: '6px 0' }}>
                             Completed {new Date(lead.jpj_completed_at).toLocaleDateString('en-MY')}
                           </p>
                         )}
@@ -1750,7 +1750,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               {addonsLoading ? <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p> : (
                 <>
                   {dealAddons.map(a => (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 10px', marginBottom: 4, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 7 }}>
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 10px', marginBottom: 4, background: '#fff', border: 'none', borderRadius: 7 }}>
                       <span style={{ fontSize: 13, color: '#374151', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.dealer_products?.name || '—'}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString()}</span>
                       <button onClick={() => handleRemoveAddon(a.id)} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, display: 'flex' }}>
@@ -1764,7 +1764,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       <Plus style={{ width: 12, height: 12 }} />Add Add-on
                     </button>
                   ) : (
-                    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: car ? 8 : 0 }}>
+                    <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: 12, marginBottom: car ? 8 : 0 }}>
                       {catalogueProducts.length === 0 ? (
                         <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>No active products configured. Add them in Services & Add-ons.</p>
                       ) : (
@@ -1779,7 +1779,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         </>
                       )}
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 7, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={() => setShowAttach(false)} style={{ flex: 1, padding: '7px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                         {catalogueProducts.length > 0 && (
                           <button onClick={handleAttachAddon} disabled={attachSaving || !addonForm.product_id || !addonForm.sold_price}
                             style={{ flex: 1, padding: '7px', borderRadius: 7, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!addonForm.product_id || !addonForm.sold_price || attachSaving) ? 0.5 : 1 }}>
@@ -1791,11 +1791,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   )}
                   {/* ── Inline deal calculator ── */}
                   {car && carPriceNum > 0 && (
-                    <div style={{ margin: '8px 0', padding: '14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                    <div style={{ margin: '8px 0', padding: '14px', background: '#f5f6f8', border: 'none', borderRadius: 12 }}>
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Financing & On-Road Calculator</p>
 
                       {/* Car price read-only */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f9fafb', borderRadius: 7, border: '1px solid #f1f3f5', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f5f6f8', borderRadius: 7, border: 'none', marginBottom: 10 }}>
                         <span style={{ fontSize: 12, color: '#6b7280' }}>Car Price</span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>RM {carPriceNum.toLocaleString()}</span>
                       </div>
@@ -1834,15 +1834,15 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         <span style={{ fontSize: 10, color: '#9ca3af', alignSelf: 'center', marginRight: 2 }}>NCD</span>
                         {NCD_TIERS.map(n => (
                           <button key={n} onClick={() => setCalcState(s => ({ ...s, insNcd: n }))}
-                            style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: `1px solid ${calcState.insNcd === n ? '#6366f1' : '#e5e7eb'}`, background: calcState.insNcd === n ? '#eef2ff' : '#f9fafb', color: calcState.insNcd === n ? '#6366f1' : '#6b7280' }}>
+                            style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: 'none', background: calcState.insNcd === n ? '#111827' : '#f5f6f8', color: calcState.insNcd === n ? '#fff' : '#6b7280' }}>
                             {n === 38.33 ? '38%' : `${n}%`}
                           </button>
                         ))}
                       </div>
 
                       {/* Results */}
-                      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f3f5' }}>
+                      <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                           <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment (est., EIR)</span>
                           <span style={{ fontSize: 15, fontWeight: 800, color: '#4b5563' }}>RM {Math.round(dealMonthly).toLocaleString()}/mo</span>
                         </div>
@@ -1873,11 +1873,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   {car && (
                     !dealLink ? (
                       <button onClick={handleGenerateDealLink} disabled={generatingLink}
-                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '9px 14px', borderRadius: 8, background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 12, fontWeight: 600, cursor: 'pointer', justifyContent: 'center', opacity: generatingLink ? 0.6 : 1 }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '9px 14px', borderRadius: 8, background: '#f5f6f8', border: 'none', color: '#111827', fontSize: 12, fontWeight: 600, cursor: 'pointer', justifyContent: 'center', opacity: generatingLink ? 0.6 : 1 }}>
                         <Presentation style={{ width: 13, height: 13 }} />{generatingLink ? 'Generating…' : 'Generate Deal Sheet'}
                       </button>
                     ) : (
-                      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                      <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Presentation style={{ width: 12, height: 12, color: '#4338ca' }} />
@@ -1887,15 +1887,15 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => { navigator.clipboard.writeText(dealLink); setDealLinkCopied(true); setTimeout(() => setDealLinkCopied(false), 2000); }}
-                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f9fafb', border: '1px solid #e5e7eb', color: dealLinkCopied ? '#16a34a' : '#6b7280', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f5f6f8', border: 'none', color: dealLinkCopied ? '#047857' : '#6b7280', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                             <Copy style={{ width: 11, height: 11 }} />{dealLinkCopied ? 'Copied!' : 'Copy Link'}
                           </button>
                           <button onClick={() => window.open(dealLink, '_blank')}
-                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4338ca', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                            style={{ flex: 1, padding: '7px', borderRadius: 6, background: '#f5f6f8', border: 'none', color: '#111827', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                             <ExternalLink style={{ width: 11, height: 11 }} />Open
                           </button>
                           <button onClick={handleGenerateDealLink} disabled={generatingLink}
-                            style={{ padding: '7px 10px', borderRadius: 6, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#9ca3af', fontSize: 11, cursor: 'pointer', opacity: generatingLink ? 0.5 : 1 }}>
+                            style={{ padding: '7px 10px', borderRadius: 6, background: '#f5f6f8', border: 'none', color: '#9ca3af', fontSize: 11, cursor: 'pointer', opacity: generatingLink ? 0.5 : 1 }}>
                             Regenerate
                           </button>
                         </div>
@@ -1910,14 +1910,14 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             <div style={w.section}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tradeIn ? 10 : 0 }}>
                 <p style={{ ...w.label, margin: 0 }}>Trade-In Vehicle</p>
-                <button onClick={() => setTradeInOpen(o => !o)} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                <button onClick={() => setTradeInOpen(o => !o)} style={{ fontSize: 11, color: '#6b7280', background: 'none', border: 'none', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
                   {tradeInOpen ? 'Collapse' : tradeIn ? 'Edit' : '+ Add'}
                 </button>
               </div>
               {tradeIn && !tradeInOpen && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{[tradeIn.year, tradeIn.brand, tradeIn.model].filter(Boolean).join(' ') || 'Vehicle'}</span>
-                  {tradeIn.plate_number && <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{tradeIn.plate_number.toUpperCase()}</span>}
+                  {tradeIn.plate_number && <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', background: '#f5f6f8', border: 'none', borderRadius: 4, padding: '1px 6px' }}>{tradeIn.plate_number.toUpperCase()}</span>}
                   {tradeIn.agreed_price && <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>RM {Number(tradeIn.agreed_price).toLocaleString()} agreed</span>}
                 </div>
               )}
@@ -1939,7 +1939,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     <input type="number" value={tiForm.agreed_price} onChange={e => setTiForm(f => ({ ...f, agreed_price: e.target.value }))} placeholder="Agreed price (RM)" style={w.inp} className="ld-inp" />
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button onClick={() => setTradeInOpen(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={() => setTradeInOpen(false)} style={{ flex: 1, padding: '8px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                     <button onClick={saveTradeIn} disabled={tiSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: tiSaving ? 0.6 : 1 }}>
                       {tiSaving ? 'Saving…' : 'Save Trade-In'}
                     </button>
@@ -1954,7 +1954,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {waTemplates.map((tpl, i) => (
                   <button key={i} onClick={() => openTemplate(tpl)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, background: '#f5f6f8', border: 'none', color: '#16a34a', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, background: '#f5f6f8', border: 'none', color: '#047857', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                     <MessageCircle style={{ width: 11, height: 11 }} />{tpl.label}
                   </button>
                 ))}
@@ -2026,7 +2026,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               </div>
 
               {showAddAppt && (
-                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <div style={{ background: '#fff', border: 'none', borderRadius: 14, padding: 14, marginBottom: 12, boxShadow: '0 1px 2px rgba(17,24,39,0.06), 0 4px 14px rgba(17,24,39,0.08)' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                     <div>
                       <p style={w.label}>Date & Time</p>
@@ -2097,8 +2097,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
               <div>
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>Permanently delete this lead?</p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setDeleteConfirm(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: '8px', borderRadius: 6, background: 'rgba(220,38,38,0.2)', border: '1px solid rgba(220,38,38,0.35)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: deleting ? 0.6 : 1 }}>
+                  <button onClick={() => setDeleteConfirm(false)} style={{ flex: 1, padding: '8px', borderRadius: 10, background: '#f5f6f8', border: 'none', color: '#4b5563', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f5f6f8', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: deleting ? 0.6 : 1 }}>
                     {deleting ? 'Deleting…' : 'Yes, Delete'}
                   </button>
                 </div>

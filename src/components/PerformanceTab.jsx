@@ -4,6 +4,7 @@ import { useCachedFetch } from '../hooks/useCachedFetch';
 import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
 import SalesmanHealthSheet from './team/SalesmanHealthSheet';
 import { STATUS, TONE, issueText, noScoreReason, fmtMinutes, needsAttention } from '../utils/teamHealth';
+import { premiumLight as PL } from '../theme/tokens';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
 const fmtRM = (n) =>
@@ -21,13 +22,13 @@ function PerfSectionHeader({ icon: Icon, label, desc, right }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-      paddingBottom: 12, borderBottom: '1px solid #e5e7eb', marginBottom: 16, gap: 12,
+      paddingBottom: 14, borderBottom: `1px solid ${PL.line}`, marginBottom: 16, gap: 12,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{
           width: 38, height: 38, borderRadius: 10,
-          background: 'linear-gradient(135deg,#f9fafb,#f3f4f6)',
-          border: '1px solid #e5e7eb',
+          background: PL.raised,
+          border: 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
           <Icon size={17} color="#374151" />
@@ -45,23 +46,22 @@ function PerfSectionHeader({ icon: Icon, label, desc, right }) {
 function KpiTile({ label, value, sub, valueColor = '#111827', warn = false }) {
   return (
     <div style={{
-      background: '#fff', border: `1px solid ${warn ? 'rgba(251,191,36,0.35)' : '#e5e7eb'}`,
-      borderRadius: 10, padding: '12px 14px', minWidth: 0,
-      ...(warn && { background: 'rgba(254,252,232,0.6)' }),
+      background: PL.raised, border: 'none',
+      borderRadius: PL.radius.row, padding: '14px 16px', minWidth: 0,
     }}>
       <p style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 700, color: valueColor, fontFamily: "'Bebas Neue',cursive", lineHeight: 1.15, margin: '4px 0 0' }}>{value}</p>
+      <p style={{ fontSize: 24, fontWeight: 800, color: valueColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '4px 0 0' }}>{value}</p>
       {sub && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{sub}</p>}
     </div>
   );
 }
 
 function ScoreBar({ score }) {
-  const color = score >= 75 ? '#16a34a' : score >= 50 ? '#d97706' : '#dc2626';
+  const color = score >= 50 ? '#111827' : '#b91c1c';
   const pct = Math.min(100, Math.max(0, score));
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-      <div style={{ width: 48, height: 5, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ width: 48, height: 5, background: '#eceef1', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{score}</span>
@@ -83,7 +83,7 @@ function StatusPill({ status }) {
 
 function EmptyState({ icon: Icon, text }) {
   return (
-    <div style={{ padding: '28px 16px', textAlign: 'center', background: '#fafafa', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+    <div style={{ padding: '28px 16px', textAlign: 'center', background: PL.raised, border: 'none', borderRadius: PL.radius.row }}>
       <Icon size={26} color="#d1d5db" style={{ margin: '0 auto 8px', display: 'block' }} />
       <p style={{ color: '#9ca3af', fontSize: 13, margin: 0 }}>{text}</p>
     </div>
@@ -92,7 +92,7 @@ function EmptyState({ icon: Icon, text }) {
 
 function SectionShell({ children }) {
   return (
-    <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
+    <section style={{ background: PL.card, border: 'none', borderRadius: PL.radius.card, padding: '18px 20px', boxShadow: PL.shadow }}>
       {children}
     </section>
   );
@@ -103,11 +103,11 @@ function SectionShell({ children }) {
 // axis: high-volume traffic on the left, low-volume conversions on the right so
 // bookings/calls/WhatsApp aren't crushed to zero under page-visit counts.
 const ENG_SERIES = [
-  { key: 'visits',   label: 'Page visits',    color: '#94a3b8', axis: 'left'  },
-  { key: 'clicks',   label: 'Listing clicks', color: '#67e8f9', axis: 'left'  },
-  { key: 'whatsapp', label: 'WhatsApp',       color: '#4ade80', axis: 'right' },
-  { key: 'calls',    label: 'Calls',          color: '#c084fc', axis: 'right' },
-  { key: 'bookings', label: 'Bookings',       color: '#fbbf24', axis: 'right' },
+  { key: 'visits',   label: 'Page visits',    color: '#c4c8cf', axis: 'left', dash: '4 3' },
+  { key: 'clicks',   label: 'Listing clicks', color: '#8b919c', axis: 'left', dash: '4 3' },
+  { key: 'whatsapp', label: 'WhatsApp',       color: '#4b5563', axis: 'right' },
+  { key: 'calls',    label: 'Calls',          color: '#9ca3af', axis: 'right' },
+  { key: 'bookings', label: 'Bookings',       color: '#111827', axis: 'right' },
 ];
 
 function EngagementTooltip({ active, payload, label }) {
@@ -115,7 +115,7 @@ function EngagementTooltip({ active, payload, label }) {
   const row = payload[0]?.payload || {};
   const total = ENG_SERIES.reduce((s, x) => s + (Number(row[x.key]) || 0), 0);
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', boxShadow: '0 6px 24px rgba(15,23,42,0.12)', fontFamily: "system-ui,sans-serif", minWidth: 180 }}>
+    <div style={{ background: '#fff', border: 'none', borderRadius: 12, padding: '10px 12px', boxShadow: PL.shadow, fontFamily: "system-ui,sans-serif", minWidth: 180 }}>
       <p style={{ fontSize: 12, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>{label}</p>
       {ENG_SERIES.map((s) => (
         <div key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '2px 0' }}>
@@ -125,9 +125,9 @@ function EngagementTooltip({ active, payload, label }) {
           <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{Number(row[s.key]) || 0}</span>
         </div>
       ))}
-      <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ borderTop: `1px solid ${PL.line}`, marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, color: '#6b7280' }}>Total events</span>
-        <span style={{ fontSize: 12, fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
       </div>
     </div>
   );
@@ -223,7 +223,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     return { visits, carViews, waClicks, conversion, topCars, byChannel };
   }, [trafficEvents]);
 
-  const convColor = Number(traffic.conversion) >= 3 ? '#16a34a' : Number(traffic.conversion) >= 1 ? '#d97706' : '#dc2626';
+  const convColor = Number(traffic.conversion) >= 3 ? '#047857' : Number(traffic.conversion) >= 1 ? '#111827' : '#b91c1c';
 
   // ── Derived: engagement chart + salesman leaderboard ────────────────────────
   const engTotals = useMemo(() => ({
@@ -276,7 +276,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
             they never force horizontal overflow on mobile). */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
           {ENG_SERIES.map(({ key, label, color }) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: PL.raised, border: 'none' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
               <span style={{ fontSize: 11, color: '#6b7280' }}>{label}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{engLoading ? '…' : (engTotals[key] ?? 0)}</span>
@@ -289,15 +289,15 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           <div style={{ width: '100%', minWidth: 0, overflowX: 'hidden' }}>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={dailyChart} margin={{ top: 4, right: 0, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#eceef1" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis yAxisId="left" allowDecimals={false} width={30} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" allowDecimals={false} width={26} tick={{ fontSize: 10, fill: '#d97706' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<EngagementTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }} />
+                <YAxis yAxisId="left" allowDecimals={false} width={30} tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" allowDecimals={false} width={26} tick={{ fontSize: 10, fill: '#111827' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<EngagementTooltip />} cursor={{ stroke: 'rgba(17,24,39,0.18)', strokeWidth: 1 }} />
                 <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 8 }} />
-                <Brush dataKey="date" height={20} stroke="rgba(59,130,246,0.3)" fill="rgba(59,130,246,0.05)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
+                <Brush dataKey="date" height={20} stroke="rgba(17,24,39,0.18)" fill="rgba(17,24,39,0.04)" travellerWidth={6} startIndex={Math.max(0, dailyChart.length - 14)} />
                 {ENG_SERIES.map((s) => (
-                  <Line key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={1.75} dot={false} activeDot={{ r: 3 }} />
+                  <Line key={s.key} yAxisId={s.axis} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeDasharray={s.dash} strokeWidth={s.key === 'bookings' ? 2.25 : 1.75} dot={false} activeDot={{ r: 3 }} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -313,7 +313,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           desc="Last 30 days. Activity counts only what each salesman did themselves. Tap a name for details"
           right={
             teamLoading ? null :
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', background: PL.raised, borderRadius: 999, padding: '4px 12px' }}>
               {needsAttention(scores) > 0
                 ? `${needsAttention(scores)} need attention`
                 : `${scores.length} on team`}
@@ -330,9 +330,9 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 580 }}>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
+                <tr style={{ background: PL.raised }}>
                   {['#', 'Salesman', 'Score', 'Conv.', 'Response', 'Avg GP', 'Docs', 'Leads (30d)'].map(h => (
-                    <th key={h} style={{ padding: '9px 14px', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: h === '#' || h === 'Salesman' ? 'left' : 'right', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '9px 14px', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: h === '#' || h === 'Salesman' ? 'left' : 'right', border: 'none', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -346,14 +346,14 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenRep(s); } }}
                     title="See details"
                     className="perf-row"
-                    style={{ borderBottom: i < scores.length - 1 ? '1px solid #f3f4f6' : 'none', cursor: 'pointer' }}
+                    style={{ borderBottom: i < scores.length - 1 ? `1px solid ${PL.line}` : 'none', cursor: 'pointer' }}
                   >
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#9ca3af', width: 28 }}>#{i + 1}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         {s.avatar_url
                           ? <img src={s.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
-                          : <div style={{ width: 28, height: 28, borderRadius: 14, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>
+                          : <div style={{ width: 28, height: 28, borderRadius: 14, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>
                         }
                         <div style={{ minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -374,7 +374,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
                         : <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{noScoreReason(s) || '—'}</span>}
                     </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.conv_rate != null && (s.leads_30d ?? 0) >= 3 ? `${Number(s.conv_rate).toFixed(1)}%` : '—'}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: s.avg_response_min > 120 ? '#dc2626' : s.avg_response_min > 60 ? '#d97706' : '#16a34a' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: s.avg_response_min > 60 ? '#b91c1c' : '#047857' }}>
                       {s.avg_response_min != null ? fmtMinutes(s.avg_response_min) : '—'}
                     </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.avg_gp != null ? fmtRMShort(s.avg_gp) : '—'}</td>
@@ -389,7 +389,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
       </SectionShell>
 
       {openRep && <SalesmanHealthSheet person={openRep} onClose={() => setOpenRep(null)} />}
-      <style>{`.perf-row:hover{background:#f9fafb}.perf-row:focus-visible{outline:2px solid #111827;outline-offset:-2px}`}</style>
+      <style>{`.perf-row:hover{background:#f5f6f8}.perf-row:focus-visible{outline:2px solid #111827;outline-offset:-2px}`}</style>
 
       {/* Listings & Inventory was here: days on lot, capital tied up and aged cars, on two clocks
           of its own. Overview's stock block is the one place for those numbers (owner rule: each
@@ -402,14 +402,14 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           label="Website & Traffic"
           desc="Storefront visits, car page views, and WhatsApp conversion"
           right={
-            <div style={{ display: 'flex', gap: 3 }}>
+            <div style={{ display: 'inline-flex', gap: 2, padding: 3, background: PL.hover, borderRadius: 999 }}>
               {[7, 30, 90].map(d => (
                 <button key={d} onClick={() => setRange(d)} style={{
-                  padding: '4px 11px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                  cursor: 'pointer', border: '1px solid',
-                  borderColor: range === d ? '#dc2626' : '#e5e7eb',
-                  background: range === d ? '#fef2f2' : '#fff',
-                  color: range === d ? '#dc2626' : '#6b7280',
+                  padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: range === d ? 700 : 500,
+                  cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                  background: range === d ? '#fff' : 'transparent',
+                  boxShadow: range === d ? '0 1px 3px rgba(17,24,39,0.12)' : 'none',
+                  color: range === d ? '#111827' : '#4b5563',
                   transition: 'all 0.12s',
                 }}>
                   {d}d
@@ -427,7 +427,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
               <KpiTile label="Store Visits" value={traffic.visits} sub={`last ${range} days`} />
               <KpiTile label="Car Views" value={traffic.carViews} sub="detail page views" />
-              <KpiTile label="WA Clicks" value={traffic.waClicks} sub="direct enquiries" valueColor="#16a34a" />
+              <KpiTile label="WA Clicks" value={traffic.waClicks} sub="direct enquiries" valueColor="#111827" />
               <KpiTile
                 label="Conversion"
                 value={`${traffic.conversion}%`}
@@ -447,12 +447,12 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
                     const maxV = traffic.topCars[0].count;
                     const pct = Math.round((car.count / maxV) * 100);
                     return (
-                      <div key={car.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#fafafa', borderRadius: 8, border: '1px solid #f3f4f6' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#dc2626' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
+                      <div key={car.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: PL.raised, borderRadius: PL.radius.row, border: 'none' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#111827' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{car.name}</p>
-                          <div style={{ height: 3, background: '#e5e7eb', borderRadius: 2, marginTop: 4 }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? '#dc2626' : '#3b82f6', borderRadius: 2, transition: 'width 0.4s ease' }} />
+                          <div style={{ height: 4, background: '#fff', borderRadius: 2, marginTop: 5 }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? '#111827' : '#9ca3af', borderRadius: 2, transition: 'width 0.4s ease' }} />
                           </div>
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{car.count} views</span>
@@ -465,7 +465,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               <EmptyState icon={TrendingUp} text={`No traffic recorded in the last ${range} days.`} />
             )}
             {traffic.byChannel.length > 0 && (
-              <div style={{ marginTop: 18, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+              <div style={{ marginTop: 18, borderTop: `1px solid ${PL.line}`, paddingTop: 14 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                   <Share2 size={11} style={{ display: 'inline', marginRight: 4 }} />
                   Clicks by Share Platform — Last {range}d
@@ -473,19 +473,19 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {traffic.byChannel.map((c) => {
                     const meta = {
-                      whatsapp: { label: 'WhatsApp', color: '#25D366' },
-                      facebook: { label: 'Facebook', color: '#1877F2' },
+                      whatsapp: { label: 'WhatsApp', color: '#111827' },
+                      facebook: { label: 'Facebook', color: '#4b5563' },
                       tiktok:   { label: 'TikTok',   color: '#111827' },
                       copy:     { label: 'Copied link', color: '#6b7280' },
                     }[c.channel] || { label: c.channel, color: '#6b7280' };
                     const total = traffic.byChannel.reduce((s, x) => s + x.clicks, 0) || 1;
                     return (
-                      <div key={c.channel} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#fafafa', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                      <div key={c.channel} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: PL.raised, borderRadius: PL.radius.row, border: 'none' }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
                         <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', flex: 1 }}>{meta.label}</span>
                         <span style={{ fontSize: 11, color: '#6b7280' }}>{Math.round((c.clicks / total) * 100)}%</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#111827', width: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{c.clicks} click{c.clicks !== 1 ? 's' : ''}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', width: 50, textAlign: 'right' }}>{c.waClicks} WA</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#047857', width: 50, textAlign: 'right' }}>{c.waClicks} WA</span>
                       </div>
                     );
                   })}
@@ -504,7 +504,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           desc="Listing clicks & WhatsApp contacts driven by each salesman link — last 30 days"
           right={
             !engLoading && topSalesmen.length > 0
-              ? <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>{topSalesmen.length} active</span>
+              ? <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', background: PL.raised, borderRadius: 999, padding: '4px 12px' }}>{topSalesmen.length} active</span>
               : null
           }
         />
@@ -515,11 +515,11 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
-              <div key={slug} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #f3f4f6' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#dc2626' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
+              <div key={slug} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: PL.raised, borderRadius: PL.radius.row, border: 'none' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#111827' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>/{slug}</span>
-                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#0369a1', fontWeight: 700 }}>{clicks}</span> clicks</span>
-                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#16a34a', fontWeight: 700 }}>{whatsapp}</span> WA</span>
+                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#111827', fontWeight: 700 }}>{clicks}</span> clicks</span>
+                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#047857', fontWeight: 700 }}>{whatsapp}</span> WA</span>
               </div>
             ))}
           </div>

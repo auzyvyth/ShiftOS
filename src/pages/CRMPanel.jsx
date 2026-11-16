@@ -9,31 +9,20 @@ import { liveChannel } from "../lib/liveChannel";
 import PhoneInput from '../components/ui/PhoneInput';
 import { isValidMyPhone, MY_PHONE_ERROR } from '../lib/phone';
 import { localInputToIso } from "../utils/myDay";
+import { premiumLight as PL } from "../theme/tokens";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
-  card: {
-    position: "relative",
-    background:
-      "linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.008))",
-    border: "1px solid rgba(255,255,255,0.055)",
-    backdropFilter: "blur(12px)",
-  },
-  btnRed: {
-    background: "linear-gradient(135deg,#dc2626,#b91c1c)",
-    boxShadow: "0 2px 10px rgba(220,38,38,0.28)",
-    border: "none",
-  },
+  card: { position: "relative", background: PL.card, border: "none", borderRadius: PL.radius.card, boxShadow: PL.shadow },
+  btnRed: { background: PL.accent, boxShadow: "none", border: "none" },
 };
 
-const iCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all";
-const taCls =
-  "w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/10 transition-all resize-none";
+const iCls = "w-full rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all border-0 bg-[#f5f6f8]";
+const taCls = iCls + " resize-none";
 
 // Light-theme input styles for modals on the white dealer-dashboard surface (e.g. Add Booking)
 const lInputCls =
-  "w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/10 transition-all";
+  "w-full rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all border-0 bg-[#f5f6f8]";
 const lTaCls = lInputCls + " resize-none";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,32 +69,13 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [rescheduleAptId, setRescheduleAptId] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
 
+  const GREY = "#f5f6f8";
   const statusMeta = {
-    pending: {
-      color: "#b91c1c",
-      bg: "rgba(217,119,6,0.1)",
-      border: "rgba(217,119,6,0.25)",
-    },
-    confirmed: {
-      color: "#4b5563",
-      bg: "rgba(17,24,39,0.06)",
-      border: "rgba(37,99,235,0.25)",
-    },
-    completed: {
-      color: "#059669",
-      bg: "rgba(5,150,105,0.1)",
-      border: "rgba(5,150,105,0.25)",
-    },
-    cancelled: {
-      color: "#6b7280",
-      bg: "rgba(107,114,128,0.1)",
-      border: "rgba(107,114,128,0.25)",
-    },
-    no_show: {
-      color: "#dc2626",
-      bg: "rgba(17,24,39,0.06)",
-      border: "rgba(220,38,38,0.25)",
-    },
+    pending:   { color: "#b91c1c", bg: GREY, border: "transparent" },
+    confirmed: { color: "#111827", bg: GREY, border: "transparent" },
+    completed: { color: "#047857", bg: GREY, border: "transparent" },
+    cancelled: { color: "#6b7280", bg: GREY, border: "transparent" },
+    no_show:   { color: "#b91c1c", bg: GREY, border: "transparent" },
   };
 
   const fetchBookings = async () => {
@@ -348,8 +318,8 @@ function BookingsTab({ userId, listings, salesmen }) {
     const isToday = aptMs && new Date(b.appointment_date).toDateString() === todayStr;
     const isNew = now - new Date(b.created_at).getTime() < 7200000;
     const isPast = aptMs && aptMs < now && !isToday;
-    const dateColor = isToday ? "#2563eb" : isPast ? "#dc2626" : "#6b7280";
-    const dateBg   = isToday ? "rgba(17,24,39,0.06)" : isPast ? "rgba(17,24,39,0.06)" : "transparent";
+    const dateColor = isToday ? "#111827" : isPast ? "#b91c1c" : "#6b7280";
+    const dateBg   = "transparent";
     const sm_meta  = statusMeta[b.status] || statusMeta.pending;
     const isReminderPicking = reminderPickerAptId === b.id;
     const isRescheduling    = rescheduleAptId === b.id;
@@ -361,7 +331,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       : "—";
 
     return (
-      <div key={b.id} style={{ background: "#fff", border: `1px solid ${isToday ? "transparent" : "#e5e7eb"}`, borderRadius: 10, padding: "12px 14px", boxShadow: isToday ? "0 0 0 1px rgba(17,24,39,0.06)" : "0 1px 2px rgba(16,24,40,0.04)" }}>
+      <div key={b.id} style={{ background: PL.raised, border: "none", borderRadius: PL.radius.row, padding: "14px 16px", boxShadow: "none" }}>
         {/* Header: name + badges */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#111827", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -370,18 +340,18 @@ function BookingsTab({ userId, listings, salesmen }) {
               {relativeTime(b.created_at)}
             </span>
           </p>
-          {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#dc2626", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
-          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sm_meta.bg, border: `1px solid ${sm_meta.border}`, color: sm_meta.color, textTransform: "capitalize" }}>
+          {isNew && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 99, background: '#fff', border: 'none', color: "#b91c1c", flexShrink: 0, fontWeight: 800 }}>NEW</span>}
+          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "#fff", border: "none", color: sm_meta.color, fontWeight: 700, textTransform: "capitalize" }}>
             {b.status}
           </span>
         </div>
 
         {/* Date — most prominent */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 7, background: dateBg, marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", borderRadius: 7, background: dateBg, marginBottom: 6 }}>
           <Calendar size={12} color={dateColor} />
           <span style={{ fontSize: 13, fontWeight: 700, color: dateColor }}>
             {dateDisplay}
-            {isToday && <span style={{ fontSize: 9, marginLeft: 6, padding: "1px 5px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#4b5563" }}>TODAY</span>}
+            {isToday && <span style={{ fontSize: 9, marginLeft: 6, padding: "1px 5px", borderRadius: 99, background: '#fff', border: 'none', color: "#4b5563" }}>TODAY</span>}
           </span>
         </div>
 
@@ -391,7 +361,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           {b.buyer_phone && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", display:'flex', alignItems:'center', gap:4 }}><Phone size={10} /> {b.buyer_phone}</p>}
           {sm?.full_name && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", display:'flex', alignItems:'center', gap:4 }}><User size={10} /> {sm.full_name}</p>}
           {b.buyer_state && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: '#f5f6f8', border: 'none', color: "#dc2626", fontWeight: 600 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, padding: "1px 7px", borderRadius: 99, background: '#fff', border: 'none', color: "#4b5563", fontWeight: 600 }}>
               <MapPin size={9} />
               {b.buyer_state}
             </span>
@@ -402,9 +372,9 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Telegram reminder indicator */}
         {b.remind_at && !b.remind_sent ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, background: '#f5f6f8', border: 'none', marginBottom: 8 }}>
-            <Bell size={11} color="#059669" />
-            <span style={{ fontSize: 10, color: "#059669", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 8, background: '#fff', border: 'none', marginBottom: 8 }}>
+            <Bell size={11} color="#4b5563" />
+            <span style={{ fontSize: 10, color: "#047857", flex: 1 }}>
               Reminder: {new Date(b.remind_at).toLocaleString("en-MY", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
             <button onClick={() => clearReminder(b)} style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 10, cursor: "pointer", padding: 0 }}>✕</button>
@@ -415,38 +385,38 @@ function BookingsTab({ userId, listings, salesmen }) {
 
         {/* Reminder picker */}
         {isReminderPicking && (
-          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#059669", fontWeight: 600 }}>Schedule Telegram reminder</p>
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#fff', border: 'none', borderRadius: 10 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#047857", fontWeight: 600 }}>Schedule Telegram reminder</p>
             <select value={reminderOffset} onChange={e => setReminderOffset(e.target.value)}
-              style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", marginBottom: 8, outline: "none", boxSizing: "border-box" }}>
+              style={{ width: "100%", background: "#f5f6f8", border: "none", borderRadius: 8, color: "#111827", fontSize: 12, padding: "7px 10px", marginBottom: 8, outline: "none", boxSizing: "border-box" }}>
               <option value="1h">1 hour before</option>
               <option value="2h">2 hours before</option>
               <option value="1d">1 day before (9 AM)</option>
               <option value="2d">2 days before (9 AM)</option>
             </select>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#f5f6f8', border: 'none', color: "#059669", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
+              <button onClick={() => setReminderPickerAptId(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#fff", border: "none", color: "#6b7280", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+              <button onClick={() => scheduleReminder(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#f5f6f8', border: 'none', color: "#047857", cursor: "pointer", fontWeight: 600 }}>Set Reminder</button>
             </div>
           </div>
         )}
 
         {/* Reschedule picker */}
         {isRescheduling && (
-          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: '#fff', border: 'none', borderRadius: 10 }}>
             <p style={{ margin: "0 0 6px", fontSize: 11, color: "#4b5563", fontWeight: 600 }}>Choose new date & time</p>
             <input type="datetime-local" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
-              style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 7, color: "#111827", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "system-ui,sans-serif" }} />
+              style={{ width: "100%", background: "#f5f6f8", border: "none", borderRadius: 8, color: "#111827", fontSize: 12, padding: "7px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "system-ui,sans-serif" }} />
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
-              <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#f5f6f8', border: 'none', color: "#4b5563", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
+              <button onClick={() => { setRescheduleAptId(null); setRescheduleDate(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: "#fff", border: "none", color: "#6b7280", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+              <button onClick={() => doReschedule(b)} style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, background: '#111827', border: 'none', color: "#fff", cursor: "pointer", fontWeight: 600 }}>Confirm</button>
             </div>
           </div>
         )}
 
         {/* Cancel confirm */}
         {isCancelConfirm && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: '#f5f6f8', border: 'none', borderRadius: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, padding: "8px 10px", background: '#fff', border: 'none', borderRadius: 10 }}>
             <p style={{ margin: 0, fontSize: 11, color: "#dc2626", flex: 1 }}>Cancel this appointment?</p>
             <button onClick={() => setCancelConfirmId(null)} style={{ fontSize: 10, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>No</button>
             <button onClick={() => { updateStatus(b.id, "cancelled"); setCancelConfirmId(null); }} style={{ fontSize: 10, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Yes, Cancel</button>
@@ -456,27 +426,27 @@ function BookingsTab({ userId, listings, salesmen }) {
         {/* Action buttons */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4 }}>
           {b.status === "pending" && (
-            <button onClick={() => updateStatus(b.id, "confirmed")} style={{ fontSize: 10, color: "#4b5563", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Confirm</button>
+            <button onClick={() => updateStatus(b.id, "confirmed")} style={{ fontSize: 10, color: "#fff", background: '#111827', border: 'none', borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>Confirm</button>
           )}
           {(b.status === "pending" || b.status === "confirmed") && (
-            <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#059669", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Done</button>
+            <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#047857", background: '#fff', border: 'none', borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>Done</button>
           )}
           {/* A past viewing needs an honest outcome. Without No-show the only way
               to clear it was "Done", so 49 past bookings were left open instead. */}
           {isPast && (b.status === "pending" || b.status === "confirmed") && (
-            <button onClick={() => updateStatus(b.id, "no_show")} style={{ fontSize: 10, color: "#b91c1c", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>No-show</button>
+            <button onClick={() => updateStatus(b.id, "no_show")} style={{ fontSize: 10, color: "#b91c1c", background: '#fff', border: 'none', borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>No-show</button>
           )}
           {notDone && (
-            <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#4b5563", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Reschedule</button>
+            <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#4b5563", background: '#fff', border: 'none', borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>Reschedule</button>
           )}
           {notDone && !isCancelConfirm && (
-            <button onClick={() => setCancelConfirmId(b.id)} style={{ fontSize: 10, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+            <button onClick={() => setCancelConfirmId(b.id)} style={{ fontSize: 10, color: "#6b7280", background: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
           )}
           {b.buyer_phone && notDone && (
-            <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#059669", background: '#f5f6f8', border: 'none', borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>WhatsApp</button>
+            <button onClick={() => openReminder(b)} style={{ fontSize: 10, color: "#047857", background: '#fff', border: 'none', borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>WhatsApp</button>
           )}
           {notDone && dealerBkProfile?.telegram_bot_token && (
-            <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#059669" : "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>
+            <button onClick={() => setReminderPickerAptId(b.id === reminderPickerAptId ? null : b.id)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: b.remind_at ? "#047857" : "#6b7280", background: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontWeight: 600, cursor: "pointer" }}>
               <Bell size={10} />{b.remind_at ? "Reminder set" : "Remind"}
             </button>
           )}
@@ -487,14 +457,14 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl overflow-hidden" style={{ background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }}>
+      <div className="overflow-hidden" style={T.card}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "14px 20px",
-            borderBottom: "1px solid rgba(17,24,39,0.06)",
+            padding: "16px 20px",
+            borderBottom: `1px solid ${PL.line}`,
             flexWrap: "wrap",
             gap: 8,
           }}
@@ -510,28 +480,17 @@ function BookingsTab({ userId, listings, salesmen }) {
             Bookings & Appointments
           </h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div
-              style={{
-                display: "flex",
-                background: "#f3f4f6",
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                overflow: "hidden",
-              }}
-            >
+            <div style={{ display: "inline-flex", gap: 4, padding: 4, background: PL.hover, borderRadius: 999 }}>
               {["list", "week"].map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
                   style={{
-                    padding: "6px 14px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    border: "none",
-                    background:
-                      view === v ? "rgba(17,24,39,0.06)" : "transparent",
-                    color: view === v ? "#2563eb" : "#6b7280",
+                    padding: "6px 14px", fontSize: 12, borderRadius: 999, cursor: "pointer", border: "none", fontFamily: "inherit",
+                    fontWeight: view === v ? 700 : 500,
+                    background: view === v ? "#fff" : "transparent",
+                    boxShadow: view === v ? "0 1px 3px rgba(17,24,39,0.12)" : "none",
+                    color: view === v ? "#111827" : "#4b5563",
                     transition: "all 0.15s",
                   }}
                 >
@@ -541,7 +500,7 @@ function BookingsTab({ userId, listings, salesmen }) {
             </div>
             <button
               onClick={() => setShowAdd(true)}
-              className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg"
+              className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-full"
               style={T.btnRed}
             >
               <PlusCircle className="w-3.5 h-3.5" />
@@ -553,27 +512,27 @@ function BookingsTab({ userId, listings, salesmen }) {
         {loading && !bkCached ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
         ) : bookings.length === 0 ? (
-          <p style={{ padding: "32px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>No bookings yet.</p>
+          <p style={{ padding: "32px", textAlign: "center", color: "#6b7280", fontSize: 13 }}>No bookings yet.</p>
         ) : view === "list" ? (
           <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
             {pendingBookings.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", boxShadow: "0 0 6px rgba(217,119,6,0.6)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: PL.accent, flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", letterSpacing: "0.12em", textTransform: "uppercase" }}>Needs approval · {pendingBookings.length}</span>
                 </div>
                 {pendingBookings.map(b => renderBookingRow(b))}
-                {(todaysBookings.length > 0 || otherBookings.length > 0) && <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />}
+                {(todaysBookings.length > 0 || otherBookings.length > 0) && <div style={{ height: 1, background: PL.line, margin: "4px 0" }} />}
               </>
             )}
             {todaysBookings.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0 8px" }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563eb", boxShadow: "0 0 6px rgba(37,99,235,0.6)", animation: "hotpulse 1.5s ease-in-out infinite", flexShrink: 0 }} />
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#111827", flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>Today · {todaysBookings.length}</span>
                 </div>
                 {todaysBookings.map(b => renderBookingRow(b))}
-                {otherBookings.length > 0 && <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />}
+                {otherBookings.length > 0 && <div style={{ height: 1, background: PL.line, margin: "4px 0" }} />}
               </>
             )}
             {otherBookings.length > 0 && (
@@ -605,9 +564,9 @@ function BookingsTab({ userId, listings, salesmen }) {
                   <div
                     key={dayStr}
                     style={{
-                      background: "#f9fafb",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 8,
+                      background: PL.raised,
+                      border: "none",
+                      borderRadius: PL.radius.row,
                       padding: 10,
                       minHeight: 100,
                     }}
@@ -637,10 +596,9 @@ function BookingsTab({ userId, listings, salesmen }) {
                       <div
                         key={b.id}
                         style={{
-                          background:
-                            statusMeta[b.status]?.bg || "rgba(17,24,39,0.06)",
-                          border: `1px solid ${statusMeta[b.status]?.border || "rgba(59,130,246,0.2)"}`,
-                          borderRadius: 5,
+                          background: "#fff",
+                          border: "none",
+                          borderRadius: 8,
                           padding: "4px 7px",
                           marginBottom: 4,
                         }}
@@ -684,10 +642,10 @@ function BookingsTab({ userId, listings, salesmen }) {
       {showAdd && (
         <div
           className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-          style={{ background: "rgba(0,0,0,0.78)" }}
+          style={{ background: "rgba(17,24,39,0.45)" }}
         >
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div className="rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={{ background: PL.card, boxShadow: PL.shadow }}>
+            <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${PL.line}` }}>
               <h3 className="font-semibold" style={{ color: '#111827' }}>Add Booking</h3>
               <button
                 onClick={() => setShowAdd(false)}
@@ -715,7 +673,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
                     Buyer Phone
                   </label>
-                  <PhoneInput value={addForm.buyer_phone} onChange={(v) => setAddForm((p) => ({ ...p, buyer_phone: v }))} className={lInputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
+                  <PhoneInput value={addForm.buyer_phone} onChange={(v) => setAddForm((p) => ({ ...p, buyer_phone: v }))} className={lInputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
                 </div>
               </div>
               <div>
@@ -844,18 +802,17 @@ function BookingsTab({ userId, listings, salesmen }) {
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3">
+            <div className="p-5 flex gap-3" style={{ borderTop: `1px solid ${PL.line}` }}>
               <button
                 onClick={() => setShowAdd(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-800 transition-all"
-                style={{ border: "1px solid #e5e7eb" }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 transition-all pl-btn-grey"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAdd}
                 disabled={addSaving}
-                className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"
                 style={T.btnRed}
               >
                 {addSaving ? "Saving..." : "Book"}
@@ -869,20 +826,17 @@ function BookingsTab({ userId, listings, salesmen }) {
       {reminderTarget && (
         <div
           className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-          style={{ background: "rgba(0,0,0,0.78)" }}
+          style={{ background: "rgba(17,24,39,0.45)" }}
           onClick={() => setReminderTarget(null)}
         >
           <div
-            className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden"
-            style={{
-              background: "#0f1623",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
+            className="rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden"
+            style={{ background: PL.card, boxShadow: PL.shadow }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${PL.line}` }}>
               <div>
-                <h3 className="font-semibold text-white text-sm">
+                <h3 className="font-semibold text-sm" style={{ color: "#111827" }}>
                   Send Reminder
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -891,7 +845,7 @@ function BookingsTab({ userId, listings, salesmen }) {
               </div>
               <button
                 onClick={() => setReminderTarget(null)}
-                className="text-gray-500 hover:text-white p-1 transition-colors"
+                className="text-gray-400 hover:text-gray-700 p-1 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -912,8 +866,8 @@ function BookingsTab({ userId, listings, salesmen }) {
                   onClick={() => setReminderTarget(null)}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
                   style={{
-                    background: '#f5f6f8', border: 'none',
-                    color: "#4ade80",
+                    background: '#111827', border: 'none',
+                    color: "#ffffff",
                     textDecoration: "none",
                   }}
                 >
@@ -923,7 +877,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                 <button
                   onClick={saveBkTemplate}
                   disabled={bkTmplSaving}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs text-gray-500 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 transition-colors"
                   style={{
                     background: '#f5f6f8', border: 'none',
                   }}
@@ -942,38 +896,13 @@ function BookingsTab({ userId, listings, salesmen }) {
 
 // ─── CRM tab bar styles ────────────────────────────────────────────────────────
 const CRM_CSS = `
-  .crm-tabs {
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 16px;
-    flex-shrink: 0;
-  }
+  .crm-tabs { display: inline-flex; gap: 4px; padding: 4px; background: #eceef1; border-radius: 999px; margin-bottom: 16px;
+    overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   .crm-tabs::-webkit-scrollbar { display: none; }
-  .crm-tab {
-    flex-shrink: 0;
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    color: #6b7280;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-    font-family: system-ui, sans-serif;
-    white-space: nowrap;
-    margin-bottom: -1px;
-  }
+  .crm-tab { flex-shrink: 0; padding: 8px 16px; font-size: 13px; font-weight: 500; color: #4b5563; background: transparent;
+    border: none; border-radius: 999px; cursor: pointer; font-family: inherit; white-space: nowrap; }
   .crm-tab:hover { color: #111827; }
-  .crm-tab.active {
-    color: #111827;
-    border-bottom-color: #dc2626;
-    font-weight: 600;
-  }
+  .crm-tab.active { color: #111827; background: #fff; font-weight: 700; box-shadow: 0 1px 3px rgba(17,24,39,0.12); cursor: default; }
 `;
 
 // ─── CRMPanel (exported) ──────────────────────────────────────────────────────
@@ -989,7 +918,7 @@ export default function CRMPanel({ userId, listings = [], salesmen = [], initial
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <style>{CRM_CSS}</style>
-      <div className="crm-tabs" style={{ padding: '0 4px' }}>
+      <div className="crm-tabs">
         <button className={`crm-tab${crmTab === 'leads' ? ' active' : ''}`} onClick={() => setCrmTab('leads')}>
           Leads / Pipeline
         </button>

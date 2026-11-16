@@ -274,8 +274,11 @@ Project ID: lemdkdizdlcirhbzqlos
   `src/theme/premiumLight.css`: `.pl-note` (info), `.pl-note-bad` (problem), `.pl-note-good` (done), `.pl-well` (icon well),
   `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning. Selected = `#eceef1`. New code
   never writes a tinted background or `${hex}18` alpha suffix. Shared with the salesman panels and NOT changed: `OutreachHub`,
-  `ServicePackages`, `NudgeQueue`. Left over: CRMPanel's appointment pop-ups still have dark-theme white text (not a tint issue).
-  Not yet redesigned (layout, not colour): Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings forms.
+  `ServicePackages`, `NudgeQueue`. 2026-11-16 pass 2 (colour + card recipe, rendered with mock data): CRM (`CRMPanel.jsx`: pill switch,
+  Appointments, Add Booking + reminder pop-ups now light), the pipeline board (`LeadsPage.jsx`, `LeadGridCard.jsx`: ONE ink dot per stage,
+  no per-stage hues; `STAGE_CONFIG` hues stay for the salesman panels), `LeadDrawer.jsx`, Analytics > Performance (`PerformanceTab.jsx`,
+  chart lines by lightness, traffic dashed) and Listings report. Not yet redesigned (layout, not colour): Settings forms, Outreach
+  (`OutreachHub` is shared with the salesman panels).
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).

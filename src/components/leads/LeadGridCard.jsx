@@ -3,7 +3,7 @@ import { MapPin } from 'lucide-react';
 import { isOpenLead } from '../../utils/carBuyers';
 import { BrokerChip } from '../brokers/BrokerCredit';
 import {
-  getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale, canonicalStage,
+  getInitials, getLeadAgeDays, isLeadStale, canonicalStage,
 } from '../../lib/leadsHelpers';
 
 // Compact, info-only lead card for the pipeline grid.
@@ -16,9 +16,9 @@ export default function LeadGridCard({ lead, onOpen }) {
   const ownerName  = lead.assigned_profile?.full_name || lead.salesman_profile?.full_name;
   const ownerFirst = ownerName ? ownerName.split(' ')[0] : null;
   const initials   = getInitials(lead.buyer_name);
-  const avatarBg   = avatarGradient(lead.lead_source);
+  const avatarBg   = '#374151';
   const days       = getLeadAgeDays(lead.created_at);
-  const txtCls     = ageTextColor(days);
+  const txtCls     = days >= 30 ? 'text-red-700' : 'text-gray-500';
   const needsPing  = isLeadStale(lead);
   // SF-2b: a lead at deposit_taken has reserved its linked car. Surface who.
   const isReserved = canonicalStage(lead.stage) === 'deposit_taken' && !!car;
@@ -32,19 +32,18 @@ export default function LeadGridCard({ lead, onOpen }) {
     <div
       onClick={() => onOpen?.(lead)}
       style={{
-        background: '#ffffff',
-        border: '1px solid #eceef1',
-        borderRadius: 10,
-        padding: '10px 11px',
+        background: '#f5f6f8',
+        border: 'none',
+        borderRadius: 12,
+        padding: '12px 13px',
         cursor: 'pointer',
         userSelect: 'none',
         touchAction: 'pan-y',
         WebkitTapHighlightColor: 'transparent',
-        transition: 'box-shadow 0.12s, border-color 0.12s',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        transition: 'background 0.12s',
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)'; e.currentTarget.style.borderColor = '#dcdfe4'; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#eceef1'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#eceef1'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#f5f6f8'; }}
     >
       {/* Row 1: avatar + name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
@@ -66,7 +65,7 @@ export default function LeadGridCard({ lead, onOpen }) {
             title="Overdue for follow-up"
             style={{
               flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em',
-              color: '#b91c1c', background: '#f5f6f8', border: 'none',
+              color: '#b91c1c', background: '#fff', border: 'none',
               borderRadius: 20, padding: '1px 7px',
             }}
           >
@@ -93,7 +92,7 @@ export default function LeadGridCard({ lead, onOpen }) {
 
       {/* Row 3: price */}
       {carPrice && (
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#dc2626', marginBottom: 8 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: '#111827', marginBottom: 8 }}>
           {carPrice}
         </div>
       )}
@@ -102,8 +101,8 @@ export default function LeadGridCard({ lead, onOpen }) {
       {isReserved && (
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
-          fontSize: 10, fontWeight: 700, color: '#0d9488',
-          background: '#f0fdfa', border: '1px solid #99f6e4',
+          fontSize: 10, fontWeight: 700, color: '#047857',
+          background: '#fff', border: 'none',
           borderRadius: 6, padding: '2px 7px', marginBottom: 8,
         }}>
           Reserved{ownerFirst ? ` by ${ownerFirst}` : ''}
@@ -114,7 +113,7 @@ export default function LeadGridCard({ lead, onOpen }) {
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
           fontSize: 10, fontWeight: 700, color: '#b91c1c',
-          background: '#f5f6f8', border: 'none',
+          background: '#fff', border: 'none',
           borderRadius: 6, padding: '2px 7px', marginBottom: 8,
         }}>
           Car sold by another seller
@@ -124,7 +123,7 @@ export default function LeadGridCard({ lead, onOpen }) {
       {lead.broker_credit && <div style={{ marginBottom: 8 }}><BrokerChip credit={lead.broker_credit} /></div>}
 
       {/* Divider */}
-      <div style={{ height: 1, background: '#f1f3f5', margin: carPrice ? '0 0 8px' : '6px 0 8px' }} />
+      <div style={{ height: 1, background: 'rgba(17,24,39,0.06)', margin: carPrice ? '0 0 8px' : '6px 0 8px' }} />
 
       {/* Row 4: owner + date created */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -132,10 +131,10 @@ export default function LeadGridCard({ lead, onOpen }) {
           <div title={`Lead by ${ownerName}`} style={{
             display: 'flex', alignItems: 'center', gap: 4, minWidth: 0,
             padding: '1px 7px 1px 2px', borderRadius: 20,
-            background: '#f5f6f8', border: 'none',
+            background: '#fff', border: 'none',
           }}>
             <div style={{
-              width: 15, height: 15, borderRadius: '50%', background: '#7c3aed',
+              width: 15, height: 15, borderRadius: '50%', background: '#374151',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 8, fontWeight: 700, color: 'white', flexShrink: 0,
             }}>

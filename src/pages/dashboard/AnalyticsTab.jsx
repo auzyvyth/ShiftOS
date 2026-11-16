@@ -6,6 +6,7 @@ import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { usePermissions } from "../../hooks/usePermissions";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import { T, getListingAge } from "./shared";
+import { premiumLight as PL } from "../../theme/tokens";
 import { AgeBadge, Sparkline } from "./widgets";
 import { getListingGaps } from "../../utils/listingCompleteness";
 import { Car, Clock, Send, Bot, ChevronRight, AlertCircle, CheckCircle2, Search, Download } from "lucide-react";
@@ -202,48 +203,39 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
       label: "Active",
       val: active,
       sub: `of ${total} total`,
-      grad: "grad-cyan",
+      grad: "",
       icon: <Car className="w-4 h-4" />,
-      glow: "rgba(103,232,249,0.14)",
     },
     {
       label: "Sold",
       val: sold,
       sub: "all time",
-      grad: "grad-green",
+      grad: "",
       icon: <CheckCircle2 className="w-4 h-4" />,
-      glow: "rgba(110,231,183,0.14)",
       spark: soldSpark,
-      sparkColor: '#34d399',
+      sparkColor: '#111827',
     },
     {
       label: "Avg. Age",
       val: `${avgAge}d`,
       sub: avgAge >= 30 ? "⚠ Aging" : "Healthy",
-      grad: avgAge >= 30 ? "grad-gold" : "grad-white",
+      grad: avgAge >= 30 ? "text-red-700" : "",
       icon: <Clock className="w-4 h-4" />,
-      glow: avgAge >= 30 ? "rgba(17,24,39,0.06)" : "transparent",
     },
   ];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        {kpis.map(({ label, val, sub, grad, icon, glow, spark, sparkColor }) => (
+        {kpis.map(({ label, val, sub, grad, icon, spark, sparkColor }) => (
           <div
             key={label}
-            className="stat-card card-top rounded-2xl overflow-hidden glass"
+            className="stat-card overflow-hidden"
             style={{ position: 'relative' }}
           >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `radial-gradient(circle at 100% 0%, rgba(17,24,39,0.06) 0%, transparent 55%)`,
-              }}
-            />
             {spark && (
               <div className="relative px-3.5 pt-3">
-                <Sparkline data={spark} color={sparkColor || '#3b82f6'} width={120} height={32} />
+                <Sparkline data={spark} color={sparkColor || '#111827'} width={120} height={32} />
               </div>
             )}
             <div className={spark ? 'p-3 sm:p-4 pt-2 relative' : 'p-3 sm:p-4 relative'}>
@@ -252,8 +244,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                   {label}
                 </p>
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: glow, boxShadow: `0 0 12px ${glow}` }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 pl-well"
                 >
                   {icon}
                 </div>
@@ -277,13 +268,11 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           <>
             {incomplete.length > 0 && (
               <div
-                className="rounded-xl p-4"
-                style={{
-                  background: '#f5f6f8', border: 'none',
-                }}
+                className="p-4 sm:p-5"
+                style={{ background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <AlertCircle className="w-4 h-4 text-red-700" />
                   <p className="text-red-700 text-sm font-semibold">
                     {incomplete.length} listing{incomplete.length > 1 ? "s" : ""} incomplete — missing key info buyers need to see
                   </p>
@@ -321,8 +310,8 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                             onClick={() => onEditListing(l)}
                             className="text-xs font-semibold px-3 py-1 rounded-lg transition-all flex-shrink-0"
                             style={{ background: '#f5f6f8', border: 'none', color: "#dc2626" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.2)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(17,24,39,0.06)"; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "#eceef1"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "#f5f6f8"; }}
                           >
                             Finish
                           </button>
@@ -338,14 +327,12 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
             )}
             {visibleStale.length > 0 && (
               <div
-                className="rounded-xl p-4"
-                style={{
-                  background: '#f5f6f8', border: 'none',
-                }}
+                className="p-4 sm:p-5"
+                style={{ background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow }}
               >
                 <div className="flex items-center gap-2 mb-3">
                   <AlertCircle className="w-4 h-4 text-red-700" />
-                  <p className="text-amber-700 text-sm font-semibold">
+                  <p className="text-gray-900 text-sm font-semibold">
                     {visibleStale.length} listing{visibleStale.length > 1 ? "s" : ""} aging 30+ days — needs attention
                   </p>
                 </div>
@@ -379,7 +366,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-amber-700 text-xs font-semibold bg-gray-100 px-2.5 py-1 rounded-full border border-transparent">
+                        <span className="text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: PL.raised }}>
                           {getListingAge(l.created_at)}d
                         </span>
                         {onEditListing && (
@@ -390,10 +377,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                             className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
                             style={{
                               background: '#f5f6f8', border: 'none',
-                              color: "transparent",
+                              color: "#111827",
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.2)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(17,24,39,0.06)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "#eceef1"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "#f5f6f8"; }}
                           >
                             Adjust
                           </button>
@@ -406,14 +393,12 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
             )}
             {adjustedStale.length > 0 && (
               <div
-                className="rounded-xl p-4"
-                style={{
-                  background: '#f5f6f8', border: 'none',
-                }}
+                className="p-4 sm:p-5"
+                style={{ background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <p className="text-emerald-700 text-sm font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                  <p className="text-gray-900 text-sm font-semibold">
                     {adjustedStale.length} listing{adjustedStale.length > 1 ? "s" : ""} adjusted — 30+ days old, repriced or updated
                   </p>
                 </div>
@@ -447,16 +432,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-700 text-xs font-semibold bg-gray-100 px-2.5 py-1 rounded-full border border-transparent">
+                        <span className="text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: PL.raised }}>
                           {getListingAge(l.created_at)}d · adjusted
                         </span>
                         {onEditListing && (
                           <button
                             onClick={() => onEditListing(l)}
                             className="text-xs px-2.5 py-1 rounded-lg transition-all"
-                            style={{ background: "#f9fafb", border: "1px solid #e5e7eb", color: "#6b7280" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "#f3f4f6"}
-                            onMouseLeave={e => e.currentTarget.style.background = "#f9fafb"}
+                            style={{ background: "#f5f6f8", border: "none", color: "#4b5563", fontWeight: 600 }}
+                            onMouseEnter={e => e.currentTarget.style.background = "#eceef1"}
+                            onMouseLeave={e => e.currentTarget.style.background = "#f5f6f8"}
                           >
                             Edit again
                           </button>
@@ -470,9 +455,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           </>
         );
       })()}
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+      <div className="overflow-hidden" style={T.cardDark}>
         <style>{`
-          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e5e7eb; }
+          .lp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(17,24,39,0.06); }
           .lp-table-wrap { display:block; }
           .lp-table { width:100%; border-collapse:collapse; table-layout:fixed; }
           .lp-table colgroup col:nth-child(1) { width:22%; }
@@ -485,9 +470,9 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           .lp-table colgroup col:nth-child(8) { width:8%; }
           .lp-table colgroup col:nth-child(9) { width:9%; }
           .lp-th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#6b7280; text-align:left; background:#f9fafb; border-bottom:1px solid #e5e7eb; }
-          .lp-row { border-bottom:1px solid #f3f4f6; transition:background 0.15s; }
+          .lp-row { border-bottom:1px solid rgba(17,24,39,0.06); transition:background 0.15s; }
           .lp-row:last-child { border-bottom:none; }
-          .lp-row:hover { background:#f9fafb; }
+          .lp-row:hover { background:#f5f6f8; }
           .lp-row.stale { background:#f5f6f8; }
           .lp-row.stale:hover { background:#f5f6f8; }
           .lp-td { padding:13px 14px; vertical-align:middle; }
@@ -498,14 +483,14 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
           .lp-stat.amber { background:#f5f6f8; color:#b91c1c; border:1px solid transparent; }
           .lp-stat.dim   { background:#f9fafb; color:#9ca3af; border:1px solid #e5e7eb; }
           .lp-vehicle-img { width:44px; height:34px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
-          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
+          .lp-vehicle-placeholder { width:44px; height:34px; border-radius:6px; flex-shrink:0; background:#f5f6f8; border:none; }
           .lp-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
           .lp-card { border-radius:10px; overflow:hidden; background:#fff; border:1px solid #e5e7eb; transition:border-color 0.15s; }
           .lp-card.stale { border-color:transparent; background:#f5f6f8; }
           .lp-card-top { display:flex; align-items:center; gap:12px; padding:12px 14px 10px; }
           .lp-card-img { width:52px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#f3f4f6; }
-          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:#f3f4f6; border:1px solid #e5e7eb; }
-          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:#e5e7eb; border-top:1px solid #e5e7eb; }
+          .lp-card-placeholder { width:52px; height:40px; border-radius:6px; flex-shrink:0; background:#f5f6f8; border:none; }
+          .lp-card-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:rgba(17,24,39,0.06); border-top:none; }
           .lp-card-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:9px 4px; background:#fff; gap:2px; }
           .lp-card-stat-val { font-size:13px; font-weight:800; letter-spacing:0.02em; }
           .lp-card-stat-lbl { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af; }
@@ -669,7 +654,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                           </td>
                           {/* CVR */}
                           <td className="lp-td">
-                            <span style={{ fontSize:12, fontWeight:700, color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151' }}>
+                            <span style={{ fontSize:12, fontWeight:700, color: cvrNum > 5 ? '#047857' : '#111827' }}>
                               {eventsLoading ? '…' : (cvr || '—')}
                             </span>
                           </td>
@@ -703,7 +688,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                   const cvrNum = parseFloat(cvr);
                   const isStale = getListingAge(l.created_at) >= 30;
                   const statusKey = l.status || 'available';
-                  const statusColor = statusKey === 'available' ? '#4ade80' : statusKey === 'reserved' ? '#fbbf24' : '#60a5fa';
+                  const statusColor = statusKey === 'available' ? '#047857' : statusKey === 'reserved' ? '#111827' : '#6b7280';
                   return (
                     <div key={l.id} className={`lp-card${isStale ? ' stale' : ''}`}>
                       {/* top row */}
@@ -756,10 +741,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div className="lp-card-stats">
                         {[
                           { label:'Views',    val: views,  color:'#4b5563' },
-                          { label:'WhatsApp', val: wa,     color:'#4ade80' },
-                          { label:'Calls',    val: calls,  color:'#c084fc' },
+                          { label:'WhatsApp', val: wa,     color:'#047857' },
+                          { label:'Calls',    val: calls,  color:'#111827' },
                           { label:'Bookings', val: books,  color:'#b91c1c' },
-                          { label:'CVR',      val: eventsLoading ? '…' : (cvr || '—'), color: cvrNum > 5 ? '#34d399' : cvrNum > 0 ? '#fbbf24' : '#374151', raw: true },
+                          { label:'CVR',      val: eventsLoading ? '…' : (cvr || '—'), color: cvrNum > 5 ? '#047857' : '#111827', raw: true },
                         ].map(({ label, val, color, raw }) => (
                           <div key={label} className="lp-card-stat">
                             <span className="lp-card-stat-val" style={{ color: (raw ? true : val > 0) ? color : '#374151' }}>
@@ -774,16 +759,16 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 })}
               </div>
               {hasMore && (
-                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid #f3f4f6', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+                <div style={{ padding:'14px 20px', textAlign:'center', borderTop:'1px solid rgba(17,24,39,0.06)', display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button
                     onClick={() => setLpVisible(v => v + 40)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#f9fafb', border:'1px solid #e5e7eb', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
+                    style={{ padding:'8px 24px', borderRadius:999, background:'#f5f6f8', border:'none', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
                   >
                     Load more ({filtered.length - lpVisible} remaining)
                   </button>
                   <button
                     onClick={() => setLpVisible(filtered.length)}
-                    style={{ padding:'8px 24px', borderRadius:8, background:'#fff', border:'1px solid #e5e7eb', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
+                    style={{ padding:'8px 24px', borderRadius:999, background:'#f5f6f8', border:'none', color:'#111827', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}
                   >
                     Show all {filtered.length}
                   </button>
@@ -794,7 +779,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
         })()}
       </div>
       {profile?.plan === "dealer_pro" && (
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
+      <div className="overflow-hidden" style={T.cardDark}>
         <button
           onClick={() => setChatOpen((v) => !v)}
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
@@ -839,8 +824,8 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                     className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "text-white rounded-tr-sm" : "text-gray-700 rounded-tl-sm"}`}
                     style={
                       m.role === "user"
-                        ? { background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", boxShadow: "0 2px 8px rgba(59,130,246,0.22)" }
-                        : { background: "#f9fafb", border: "1px solid #e5e7eb" }
+                        ? { background: "#111827" }
+                        : { background: "#f5f6f8", border: "none" }
                     }
                   >
                     {m.content}
@@ -855,10 +840,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                   >
                     <Bot className="w-3 h-3 text-gray-600" />
                   </div>
-                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm" style={{ background: "#f5f6f8", border: "none" }}>
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
-                        <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                        <div key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                       ))}
                     </div>
                   </div>
@@ -873,7 +858,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                     key={p}
                     onClick={() => setInput(p)}
                     className="text-xs px-3 py-1.5 rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                    style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
+                    style={{ background: "#f5f6f8", border: "none" }}
                   >
                     {p}
                   </button>
@@ -890,9 +875,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                 }}
                 placeholder="Ask about your listings, pricing, leads…"
                 className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none transition-colors"
-                style={{ background: "#fff", border: "1px solid #e5e7eb", maxHeight: "120px" }}
-                onFocus={(e) => (e.target.style.borderColor = "transparent")}
-                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                style={{ background: "#f5f6f8", border: "none", maxHeight: "120px" }}
               />
               <button
                 onClick={send}
