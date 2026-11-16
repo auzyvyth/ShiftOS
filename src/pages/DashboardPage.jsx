@@ -1436,7 +1436,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         </div>
       )}
       {(effectiveNav === 'plan') && planUsage && (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px 24px' }}>
+        <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
               <p style={{ fontSize: 11, letterSpacing: 2, color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>CURRENT PLAN</p>
@@ -1448,7 +1448,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: nextPlanCfg ? 16 : 0 }}>
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: '12px 16px' }}>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>LISTINGS</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.listing_cap && planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#111827' }}>
                 {planUsage.active_listings ?? 0}
@@ -1458,11 +1458,11 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
               </p>
               {planUsage.listing_cap && (
                 <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.active_listings >= planUsage.listing_cap ? '#dc2626' : '#111827', width: `${Math.min(100, (planUsage.active_listings / planUsage.listing_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: '12px 16px' }}>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>TEAM SEATS</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: planUsage.seat_cap && planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#111827' }}>
                 {planUsage.seat_count ?? 0}
@@ -1472,12 +1472,12 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
               </p>
               {planUsage.seat_cap && (
                 <div style={{ marginTop: 8, height: 4, background: '#e5e7eb', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#2563eb', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
+                  <div style={{ height: '100%', borderRadius: 2, background: planUsage.seat_count >= planUsage.seat_cap ? '#dc2626' : '#111827', width: `${Math.min(100, (planUsage.seat_count / planUsage.seat_cap) * 100)}%`, transition: 'width 0.4s' }} />
                 </div>
               )}
             </div>
             {planUsage.hp_submissions_mtd != null && (
-              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', gridColumn: '1 / -1' }}>
+              <div style={{ background: '#f5f6f8', border: 'none', borderRadius: 12, padding: '12px 16px', gridColumn: '1 / -1' }}>
                 <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>HP SUBMISSIONS THIS MONTH</p>
                 <p style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{planUsage.hp_submissions_mtd}</p>
               </div>
@@ -1865,7 +1865,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             </div>
             <button
               onClick={() => setAnnouncementOn((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-blue-600" : "bg-gray-300"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${announcementOn ? "bg-gray-900" : "bg-gray-300"}`}
             >
               <span
                 className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${announcementOn ? "left-5" : "left-0.5"}`}
@@ -2226,7 +2226,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           </div>
           <button
             onClick={() => setHandlesRti((v) => !v)}
-            className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${handlesRti ? "bg-blue-600" : "bg-gray-300"}`}
+            className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${handlesRti ? "bg-gray-900" : "bg-gray-300"}`}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${handlesRti ? "left-5" : "left-0.5"}`} />
           </button>
@@ -2337,7 +2337,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             </div>
             <button
               onClick={() => setTgAutoPost((v) => !v)}
-              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-blue-600" : "bg-gray-300"}`}
+              className={`relative w-10 h-5 rounded-full transition-all ${tgAutoPost ? "bg-gray-900" : "bg-gray-300"}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow ${tgAutoPost ? "left-5" : "left-0.5"}`} />
             </button>

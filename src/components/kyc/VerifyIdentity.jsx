@@ -86,16 +86,18 @@ const PALETTE = {
     errIcon: "#f87171", errText: "#fca5a5",
   },
   light: {
-    card: "#ffffff", border: "#e5e7eb",
-    text: "#111827", sub: "#6b7280", faint: "#9ca3af", slotText: "#111827",
-    slotBg: "#f9fafb", slotBorder: "#e5e7eb",
-    thumbBg: "#f3f4f6",
-    okBorder: "rgba(22,163,74,0.35)", okIcon: "#16a34a",
-    waitBorder: "rgba(202,138,4,0.35)", waitIcon: "#ca8a04",
-    askIcon: "#2563eb",
-    errBg: "rgba(220,38,38,0.06)", errBorder: "rgba(220,38,38,0.25)",
-    errIcon: "#dc2626", errText: "#b91c1c",
+    // Dealer dashboard (premiumLight): floating white card, grey slots, no tints.
+    card: "#ffffff", border: "transparent", shadow: "0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)",
+    text: "#111827", sub: "#4b5563", faint: "#6b7280", slotText: "#111827",
+    slotBg: "#f5f6f8", slotBorder: "transparent",
+    thumbBg: "#eceef1",
+    okBorder: "transparent", okIcon: "#047857",
+    waitBorder: "transparent", waitIcon: "#4b5563",
+    askIcon: "#4b5563",
+    errBg: "#f5f6f8", errBorder: "transparent",
+    errIcon: "#b91c1c", errText: "#b91c1c",
   },
+
 };
 
 // Step by step, and the ONLY place a seller is asked for ID (owner,
@@ -199,6 +201,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
     background: P.card,
     border: `1px solid ${P.border}`,
     borderRadius: P.radius || 12,
+    boxShadow: P.shadow,
     padding: 16,
   };
 
