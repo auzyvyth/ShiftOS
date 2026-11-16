@@ -61,8 +61,10 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`),
    Settings (2026-11-16: `dashboard/settings/SettingsTab.jsx`, 2,160 lines, byte-identical move; all 18 sections
    clicked through in a mocked render), `dashboard/CostProcurementForm.jsx`, `dashboard/PriceEditModal.jsx`,
-   `dashboard/MarkSoldModal.jsx` `dashboard/TeamTab.jsx` (+ lastActiveText, staffAddError) (all byte-identical, mock-rendered).
-   Next: ListingDetailDrawer.
+   `dashboard/MarkSoldModal.jsx` `dashboard/TeamTab.jsx` (+ lastActiveText, staffAddError), `dashboard/ListingDetailDrawer.jsx` (SelectTick stays:
+   the listings grid uses it) (all byte-identical, mock-rendered). Next: the StockTab bundle.
+   Also seen, not changed: in ListingDetailDrawer at 375px the close X covers the "Analytics" tab, and the
+   status pill ("Available") is a green tint with a border.
    Seen while moving, not changed: MarkSoldModal's "Confirm Sold" is a green gradient (breaks premiumLight: only the
    main action is red, no tints) and CostProcurementForm's "No stock record yet" line is amber.
 6. **Smaller items found by the research:** Fast List modal (`DashboardPage.jsx` `showFastModal`) is a fixed
