@@ -279,12 +279,16 @@ const STYLES = `
   .glass-modal, .modal-top { background: #FFFFFF; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: 0 20px 60px rgba(15,23,42,0.22); }
 
   /* ── Misc ── */
+  /* ONE form-field recipe for every Settings screen (owner, 2026-11-16: Overview is the design): grey fill, no border, ink focus ring. */
+  .settings-section :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), select, textarea) { background: #f5f6f8 !important; border: none !important; box-shadow: none !important; border-radius: 12px; color: #111827; }
+  .settings-section :is(input, select, textarea):focus { outline: none; box-shadow: 0 0 0 2px rgba(17,24,39,0.18) !important; }
+  .settings-section :is(input, select, textarea)::placeholder { color: #9ca3af; }
   .settings-section { background: ${premiumLight.card}; border: none; border-radius: ${premiumLight.radius.card}px; box-shadow: ${premiumLight.shadow}; overflow: hidden; }
   .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .table-wrap::after { content:''; position:absolute; top:0; right:0; bottom:0; width:24px; background:linear-gradient(to left,rgba(247,248,250,0.9),transparent); pointer-events:none; }
 
   .btn-shimmer { position: relative; overflow: hidden; }
-  .btn-shimmer::after { content:''; position:absolute; top:0; left:-80%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); animation:shimmer 3s ease infinite; }
+  .btn-shimmer::after { display:none; } /* no shimmer sweep on the dealer dashboard (flat red keys) */
   @keyframes shimmer { to { left:150%; } }
 
   .sold-btn:hover { background: #F1F3F5 !important; border-color: transparent !important; color: #047857 !important; }
@@ -480,7 +484,7 @@ function SettingsSection({
 function SettingsField({ label, hint, children }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-0.5">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
           {label}
         </label>
@@ -500,8 +504,8 @@ function SaveBtn({ sectionKey, onClick, disabled, saving, saved }) {
       style={
         saved[sectionKey]
           ? {
-              background: "linear-gradient(135deg,#16a34a,#15803d)",
-              boxShadow: "0 2px 10px rgba(22,163,74,0.28)",
+              background: "#111827",
+              boxShadow: "none",
             }
           : T.btnRed
       }
@@ -1524,11 +1528,12 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
 
         {profile?.role !== 'superadmin' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Subdomain <span className="text-gray-500 text-xs">(your storefront URL)</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Subdomain</label>
+              <span className="text-xs text-gray-600">Your storefront URL</span>
+            </div>
             <div className="flex items-center gap-2 flex-1">
-              <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden flex-1">
+              <div className="flex items-center rounded-xl overflow-hidden flex-1" style={{ background: "#f5f6f8" }}>
                 <input
                   type="text"
                   value={subdomain}
@@ -2363,7 +2368,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           </p>
         </SettingsField>
 
-        <div className="rounded-xl p-4 space-y-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+        <div className="rounded-xl p-4 space-y-2 pl-note">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Setup</p>
           {[
             "Open Telegram → search @BotFather → /newbot",
