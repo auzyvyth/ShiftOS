@@ -403,6 +403,14 @@ Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add
     Leaderboard, its "Inactive 30d+" badge, and Performance's score table + link-clicks list. Analytics > Performance is now
     "Traffic" (website only, `PerformanceTab.jsx`, route `?sub=performance` unchanged). Never add a per-salesman number back to
     Traffic, or a second status rule to a salesman card.
+    **Team layout (owner, 2026-11-16 design pass):** ONE switch People | Brokers | Activity (`TeamBrokersSwitch`, Activity = the
+    audit trail, opened by `?trail=`), then one top line ("N salesmen · M need a look" + grey Message pop-up + the one red Add
+    staff), the salesman list (ONE window, last 30 days: Won of new leads, Reply, Profit only with `view_gross`; a row says
+    "RM x commission to approve/pay"), then "Other staff". There are NO per-person cards: a row opens `SalesmanHealthSheet`
+    with the tools as `children` (setup email, commission approve/pay, cars locked to them, their link, switch off/remove).
+    Profit per salesman = Overview's engine grouped by seller (`sellerTotals`, ownerMoney.js, `carRow.sellerId` =
+    `assigned_to`), never `soldMap.gross` (a local formula, gone). Removed: the all-time "cars sold" tile, role tabs, the
+    always-open Message card, score / close rate / link clicks columns (the score lives in the sheet).
   ↳ **AI Sales Manager is a CARD on Overview, not a tab (2026-11-16, `src/pages/dashboard/AiManagerCard.jsx`).** Closed on every visit: opening it runs the briefing, so a plain Overview visit spends no AI call; its snapshot loads only while open (`aiOpen`). `/dashboard/ai_manager` opens Overview with it open. Do not make it auto-open.
   ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.

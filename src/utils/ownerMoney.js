@@ -70,6 +70,8 @@ export function carRow({ listing, unit }, ctx = {}, now = Date.now()) {
   const soldAt = soldRaw ? new Date(soldRaw).getTime() : null;
   return {
     id: listingId || u.id, title, status, isSold,
+    // Who sold it (car_listings.assigned_to; the won trigger sets it to the closer). Team's per-salesman profit.
+    sellerId: l.assigned_to || null,
     brand: String(l.brand || u.brand || '').trim() || 'Other',
     soldAt: Number.isFinite(soldAt) ? soldAt : null,
     soldMonth: isSold ? monthKey(soldRaw) : null,
@@ -170,6 +172,22 @@ function totalsIn(rows, w) {
  *                  broker: {listingId: {amount, items}}, cfg }
  * @param now     ms
  */
+/**
+ * Per salesman, the cars they sold in [from, to): { [sellerId]: { units, gross, leftOut } }.
+ * The SAME totals as Overview (totalsIn over carPnl rows), only grouped, so a salesman's profit
+ * can never be a second formula. Cars with no seller are left out (they are nobody's sale).
+ */
+export function sellerTotals(rows = [], from, to) {
+  const by = {};
+  for (const r of rows) if (r.sellerId) (by[r.sellerId] || (by[r.sellerId] = [])).push(r);
+  const out = {};
+  for (const [id, list] of Object.entries(by)) {
+    const t = totalsIn(list, [from, to]);
+    if (t.units) out[id] = { units: t.units, gross: t.gross, leftOut: t.leftOut };
+  }
+  return out;
+}
+
 export function ownerMoney(cars = [], ctx = {}, now = Date.now()) {
   const rows = cars.map((c) => carRow(c, ctx, now));
   const thisMonth = monthKey(now);

@@ -43,6 +43,8 @@ while two screens show two figures only moves the confusion). Steps, in order, o
       judgement of each salesman (status, score, won/leads, close rate, reply, avg profit if `view_gross`, link clicks, sold).
       Removed: Team Leaderboard (it had its own gross formula), the card's "Inactive 30d+" rule, the card's clicks grid and
       activity line, Performance's Team Performance table and Salesman Performance list. Performance renamed "Traffic".
+      Design pass the same day: one switch People | Brokers | Activity, rows open a sheet with the tools (no cards), one
+      30-day window, profit per salesman from `sellerTotals`. Week | Month | Year on Team needs `_team_health` to take a window.
       Still overlapping: Revenue's per-salesman reply-time bars (`RevOpsPage.jsx:611`). Migration `20261116i` (queued) points
       the team-health push at /dashboard/team.
    d. Kill the `add` tab, keep only `AddCarSheet` (5 entry points today); HP Board becomes a Sales pill.

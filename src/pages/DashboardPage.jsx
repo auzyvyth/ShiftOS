@@ -139,7 +139,9 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import AiManagerCard from './dashboard/AiManagerCard';
-import TeamScoreboard, { StatusWord } from './dashboard/TeamScoreboard';
+import TeamScoreboard, { StatusWord, Avatar as PersonAvatar, personWord, fmtRM } from './dashboard/TeamScoreboard';
+import SalesmanHealthSheet from '../components/team/SalesmanHealthSheet';
+import { sellerTotals } from '../utils/ownerMoney';
 import { useTeamScores } from '../hooks/useTeamScores';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
@@ -2991,7 +2993,7 @@ function staffAddError(data) {
   }
 }
 
-function TeamTab({ managerDealership, dealerId, profile }) {
+export function TeamTab({ managerDealership, dealerId, profile }) {
   // Who may add staff: the owner always; a manager only with the owner's "Add staff" switch, and
   // then only salesmen and admins, with no password (they set their own from the email). The
   // invites / create-salesman functions enforce the same rules on the server.
@@ -3028,7 +3030,15 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   useModalHistory(!!deleteConfirmId, () => setDeleteConfirmId(null));
   const [newRole, setNewRole] = useState("salesman");
-  const [teamTab, setTeamTab] = useState("salesman");
+  const [openPersonId, setOpenPersonId] = useState(null); // whose sheet is open (Team > People)
+  const [msgOpen, setMsgOpen] = useState(false);           // Message pop-up
+  useModalHistory(msgOpen, () => setMsgOpen(false));
+  useEffect(() => {
+    if (!msgOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [msgOpen]);
   const [msgTarget, setMsgTarget] = useState('all');
   const [msgText, setMsgText] = useState('');
   const [msgSending, setMsgSending] = useState(false);
@@ -3042,7 +3052,6 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
   useModalHistory(!!createdAccount, () => setCreatedAccount(null));
   const [resendingId, setResendingId] = useState(null); // salesman id whose setup email is resending
-  const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
   const [soldMap, setSoldMap] = useState({});
   const [lastActivityMap, setLastActivityMap] = useState({});
@@ -3230,26 +3239,6 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     fetchAssignedCars();
   }, [managerDealership, dealerId]); // dealerId must be here — fetchSold* guard on it
 
-  useEffect(() => {
-    if (!managerDealership || !dealerId) return;
-    const fetchSold = async () => {
-      const { count } = await supabase
-        .from("car_listings")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", dealerId)
-        .eq("status", "sold");
-      setTeamSoldCount(count || 0);
-    };
-    fetchSold();
-    const ch = liveChannel(supabase, "team_sold")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
-        () => { fetchSold(); fetchSoldPerSalesman(); fetchAssignedCars(); },
-      )
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [managerDealership, dealerId]);
 
   const fetchTeam = async () => {
     if (!managerDealership) {
@@ -3459,490 +3448,256 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setResendingId(null);
   };
 
-  const ROLE_COLORS = {
-    salesman: '#111827', manager: '#111827', accountant: '#111827', fi_officer: '#111827', admin: '#111827',
-  };
-  const ROLE_TABS = [
-    { role: 'salesman',   label: 'Salesmen',    color: '#111827' },
-    { role: 'manager',    label: 'Managers',    color: '#111827' },
-    { role: 'accountant', label: 'Accountants', color: '#111827' },
-    { role: 'fi_officer', label: 'F&I',         color: '#111827' },
-    { role: 'admin',      label: 'Admins',      color: '#111827' },
-  ];
+  // A car sold, assigned or unassigned anywhere in the dealership refreshes the commission and
+  // locked-car lists live (the all-time "cars sold" count that also lived here went with its tile).
+  useEffect(() => {
+    if (!managerDealership || !dealerId) return undefined;
+    const ch = liveChannel(supabase, "team_sold")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
+        () => { fetchSoldPerSalesman(); fetchAssignedCars(); },
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [managerDealership, dealerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const activeCount = salespeople.filter((s) => s.is_active !== false).length;
-  const inactiveCount = salespeople.filter((s) => s.is_active === false).length;
-  const activeRate = salespeople.length
-    ? Math.round((activeCount / salespeople.length) * 100)
-    : 0;
+  // ── Team > People, 2026-11-16 design pass ──────────────────────────────────────────────
+  const STAFF_ROLE_LABEL = { manager: 'Manager', admin: 'Admin', accountant: 'Accountant', fi_officer: 'F&I officer' };
+  const teamSalesmen = salespeople.filter((p) => p.role === 'salesman');
+  const teamOthers = salespeople.filter((p) => p.role !== 'salesman');
+  const teamNeedLook = teamSalesmen.filter((p) => !p.setup_complete
+    || (p.is_active !== false && (scoreById[p.id]?.issues || []).length > 0)).length;
+  // Profit per salesman = Overview's engine grouped by seller, last 30 days, only with the money switch.
+  const { money: teamMoney } = useCarMoney(showTeamMoney ? dealerId : null);
+  const teamProfitBy = useMemo(() => (showTeamMoney && teamMoney
+    ? sellerTotals(teamMoney.rows, Date.now() - 30 * 86400000, Date.now() + 1) : null), [showTeamMoney, teamMoney]);
+  const openPerson = openPersonId ? salespeople.find((p) => p.id === openPersonId) || null : null;
+  const isOwnerTeamRole = ["dealer", "owner", "superadmin"].includes(profile?.role);
+  const canPayCommission = isOwnerTeamRole || profile?.role === 'manager';
+  const canAssignCars = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
+  // A tool that opens a confirm closes the sheet first (overlay rule 3).
+  const closeAndRun = (fn) => () => { setOpenPersonId(null); fn(); };
+  const TOOL = { background: PL.card, borderRadius: 16, boxShadow: PL.shadow, padding: '12px 14px' };
+  const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: PL.textMuted, fontWeight: 600, marginBottom: 8 };
+  const greyBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', fontSize: 12.5 };
+  const redBtn = { ...greyBtn, fontWeight: 600, color: '#fff', background: PL.accent, border: 'none', borderRadius: 10, cursor: 'pointer' };
+
+  const renderPersonTools = (s) => {
+    const sold = soldMap[s.id] || {};
+    const cars = assignedMap[s.id] || [];
+    return (
+      <>
+        {s.role === 'salesman' && !s.setup_complete && (
+          <section>
+            <div style={MICRO}>Setup</div>
+            <div style={TOOL}>
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: PL.text }}>
+                <b>{s.email}</b> has not finished setting up their account. The setup link expires, so send a new one.
+              </p>
+              <button type="button" onClick={() => resendSetup(s)} disabled={resendingId === s.id} style={{ ...redBtn, opacity: resendingId === s.id ? 0.5 : 1 }}>
+                <Mail style={{ width: 14, height: 14 }} /> {resendingId === s.id ? 'Sending...' : 'Resend setup email'}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {s.role === 'salesman' && sold.commission > 0 && (
+          <section>
+            <div style={MICRO}>Commission</div>
+            <div style={TOOL}>
+              {[['pending', 'Waiting for your approval'], ['approved', 'Approved, not paid yet'], ['paid', 'Paid']].map(([k, label]) => (sold[k] > 0 ? (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, padding: '3px 0' }}>
+                  <span style={{ color: PL.textSec }}>{label}</span>
+                  <b style={{ color: PL.text, fontVariantNumeric: 'tabular-nums' }}>{fmtRM(sold[k])}</b>
+                </div>
+              ) : null))}
+              {canPayCommission && (sold.pending > 0 || sold.approved > 0) && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  {sold.pending > 0 && <button type="button" style={redBtn} onClick={closeAndRun(() => setCommissionApproveTarget(s.id))}>Approve payout</button>}
+                  {sold.approved > 0 && <button type="button" className="pl-btn-grey" style={greyBtn} onClick={closeAndRun(() => setCommissionPayTarget(s.id))}>Mark paid</button>}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {s.role === 'salesman' && (
+          <section>
+            <div style={MICRO}>Cars only {s.full_name?.split(' ')[0] || 'they'} can sell ({cars.length})</div>
+            <div style={TOOL}>
+              {cars.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {cars.map((c) => (
+                    <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: PL.text, background: PL.raised, borderRadius: 8, padding: '5px 9px' }}>
+                      <Lock style={{ width: 11, height: 11, color: PL.textMuted }} />
+                      {c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}
+                      {c.status === 'reserved' && <span style={{ fontSize: 10, fontWeight: 700, color: PL.textSec }}>Reserved</span>}
+                      {canAssignCars && (
+                        <button type="button" onClick={() => handleUnassignCar(c.id)} disabled={assignWorking === c.id} title="Unassign" aria-label="Unassign"
+                          style={{ display: 'inline-flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: PL.textMuted, opacity: assignWorking === c.id ? 0.4 : 1 }}>
+                          <X style={{ width: 12, height: 12 }} />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12.5, color: PL.textMuted }}>None. Any salesman can sell any car, and whoever wins the buyer earns it.</p>
+              )}
+              {canAssignCars && (
+                <button type="button" className="pl-btn-grey" style={{ ...greyBtn, marginTop: 10 }} onClick={() => setAssignPickerFor(assignPickerFor === s.id ? null : s.id)}>
+                  <PlusCircle style={{ width: 14, height: 14 }} /> {assignPickerFor === s.id ? 'Close' : 'Lock a car to them'}
+                </button>
+              )}
+              {canAssignCars && assignPickerFor === s.id && (
+                <div style={{ marginTop: 8, borderRadius: 10, maxHeight: 200, overflowY: 'auto', background: PL.raised }}>
+                  {openCars.length === 0 ? (
+                    <p style={{ fontSize: 12, color: PL.textMuted, padding: '10px 12px', margin: 0 }}>No open cars to lock.</p>
+                  ) : openCars.map((c, i) => (
+                    <button type="button" key={c.id} onClick={() => handleAssignCar(c.id, s.id, s.full_name)} disabled={assignWorking === c.id}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'none', border: 'none', borderTop: i ? `1px solid ${PL.line}` : 'none', color: PL.text, fontSize: 12.5, cursor: 'pointer', textAlign: 'left' }}>
+                      <Car style={{ width: 13, height: 13, color: PL.textMuted, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}</span>
+                      {c.status === 'reserved' && <span style={{ fontSize: 10, fontWeight: 700, color: PL.textSec }}>Reserved</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {s.role === 'salesman' && s.slug && (
+          <section>
+            <div style={MICRO}>Their link</div>
+            <div style={{ ...TOOL, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: PL.textSec, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                /cars?ref=<b style={{ color: PL.text }}>{s.slug}</b>
+              </span>
+              <button type="button" className="pl-btn-grey" style={greyBtn} onClick={() => copyLink(s)}>
+                {copiedId === s.id ? <><Check style={{ width: 14, height: 14 }} /> Copied</> : <><Copy style={{ width: 14, height: 14 }} /> Copy</>}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {s.role !== 'salesman' && (
+          <section>
+            <div style={MICRO}>Last 30 days</div>
+            <div style={{ ...TOOL, fontSize: 13, color: PL.textSec }}>
+              <b style={{ color: PL.text }}>{activityCountMap[s.id] || 0}</b> actions in the dashboard
+            </div>
+          </section>
+        )}
+
+        {isOwnerTeamRole && (
+          <section>
+            <div style={MICRO}>Account</div>
+            <div style={{ ...TOOL, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(s.role !== 'salesman' || s.setup_complete) && (
+                <button type="button" className="pl-btn-grey" style={greyBtn} onClick={() => toggleActive(s)} disabled={togglingId === s.id}>
+                  {s.is_active !== false ? <><ToggleRight style={{ width: 14, height: 14 }} /> Switch off</> : <><ToggleLeft style={{ width: 14, height: 14 }} /> Switch on</>}
+                </button>
+              )}
+              <button type="button" className="pl-btn-grey" style={{ ...greyBtn, color: PL.accentText }} onClick={closeAndRun(() => setDeleteConfirmId(s.id))}>
+                <Trash2 style={{ width: 14, height: 14 }} /> Remove
+              </button>
+            </div>
+          </section>
+        )}
+      </>
+    );
+  };
+
   const inputCls =
     "w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 
   return (
     <div className="space-y-4">
-      <div
-        className="px-4 py-3 flex items-center gap-3"
-        style={{ background: '#fff', borderRadius: 20, boxShadow: premiumLight.shadow }}
-      >
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            background: '#f5f6f8',
-          }}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-        </div>
-        <div className="flex-1">
-          <p className="text-gray-900 text-sm font-semibold">
-            {teamSoldCount} car{teamSoldCount !== 1 ? "s" : ""} sold
-          </p>
-          <p className="text-gray-500 text-xs">
-            Live count · updates automatically
-          </p>
-        </div>
-        <p className="text-3xl font-black text-emerald-700 tabular-nums">
-          {teamSoldCount}
+      {/* Top line (2026-11-16 design pass): who is on the team, who needs a look, and the two
+          actions. Replaced the all-time "cars sold" tile (Overview has it), the "Salespeople" card
+          header and the role tabs. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <p style={{ margin: 0, flex: '1 1 160px', minWidth: 0, fontSize: 14, color: PL.textSec }}>
+          <b style={{ color: PL.text }}>{teamSalesmen.length}</b> salesm{teamSalesmen.length === 1 ? 'an' : 'en'}
+          {teamNeedLook > 0 && <> · <b style={{ color: PL.accentText }}>{teamNeedLook} need{teamNeedLook === 1 ? 's' : ''} a look</b></>}
         </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="pl-btn-grey" onClick={() => setMsgOpen(true)} disabled={salespeople.length === 0}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', fontSize: 13 }}>
+          <Send style={{ width: 14, height: 14 }} /> Message
+        </button>
+        <button type="button" onClick={() => { setShowAddForm(true); resetForm(); }}
+          disabled={!managerDealership || !canAddStaff}
+          title={canAddStaff ? undefined : "Only the owner can add staff"}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', fontSize: 13, fontWeight: 600, color: '#fff', background: PL.accent, border: 'none', borderRadius: 10, cursor: 'pointer', opacity: !managerDealership || !canAddStaff ? 0.4 : 1 }}>
+          <UserPlus style={{ width: 14, height: 14 }} /> Add staff
+        </button>
+        </div>
       </div>
-      <div className="card-top rounded-xl overflow-hidden" style={T.cardDark}>
-        <div
-          className="flex items-center justify-between gap-3 p-4"
-          style={T.divider}
-        >
-          <div>
-            <h2 className="font-semibold text-gray-900">Salespeople</h2>
-            <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
-              {salespeople.length > 0
-                ? `${activeCount} active · ${inactiveCount} inactive · ${activeRate}% active rate`
-                : "Manage accounts, links, and status."}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setShowAddForm(true);
-              resetForm();
-            }}
-            disabled={!managerDealership || !canAddStaff}
-            title={canAddStaff ? undefined : "Only the owner can add staff"}
-            className="btn-shimmer inline-flex items-center gap-2 text-white px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
-            style={T.btnRed}
-          >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Salesman</span>
-            <span className="sm:hidden">Add</span>
-          </button>
-        </div>
-        {/* Role tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(17,24,39,0.06)', overflowX: 'auto' }}>
-          {ROLE_TABS.map(({ role, label, color }) => {
-            const count = salespeople.filter(s => s.role === role).length;
-            return (
-              <button
-                key={role}
-                onClick={() => setTeamTab(role)}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: 'none',
-                  background: 'none',
-                  color: teamTab === role ? '#111827' : '#6b7280',
-                  borderBottom: teamTab === role ? `2px solid ${color}` : '2px solid transparent',
-                  fontFamily: "system-ui, sans-serif",
-                  transition: 'color 0.15s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-                {label}
-                <span style={{
-                  fontSize: 11, fontWeight: 700,
-                  padding: '1px 7px', borderRadius: 10,
-                  background: teamTab === role ? '#eceef1' : '#f3f4f6',
-                  color: teamTab === role ? color : '#6b7280',
-                }}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
-        {teamError && (
-          <div
-            className="m-4 rounded-lg px-3 py-2.5 text-amber-700 text-xs"
-            style={{ background: '#f5f6f8' }}
-          >
-            ⚠ {teamError}
-          </div>
-        )}
+      {teamError && <div className="pl-note-bad" style={{ padding: '10px 14px', borderRadius: 12, fontSize: 12 }}>{teamError}</div>}
+
+      <section style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '6px 0' }}>
         {loadingTeam ? (
-          <div className="p-12 text-center text-gray-600 text-sm">
-            Loading team...
-          </div>
-        ) : salespeople.length === 0 ? (
-          <div className="p-12 text-center">
-            <div
-              className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-              style={{
-                background: '#f5f6f8',
-              }}
-            >
-              <Users className="w-5 h-5 text-blue-500/40" />
-            </div>
-            <p className="text-gray-600 text-sm mb-4">
-              No salespeople added yet
-            </p>
-            <button
-              onClick={() => {
-                setShowAddForm(true);
-                resetForm();
-              }}
-              disabled={!managerDealership || !canAddStaff}
-              className="btn-shimmer text-white px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-40"
-              style={T.btnRed}
-            >
-              Add your first salesman
-            </button>
-          </div>
+          <p style={{ fontSize: 13, color: PL.textMuted, padding: '18px 16px', margin: 0 }}>Loading team...</p>
         ) : (
-          <div>
-            {(() => {
-              const filteredTeam = salespeople.filter(s => s.role === teamTab);
-              const canAssign = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
-              return (
-                <>
-                  {teamTab === 'salesman' && filteredTeam.length > 0 && (
-                    <TeamScoreboard
-                      scores={teamScores}
-                      loading={scoresLoading}
-                      salespeople={filteredTeam}
-                      soldMap={soldMap}
-                      analyticsMap={analyticsMap}
-                      showMoney={showTeamMoney}
-                    />
-                  )}
-                  {filteredTeam.length === 0 && (
-                    <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
-                      No {ROLE_TABS.find(t => t.role === teamTab)?.label} yet.
-                    </div>
-                  )}
-                  {filteredTeam.map((s) => {
-              // A dealer-created salesman shows in the team list the instant the
-              // account exists, but until they click the emailed link and finish
-              // /salesman-setup they aren't really usable. Show a distinct pending
-              // state with a resend button (the setup link expires) instead of the
-              // normal card, so the dealer knows the account isn't active yet.
-              const pendingSetup = s.role === 'salesman' && !s.setup_complete;
-              if (pendingSetup) return (
-                <div key={s.id} className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#f5f6f8' }}>
-                      <Mail className="w-4 h-4" style={{ color: '#6b7280' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-semibold text-gray-900 truncate">{s.full_name}</p>
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#f5f6f8', color: '#b91c1c' }}>Pending setup</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mb-3">
-                        <span className="font-medium text-gray-700 break-all">{s.email}</span> hasn't finished setting up their account.
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={() => resendSetup(s)}
-                          disabled={resendingId === s.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
-                          style={{ background: '#dc2626' }}
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          {resendingId === s.id ? 'Sending…' : 'Resend email'}
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(s.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 transition-all"
-                          style={{ border: '1px solid #e5e7eb' }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-              return (
-              <div
-                key={s.id}
-                className={`p-4 transition-colors ${s.is_active === false ? "opacity-50" : "hover:bg-gray-50"}`}
-              >
-                <div className="flex items-start gap-3">
-                  {s.avatar_url ? (
-                    <img
-                      src={s.avatar_url}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
-                      style={{
-                        background: "#374151",
-                      }}
-                    >
-                      {(s.full_name || "S")[0].toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0 }} />
-                      <p className="font-semibold text-gray-900 truncate">
-                        {s.full_name}
-                      </p>
-                      {/* The account switch, said once, only when it is OFF (an on account needs no
-                          pill). How the salesman is DOING is the database's word (_team_health), the
-                          same one the table above shows; the card's own "Inactive 30d+" rule is gone. */}
-                      {s.is_active === false && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Switched off</span>
-                      )}
-                      {s.role === 'salesman' && s.is_active !== false && <StatusWord status={scoreById[s.id]?.status} />}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500">
-                      <span className="truncate max-w-[200px]">{s.email}</span>
-                      {s.phone && (
-                        <>
-                          <span className="text-gray-700">·</span>
-                          <span>{s.phone}</span>
-                        </>
-                      )}
-                    </div>
-                    {/* Salesmen sell via a referral link, so they get the storefront
-                        performance grid (clicks / WhatsApp / sales). Every other role
-                        has no referral link and no sales — showing them that grid was
-                        meaningless (all zeros). They get a role-appropriate block:
-                        what they're responsible for + their activity footprint. */}
-                    {s.role === 'salesman' ? (
-                      <>
-                        {s.slug ? (
-                          <div className="flex items-center gap-2 mb-3">
-                            <div
-                              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500"
-                              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-                            >
-                              <Link className="w-3 h-3 text-gray-400" />
-                              /cars?ref=
-                              <span className="text-gray-900 font-medium">
-                                {s.slug}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => copyLink(s)}
-                              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 rounded-lg px-2 py-1.5 transition-all"
-                              style={{ border: "1px solid #e5e7eb" }}
-                            >
-                              {copiedId === s.id ? (
-                                <>
-                                  <Check className="w-3 h-3 text-emerald-700" />
-                                  <span className="text-emerald-700">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3" />
-                                  Copy
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="mb-3">
-                            <span
-                              className="text-xs pl-note-bad px-2.5 py-1.5"
-                            >
-                              No slug — referral link unavailable
-                            </span>
-                          </div>
-                        )}
-                        {/* Clicks, WhatsApp, sales and activity moved to the table above (one row per
-                            salesman, plan step 4c); this card keeps the tools: link, cars, commission. */}
-                        {/* Assigned cars — exclusivity lock. Shows which units this rep
-                            is solely responsible for (commission locked to them). */}
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-                              Assigned cars ({(assignedMap[s.id] || []).length})
-                            </p>
-                            {canAssign && (
-                              <button
-                                onClick={() => setAssignPickerFor(assignPickerFor === s.id ? null : s.id)}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}
-                              >
-                                <PlusCircle style={{ width: 13, height: 13 }} />
-                                {assignPickerFor === s.id ? 'Close' : 'Assign'}
-                              </button>
-                            )}
-                          </div>
-                          {(assignedMap[s.id] || []).length > 0 ? (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                              {(assignedMap[s.id] || []).map((c) => (
-                                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: '#374151', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '3px 8px' }}>
-                                  <Lock style={{ width: 10, height: 10, color: '#9ca3af', flexShrink: 0 }} />
-                                  <span>{c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}</span>
-                                  {c.status === 'reserved' && (
-                                    <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', letterSpacing: '0.04em' }}>RESERVED</span>
-                                  )}
-                                  {canAssign && (
-                                    <button
-                                      onClick={() => handleUnassignCar(c.id)}
-                                      disabled={assignWorking === c.id}
-                                      title="Unassign"
-                                      style={{ display: 'inline-flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#9ca3af', opacity: assignWorking === c.id ? 0.4 : 1 }}
-                                    >
-                                      <X style={{ width: 11, height: 11 }} />
-                                    </button>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>No cars locked to this rep.</p>
-                          )}
-                          {canAssign && assignPickerFor === s.id && (
-                            <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 180, overflowY: 'auto', background: '#fff' }}>
-                              {openCars.length === 0 ? (
-                                <p style={{ fontSize: 11, color: '#9ca3af', padding: '10px 12px', margin: 0 }}>No open cars to assign.</p>
-                              ) : (
-                                openCars.map((c) => (
-                                  <button
-                                    key={c.id}
-                                    onClick={() => handleAssignCar(c.id, s.id, s.full_name)}
-                                    disabled={assignWorking === c.id}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid rgba(17,24,39,0.06)', color: '#374151', fontSize: 12, cursor: 'pointer', textAlign: 'left' }}
-                                  >
-                                    <Car style={{ width: 12, height: 12, color: '#9ca3af', flexShrink: 0 }} />
-                                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {c.brand} {c.model}{c.year ? ` · ${c.year}` : ''}
-                                    </span>
-                                    {c.status === 'reserved' && (
-                                      <span style={{ fontSize: 9, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>RESERVED</span>
-                                    )}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      (() => {
-                        const ROLE_META = {
-                          manager:    { desc: 'Oversees the team, approves deals & commissions' },
-                          admin:      { desc: 'Listings, documents & day-to-day operations' },
-                          accountant: { desc: 'Payroll, commission payouts & financials' },
-                          fi_officer: { desc: 'Hire-purchase submissions & bank approvals' },
-                        };
-                        const meta = ROLE_META[s.role] || { desc: 'Team member' };
-                        const lastTxt = lastActiveText(lastActivityMap[s.id]);
-                        return (
-                          <>
-                            <p className="text-xs text-gray-500 mb-3">{meta.desc}</p>
-                            <div className="grid grid-cols-2 gap-2 max-w-xs">
-                              <div className="rounded-lg px-2.5 py-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                                <p className={`text-sm font-bold ${(activityCountMap[s.id] || 0) > 0 ? "text-gray-900" : "text-gray-400"}`}>
-                                  {activityCountMap[s.id] || 0}
-                                </p>
-                                <p className="text-[10px] text-gray-500 mt-0.5">Actions · 30d</p>
-                              </div>
-                              <div className="rounded-lg px-2.5 py-2" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-                                <p className="text-sm font-bold text-gray-900">{lastTxt}</p>
-                                <p className="text-[10px] text-gray-500 mt-0.5">Last active</p>
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()
-                    )}
-                    {/* Commission payout section */}
-                    {s.role === 'salesman' && (soldMap[s.id]?.commission > 0) && (
-                      <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 7 }}>Commission</p>
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-                          {[
-                            { key: 'pending',  label: 'Pending',  color: '#f59e0b' },
-                            { key: 'approved', label: 'Approved', color: '#3b82f6' },
-                            { key: 'paid',     label: 'Paid',     color: '#22c55e' },
-                          ].map(({ key, label, color }) => {
-                            const amt = soldMap[s.id]?.[key] || 0;
-                            if (!amt) return null;
-                            return (
-                              <div key={key} style={{ fontSize: 11 }}>
-                                <span style={{ color, fontWeight: 700 }}>RM {amt.toLocaleString()}</span>
-                                <span style={{ color: '#9ca3af', marginLeft: 4 }}>{label}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {(profile?.role === 'owner' || profile?.role === 'dealer' || profile?.role === 'superadmin' || profile?.role === 'manager') && (
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {(soldMap[s.id]?.pending > 0) && (
-                              <button
-                                onClick={() => setCommissionApproveTarget(s.id)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: '#f5f6f8', color: '#d97706', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                Approve Payout
-                              </button>
-                            )}
-                            {(soldMap[s.id]?.approved > 0) && (
-                              <button
-                                onClick={() => setCommissionPayTarget(s.id)}
-                                style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: '#f5f6f8', color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                Mark Paid
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => toggleActive(s)}
-                      disabled={togglingId === s.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 transition-all disabled:opacity-40"
-                      style={{ border: "1px solid #e5e7eb" }}
-                    >
-                      {s.is_active !== false ? (
-                        <>
-                          <ToggleRight className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="hidden sm:inline">Deactivate</span>
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="w-3.5 h-3.5 text-gray-600" />
-                          <span className="hidden sm:inline">Activate</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirmId(s.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-blue-500 hover:bg-blue-500/10 transition-all"
-                      style={{ border: "1px solid rgba(59,130,246,0.18)" }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Remove</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ); })}
-                </>
-              );
-            })()}
-          </div>
+          <TeamScoreboard
+            salesmen={teamSalesmen}
+            scoreById={scoreById}
+            loading={scoresLoading}
+            profitBy={teamProfitBy}
+            soldMap={soldMap}
+            onOpen={(p) => setOpenPersonId(p.id)}
+          />
         )}
-      </div>
+        <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '4px 16px 10px' }}>
+          Last 30 days, counting only what each salesman did themselves. Tap a name for details and tools.
+        </p>
+      </section>
+
+      {teamOthers.length > 0 && (
+        <section>
+          <p style={{ fontSize: 11, fontWeight: 700, color: PL.textMuted, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '6px 4px 8px' }}>Other staff</p>
+          <div style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: 4 }}>
+            {teamOthers.map((s, i) => {
+              const w = personWord(s);
+              return (
+                <div key={s.id} role="button" tabIndex={0} className="tsb-srow"
+                  onClick={() => setOpenPersonId(s.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenPersonId(s.id); } }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px', borderBottom: i < teamOthers.length - 1 ? `1px solid ${PL.line}` : 'none', cursor: 'pointer', borderRadius: 12, opacity: s.is_active === false ? 0.6 : 1 }}>
+                  <PersonAvatar person={s} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: PL.text }}>{s.full_name}</span>
+                      {w.label && <StatusWord status={w.status} label={w.label} />}
+                    </div>
+                    <div style={{ fontSize: 12, color: PL.textMuted, marginTop: 1 }}>{STAFF_ROLE_LABEL[s.role] || 'Staff'} · Last active {lastActiveText(lastActivityMap[s.id])}</div>
+                  </div>
+                  <ChevronRight style={{ width: 16, height: 16, color: PL.textMuted, flexShrink: 0 }} />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {openPerson && (
+        <SalesmanHealthSheet
+          person={openPerson.role === 'salesman'
+            ? { ...(scoreById[openPerson.id] || {}), name: openPerson.full_name, avatar_url: openPerson.avatar_url }
+            : { name: openPerson.full_name, avatar_url: openPerson.avatar_url }}
+          staff={openPerson.role !== 'salesman' || !scoreById[openPerson.id]}
+          word={personWord(openPerson, scoreById[openPerson.id]).label}
+          subtitle={openPerson.role === 'salesman'
+            ? (scoreById[openPerson.id] ? undefined : `Last active ${lastActiveText(lastActivityMap[openPerson.id])}`)
+            : `${STAFF_ROLE_LABEL[openPerson.role] || 'Staff'} · Last active ${lastActiveText(lastActivityMap[openPerson.id])}`}
+          onClose={() => setOpenPersonId(null)}
+        >
+          {renderPersonTools(openPerson)}
+        </SalesmanHealthSheet>
+      )}
       {deleteConfirmId && (
         <div
           className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -4099,7 +3854,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           const inserts = recipients.map(s => ({
             salesman_id: s.id,
             type: 'broadcast',
-            title: '📢 Message from Owner',
+            title: 'Message from the owner',
             body: msgText.trim(),
           }));
           const { error } = await supabase.from('salesman_notifications').insert(inserts);
@@ -4110,15 +3865,22 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           if (msgDoneTimer.current) clearTimeout(msgDoneTimer.current);
           msgDoneTimer.current = setTimeout(() => setMsgDone(false), 3000);
         };
-        return (
-          <div className="rounded-xl overflow-hidden" style={T.cardDark}>
+        // A pop-up opened from Team's top line (it was a card that sat open under the team, always).
+        if (!msgOpen) return null;
+        return createPortal(
+          <div onClick={() => setMsgOpen(false)} className="msg-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <style>{`@media (min-width: 640px){.msg-wrap{align-items:center!important}.msg-card{border-radius:20px!important}}`}</style>
+          <div className="msg-card" role="dialog" aria-modal="true" aria-label="Message your team" onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '20px 20px 0 0', boxShadow: PL.shadow }}>
             {/* Header */}
             <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(17,24,39,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Message Team</h2>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Sends to each member's dashboard notification</p>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>Message your team</h2>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>Arrives as a notification in each person's app</p>
               </div>
-              <Send style={{ width: 16, height: 16, color: '#4b5563' }} />
+              <button type="button" onClick={() => setMsgOpen(false)} aria-label="Close" style={{ border: 'none', background: PL.raised, borderRadius: 999, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X style={{ width: 16, height: 16, color: '#6b7280' }} />
+              </button>
             </div>
 
             <div style={{ padding: '16px 20px' }}>
@@ -4129,6 +3891,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                   const cnt = value === 'all'
                     ? salespeople.filter(s => s.is_active !== false).length
                     : salespeople.filter(s => s.role === value && s.is_active !== false).length;
+                  if (!cnt && value !== 'all') return null; // no "Admins 0": only roles someone holds
                   return (
                     <button
                       key={value}
@@ -4159,8 +3922,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               {recipients.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {recipients.map(s => (
-                    <span key={s.id} style={{ fontSize: 11, color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: ROLE_COLORS[s.role] || '#6b7280', flexShrink: 0, display: 'inline-block' }} />
+                    <span key={s.id} style={{ fontSize: 11.5, color: '#4b5563', background: PL.raised, borderRadius: 6, padding: '3px 8px' }}>
                       {s.full_name}
                     </span>
                   ))}
@@ -4208,6 +3970,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
               </button>
             </div>
           </div>
+          </div>,
+          document.body,
         );
       })()}
 
@@ -4403,7 +4167,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       className="rounded-xl px-3 py-2.5 text-red-600 text-xs"
                       style={{ background: '#f5f6f8' }}
                     >
-                      ⚠ {addError}
+                      {addError}
                     </div>
                   )}
                   <div className="flex gap-3 pt-1">
@@ -9025,21 +8789,23 @@ export default function DashboardPage() {
           )}
           {activeTab === "team" && (
             <>
-              <TeamBrokersSwitch canManage={["dealer", "owner"].includes(profile?.role)} dealerId={getDealerIdFromProfile(profile)}>
+              <TeamBrokersSwitch
+                canManage={["dealer", "owner"].includes(profile?.role)}
+                dealerId={getDealerIdFromProfile(profile)}
+                activity={(
+                  /* Who did what, when (was GM Oversight's Activity Trail). Overview's "unusual
+                     edits" alert opens it with ?trail=anomaly. */
+                  <Suspense fallback={null}>
+                    <AuditTrail
+                      key={teamTrail}
+                      dealerId={getDealerIdFromProfile(profile)}
+                      initialFilter={teamTrail === "anomaly" ? "anomaly" : "all"}
+                    />
+                  </Suspense>
+                )}
+              >
                 <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
               </TeamBrokersSwitch>
-              {/* Who did what, when (was GM Oversight's Activity Trail). Overview's
-                  "unusual edits" alert opens it with ?trail=anomaly. */}
-              <div style={{ marginTop: 24 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Activity Trail</p>
-                <Suspense fallback={null}>
-                  <AuditTrail
-                    key={teamTrail}
-                    dealerId={getDealerIdFromProfile(profile)}
-                    initialFilter={teamTrail === "anomaly" ? "anomaly" : "all"}
-                  />
-                </Suspense>
-              </div>
             </>
           )}
           {activeTab === "settings" && profile && (

@@ -25,18 +25,28 @@ const claimed = (r) => (r.status === 'registered' && r.sale_claimed_at ? 1 : 0);
 const digits = (v) => String(v).replace(/\D/g, '').slice(0, 6);
 
 // Wraps the existing Team screen: Salespeople (children) | Brokers. Only a dealer / owner gets the switch.
-export default function TeamBrokersSwitch({ canManage, dealerId, children }) {
+// Team's ONE switch (2026-11-16 design pass): People | Brokers | Activity. Activity is the trail of
+// who did what (it sat under the people list); Overview's "unusual edits" alert opens it (?trail=).
+// Brokers is the owner's only.
+export default function TeamBrokersSwitch({ canManage, dealerId, children, activity }) {
   // Overview's "broker sales to approve" and its Brokers tiles open this screen with ?sub=brokers.
-  const [view, setView] = useState(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sub') === 'brokers' ? 'brokers' : 'people'));
-  if (!canManage) return children;
-  const pill = (on) => ({ minHeight: 44, padding: '0 18px', border: 0, borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit', background: on ? PL.text : PL.hover, color: on ? PL.card : PL.text });
+  const [view, setView] = useState(() => {
+    if (typeof window === 'undefined') return 'people';
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('sub') === 'brokers' && canManage) return 'brokers';
+    if (q.get('trail') || q.get('sub') === 'activity') return 'activity';
+    return 'people';
+  });
+  const pill = (on) => ({ minHeight: 40, padding: '0 16px', border: 0, borderRadius: 22, cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit', background: on ? PL.text : PL.hover, color: on ? PL.card : PL.text });
+  const views = [['people', 'People'], ...(canManage ? [['brokers', 'Brokers']] : []), ...(activity ? [['activity', 'Activity']] : [])];
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button type="button" style={pill(view === 'people')} onClick={() => setView('people')}>Salespeople</button>
-        <button type="button" style={pill(view === 'brokers')} onClick={() => setView('brokers')}>Brokers</button>
-      </div>
-      {view === 'people' ? children : <DealerBrokers dealerId={dealerId} />}
+      {views.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto' }}>
+          {views.map(([k, label]) => <button key={k} type="button" style={pill(view === k)} onClick={() => setView(k)}>{label}</button>)}
+        </div>
+      )}
+      {view === 'brokers' ? <DealerBrokers dealerId={dealerId} /> : view === 'activity' ? activity : children}
     </div>
   );
 }
