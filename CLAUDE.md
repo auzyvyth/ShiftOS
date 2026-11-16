@@ -275,7 +275,11 @@ Project ID: lemdkdizdlcirhbzqlos
   and gradient number text, colour glows) is gone from `DashboardPage.jsx`, `dashboard/AnalyticsTab.jsx`, `DocumentsTab.jsx`,
   `RevOpsPage.jsx`, `ServicesPage.jsx`, `LeadsPage.jsx`, `CRMPanel.jsx` and `components/leads/*`. Use the classes in
   `src/theme/premiumLight.css`: `.pl-note` (info), `.pl-note-bad` (problem), `.pl-note-good` (done), `.pl-well` (icon well),
-  `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning. Selected = `#eceef1`. New code
+  `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning.
+  **A bad number is RED TEXT (owner, 2026-11-16: "negative or low numbers do not communicate").** ONE rule, `isWorse(value,
+  before)` (`src/utils/isWorse.js`, `npm run test:isworse`; `worseTone` in `plStatus.js`): below zero, or lower than the same point
+  of the period before. No fixed "low" threshold. Only for more-is-better numbers (sales, gross, cars sold, add-ons, margin < 0),
+  never a cost. A number that can go red carries its comparison line, so the red explains itself. Money reads "− RM 6,130". Selected = `#eceef1`. New code
   never writes a tinted background or `${hex}18` alpha suffix. Shared with the salesman panels and NOT changed: `OutreachHub`,
   `ServicePackages`, `NudgeQueue`. 2026-11-16 pass 2 (colour + card recipe, rendered with mock data): CRM (`CRMPanel.jsx`: pill switch,
   Appointments, Add Booking + reminder pop-ups now light), the pipeline board (`LeadsPage.jsx`, `LeadGridCard.jsx`: stage colours as a dot + header word + selected chip only, owner 2026-11-16 "differentiate every stage by colour"; never a tinted box), `LeadDrawer.jsx`, Analytics > Performance (`PerformanceTab.jsx`,

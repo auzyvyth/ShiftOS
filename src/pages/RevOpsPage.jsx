@@ -11,12 +11,15 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import { useCarMoney } from "../hooks/useCarMoney";
 import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
 import { premiumLight as PL } from "../theme/tokens";
+import { worseTone } from "../theme/plStatus";
+import { isWorse } from "../utils/isWorse";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// A loss reads "− RM 6,130" (minus first), the same as Overview, never "RM -6,130".
 const fmtRM = (n) =>
   n == null
     ? "—"
-    : `RM ${Number(n).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    : `${Number(n) < 0 ? "− " : ""}RM ${Math.abs(Number(n)).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
@@ -41,6 +44,7 @@ function MetricCard({
   loading,
   accentColor = "#3b82f6",
   icon: Icon,
+  tone,
 }) {
   return (
     <div
@@ -80,7 +84,7 @@ function MetricCard({
             fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
             fontSize: 28,
             letterSpacing: "0.04em",
-            color: "#111827",
+            color: tone || "#111827",
             lineHeight: 1,
           }}
         >
@@ -147,23 +151,6 @@ function SourcePill({ source, count }) {
   );
 }
 
-function ResponseTimeDot({ minutes }) {
-  if (minutes == null) return null;
-  const color =
-    minutes < 30 ? "#4ade80" : minutes < 120 ? "#fbbf24" : "#f87171";
-  return (
-    <span
-      style={{
-        width: 6,
-        height: 6,
-        borderRadius: "50%",
-        background: color,
-        display: "inline-block",
-        marginRight: 4,
-      }}
-    />
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 // Alerts used to live here too; they are on Overview now (the ONE "needs you" list).
@@ -184,7 +171,11 @@ export default function RevOpsPage({ userId }) {
     costedRevenue: mo.costedRevenue,
     leftOut: mo.leftOut,
     unitsSoldMTD: mo.units,
+    // The same point of last month (one engine, useCarMoney): what turns a number red.
+    prev: money.prevToDate,
   } : null;
+  // "vs RM x same day last month" under a number that can go red, so the red explains itself.
+  const vsLast = (v, fmt = fmtRM) => (revData?.prev ? `${fmt(v)} same day last month` : null);
   const [revFetching, setRevLoading] = useState(true);
   const revLoading = revFetching && !revData;
 
@@ -381,7 +372,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Total Revenue This Month"
             value={revData ? fmtRM(revData.revMTD + (addonData?.totalRevenue || 0)) : null}
-            sub="cars + add-ons & F&I"
+            sub={revData && isWorse(revData.revMTD, revData.prev?.revenue) ? `car sales ${fmtRM(revData.revMTD)}, ${vsLast(revData.prev.revenue)}` : "cars + add-ons & F&I"}
+            tone={revData ? worseTone(revData.revMTD, revData.prev?.revenue) : undefined}
             loading={revLoading || addonLoading}
             icon={DollarSign}
             accentColor="#4ade80"
@@ -389,7 +381,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Gross Profit This Month"
             value={revData ? fmtRM(revData.gpMTD) : null}
-            sub={revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
+            tone={revData ? worseTone(revData.gpMTD, revData.prev?.gross) : undefined}
+            sub={revData && isWorse(revData.gpMTD, revData.prev?.gross) ? vsLast(revData.prev.gross) : revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
             loading={revLoading || !mo}
             icon={TrendingUp}
             accentColor="#34d399"
@@ -409,7 +402,8 @@ export default function RevOpsPage({ userId }) {
                 ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
                 : null
             }
-            sub="sold this month / for sale"
+            sub={revData && isWorse(revData.unitsSoldMTD, revData.prev?.units) ? `sold / for sale · ${revData.prev.units} sold same day last month` : "sold this month / for sale"}
+            tone={revData ? worseTone(revData.unitsSoldMTD, revData.prev?.units) : undefined}
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"
@@ -438,7 +432,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Sales
                 </span>
-                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: worseTone(vehicleRev, revData.prev?.revenue) || "#111827", lineHeight: 1.1 }}>
                   {fmtRM(vehicleRev)}
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -460,7 +454,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Margin
                 </span>
-                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: worseTone(marginPct) || "#111827", lineHeight: 1.1 }}>
                   {marginPct}%
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -570,12 +564,12 @@ export default function RevOpsPage({ userId }) {
             {leadData?.avgResponseMin != null ? (
               <>
                 <div className="flex items-center gap-1">
-                  <ResponseTimeDot minutes={leadData.avgResponseMin} />
                   <span
                     style={{
                       fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                       fontSize: 26,
-                      color: "#111827",
+                      // Red past 2 hours (the rule the old green/amber/red dot used); no dot, the number says it.
+                      color: leadData.avgResponseMin >= 120 ? PL.accentText : "#111827",
                     }}
                   >
                     {leadData.avgResponseMin}

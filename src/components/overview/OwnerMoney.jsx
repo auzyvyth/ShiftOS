@@ -11,6 +11,7 @@ import { PERIOD_TEXT } from '../../utils/ownerMoney';
 import { explain } from '../../utils/moneyExplain';
 import MoneyDetailSheet from './MoneyDetailSheet';
 import { premiumLight as PL } from '../../theme/tokens';
+import { worseTone } from '../../theme/plStatus';
 import '../../theme/premiumLight.css';
 
 const rm = (v) => {
@@ -106,21 +107,22 @@ export default function OwnerMoney({ dealerId, onNavigate, period = 'month' }) {
 
       <Head title={`Money ${T.name}`} sub="RM · sold cars, counted from the day each car was added. Tap a number to see where it comes from." />
       <div className="om-kpis">
-        <Kpi label="Gross profit" value={rm(mo.gross)} tone={mo.gross < 0 ? PL.accentText : undefined} onOpen={() => open('gross')}>
-          <Trend v={pct(mo.gross, P.before.gross)} vs={T.vs} />{mo.margin != null && <div>{mo.margin.toFixed(1)}% margin</div>}
+        <Kpi label="Gross profit" value={rm(mo.gross)} tone={worseTone(mo.gross, P.before.gross)} onOpen={() => open('gross')}>
+          <Trend v={pct(mo.gross, P.before.gross)} vs={T.vs} />{mo.margin != null && <div style={mo.margin < 0 ? { color: PL.accentText, fontWeight: 700 } : undefined}>{mo.margin.toFixed(1)}% margin</div>}
           <LY>{rm(ly?.gross)}</LY>
         </Kpi>
-        <Kpi label="Sales" value={rm(mo.revenue)} onOpen={() => open('sales')}>
+        <Kpi label="Sales" value={rm(mo.revenue)} tone={worseTone(mo.revenue, P.before.revenue)} onOpen={() => open('sales')}>
           <Trend v={pct(mo.revenue, P.before.revenue)} vs={T.vs} />
           <LY>{rm(ly?.revenue)}</LY>
         </Kpi>
-        <Kpi label="Cars sold" value={String(mo.units)} onOpen={() => open('units')}>
+        <Kpi label="Cars sold" value={String(mo.units)} tone={worseTone(mo.units, P.before.units)} onOpen={() => open('units')}>
           <Trend v={pct(mo.units, P.before.units)} vs={T.vs} />
           {mo.brokerSold > 0 && <div>{mo.brokerSold} through brokers</div>}
           <LY>{ly?.units} car{ly?.units === 1 ? '' : 's'}</LY>
         </Kpi>
-        <Kpi label="Add-ons" value={rm(mo.addonRevenue)} onOpen={() => open('addons')}>
-          {addonCount > 0 ? `${addonCount} sold with the cars` : 'none sold yet'}
+        <Kpi label="Add-ons" value={rm(mo.addonRevenue)} tone={worseTone(mo.addonRevenue, P.before.addonRevenue)} onOpen={() => open('addons')}>
+          <Trend v={pct(mo.addonRevenue, P.before.addonRevenue)} vs={T.vs} />
+          <div>{addonCount > 0 ? `${addonCount} sold with the cars` : 'none sold yet'}</div>
         </Kpi>
         <Kpi label="Commission" value={rm(mo.commission)} onOpen={() => open('commission')}>
           {mo.brokerCommission > 0 ? `${rm(mo.brokerCommission)} of it for brokers` : mo.commission > 0 ? 'your salesmen' : 'none on these cars'}

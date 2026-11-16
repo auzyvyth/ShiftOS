@@ -9,7 +9,8 @@ import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { Target, ChevronRight } from 'lucide-react';
 import { premiumLight as PL } from '../../theme/tokens';
 
-const fmtRM = (n) => 'RM ' + Math.round(Number(n || 0)).toLocaleString('en-MY');
+// A loss reads "− RM 6,130" (minus first), the same as Overview, never "RM -6,130".
+const fmtRM = (n) => { const v = Math.round(Number(n || 0)); return (v < 0 ? '− ' : '') + 'RM ' + Math.abs(v).toLocaleString('en-MY'); };
 const fmtRMShort = (n) => {
   const v = Number(n || 0);
   if (Math.abs(v) >= 1e6) return 'RM ' + (v / 1e6).toFixed(1) + 'M';
@@ -305,7 +306,7 @@ export function RevenueBreakdown({ dealerId }) {
       (addons.data || []).forEach((d) => { addRevBy[d.listing_id] = (addRevBy[d.listing_id] || 0) + (Number(d.sold_price) || 0); addCostBy[d.listing_id] = (addCostBy[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); });
       const nameBy = {}; (team.data || []).forEach((p) => { nameBy[p.id] = p.full_name; });
       const out = (sold.data || []).map((l) => {
-        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] || 0, addRevBy[l.id] || 0, addCostBy[l.id] || 0, brokerAmount(bc?.byCar, l.id));
+        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] ?? null, addRevBy[l.id] || 0, addCostBy[l.id] || 0, brokerAmount(bc?.byCar, l.id));
         return {
           ...l,
           ...m,
@@ -403,7 +404,7 @@ export function RevenueBreakdown({ dealerId }) {
             <div style={{ background: '#fff', border: 'none', boxShadow: PL.shadow, borderRadius: PL.radius.card, padding: '12px 14px' }}>
               <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Best single sale</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '4px 0 0' }}>{bestSale.brand} {bestSale.model}</p>
-              <p style={{ fontSize: 12, color: PL.up, margin: '2px 0 0' }}>{fmtRM(bestSale.gross)} gross</p>
+              <p style={{ fontSize: 12, color: bestSale.gross < 0 ? PL.accentText : PL.up, margin: '2px 0 0' }}>{fmtRM(bestSale.gross)} gross</p>
             </div>
           )}
         </div>
