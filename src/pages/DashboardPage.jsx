@@ -1006,12 +1006,18 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
       setErrors((p) => ({ ...p, identity: "Dealership name cannot be empty." }));
       return;
     }
+    // SSM is required (owner, 2026-11-16): buyers trust a listing with a real company number behind it.
+    if (ssmNumber.replace(/[^A-Za-z0-9]/g, '').length < 6) {
+      setErrors((p) => ({ ...p, identity: "Fill in your company registration (SSM) number, e.g. 202301234567 or 1234567-A." }));
+      return;
+    }
     const dealershipChanged = !dealershipLocked && dealership.trim() !== (profile?.dealership || "");
     const logoChanged = (logoUrl || "") !== (profile?.site_logo_url || "");
     const avatarChanged = (avatarUrl || "") !== (profile?.avatar_url || "");
     const payload = {
       site_name: siteName.trim() || (profile?.dealership || dealership.trim() || ""),
       subdomain,
+      ssm_number: ssmNumber.trim(),
       ...(logoChanged && { site_logo_url: logoUrl || null }),
       ...(avatarChanged && { avatar_url: avatarUrl || null }),
       ...(dealershipChanged && {
@@ -1092,6 +1098,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
     (!dealershipLocked && dealership.trim() !== (profile?.dealership || "")) ||
     (siteName.trim() || "") !== (profile?.site_name || "") ||
     subdomain !== (profile?.subdomain || "") ||
+    (ssmNumber.trim() || "") !== (profile?.ssm_number || "") ||
     (logoUrl || "") !== (profile?.site_logo_url || "") ||
     (avatarUrl || "") !== (profile?.avatar_url || "");
 
@@ -1111,7 +1118,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
       city:  dealerCity.trim(),
       location: dealerAddress.trim(),
       business_hours: businessHours.trim(),
-      ssm_number: ssmNumber.trim(),
       postcode: dealerPostcode.trim(),
       deposit_policy: depositPolicy || null,
       deposit_terms: depositTerms.trim() || null,
@@ -1567,6 +1573,18 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
           </div>
         )}
 
+        <SettingsField label="Company Registration (SSM)" hint="Required · shown on every listing">
+          <input
+            value={ssmNumber}
+            onChange={(e) => setSsmNumber(e.target.value)}
+            placeholder="e.g. 202301234567 or 1234567-A"
+            required
+            aria-required="true"
+            className={iCls}
+          />
+          {!ssmNumber.trim() && <p className="text-xs mt-1" style={{ color: "#b91c1c" }}>Required. Buyers trust a dealer with a real company number behind it.</p>}
+        </SettingsField>
+
         <SettingsField label="Site / Tab Name" hint="Shows in browser tab">
           <input
             value={siteName}
@@ -1645,7 +1663,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
             a form that quietly stays empty. */}
         {(() => {
           const missing = [
-            !ssmNumber.trim() && 'company registration (SSM)',
             !dealerAddress.trim() && 'street address',
             !dealerPostcode.trim() && 'postcode',
             !businessHours.trim() && 'business hours',
@@ -1714,14 +1731,6 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
               onChange={e => setDealerPostcode(e.target.value.replace(/\D/g, '').slice(0, 5))}
               placeholder="e.g. 47301"
               inputMode="numeric"
-              className={iCls}
-            />
-          </SettingsField>
-          <SettingsField label="Company Registration (SSM)" hint="Shown on every listing — the single strongest proof you are a real business">
-            <input
-              value={ssmNumber}
-              onChange={e => setSsmNumber(e.target.value)}
-              placeholder="e.g. 202301234567 (1234567-A)"
               className={iCls}
             />
           </SettingsField>
