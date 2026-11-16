@@ -10,7 +10,7 @@ while two screens show two figures only moves the confusion). Steps, in order, o
 > sum `carPnl()` through `useCarMoney`, and `costMissing` exists (`ownerMoney.js:77`). Step 3: one clock (`daysHeld`)
 > and one threshold (`AGEING_DAYS`); the last hardcoded 60 in `moneyExplain.js` now uses it. Left on their own
 > numbers on purpose: `AccountantPanel.jsx` (stored `days_in_stock`, unused role). Fast List was removed from the app.
-> Open: steps 4 and 5 (merges, splitting `DashboardPage.jsx`).
+> Open: steps 4c, 4d and 5 (4a Reports > Listings and 4b AI Manager card are done).
 
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
@@ -34,6 +34,10 @@ while two screens show two figures only moves the confusion). Steps, in order, o
       Inventory row lacks (incomplete-listings list, CSV export, CVR); keep only what is unique, then delete it
       and redirect `analytics?sub=listings` to `listings`.
    b. AI Manager tab becomes a card on Overview (the starter-plan gate moves with it); redirect `ai_manager`.
+      **DONE 2026-11-16:** `src/pages/dashboard/AiManagerCard.jsx` on Overview, closed by default (opening it runs the
+      briefing; the snapshot loads only while open, `aiOpen` in DashboardPage). Nav item + tab gone; `/dashboard/ai_manager`
+      opens Overview with the card open. Same gates: not on `dealer_starter`, the `tab_ai_manager` switch. Light restyle of
+      `AISalesManager.jsx`; the automatic first ask is no longer shown as a user bubble.
    c. Performance + Team become one people screen (merge by subject, not by report type); redirect.
    d. Kill the `add` tab, keep only `AddCarSheet` (5 entry points today); HP Board becomes a Sales pill.
 5. **Split the rest of `DashboardPage.jsx` (9,573 lines), in this order, one block per commit:** Settings

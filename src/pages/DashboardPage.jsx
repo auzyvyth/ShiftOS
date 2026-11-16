@@ -111,7 +111,6 @@ const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
-const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const PerformanceTab   = React.lazy(() => import("../components/PerformanceTab"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
 const AuditTrail       = React.lazy(() => import("../components/reports/ReportSections").then(m => ({ default: m.AuditTrail })));
@@ -139,6 +138,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
+import AiManagerCard from './dashboard/AiManagerCard';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
 import { useCarMoney } from '../hooks/useCarMoney';
@@ -175,7 +175,6 @@ import {
   BarChart2,
   BarChart3,
   Send,
-  Bot,
   CreditCard,
   ChevronRight,
   ArrowRight,
@@ -240,14 +239,14 @@ const PANEL_CACHE_KEY = "dash";
 // Tabs whose content opens with its own heading (or a sub-tab bar naming it):
 // the dashboard's title block is not drawn above them. Analytics > Revenue
 // (RevOpsPage) and > Listings (AnalyticsTab) are handled by sub-tab.
-const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "add", "market", "hp", "storefront", "ai_manager"]);
+const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "add", "market", "hp", "storefront"]);
 
 const TAB_TO_GROUP = {
   overview: "g_reports", analytics: "g_reports",
   crm: "g_sales",       hp: "g_sales",
   listings: "g_inventory", add: "g_inventory", stock: "g_inventory", market: "g_inventory",
   handover: "g_operations", customers: "g_operations", documents: "g_operations",
-  outreach: "g_growth", storefront: "g_growth", ai_manager: "g_growth",
+  outreach: "g_growth", storefront: "g_growth",
   team: "g_admin",
 };
 
@@ -6853,6 +6852,8 @@ export default function DashboardPage() {
   // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
+  // The AI Sales Manager card on Overview. Closed on every visit: opening it runs the briefing.
+  const [aiOpen, setAiOpen] = useState(false);
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [deleteId, setDeleteId] = useState(null);
@@ -7327,7 +7328,8 @@ export default function DashboardPage() {
       marketplace: { tab: "analytics",    sub: ["analytics", "performance"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
-      ai_manager:  { tab: "ai_manager", sub: [] },
+      // AI Manager is a card on Overview now (2026-11-16): old links open Overview with it open.
+      ai_manager:  { tab: "overview",   sub: [], openAi: true },
       // GM Oversight was split up (2026-11-09): alerts -> Overview, targets +
       // what drove revenue -> Revenue, activity trail -> Team.
       oversight:   { tab: "overview",   sub: [] },
@@ -7339,6 +7341,7 @@ export default function DashboardPage() {
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {
+      if (mapped.openAi) { setAiOpen(true); navigate("/dashboard/overview", { replace: true }); }
       if (mapped.sub[0] === "analytics") setAnalyticsSub(mapped.sub[1]);
       if (mapped.sub[0] === "storefront") setStorefrontSub(mapped.sub[1]);
       if (mapped.sub[0] === "crm") { navigate(`/dashboard/crm?sub=${mapped.sub[1]}`, { replace: true }); return; }
@@ -7865,10 +7868,11 @@ export default function DashboardPage() {
   const gradeColor = (g) => GRADE_COLORS[g] || '#6b7280';
   const fmtDate = (d) => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 
-  // AI Manager's data loads only while its tab is open. Its money lines come from the same
-  // engine as Overview (useCarMoney), so the briefing quotes the numbers the owner sees.
-  const onAiTab = activeTab === "ai_manager";
-  const { snapshot: aiFacts, loading: snapshotLoading } = useDealerSnapshot(userId, { enabled: onAiTab });
+  // AI Manager's data loads only while its Overview card is OPEN (closed by default, so a plain
+  // Overview visit costs no AI call). Its money lines come from the same engine as Overview
+  // (useCarMoney), so the briefing quotes the numbers the owner sees.
+  const onAiTab = activeTab === "overview" && aiOpen;
+  const { snapshot: aiFacts } = useDealerSnapshot(userId, { enabled: onAiTab });
   const { money: aiMoney, failed: aiMoneyFailed } = useCarMoney(onAiTab ? getDealerIdFromProfile(profile) : null);
   // Memoised: AISalesManager fires its briefing from an effect keyed on `snapshot`, and a new
   // object every render cancelled its timer, so the briefing never ran. Money and days come from
@@ -7903,7 +7907,6 @@ export default function DashboardPage() {
     storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
-    ai_manager: { title: "AI Sales Manager", sub: "Your always-on senior sales advisor" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
     handover:   { title: "Handover",         sub: "Post-sale processing: JPJ transfer, Puspakom, road tax & insurance" },
     market:     { title: "Market Demand",    sub: "What Malaysia registered last month, matched against your stock" },
@@ -7941,7 +7944,6 @@ export default function DashboardPage() {
       id: "g_growth", Icon: Megaphone, label: "Growth",
       items: [
         { id: "storefront", Icon: Globe,     label: "Storefront" },
-        { id: "ai_manager", Icon: Bot,       label: "AI Manager" },
       ],
     },
     {
@@ -8528,47 +8530,15 @@ export default function DashboardPage() {
           {activeTab === "overview" && userId && (
             <div className="space-y-4">
               {profile?.plan !== "dealer_starter" && tabAllowed("ai_manager") && (
-                <button
-                  onClick={() => handleTabChange("ai_manager")}
-                  className="pl-key"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 12, width: "100%",
-                    padding: "14px 16px", borderRadius: 20,
-                    background: premiumLight.cardBg, border: "none",
-                    cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",
-                  }}
-                >
-                  <div style={{ width: 38, height: 38, borderRadius: 12, background: "#f5f6f8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Bot size={17} color="#111827" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#111827" }}>AI Sales Manager</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
-                  </div>
-                  <ChevronRight size={16} color="#6b7280" />
-                </button>
-              )}
-              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} can={canDo} />
-            </div>
-          )}
-
-          {/* ── AI Manager Tab ── */}
-          {activeTab === "ai_manager" && userId && (
-            <Suspense fallback={<div style={{ padding: 32, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading AI Manager...</div>}>
-              {profile?.plan === "dealer_starter" ? (
-                <div style={{ padding: 32, textAlign: "center" }}>
-                  <Bot size={32} color="#9ca3af" style={{ margin: "0 auto 12px" }} />
-                  <p style={{ color: "#6b7280", fontSize: 14 }}>AI Sales Manager is not available on the Starter plan.</p>
-                </div>
-              ) : snapshot ? (
-                <AISalesManager
+                <AiManagerCard
+                  open={aiOpen}
+                  onToggle={() => setAiOpen(o => !o)}
                   snapshot={snapshot}
                   dealerName={profile?.dealership || profile?.site_name || "Your Dealership"}
                 />
-              ) : (
-                <div style={{ padding: 32, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading snapshot data...</div>
               )}
-            </Suspense>
+              <OverviewTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} role={profile?.role} can={canDo} />
+            </div>
           )}
 
           {/* ── Listings Tab ── */}

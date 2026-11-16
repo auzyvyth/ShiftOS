@@ -152,7 +152,7 @@ export const TAB_CAPABILITIES = [
   ...tab('tab_performance', 'Performance', 'Team scores and website traffic.', true, false),
   ...tab('tab_reports_listings', 'Reports > Listings', 'Views and enquiries per car.', true, true),
   ...tab('tab_storefront', 'Storefront', 'The public page, hero and services catalogue.', false, false),
-  ...tab('tab_ai_manager', 'AI Manager', 'The morning briefing (it quotes profit).', true, false),
+  ...tab('tab_ai_manager', 'AI Sales Manager', 'The briefing card on Overview (it quotes profit).', true, false),
   ...tab('tab_team', 'Team', 'The team list and activity trail.', true, false),
 ];
 
