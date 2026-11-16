@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { X, MessageCircle, Save, PlusCircle, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
@@ -906,19 +906,28 @@ const CRM_CSS = `
 `;
 
 // ─── CRMPanel (exported) ──────────────────────────────────────────────────────
-const CRM_TABS = ['leads', 'bookings', 'outreach'];
+const CRM_TABS = ['leads', 'bookings', 'outreach', 'hp'];
 
 // initialTab / openLeadId come from the URL (/dashboard/crm?sub=bookings,
 // ?lead=<id>) so an Overview alert opens the exact sub-tab or lead.
-export default function CRMPanel({ userId, listings = [], salesmen = [], initialTab = null, openLeadId = null, onTabChange, onOpenDoc }) {
-  const startTab = openLeadId ? 'leads' : (CRM_TABS.includes(initialTab) ? initialTab : 'leads');
+// `hpBoard` = the HP Board (bank loan submissions), a pill here since 2026-11-16 (it was its own menu item
+// beside this one). The dashboard passes it only when the role may see it (`tab_hp`), else null.
+export default function CRMPanel({ userId, listings = [], salesmen = [], initialTab = null, openLeadId = null, onTabChange, onOpenDoc, hpBoard = null }) {
+  const startTab = openLeadId ? 'leads' : (CRM_TABS.includes(initialTab) && (initialTab !== 'hp' || hpBoard) ? initialTab : 'leads');
   const [crmTab, setCrmTabState] = useState(startTab);
+  // On a phone the pill row scrolls sideways: keep the open pill in view (HP Board sat off-screen).
+  const tabsRef = useRef(null);
+  useEffect(() => {
+    const row = tabsRef.current;
+    const el = row?.querySelector('.crm-tab.active');
+    if (row && el) row.scrollLeft = Math.max(0, el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2);
+  }, [crmTab]);
   useEffect(() => { setCrmTabState(startTab); }, [startTab]);
   const setCrmTab = (t) => { setCrmTabState(t); onTabChange?.(t); };
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <style>{CRM_CSS}</style>
-      <div className="crm-tabs">
+      <div className="crm-tabs" ref={tabsRef}>
         <button className={`crm-tab${crmTab === 'leads' ? ' active' : ''}`} onClick={() => setCrmTab('leads')}>
           Leads / Pipeline
         </button>
@@ -928,10 +937,16 @@ export default function CRMPanel({ userId, listings = [], salesmen = [], initial
         <button className={`crm-tab${crmTab === 'outreach' ? ' active' : ''}`} onClick={() => setCrmTab('outreach')}>
           Outreach
         </button>
+        {hpBoard && (
+          <button className={`crm-tab${crmTab === 'hp' ? ' active' : ''}`} onClick={() => setCrmTab('hp')}>
+            HP Board
+          </button>
+        )}
       </div>
       {crmTab === 'leads'    && <LeadsPage dealerId={userId} openLeadId={openLeadId} onOpenDoc={onOpenDoc} />}
       {crmTab === 'bookings' && <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />}
       {crmTab === 'outreach' && <OutreachHub dealerId={userId} theme="plight" />}
+      {crmTab === 'hp'       && hpBoard}
     </div>
   );
 }

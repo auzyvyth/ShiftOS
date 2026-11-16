@@ -398,7 +398,11 @@ fi_officer → /fi
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
 **Reports > Listings no longer exists (owner, 2026-11-16: merged into Inventory).** Everything on it was already in Inventory > Listings (status counts, incomplete tags, views + enquiries per car, the car pop-up's Analytics pill) or Stock (aged cars), so it was deleted (`dashboard/AnalyticsTab.jsx`); its CSV export is the Export button in Inventory > Listings; `?sub=listings` redirects. The `tab_reports_listings` switch in `permissions.js` is now unused (left so the DB mirror test keeps passing).
-Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, documents, storefront
+Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, stock, handover, analytics, team, customers, outreach, documents, storefront
+  ↳ **Adding a car is a POP-UP, not a tab (2026-11-16, step 4d).** The Add car sheet's "Full listing" opens AddCarForm then CarForm,
+    "Stock only" opens `AddCarForm mode="internal"`, both in one full-screen pop-up (`addMode`, `closeAddFlow`, DashboardPage.jsx).
+    StockTab has NO add form of its own any more (it made nameless stock records). `/dashboard/add` opens Listings with the sheet.
+  ↳ **HP Board is a pill in Leads / CRM** (`CRMPanel hpBoard`, shown only when `tabAllowed('hp')`); `/dashboard/hp` -> `crm?sub=hp`.
   ↳ **People are judged on ONE screen: Team (2026-11-16, plan step 4c).** Its top table (`TeamScoreboard`) replaced Team's
     Leaderboard, its "Inactive 30d+" badge, and Performance's score table + link-clicks list. Analytics > Performance is now
     "Traffic" (website only, `PerformanceTab.jsx`, route `?sub=performance` unchanged). Never add a per-salesman number back to

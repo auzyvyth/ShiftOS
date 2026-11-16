@@ -243,12 +243,12 @@ const PANEL_CACHE_KEY = "dash";
 // Tabs whose content opens with its own heading (or a sub-tab bar naming it):
 // the dashboard's title block is not drawn above them. Analytics > Revenue
 // (RevOpsPage) and > Listings (AnalyticsTab) are handled by sub-tab.
-const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "add", "market", "hp", "storefront"]);
+const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "market", "storefront"]);
 
 const TAB_TO_GROUP = {
   overview: "g_reports", analytics: "g_reports",
   crm: "g_sales",       hp: "g_sales",
-  listings: "g_inventory", add: "g_inventory", stock: "g_inventory", market: "g_inventory",
+  listings: "g_inventory", stock: "g_inventory", market: "g_inventory",
   handover: "g_operations", customers: "g_operations", documents: "g_operations",
   outreach: "g_growth", storefront: "g_growth",
   team: "g_admin",
@@ -4673,11 +4673,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   const [units, setUnits, unitsCached] = usePersistentState(userId ? `stock:${userId}` : null, []);
   const [unitsFetching, setLoading] = useState(true);
   const loading = unitsFetching && !unitsCached;
-  const [showAdd, setShowAdd] = useState(false);
-  useModalHistory(showAdd, () => setShowAdd(false), { isDirty: () => true });
-  const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
-  const [addSaving, setAddSaving] = useState(false);
-  const [addErr, setAddErr] = useState('');
   const [soldTarget, setSoldTarget] = useState(null);
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
@@ -4827,7 +4822,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     if (!autoTool) return;
     if (autoTool === 'csv') { setShowCsvImport(true); setCsvRows([]); setCsvError(''); }
     else if (autoTool === 'vendors') { setShowVendors(true); fetchVendors(); }
-    else if (autoTool === 'add') { setShowAdd(true); }
     onToolHandled?.();
   }, [autoTool]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4960,41 +4954,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     return typeof days === 'number' && days > AGEING_DAYS;
   });
   const gpSparkData = bucketGPByMonth(units);
-
-  const handleAdd = async () => {
-    setAddErr('');
-    // Strict (owner, 2026-11-14): no stock record without what the car cost, or every profit
-    // sum has to leave it out.
-    if (!(Number(addForm.purchase_price) > 0)) { setAddErr('Enter the buy price. Profit cannot be worked out without it.'); return; }
-    if (!addForm.purchase_date) { setAddErr('Enter the date you bought it. Days on the lot count from it.'); return; }
-    // A car that already has a stock record must not get a second one: every money total
-    // would count its cost and sale twice. (A new listing makes its own record automatically.)
-    if (addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold')) {
-      setAddErr('This car already has a stock record. Edit that one in Stock & costs instead.');
-      return;
-    }
-    setAddSaving(true);
-    // Empty boxes go in as NULL: an empty string in a date or id column made the database
-    // refuse the whole row, and the form used to close as if it had saved.
-    const { data: inserted, error } = await supabase.from('stock_units').insert({
-      ...addForm, dealer_id: userId, status: 'in_stock',
-      listing_id: addForm.listing_id || null,
-      purchase_date: addForm.purchase_date || null,
-      purchase_price: Number(addForm.purchase_price) || 0, recon_cost: Number(addForm.recon_cost) || 0,
-      asking_price: Number(addForm.asking_price) || 0,
-      puspakom_b7_date: addForm.puspakom_b7_date || null, puspakom_b5_date: addForm.puspakom_b5_date || null,
-    }).select().single();
-    setAddSaving(false);
-    if (error || !inserted) {
-      setAddErr('Could not save this stock record. Check the boxes and try again.');
-      return;
-    }
-    const lbl = listings.find(l => l.id === addForm.listing_id);
-    logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: inserted.id, action: 'created', summary: `Stock unit added${lbl ? ` — ${lbl.brand} ${lbl.model} ${lbl.year}` : ''} · RM ${(Number(addForm.purchase_price)||0).toLocaleString()}` });
-    setShowAdd(false);
-    setAddForm({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
-    fetchUnits();
-  };
 
   // Same popup as the listings grid (MarkSoldModal). The stock_units write is
   // the sale: trg_sync_stock_sold_to_listing flips the car to sold with this
@@ -5832,93 +5791,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
           </div>
         );
       })(), document.body)}
-
-      {/* Add Stock Modal */}
-      {showAdd && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={undefined}>
-            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-gray-900">Add Stock Unit</h3>
-              <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="overflow-y-auto p-5 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Car Listing</label>
-                <select value={addForm.listing_id} onChange={e => {
-                  const lid = e.target.value;
-                  const listing = listings.find(l => l.id === lid);
-                  setAddForm(p => ({
-                    ...p,
-                    listing_id: lid,
-                    asking_price: listing?.selling_price ? String(listing.selling_price) : p.asking_price,
-                  }));
-                }} className={iCls} style={{ background: '#fff' }}>
-                  <option value="">Select listing...</option>
-                  {listings.map(l => <option key={l.id} value={l.id}>{l.brand} {l.model} {l.year}{l.plate_number ? ` · ${l.plate_number}` : ''}</option>)}
-                </select>
-                {addForm.listing_id && units.some(u => u.listing_id === addForm.listing_id && u.status !== 'sold') && (
-                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />A stock unit already exists for this listing.
-                  </p>
-                )}
-              </div>
-              {/* Procurement section */}
-              <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Procurement</p>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Price (RM) <span className="text-red-500">*</span></label><input type="number" value={addForm.purchase_price} onChange={e => setAddForm(p => ({ ...p, purchase_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Date <span className="text-red-500">*</span></label><input type="date" value={addForm.purchase_date} onChange={e => setAddForm(p => ({ ...p, purchase_date: e.target.value }))} className={iCls} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Recon Est. (RM)</label><input type="number" value={addForm.recon_cost} onChange={e => setAddForm(p => ({ ...p, recon_cost: e.target.value }))} placeholder="0" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Asking Price (RM)</label><input type="number" value={addForm.asking_price} onChange={e => setAddForm(p => ({ ...p, asking_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-                </div>
-                <div className="mb-3"><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Purchase Source</label><input type="text" value={addForm.purchase_source} onChange={e => setAddForm(p => ({ ...p, purchase_source: e.target.value }))} placeholder="e.g. Auction, Trade-in, Consignment" className={iCls} /></div>
-              </div>
-              {/* Inspection section */}
-              <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 10 }}>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Inspection &amp; Compliance</p>
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Encumbrance Status</label>
-                  <select value={addForm.encumbrance_status} onChange={e => setAddForm(p => ({ ...p, encumbrance_status: e.target.value }))} className={iCls} style={{ background: '#fff' }}>
-                    <option value="unknown">Unknown — not verified yet</option>
-                    <option value="clear">Clear — free from HP / loan</option>
-                    <option value="under_hp">Under HP — outstanding loan (settle before transfer)</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B5 Date</label>
-                    <input type="date" value={addForm.puspakom_b5_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b5_date: e.target.value }))} className={iCls} />
-                    <p className="text-[10px] text-gray-400 mt-1">Chassis / body. RM 30.</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">PUSPAKOM B7 Date</label>
-                    <input type="date" value={addForm.puspakom_b7_date} onChange={e => setAddForm(p => ({ ...p, puspakom_b7_date: e.target.value }))} className={iCls} />
-                    <p className="text-[10px] text-gray-400 mt-1">Engine cert. RM 60. Valid 3 months.</p>
-                  </div>
-                </div>
-              </div>
-              {/* Intake checklist reminder */}
-              <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: '10px 12px' }}>
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Intake checklist</p>
-                {['Physical inspection done', 'Geran / registration card sighted', 'Keys + spare key received', 'Service history noted', 'Photos uploaded to listing'].map(item => (
-                  <p key={item} className="text-[11px] text-gray-700 m-0 flex items-center gap-1.5 mb-1">
-                    <span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid #9ca3af', display: 'inline-block', flexShrink: 0 }} />
-                    {item}
-                  </p>
-                ))}
-              </div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Notes</label><textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes..." className={taCls} /></div>
-            </div>
-            {addErr && <p role="alert" className="px-5 pt-3 text-xs" style={{ color: premiumLight.accentText, margin: 0 }}>{addErr}</p>}
-            <div className="p-5 border-t border-gray-100 flex gap-3">
-              <button onClick={() => { setShowAdd(false); setAddErr(''); }} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
-              <button onClick={handleAdd} disabled={addSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{addSaving ? 'Saving...' : 'Add Unit'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Mark Sold — the shared popup; the unit's own cost drives a margin rule */}
       {soldTarget && createPortal(
@@ -6970,6 +6842,20 @@ export default function DashboardPage() {
     toast.success("Car added to your inventory.");
   };
   const [addMode, setAddMode] = useState(null); // null | 'marketplace' | 'internal'
+  // The Add car pop-up: closing asks first (a half-filled car is lost otherwise; AddCarForm keeps a
+  // draft on the device, the second step does not), Back asks the same (useModalHistory isDirty),
+  // and the page under it does not scroll.
+  const closeAddFlow = useCallback(() => {
+    if (!window.confirm('Close this form? Anything not saved yet will be lost.')) return;
+    setAddMode(null); setMarketplaceDraftListing(null);
+  }, []);
+  useModalHistory(!!addMode, () => { setAddMode(null); setMarketplaceDraftListing(null); }, { isDirty: () => true });
+  useEffect(() => {
+    if (!addMode) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [addMode]);
   const [marketplaceDraftListing, setMarketplaceDraftListing] = useState(null); // listing created by AddCarForm, awaiting CarForm continuation
   // `query` (optional) lands as ?key=value on the tab's URL, e.g.
   // handleTabChange("crm", { sub: "bookings" }) or { lead: <id> } to open one lead.
@@ -6977,7 +6863,6 @@ export default function DashboardPage() {
     startTransition(() => {
       setActiveTab(tab);
       setSidebarOpen(false);
-      if (tab !== 'add') { setAddMode(null); setMarketplaceDraftListing(null); }
       const qs = query ? new URLSearchParams(query).toString() : '';
       navigate(`/dashboard/${tab}${qs ? `?${qs}` : ''}`);
       // Keep the group containing this tab open in the sidebar
@@ -7012,6 +6897,10 @@ export default function DashboardPage() {
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       // AI Manager is a card on Overview now (2026-11-16): old links open Overview with it open.
       ai_manager:  { tab: "overview",   sub: [], openAi: true },
+      // Adding a car is a pop-up now (2026-11-16): an old /dashboard/add link opens Inventory with
+      // the Add car sheet. HP Board is a pill in Leads / CRM.
+      add:         { tab: "listings",   sub: [], openAddSheet: true },
+      hp:          { tab: "crm",        sub: ["crm", "hp"] },
       // GM Oversight was split up (2026-11-09): alerts -> Overview, targets +
       // what drove revenue -> Revenue, activity trail -> Team.
       oversight:   { tab: "overview",   sub: [] },
@@ -7024,6 +6913,7 @@ export default function DashboardPage() {
     const mapped = ALIAS[tabParam];
     if (mapped) {
       if (mapped.openAi) { setAiOpen(true); navigate("/dashboard/overview", { replace: true }); }
+      if (mapped.openAddSheet) { setAddCarOpen(true); navigate("/dashboard/listings", { replace: true }); }
       if (mapped.sub[0] === "analytics") setAnalyticsSub(mapped.sub[1]);
       if (mapped.sub[0] === "storefront") setStorefrontSub(mapped.sub[1]);
       if (mapped.sub[0] === "crm") { navigate(`/dashboard/crm?sub=${mapped.sub[1]}`, { replace: true }); return; }
@@ -7578,7 +7468,6 @@ export default function DashboardPage() {
   const TITLES = {
     overview:  { title: "Overview", sub: "Dealership pulse at a glance" },
     listings: { title: "Listings", sub: "Manage your inventory" },
-    add: { title: "Add Listing", sub: "Upload a new car" },
     team: { title: "Team", sub: "Manage salespeople" },
     analytics: ({
       revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
@@ -7607,7 +7496,6 @@ export default function DashboardPage() {
       id: "g_sales", Icon: TrendingUp, label: "Sales",
       items: [
         { id: "crm",  Icon: MessageCircle, label: "Leads / CRM" },
-        { id: "hp",   Icon: CreditCard,    label: "HP Board" },
       ],
     },
     {
@@ -8656,122 +8544,66 @@ export default function DashboardPage() {
 
           <TabErrorBoundary>
           <React.Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>}>
-          {activeTab === "add" && (
-            <div className="card-top rounded-xl p-4 sm:p-6" style={T.cardDark}>
-              {/* Centered form container — capped at 860px so it looks like a focused form on desktop */}
-              <div style={{ maxWidth: 860, margin: '0 auto' }}>
-              {!addMode ? (
-                /* ── Picker ── */
-                (() => {
-                  const DRAFT_TTL = 7 * 24 * 60 * 60 * 1000;
-                  let savedDraft = null;
-                  try {
-                    const raw = userId && localStorage.getItem(`addcarform_draft_${userId}`);
-                    if (raw) { const d = JSON.parse(raw); if (Date.now() - d.savedAt < DRAFT_TTL) savedDraft = d; }
-                  } catch (_) {}
-                  const draftLabel = savedDraft?.mode === 'marketplace' ? 'Marketplace' : savedDraft?.mode === 'internal' ? 'Internal Stock' : 'previous';
-                  return (
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Add a car</p>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 24px' }}>What would you like to do?</h2>
-
-                    {savedDraft && (
-                      <button onClick={() => setAddMode(savedDraft.mode || 'internal')}
-                        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: 'none', background: '#f5f6f8', cursor: 'pointer', marginBottom: 16 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827' }}>Resume {draftLabel} draft</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
-                            Saved {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''} · Step {savedDraft.step || 1} of 4
-                          </p>
-                        </div>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                      </button>
-                    )}
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <button onClick={() => setAddMode('marketplace')}
-                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: 'none', background: '#f5f6f8', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
-                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(17,24,39,0.12)'}
-                        onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827' }}>Publish to Marketplace</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Stock details + full listing with photos. Goes live on your storefront and drevo.my.</p>
-                          <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: '#dc2626' }}>2 phases: Core info → Listing details</p>
-                        </div>
-                      </button>
-                      <button onClick={() => setAddMode('internal')}
-                        style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10, padding: '20px 18px', borderRadius: 14, border: 'none', background: '#f5f6f8', cursor: 'pointer', transition: 'box-shadow 0.12s' }}
-                        onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827' }}>Internal Stock Only</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Key procurement details. Tracked in P&L, visible to your team. Publish anytime later.</p>
-                          <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>1 phase: Core info only</p>
-                        </div>
-                      </button>
-                    </div>
-                    <style>{`@media(max-width:480px){.add-picker-grid{grid-template-columns:1fr!important;}}`}</style>
-                  </div>
-                  );
-                })()
-              ) : addMode === 'marketplace' ? (
-                <>
-                  {/* Phase strip — shows the 2-phase flow and current position */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 24, background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: !marketplaceDraftListing ? '#f5f6f8' : '#fff', borderRight: '1px solid #e5e7eb' }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: !marketplaceDraftListing ? '#dc2626' : '#f5f6f8', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {marketplaceDraftListing
-                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                          : <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>1</span>}
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: !marketplaceDraftListing ? '#dc2626' : '#6b7280' }}>Core Details</p>
-                        <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Identity · Procurement · Pricing</p>
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: marketplaceDraftListing ? '#f5f6f8' : '#fff' }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', background: marketplaceDraftListing ? '#dc2626' : '#f5f6f8', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: marketplaceDraftListing ? '#fff' : '#9ca3af' }}>2</span>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: marketplaceDraftListing ? '#dc2626' : '#9ca3af' }}>Listing Details</p>
-                        <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Photos · Location · Features</p>
-                      </div>
-                    </div>
-                  </div>
-                  {!marketplaceDraftListing ? (
-                    <AddCarForm
-                      mode="marketplace"
-                      onContinueToCarForm={(l) => setMarketplaceDraftListing(l)}
-                      onBack={() => setAddMode(null)}
-                      onPublished={handleAddCarPublished}
-                      onStocked={handleAddCarStocked}
-                    />
-                  ) : (
-                    <CarForm
-                      listing={marketplaceDraftListing}
-                      intakeDone
-                      defaultValues={{ state: profile?.state || '', city: profile?.city || '' }}
-                      onBack={() => setMarketplaceDraftListing(null)}
-                      onUpdate={handleMarketplacePublish}
-                    />
-                  )}
-                </>
-              ) : (
-                /* ── Internal stock: procurement-focused AddCarForm only ── */
-                <AddCarForm mode="internal" onBack={() => setAddMode(null)} onPublished={handleAddCarPublished} onStocked={handleAddCarStocked} />
-              )}
+          {/* Adding a car is a full-screen pop-up over the page (plan step 4d, 2026-11-16), opened from
+              the Add car sheet's "Full listing" or "Stock only". It was the `add` tab: a page with its own
+              picker that the sheet navigated to, and "Stock only" opened a second, nameless form. */}
+          {addMode && createPortal(
+            <div role="dialog" aria-modal="true" aria-label="Add a car" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: PL.canvas, overflowY: 'auto' }}>
+              <div style={{ position: 'sticky', top: 0, zIndex: 2, background: PL.canvas, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${PL.line}` }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: PL.text }}>{addMode === 'marketplace' ? 'Add a car' : 'Add a car to stock'}</p>
+                  <p style={{ margin: '1px 0 0', fontSize: 12, color: PL.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {addMode === 'marketplace' ? 'Goes on the marketplace once you publish' : 'Not on the marketplace until you list it'}
+                  </p>
+                </div>
+                <button type="button" aria-label="Close" onClick={closeAddFlow}
+                  style={{ border: 'none', background: PL.hover, borderRadius: 999, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  <X style={{ width: 18, height: 18, color: PL.textSec }} />
+                </button>
               </div>
-            </div>
+              <div style={{ maxWidth: 860, margin: '0 auto', padding: '16px 12px 40px' }}>
+                <div style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 14px' }}>
+                  {addMode === 'marketplace' ? (
+                    <>
+                      {/* Where you are in the two steps: core details, then the listing */}
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+                        {[['Core details', 'Car, buy price, asking price', !marketplaceDraftListing], ['Listing', 'Photos, location, features', !!marketplaceDraftListing]].map(([title, sub, on], i) => (
+                          <div key={title} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: on ? PL.hover : PL.raised }}>
+                            <span style={{ width: 24, height: 24, borderRadius: '50%', background: on ? PL.text : '#fff', color: on ? '#fff' : PL.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+                              {i === 0 && marketplaceDraftListing ? <Check style={{ width: 12, height: 12, color: PL.up }} /> : i + 1}
+                            </span>
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: on ? PL.text : PL.textMuted }}>{title}</span>
+                              <span style={{ display: 'block', fontSize: 11, color: PL.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {!marketplaceDraftListing ? (
+                        <AddCarForm
+                          mode="marketplace"
+                          onContinueToCarForm={(l) => setMarketplaceDraftListing(l)}
+                          onBack={closeAddFlow}
+                          onPublished={handleAddCarPublished}
+                          onStocked={handleAddCarStocked}
+                        />
+                      ) : (
+                        <CarForm
+                          listing={marketplaceDraftListing}
+                          intakeDone
+                          defaultValues={{ state: profile?.state || '', city: profile?.city || '' }}
+                          onBack={() => setMarketplaceDraftListing(null)}
+                          onUpdate={handleMarketplacePublish}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <AddCarForm mode="internal" onBack={closeAddFlow} onPublished={handleAddCarPublished} onStocked={handleAddCarStocked} />
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
           )}
           {activeTab === "analytics" && (
             <>
@@ -8825,6 +8657,11 @@ export default function DashboardPage() {
               openLeadId={crmQuery.lead}
               onTabChange={(t) => navigate(`/dashboard/crm?sub=${t}`, { replace: true })}
               onOpenDoc={(data) => { setPrefillDocData(data); handleTabChange('documents'); }}
+              hpBoard={tabAllowed('hp') ? (
+                <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>Loading...</div>}>
+                  <HPBoard dealerId={getDealerIdFromProfile(profile)} />
+                </Suspense>
+              ) : null}
             />
           )}
           {activeTab === "storefront" && userId && (
@@ -8849,8 +8686,8 @@ export default function DashboardPage() {
           <AddCarSheet
             open={addCarOpen}
             onClose={() => setAddCarOpen(false)}
-            onFull={() => { handleTabChange("add"); setAddMode("marketplace"); }}
-            onStock={() => { setStockAutoTool("add"); handleTabChange("stock"); }}
+            onFull={() => setAddMode("marketplace")}
+            onStock={() => setAddMode("internal")}
             onCsv={() => { setStockAutoTool("csv"); handleTabChange("stock"); }}
             onAi={() => navigate("/dashboard/import-stock")}
           />
@@ -8872,15 +8709,6 @@ export default function DashboardPage() {
           )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
-          )}
-          {activeTab === "hp" && userId && (
-            <div className="space-y-2">
-              <div>
-                <h2 className="font-semibold text-base" style={{ color: '#111827' }}>HP Board</h2>
-                <p className="text-gray-600 text-xs mt-0.5">Hire-purchase submissions across all deals — track bank status and follow-ups</p>
-              </div>
-              <HPBoard dealerId={getDealerIdFromProfile(profile)} />
-            </div>
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={getDealerIdFromProfile(profile)} handover={soldHandover} />

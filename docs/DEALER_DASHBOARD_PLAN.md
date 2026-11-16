@@ -10,7 +10,9 @@ while two screens show two figures only moves the confusion). Steps, in order, o
 > sum `carPnl()` through `useCarMoney`, and `costMissing` exists (`ownerMoney.js:77`). Step 3: one clock (`daysHeld`)
 > and one threshold (`AGEING_DAYS`); the last hardcoded 60 in `moneyExplain.js` now uses it. Left on their own
 > numbers on purpose: `AccountantPanel.jsx` (stored `days_in_stock`, unused role). Fast List was removed from the app.
-> Open: steps 4d and 5 (4a, 4b and 4c are done).
+> Open: step 5 (4a, 4b, 4c and 4d are done). 4d (2026-11-16): adding a car is a pop-up from the Add car sheet (no `add`
+> tab; "Stock only" opens the real AddCarForm internal form, StockTab's nameless "Add Stock Unit" form is gone), and HP
+> Board is a pill in Leads / CRM (`CRMPanel hpBoard`), restyled to premiumLight. `/dashboard/add` and `/dashboard/hp` redirect.
 
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
