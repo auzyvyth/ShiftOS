@@ -3049,10 +3049,10 @@ Background (from the idea):
   written; (3) WhatsApp Business API: Meta's terms from 15 Jan 2026 bar AI-provider/general-purpose assistants, but allow
   a business using AI for its own workflow; read Meta's own terms before building, a 8:30 briefing is business-initiated so
   it needs an approved template and costs per message; (4) Telegram is already integrated (`send-telegram`,
-  `telegram-notify`), free and has no 24h window: cheaper first channel; (5) a shared `ai-proxy` exists
+  `telegram-notify`), free and no 24h window, BUT only 2 of 14 sellers have it linked (2026-11-16) while all 14 have a WhatsApp number: WhatsApp is the channel sellers actually use; (5) a shared `ai-proxy` exists
   (`FEATURES`, `supabase/functions/ai-proxy/index.ts:9`) and the AI must read `chat_messages_ai`, never raw chat;
   (6) 0 logged payments on 2026-11-15: do not build before people pay for Premium. Not scheduled.
-  **FUTURE, step 0 (owner said keep it, 2026-11-15): hand-sent "top 3 to call" Telegram test, no code.** For 5 working
+  **FUTURE, step 0 (owner said keep it, 2026-11-15): hand-sent "top 3 to call" test sent by WHATSAPP by hand (owner's own number, no Meta setup), no code.** For 5 working
   days the owner sends the message below at ~8:30 to the 2 sellers who have real leads, built by eye from This week
   (`src/utils/thisWeek.js` ranking: never replied > due reminder > going quiet / renewal > trade-up; one line per
   PERSON). Format, EN: "Good morning, {seller}. Your top 3 to call today: 1. {buyer first name}, {car}: asked {n}
@@ -3063,8 +3063,10 @@ Background (from the idea):
   instalment, discount or approval; fewer than 3 real leads = send fewer, never pad; nothing to say = send nothing;
   the link is built from `SITE_URL` (`src/config/site.js`), never a typed domain; it only tells the SELLER who to call,
   the seller messages the buyer. Success check after 5 days, asked by message: "did you call any of them?" and "would
-  you pay to keep getting this?". If both sellers act on it, then build the same text from `thisWeek.js` + a Telegram
-  send (existing `send-telegram`) behind a cron guarded by `where exists` (IO-1), still no WhatsApp and no AI.
+  you pay to keep getting this?". If both sellers act on it, then build the same text from `thisWeek.js` + a WhatsApp
+  Cloud API send (needs Meta business verification, a NEW dedicated number, one approved utility template, each seller's
+  opt-in, token in an edge function secret, webhook signature check) behind a cron guarded by `where exists` (IO-1),
+  no AI. Start the Meta setup in parallel with the hand test: approval has lead time.
 
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",
