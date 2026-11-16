@@ -111,6 +111,7 @@ import {
   seedPanelCache,
 } from "../utils/panelCache";
 import ProfileLoadError from "../components/ProfileLoadError";
+import AppLoader from "../components/AppLoader";
 import { CarSoldLine } from "../components/sold/WhoBoughtSheet";
 import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from "../utils/carBuyers";
 import { SITE_URL, loginUrl } from "../config/site";
@@ -1589,14 +1590,7 @@ Rules:
 
  if (profileLoadFailed) return <ProfileLoadError />;
 
- if (loading) {
- return (
- <div className="min-h-screen bg-gray-950 flex items-center justify-center">
- <div className="text-gray-500 text-sm tracking-widest uppercase">Loading...
- </div>
- </div>
- );
- }
+ if (loading) return <AppLoader theme="dark" />;
 
  const unreadCount = notifications.filter((n) =>!n.is_read).length;
 

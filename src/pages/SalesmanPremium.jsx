@@ -222,6 +222,7 @@ import {
  ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
 import ProfileLoadError from "../components/ProfileLoadError";
+import AppLoader from "../components/AppLoader";
 import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
@@ -7117,31 +7118,7 @@ export default function SalesmanPremium() {
 
  // LOADING 
 
- if (loading) {
- return (
- <div
- style={{
- minHeight: "100vh",
- background: "#05070e",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- }}
- >
- <div
- style={{
- width: 28,
- height: 28,
- borderRadius: "50%",
- border: "2px solid rgba(255,255,255,0.08)",
- borderTopColor: "#2563eb",
- animation: "spin 0.8s linear infinite",
- }}
- />
- <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
- </div>
- );
- }
+ if (loading) return <AppLoader theme="dark" />;
 
  // Payment gate — premium salesman awaiting payment confirmation (manual QR flow).
  if (pendingPay) {
