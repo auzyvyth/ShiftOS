@@ -1667,6 +1667,13 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   numbers are Week | Month | Year (`periodWindow` in `ownerMoney.js`) and EVERY money number opens its breakdown
   (`MoneyDetailSheet` + `explain()` in `moneyExplain.js`, every list adds to 100%). Last year is shown only when a car really sold in that window. "Link a car" shows a "Dealer stock" group
   (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
+- **BROKER-3 (2026-11-16, migration `20261116g_broker_commission_receipt.sql`, QUEUED, not applied, not probed):** the broker
+  answers the dealer's "paid". Chain: dealer `broker_mark_sold` -> dealer `broker_mark_paid` -> broker `broker_confirm_received(reg,
+  received)`. "Not received" sets `not_received_at` BESIDE the dealer's `paid_at` (never erases it), tells the dealer, puts the money
+  back in `dealer_my_brokers.owed`, and the dealer can mark it paid again; "received" is final. UI: Analytics > "Commission on
+  dealer cars" (own list, one row per dealer car, never added into the broker's own-car commission), Received / Not received
+  buttons + a WhatsApp link to the dealer (`dealer_phone` from `broker_my_regs`); dealer side in `DealerBrokers.jsx`. Apply after
+  midnight, then probe in a rolled-back transaction.
 - Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
 - (older note) leads that arrive through a broker's page are not attributed to the broker
   (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side

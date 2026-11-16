@@ -278,7 +278,7 @@ export function DealerBrokers({ dealerId }) {
                     const holding = r.status === 'registered' && new Date(r.hold_until) > new Date();
                     const isClaim = claimed(r) === 1;
                     let st = ['Hold ended', PL.textSec];
-                    if (r.status === 'sold') st = r.paid_at ? ['Paid', PL.up] : ['Owed', PL.accentText];
+                    if (r.status === 'sold') st = r.received_at ? ['Received', PL.up] : r.not_received_at ? ['Not received', PL.accentText] : r.paid_at ? ['Paid', PL.up] : ['Owed', PL.accentText];
                     else if (isClaim) st = ['Says sold', PL.accentText];
                     else if (holding) st = ['Holding', PL.up];
                     const agreed = r.commission_agreed ?? b.commission_default;
@@ -324,9 +324,12 @@ export function DealerBrokers({ dealerId }) {
                             <button type="button" style={{ ...greyKey, background: PL.card, minHeight: 40 }} onClick={() => setSoldOpen(r.id)}>This buyer bought the car</button>
                           )
                         )}
-                        {r.status === 'sold' && !r.paid_at && (
+                        {r.status === 'sold' && r.paid_at && !r.received_at && !r.not_received_at && (
+                          <div style={{ fontSize: 12, color: PL.textSec }}>Paid {api.shortDate(r.paid_at)}. Waiting for the broker to confirm they received it.</div>
+                        )}
+                        {r.status === 'sold' && (!r.paid_at || r.not_received_at) && !r.received_at && (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ fontSize: 13 }}>Commission {api.money(r.commission_amount)}</span>
+                            <span style={{ fontSize: 13, lineHeight: 1.45 }}>Commission {api.money(r.commission_amount)}{r.not_received_at ? '. The broker says it has not arrived. Settle it with them, then mark it paid again.' : ''}</span>
                             <button type="button" style={{ ...redKey, minHeight: 40 }} disabled={busy} onClick={() => paid(r)}>Mark paid</button>
                           </div>
                         )}

@@ -127,6 +127,8 @@ export const markSold = (regId, commission = null) =>
   call('broker_mark_sold', { p_reg: regId, p_commission: commission });
 export const markPaid = (regId) => call('broker_mark_paid', { p_reg: regId });
 // The dealer says a broker's sale claim is not true (BROKER-2). The broker is told; it is logged.
+// The BROKER answers the dealer's "paid": true = received, false = not received (BROKER-3).
+export const confirmReceived = (regId, received) => call('broker_confirm_received', { p_reg: regId, p_received: !!received });
 export const disputeClaim = (regId) => call('broker_dispute_claim', { p_reg: regId });
 
 export const money = (n) => `RM ${Number(n || 0).toLocaleString('en-MY')}`;

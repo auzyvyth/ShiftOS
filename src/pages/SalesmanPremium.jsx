@@ -188,7 +188,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
-import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError } from "../lib/brokerApi";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError, confirmReceived as confirmBrokerReceived } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -661,6 +661,14 @@ export default function SalesmanPremium() {
  const [dealerPick, setDealerPick] = useState(null);
  const [brokerRegs, setBrokerRegs] = useState([]);
  const loadBrokerRegs = useCallback(() => { myBrokerRegs().then((r) => { if (!r.error) setBrokerRegs(r.rows); }); }, []);
+ // BROKER-3: the broker answers the dealer's "paid". The dealer is told; "not received" never erases their record.
+ const handleBrokerReceived = useCallback(async (reg, received) => {
+   const res = await confirmBrokerReceived(reg.id, received);
+   if (!res.ok) { toast.error(brokerError(res.reason)); return false; }
+   toast.success(received ? "Thanks. Marked as received." : "The dealer was told it has not arrived.");
+   loadBrokerRegs();
+   return true;
+ }, [loadBrokerRegs]);
  // Loaded up front and kept live, so "Dealer stock" in Link a car is there the moment it opens.
  useEffect(() => {
  if (!isBroker) return undefined;
@@ -7660,6 +7668,7 @@ export default function SalesmanPremium() {
  channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
  brokerRegs={isBroker ? brokerRegs : []}
+ onBrokerReceived={handleBrokerReceived}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>
