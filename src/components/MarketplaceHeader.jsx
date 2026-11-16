@@ -271,15 +271,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     <>
       {!hideAnnouncement && <AnnouncementBar />}
       <style>{`
-        /* NEAR-BLACK bar, #0f1115 — the same value this file already uses as ink
-           for the logo wordmark and the mega-menu link titles, so the bar is the
-           brand black rather than an invented colour.
-           Charcoal #2B323D was tried in between and rejected: on a light page a
-           grey bar reads as washed rather than as deliberate chrome. It is now
-           the ONLY dark surface on the marketplace — the hero below it is light
-           end to end — so it no longer has to colour-match anything beneath it,
-           which is what forced the softer grey. */
-        .mh-root { position:sticky; top:0; z-index:100; background:#0f1115; border-bottom:1px solid rgba(255,255,255,.08); transition:box-shadow .25s,border-color .25s,transform .28s ease; font-family:'Outfit',sans-serif; }
+        /* GLOSSY WHITE bar (owner, 2026-11-16; it was near-black #0f1115). OPAQUE
+           on purpose: body is #080C14, so a translucent bar would composite
+           over near-black at the top of the page. The gloss is a white-to-grey
+           gradient plus a sheen on the top half (::before), not transparency. */
+        .mh-root { position:sticky; top:0; z-index:100; background:linear-gradient(180deg,#ffffff 0%,#ffffff 46%,#f3f4f7 100%); border-bottom:1px solid rgba(15,23,42,.08); box-shadow:inset 0 1px 0 #ffffff, 0 1px 2px rgba(15,23,42,.04); transition:box-shadow .25s,border-color .25s,transform .28s ease; font-family:'Outfit',sans-serif; }
         /* translateY, never display/height: taking a sticky bar out of layout
            makes the page jump under the reader's finger.
            Deliberately NO will-change:transform here. It would buy a compositor
@@ -296,12 +292,15 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         @media (prefers-reduced-motion: reduce) {
           .mh-root { transition:box-shadow .25s,border-color .25s; }
         }
-        .mh-root.scrolled { box-shadow:0 10px 30px rgba(0,0,0,.4); border-bottom-color:rgba(255,255,255,.14); }
+        .mh-root.scrolled { box-shadow:inset 0 1px 0 #ffffff, 0 8px 24px rgba(15,23,42,.08); border-bottom-color:rgba(15,23,42,.1); }
+        /* The gloss: a soft white sheen over the top half, like light on lacquer. */
+        .mh-root::before { content:''; position:absolute; top:0; left:0; right:0; height:34px; background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,0)); pointer-events:none; }
+        .mh-bar, .mh-search-drawer, .mh-mobile { position:relative; }
         .mh-bar { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); height:70px; display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 
         .mh-logo { text-decoration:none; display:flex; align-items:center; flex-shrink:0; }
-        /* The supplied lockup is white-on-transparent, which is exactly right on
-           this bar (#0f1115) and is why no recolour is needed here. width:auto off
+        /* The dark wordmark file (drevo-logo-dark.png) is the one for light
+           surfaces like this bar. width:auto off
            a fixed height keeps the ratio; the width/height ATTRIBUTES on the tag
            reserve the box before the file loads so the nav does not jump. */
         .mh-logo-img { height:21px; width:auto; display:block; }
@@ -318,13 +317,13 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
            right edge, both of which are on-screen by construction. */
         .mh-nav { display:flex; align-items:center; gap:2px; position:relative; }
         .mh-nav-item { position:static; }
-        .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:rgba(255,255,255,.72); font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
-        .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; }
-        @media (hover:hover) and (pointer:fine) { .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; } }
+        .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:#3f4652; font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
+        .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(15,23,42,.05); color:#0f1115; }
+        @media (hover:hover) and (pointer:fine) { .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger { background:rgba(15,23,42,.05); color:#0f1115; } }
         /* orange-600 was picked for white; it fails on the near-black bar. */
-        .mh-nav-link.hot { color:#fb923c; }
-        .mh-nav-link.hot.active { background:rgba(251,146,60,.14); color:#fdba74; }
-        @media (hover:hover) and (pointer:fine) { .mh-nav-link.hot:hover { background:rgba(251,146,60,.14); color:#fdba74; } }
+        .mh-nav-link.hot { color:#c2410c; }
+        .mh-nav-link.hot.active { background:rgba(234,88,12,.08); color:#9a3412; }
+        @media (hover:hover) and (pointer:fine) { .mh-nav-link.hot:hover { background:rgba(234,88,12,.08); color:#9a3412; } }
         .mh-chev { transition:transform .2s; }
         .mh-nav-item.mh-open .mh-chev { transform:rotate(180deg); }
         @media (hover:hover) and (pointer:fine) { .mh-nav-item:hover .mh-chev { transform:rotate(180deg); } }
@@ -361,11 +360,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
         /* right cluster */
         .mh-right { display:flex; align-items:center; gap:4px; margin-left:auto; flex-shrink:0; }
-        .mh-icon-btn { position:relative; width:42px; height:42px; border-radius:11px; background:none; border:none; cursor:pointer; color:rgba(255,255,255,.72); display:flex; align-items:center; justify-content:center; transition:background .14s,color .14s; }
-        @media (hover:hover) and (pointer:fine) { .mh-icon-btn:hover { background:rgba(255,255,255,.08); color:#ffffff; } }
+        .mh-icon-btn { position:relative; width:42px; height:42px; border-radius:11px; background:none; border:none; cursor:pointer; color:#3f4652; display:flex; align-items:center; justify-content:center; transition:background .14s,color .14s; }
+        @media (hover:hover) and (pointer:fine) { .mh-icon-btn:hover { background:rgba(15,23,42,.05); color:#0f1115; } }
         .mh-badge { position:absolute; top:5px; right:5px; background:#dc2626; color:#fff; font-size:9px; font-weight:800; border-radius:20px; min-width:15px; height:15px; display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1; }
-        .mh-vsep { width:1px; height:26px; background:rgba(255,255,255,.14); margin:0 8px; }
-        .mh-signin { color:#ffffff; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
+        .mh-vsep { width:1px; height:26px; background:rgba(15,23,42,.12); margin:0 8px; }
+        .mh-signin { color:#0f1115; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
         .mh-signin::after { content:''; position:absolute; left:6px; right:6px; bottom:3px; height:2px; background:#dc2626; border-radius:2px; transform:scaleX(0); transform-origin:left; transition:transform .2s; }
         @media (hover:hover) and (pointer:fine) { .mh-signin:hover::after { transform:scaleX(1); } }
         .mh-signin-menu { position:absolute; top:calc(100% + 12px); right:0; width:248px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 40px rgba(15,23,42,0.16); padding:6px; display:flex; flex-direction:column; gap:2px; z-index:1000; }
@@ -375,34 +374,34 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-signin-item-s { display:block; font-size:11px; color:#6b7280; margin-top:1px; }
         /* Was #0f1115, i.e. all-but-invisible against a dark bar. The primary
            action takes the accent instead. */
-        .mh-getstarted { display:flex; align-items:center; gap:6px; background:#dc2626; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.28); }
+        .mh-getstarted { display:flex; align-items:center; gap:6px; background:#dc2626; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(220,38,38,.25); }
         @media (hover:hover) and (pointer:fine) { .mh-getstarted:hover { background:#b91c1c; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.3); } }
 
         /* search drawer */
-        .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid rgba(255,255,255,.08); }
-        .mh-search-drawer.open { max-height:90px; border-top:1px solid rgba(255,255,255,.08); }
+        .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid rgba(15,23,42,.08); }
+        .mh-search-drawer.open { max-height:90px; border-top:1px solid rgba(15,23,42,.08); }
         .mh-search-form { max-width:1400px; margin:0 auto; padding:14px clamp(16px,3.5vw,44px); display:flex; gap:10px; box-sizing:border-box; width:100%; }
-        .mh-search-field { flex:1; min-width:0; box-sizing:border-box; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
-        .mh-search-field:focus-within { background:rgba(255,255,255,.1); border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.18); }
-        .mh-search-field input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:15px; color:#ffffff; }
+        .mh-search-field { flex:1; min-width:0; box-sizing:border-box; display:flex; align-items:center; gap:10px; background:#ffffff; border:1.5px solid rgba(15,23,42,.12); border-radius:13px; padding:0 14px; height:50px; transition:border-color .15s,box-shadow .15s,background .15s; }
+        .mh-search-field:focus-within { background:#ffffff; border-color:#dc2626; box-shadow:0 0 0 4px rgba(220,38,38,.18); }
+        .mh-search-field input { flex:1; min-width:0; border:none; background:none; outline:none; font-family:inherit; font-size:15px; color:#0f1115; }
         /* An unstyled placeholder inherits the browser's dark-on-light default and
            is unreadable here. */
-        .mh-search-field input::placeholder { color:rgba(255,255,255,.4); }
+        .mh-search-field input::placeholder { color:#9aa1ab; }
         .mh-search-go { flex-shrink:0; background:#dc2626; color:#fff; border:none; border-radius:12px; padding:0 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 
         /* mobile */
-        .mh-burger { display:none; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:#ffffff; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }
+        .mh-burger { display:none; background:#ffffff; border:1px solid rgba(15,23,42,.12); color:#0f1115; border-radius:11px; padding:9px; cursor:pointer; align-items:center; justify-content:center; }
         /* Full-height solid sheet so the page can never show through/below it.
            Body scroll is locked while it's open (see effect), so it stays put.
            It is the bar's own colour — a white sheet dropping out of a black bar
            was the loudest palette break on mobile. */
-        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid rgba(255,255,255,.08); background:#0f1115; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
-        .mh-m-link, .mh-m-acc { color:rgba(255,255,255,.88); font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
+        .mh-mobile { display:none; flex-direction:column; padding:14px 18px 22px; border-top:1px solid rgba(15,23,42,.08); background:#ffffff; gap:2px; height:calc(100dvh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .mh-m-link, .mh-m-acc { color:#1f2530; font-size:15px; font-weight:600; text-decoration:none; padding:13px 6px; border-bottom:1px solid rgba(15,23,42,.07); display:flex; align-items:center; gap:10px; justify-content:space-between; background:none; border-left:none; border-right:none; border-top:none; cursor:pointer; width:100%; font-family:inherit; }
         .mh-m-sub { display:flex; flex-direction:column; padding:2px 0 10px 16px; }
-        .mh-m-sub a { color:rgba(255,255,255,.6); font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
+        .mh-m-sub a { color:#5b6270; font-size:13.5px; font-weight:500; text-decoration:none; padding:10px 0; display:flex; align-items:center; gap:9px; }
         .mh-m-cta { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px; background:#dc2626; color:#fff; font-size:15px; font-weight:700; padding:14px; border-radius:12px; text-decoration:none; }
-        .mh-m-cta-alt { margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; background:transparent; color:#ffffff; border:1.5px solid rgba(255,255,255,.2); font-size:14px; font-weight:600; padding:13px; border-radius:12px; text-decoration:none; }
-        .mh-m-signin { margin-top:8px; text-align:center; color:#ffffff; font-weight:600; text-decoration:none; padding:12px; }
+        .mh-m-cta-alt { margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; background:transparent; color:#0f1115; border:1.5px solid rgba(15,23,42,.15); font-size:14px; font-weight:600; padding:13px; border-radius:12px; text-decoration:none; }
+        .mh-m-signin { margin-top:8px; text-align:center; color:#0f1115; font-weight:600; text-decoration:none; padding:12px; }
 
         /* keep mega panels inside the viewport on mid-size screens */
         @media (max-width:1240px) { .mh-mega-promo { display:none; } }
@@ -424,7 +423,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           background:#dc2626; color:#fff; padding:10px 16px; border-radius:0 0 8px 0;
           font-size:13px; font-weight:700; text-decoration:none;
         }
-        .mh-skip:focus { left:0; outline:2px solid #fff; outline-offset:-4px; }
+        .mh-skip:focus { left:0; outline:2px solid #0f1115; outline-offset:-4px; }
       `}</style>
 
       {/* Skip link — the first thing a keyboard/screen-reader user reaches.
@@ -436,7 +435,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar" ref={barRef}>
           <Link to="/" className="mh-logo" aria-label="Drevo home">
-            <img src="/drevo-logo-white.png" alt="Drevo" className="mh-logo-img" width="688" height="120" />
+            <img src="/drevo-logo-dark.png" alt="Drevo" className="mh-logo-img" width="688" height="120" />
           </Link>
 
           {/* LEFT — links + mega dropdowns */}
@@ -492,7 +491,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         <div className={`mh-search-drawer${searchOpen ? ' open' : ''}`}>
           <form className="mh-search-form" onSubmit={submitSearch} role="search">
             <div className="mh-search-field">
-              <Search size={18} style={{ color:'rgba(255,255,255,0.45)', flexShrink:0 }} />
+              <Search size={18} style={{ color:'#9aa1ab', flexShrink:0 }} />
               <input ref={searchInputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by brand, model or keyword…" aria-label="Search cars" />
             </div>
             <button type="submit" className="mh-search-go">Search</button>
