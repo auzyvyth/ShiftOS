@@ -449,7 +449,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             )}
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
             <Link to="/for-salesmen" className="mh-nav-link">For Salesmen</Link>
-            <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
+            <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'Dealer software', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
             <MegaNav id="guides" label="Panduan & Artikel" align="right" items={GUIDES} />
           </nav>
 
@@ -481,7 +481,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
                 (/for-salesmen and /shiftos#pricing) where only half the plans
                 existed. /plans shows every seller plan on one page, so the
                 question does not need asking before the click. */}
-            <Link to="/plans" className="mh-getstarted">Get Started</Link>
+            <Link to="/plans" className="mh-getstarted xd-crimson-fill">Get Started</Link>
             <button className="mh-burger" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
               {menuOpen ? <X size={19} /> : <Menu size={19} />}
             </button>
@@ -541,7 +541,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
             <span style={{ display:'flex', alignItems:'center', gap:10 }}><BookOpen size={17} /> Panduan &amp; Artikel</span>
           </Link>
 
-          <Link to="/plans" className="mh-m-cta" onClick={() => setMenuOpen(false)}>
+          <Link to="/plans" className="mh-m-cta xd-crimson-fill" onClick={() => setMenuOpen(false)}>
             Get started &mdash; sell your cars <ArrowUpRight size={15} />
           </Link>
           {authLink ? (

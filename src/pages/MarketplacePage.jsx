@@ -7,7 +7,6 @@ import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
 import MarketplaceHeader from '../components/MarketplaceHeader';
-import MarketplaceSubNav from '../components/MarketplaceSubNav';
 import GoogleOneTapSlot from '../components/GoogleOneTapSlot';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
@@ -626,12 +625,6 @@ export default function MarketplacePage() {
       fontWeight: '700',
       color: '#111827',
     },
-    carsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, 1fr)',
-      gap: '16px',
-      paddingBottom: '48px',
-    },
     emptyState: {
       textAlign: 'center',
       padding: '80px 20px',
@@ -752,7 +745,6 @@ export default function MarketplacePage() {
         /* Cars grid — showroom-style horizontal cards, two columns on desktop and
            a single column on phones (matches /showroom). */
         .mp-cars-grid > * { min-width: 0; }
-        @media (max-width: 900px) { .mp-cars-grid { grid-template-columns: 1fr !important; } }
 
         /* ── Featured cards ── */
 
@@ -1018,7 +1010,6 @@ export default function MarketplacePage() {
       `}</style>
 
       <MarketplaceHeader />
-      <MarketplaceSubNav />
       <GoogleOneTapSlot />
 
       {advancedUsed.current && (
@@ -1139,7 +1130,7 @@ export default function MarketplacePage() {
                       anchorRef={heroSearchBarRef}
                     />
                   </div>
-                  <button type="button" onClick={() => runHeroSearch(heroQ)}
+                  <button type="button" className="xd-crimson-fill" onClick={() => runHeroSearch(heroQ)}
                     style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px' }}
                     onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#b91c1c'; }}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
@@ -1383,7 +1374,7 @@ export default function MarketplacePage() {
 
               {/* Cars grid */}
               {!error && (
-                <div className="mp-cars-grid" style={S.carsGrid}>
+                <div className="mp-cars-grid sc-grid" style={{ paddingBottom: 48 }}>
                   {loading && loadPage === 1
                     ? Array.from({ length: PER_PAGE }).map((_, i) => <ShowroomCardSkeleton key={i} />)
                     : cars.length === 0
@@ -1493,7 +1484,7 @@ export default function MarketplacePage() {
                 and tagging the link ?src= would overwrite the visitor's real
                 acquisition channel (refTracking.js:17 — an explicit src wins).
                 Measuring this band needs its own CHECK migration. */}
-            <Link to="/for-salesmen" className="mp-agent-cta">
+            <Link to="/for-salesmen" className="mp-agent-cta xd-crimson-fill">
               Get your free page <ArrowRight size={15} />
             </Link>
             <p className="mp-agent-trust">

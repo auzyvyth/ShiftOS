@@ -708,14 +708,6 @@ const HomePage = () => {
           .stats-band-grid { grid-template-columns:repeat(2,1fr) !important; }
         }
 
-        /* ShowroomCard grid — a horizontal row card, not a portrait tile, so it
-           wants at most 2 columns (matches CarListingPage's cl-grid: 1 col up to
-           640px, 2 above it) rather than car-grid-hp's narrow auto-fill tiles. */
-        .sc-grid-hp { display:grid; grid-template-columns:1fr; gap:10px; }
-        @media(min-width:641px) {
-          .sc-grid-hp { grid-template-columns:repeat(2,1fr); gap:14px; }
-        }
-
         /* Search grid */
         .search-grid-hp {
           display: grid;
@@ -1266,7 +1258,7 @@ const HomePage = () => {
                   <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
                 ))}
               </div>
-              <div className="sc-grid-hp" style={{ marginBottom: "36px" }}>
+              <div className="sc-grid" style={{ marginBottom: "36px" }}>
                 {loading
                   ? [...Array(3)].map((_, i) => <ShowroomCardSkeleton key={i} dark />)
                   : featured.map((c, i) => (

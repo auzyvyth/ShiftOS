@@ -1006,7 +1006,7 @@ function SellerStrip({ cars, title, th }) {
         @media (hover:hover) and (pointer:fine) { .cdp-ss-arrow:not(:disabled):hover { border-color: ${th.text}; } }
       `}</style>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 16px" }}>
-        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0, borderLeft: "3px solid #dc2626", paddingLeft: "12px" }}>
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0 }}>
           {title}
         </h2>
         {edge.can && (
@@ -2086,8 +2086,12 @@ export default function CarDetailPage() {
     // Non-breaking hyphen so multi-part trims ("TYPE-R", "CX-5") don't split
     // across lines mid-word in the big display nameplate.
     .replace(/-/g, "‑");
+  // Logged-out buyers cannot read `profiles`, so `dealer` is null for them and an
+  // agent's car said "Be the first to review Dealer". Fall back to the agent's
+  // public profile (get_salesman_by_id), then to a neutral word, never "Dealer".
   const dealerName =
-    dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
+    dealer?.site_name || dealer?.dealership || dealer?.full_name
+    || salesmanProfile?.full_name || "this seller";
   // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
   // Standalone agents (Salesman Lite) have no dealer profile, so without this their
   // listing showed no "Visit page" link at all.
@@ -3801,6 +3805,7 @@ export default function CarDetailPage() {
             {/* CTA BUTTONS — one red primary; Contact is the outlined second. */}
             {!isOwnListing && (
             <button
+              className="xd-crimson-fill"
               onClick={handleBookingClick}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 1px 2px rgba(15,23,42,0.08)', transition: 'background .15s' }}
               onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = '#b91c1c'; }}
@@ -3972,7 +3977,7 @@ export default function CarDetailPage() {
             onCall={handleCall} callLoading={callLoading} showCall={hasContact} />
         </div>
         {!isOwnListing && (
-        <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
+        <button className="cdp-mobile-bar-book xd-crimson-fill" onClick={handleBookingClick}>Book a Viewing</button>
         )}
       </div>
 

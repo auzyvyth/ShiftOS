@@ -58,7 +58,7 @@ export default function MarketplaceFooter() {
       heading: 'Product',
       links: [
         { label: 'For Salesmen',         to: '/for-salesmen' },
-        { label: 'ShiftOS DMS',        to: '/shiftos' },
+        { label: 'Dealer software',    to: '/shiftos' },
         { label: 'Smart Inventory',    to: '/features/smart-inventory' },
         { label: 'Leads CRM',          to: '/features/leads-crm' },
         { label: 'Revenue Analytics',  to: '/features/revenue-analytics' },
@@ -110,7 +110,7 @@ export default function MarketplaceFooter() {
                 <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-red-500">For Dealers</span>
               </div>
               <h3 className="text-white text-xl font-bold leading-snug mb-2" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.03em' }}>
-                Run Your Dealership on ShiftOS
+                Run your whole dealership in one place
               </h3>
               <p className="text-gray-400 text-sm leading-relaxed max-w-md">
                 The complete dealer management system built for Malaysian car dealers. Manage listings, track leads in a visual CRM, monitor salesman performance, handle F&I documents, and see your revenue analytics — all in one place.
@@ -275,11 +275,6 @@ export default function MarketplaceFooter() {
       <div className="border-t border-gray-100 bg-gray-950">
         <div className="max-w-6xl mx-auto px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-gray-400 text-[11px]">{copyright}</p>
-          <Link to="/shiftos" className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-200 transition-colors" style={{ textDecoration: 'none' }}>
-            <span>Powered by</span>
-            <span className="text-white font-bold tracking-wide">ShiftOS</span>
-            <Zap size={10} className="text-red-500" />
-          </Link>
         </div>
       </div>
 
