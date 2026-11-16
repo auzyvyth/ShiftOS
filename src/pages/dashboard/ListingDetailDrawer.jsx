@@ -50,7 +50,10 @@ export default function ListingDetailDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [lbOpen, onClose]);
 
-  const btnBase = { width: '100%', background: '#ffffff', borderRadius: 6, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s, border-color 0.2s', border: '1px solid #e5e7eb', fontFamily: "system-ui, sans-serif", color: '#374151' };
+  // premiumLight action rows (owner 2026-11-16, no tints): grey fill, ink words, no borders.
+  // The one red fill is Mark as Sold; Delete keeps red as a WORD.
+  const btnBase = { width: '100%', background: '#f5f6f8', borderRadius: 10, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: 'none', fontFamily: 'inherit', color: '#111827' };
+  const BTN_HOVER = '#eceef1';
 
   return (
     <>
@@ -67,7 +70,7 @@ export default function ListingDetailDrawer({
           {/* Close */}
           <button
             onClick={onClose}
-            style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.9)', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: isMobile ? 18 : 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 999, background: '#f5f6f8', border: 'none', color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X style={{ width: 16, height: 16 }} />
           </button>
@@ -78,11 +81,14 @@ export default function ListingDetailDrawer({
             <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? 'none' : '1px solid #e5e7eb', overflowY: isMobile ? 'visible' : 'auto' }}>
 
               {/* One pop-up, three buttons (owner, 2026-11-12): Details | Owner | Analytics. Owner needs view_cost. */}
+              {/* On a phone the close button sits over this row's right end: leave it room. */}
+              <div style={{ paddingRight: isMobile ? 44 : 0 }}>
               <CarSheetTabs
                 tabs={[{ id: 'specs', label: 'Details' }, ...(canViewCosts ? [{ id: 'owner', label: 'Owner · P&L' }] : []), { id: 'analytics', label: 'Analytics' }]}
                 value={drawerTab === 'owner' || drawerTab === 'analytics' ? drawerTab : 'specs'}
                 onChange={setDrawerTab}
               />
+              </div>
 
               {drawerTab === 'owner' && canViewCosts ? (
                 <OwnerCarPanel
@@ -119,16 +125,16 @@ export default function ListingDetailDrawer({
                       ['Condition', ShieldCheck, () => setOwnerTool('appraisal')],
                       ['Activity', Clock, () => setOwnerTool('activity')],
                     ].map(([label, Icon, onClick]) => (
-                      <button key={label} onClick={onClick} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                      <button key={label} onClick={onClick} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                         <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />{label}
                       </button>
                     ))}
                     {!isSold && (
-                      <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(5,150,105,0.3)', color: '#059669' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                      <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, background: '#dc2626', color: '#fff' }}>
                         <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
                       </button>
                     )}
-                    <button onClick={() => setDrawerTab('specs')} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#6b7280' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                    <button onClick={() => setDrawerTab('specs')} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                       <ChevronLeft style={{ width: 14, height: 14, flexShrink: 0 }} />Public Details
                     </button>
                   </>
@@ -136,26 +142,26 @@ export default function ListingDetailDrawer({
 
                 {drawerTab !== 'owner' && (<>
                 {/* Edit */}
-                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                <button onClick={() => { setEditListing(listing); }} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                   <Pencil style={{ width: 14, height: 14, flexShrink: 0 }} />Edit Listing
                 </button>
 
                 {/* Price — hidden on sold listings */}
                 {!isSold && (
-                  <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => setPriceEditListing(listing)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                     <Tag style={{ width: 14, height: 14, flexShrink: 0 }} />Change Price
                   </button>
                 )}
 
                 {/* Costs & P&L — jump to the owner panel in this same detail page */}
                 {canViewCosts && (
-                  <button onClick={() => setDrawerTab('owner')} style={{ ...btnBase, border: '1px solid rgba(124,58,237,0.3)', color: drawerTab === 'owner' ? '#fff' : '#7c3aed', background: drawerTab === 'owner' ? '#7c3aed' : '#ffffff' }} onMouseEnter={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#f9fafb'; }} onMouseLeave={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#ffffff'; }}>
+                  <button onClick={() => setDrawerTab('owner')} style={{ ...btnBase, color: drawerTab === 'owner' ? '#fff' : '#111827', background: drawerTab === 'owner' ? '#111827' : '#f5f6f8' }} onMouseEnter={e => { if (drawerTab !== 'owner') e.currentTarget.style.background=BTN_HOVER; }} onMouseLeave={e => { if (drawerTab !== 'owner') e.currentTarget.style.background='#f5f6f8'; }}>
                     <DollarSign style={{ width: 14, height: 14, flexShrink: 0 }} />Costs &amp; P&amp;L
                   </button>
                 )}
 
                 {/* Copy */}
-                <button onClick={() => copyListing(listing)} style={{ ...btnBase, border: '1px solid rgba(22,163,74,0.3)', color: copiedListingId === listing.id ? '#15803d' : '#16a34a' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                <button onClick={() => copyListing(listing)} style={{ ...btnBase, color: copiedListingId === listing.id ? '#047857' : '#111827' }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                   {copiedListingId === listing.id ? <Check style={{ width: 14, height: 14, flexShrink: 0 }} /> : <Clipboard style={{ width: 14, height: 14, flexShrink: 0 }} />}
                   {copiedListingId === listing.id ? 'Copied!' : 'Copy Writing'}
                 </button>
@@ -165,7 +171,7 @@ export default function ListingDetailDrawer({
                   label="Share Listing"
                   baseUrl={dealerSubdomain ? buildStorefrontUrl(dealerSubdomain, `/cars/${listing.slug}`) : `https://drevo.my/cars/${listing.slug}`}
                   refSlug={dealerSlug || ''}
-                  style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
+                  style={{ ...btnBase, justifyContent: 'flex-start', width: '100%' }}
                   waCaption={(link) => [
                     `${listing.year} ${listing.brand} ${listing.model}${listing.variant ? ' ' + listing.variant : ''}`,
                     `RM ${Number(listing.selling_price || 0).toLocaleString()}`,
@@ -176,28 +182,28 @@ export default function ListingDetailDrawer({
 
                 {/* ShiftOS Studio — slide/content generator for this listing */}
                 {openStudio && (
-                  <button onClick={() => openStudio(listing)} style={{ ...btnBase, border: '1px solid rgba(219,39,119,0.3)', color: '#db2777' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => openStudio(listing)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                     <Film style={{ width: 14, height: 14, flexShrink: 0 }} />ShiftOS Studio
                   </button>
                 )}
 
                 {/* Financing Calculator — hidden on sold listings */}
                 {!isSold && (
-                  <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => setCalcOpen(true)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                     <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
                   </button>
                 )}
 
                 {/* Window sticker: an A4 page for the windscreen, QR to the car page */}
                 {openSticker && !isSold && (
-                  <button onClick={() => openSticker(listing)} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#111827' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => openSticker(listing)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                     <Printer style={{ width: 14, height: 14, flexShrink: 0 }} />Window Sticker
                   </button>
                 )}
 
                 {/* Assign */}
                 <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
-                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase, border: '1px solid rgba(37,99,235,0.3)', color: '#2563eb' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => setShowAssign(v => !v)} style={{ ...btnBase }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                     <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />Assign Salesman
                   </button>
                   {showAssign && (
@@ -220,13 +226,13 @@ export default function ListingDetailDrawer({
 
                 {/* Mark Sold */}
                 {!isSold && (
-                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, border: '1px solid rgba(5,150,105,0.3)', color: '#059669' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                  <button onClick={() => setMarkSoldListing(listing)} style={{ ...btnBase, background: '#dc2626', color: '#fff' }}>
                     <CheckCircle2 style={{ width: 14, height: 14, flexShrink: 0 }} />Mark as Sold
                   </button>
                 )}
 
                 {/* Delete */}
-                <button onClick={() => { setDeleteId(listing.id); }} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                <button onClick={() => { setDeleteId(listing.id); }} style={{ ...btnBase, color: '#b91c1c' }} onMouseEnter={e => e.currentTarget.style.background=BTN_HOVER} onMouseLeave={e => e.currentTarget.style.background='#f5f6f8'}>
                   <Trash2 style={{ width: 14, height: 14, flexShrink: 0 }} />Delete Listing
                 </button>
                 </>)}

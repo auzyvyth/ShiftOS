@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import { suggestCommission, describeCommissionRule } from "../../utils/commission";
 import { supabase } from "../../supabaseClient";
-import { border, font } from "../../theme/tokens";
+import { border, font, premiumLight as PL } from "../../theme/tokens";
+import "../../theme/premiumLight.css";
 import { X, CheckCircle2 } from "lucide-react";
 
 // Asks for the three things a sale needs and nothing else did: who sold it,
@@ -133,18 +134,15 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200"
+            className="pl-btn-grey flex-1 px-4 py-2.5 rounded-xl text-sm"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={loading}
-            className="btn-shimmer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
-            style={{
-              background: "linear-gradient(135deg,#16a34a,#15803d)",
-              boxShadow: "0 2px 10px rgba(22,163,74,0.3)",
-            }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
+            style={{ background: PL.accent }}
           >
             {loading ? (
               <>

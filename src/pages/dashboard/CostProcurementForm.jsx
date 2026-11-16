@@ -102,7 +102,7 @@ export default function CostProcurementForm({ listing, dealerId, onClose }) {
           {ask > 0 && <span style={{ color: ask - costBasis >= 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>Spread RM {(ask - costBasis).toLocaleString()}</span>}
         </div>
       )}
-      {!row && <p style={{ fontSize: 12, color: "#b45309", margin: 0 }}>No stock record yet — saving will create one linked to this car.</p>}
+      {!row && <p className="pl-note" style={{ fontSize: 12, margin: 0, padding: "8px 12px" }}>No stock record yet — saving will create one linked to this car.</p>}
       <button onClick={save} disabled={saving} style={{ alignSelf: "flex-start", padding: "10px 20px", borderRadius: 8, background: "#dc2626", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
         {saving ? "Saving…" : "Save cost & procurement"}
       </button>
