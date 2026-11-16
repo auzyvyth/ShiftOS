@@ -139,6 +139,8 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import AiManagerCard from './dashboard/AiManagerCard';
+import TeamScoreboard, { StatusWord } from './dashboard/TeamScoreboard';
+import { useTeamScores } from '../hooks/useTeamScores';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight, premiumLight as PL } from '../theme/tokens';
 import { useCarMoney } from '../hooks/useCarMoney';
@@ -2996,6 +2998,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const isOwnerTeam = ["dealer", "owner", "superadmin"].includes(profile?.role);
   const { can: teamCan } = usePermissions(profile);
   const canAddStaff = isOwnerTeam || (profile?.role === "manager" && teamCan("add_staff"));
+  // How each salesman is doing: the database's one judgement (_team_health). Feeds the table at
+  // the top AND the status word on each card, so they can never disagree.
+  const { scores: teamScores, byId: scoreById, loading: scoresLoading } = useTeamScores(dealerId);
+  const showTeamMoney = teamCan("view_gross");
   // Persisted (IC material stripped) so the roster paints instantly; the
   // fetch below still replaces it. "loadingTeam" = nothing to show yet.
   const [salespeople, setSalespeople, teamCached] = usePersistentState(
@@ -3041,7 +3047,6 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [soldMap, setSoldMap] = useState({});
   const [lastActivityMap, setLastActivityMap] = useState({});
   const [activityCountMap, setActivityCountMap] = useState({});
-  const [chatCountMap, setChatCountMap] = useState({});
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
   useModalHistory(!!commissionApproveTarget, () => setCommissionApproveTarget(null));
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
@@ -3103,22 +3108,20 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   // THIS dashboard writes — nothing a salesman does lands there, so every
   // salesman older than 30 days showed "Inactive 30d+" however hard they worked.
   // get_team_activity also counts lead_activities (stage moves, calls,
-  // WhatsApps, notes, claims) and seller chat replies. Counts only.
+  // WhatsApps, notes, claims) and seller chat replies. Counts only. Used for the NON-salesman
+  // roles' cards; salesmen are judged by _team_health (useTeamScores).
   const fetchLastActivity = async () => {
     if (!dealerId) return;
     const { data, error } = await supabase.rpc('get_team_activity', { p_dealer_id: dealerId });
     if (error) { console.error('[TeamTab] team activity:', error.message); return; }
     const map = {};
     const counts = {};
-    const chats = {};
     (data || []).forEach((r) => {
       map[r.user_id] = r.last_active_at;
       counts[r.user_id] = r.actions_30d || 0;
-      chats[r.user_id] = r.chats_30d || 0;
     });
     setLastActivityMap(map);
     setActivityCountMap(counts);
-    setChatCountMap(chats);
   };
 
   // Assigned-cars (exclusivity lock) per salesman. Sold units keep assigned_to as
@@ -3608,60 +3611,18 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           <div>
             {(() => {
               const filteredTeam = salespeople.filter(s => s.role === teamTab);
-              const leaderboard = teamTab === 'salesman' && filteredTeam.length > 0
-                ? [...filteredTeam]
-                    .map(s => ({
-                      ...s,
-                      sold: soldMap[s.id]?.sold || 0,
-                      commission: soldMap[s.id]?.commission || 0,
-                      gross: soldMap[s.id]?.gross || 0,
-                      clicks: analyticsMap[s.slug]?.clicks || 0,
-                    }))
-                    .sort((a, b) => b.sold - a.sold || b.gross - a.gross || b.clicks - a.clicks)
-                : null;
-              const rankColors = [
-                { bg: '#f5f6f8', color: '#111827', border: 'transparent' },
-                { bg: '#f5f6f8', color: '#4b5563', border: 'transparent' },
-                { bg: '#f5f6f8', color: '#6b7280', border: 'transparent' },
-              ];
               const canAssign = ['owner', 'dealer', 'superadmin', 'manager'].includes(profile?.role);
               return (
                 <>
-                  {leaderboard && (
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Leaderboard</p>
-                        <div style={{ display: 'flex', gap: 18 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', width: 54, textAlign: 'right' }}>Gross</span>
-                          <span className="lb-comm-head" style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', width: 72, textAlign: 'right' }}>Commission</span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {leaderboard.map((s, i) => {
-                          const rc = rankColors[i] || { bg: '#f5f6f8', color: '#9ca3af', border: 'transparent' };
-                          return (
-                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{
-                                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 10, fontWeight: 800,
-                                background: rc.bg, color: rc.color,
-                                border: `1px solid ${rc.border}`,
-                              }}>{i + 1}</span>
-                              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{s.full_name}</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: s.sold > 0 ? '#16a34a' : '#9ca3af', minWidth: 16, textAlign: 'right' }}>{s.sold}</span>
-                              <span style={{ fontSize: 10, color: '#9ca3af', marginRight: 4 }}>sold</span>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: s.gross > 0 ? '#16a34a' : s.gross < 0 ? '#dc2626' : '#9ca3af', width: 54, textAlign: 'right' }}>
-                                {s.gross ? `RM ${Math.round(s.gross).toLocaleString()}` : '—'}
-                              </span>
-                              <span className="lb-comm-val" style={{ fontSize: 12, fontWeight: 600, color: '#374151', width: 72, textAlign: 'right' }}>
-                                RM {s.commission > 0 ? s.commission.toLocaleString() : '0'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                  {teamTab === 'salesman' && filteredTeam.length > 0 && (
+                    <TeamScoreboard
+                      scores={teamScores}
+                      loading={scoresLoading}
+                      salespeople={filteredTeam}
+                      soldMap={soldMap}
+                      analyticsMap={analyticsMap}
+                      showMoney={showTeamMoney}
+                    />
                   )}
                   {filteredTeam.length === 0 && (
                     <div style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: 13 }}>
@@ -3740,20 +3701,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       <p className="font-semibold text-gray-900 truncate">
                         {s.full_name}
                       </p>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 ${s.is_active !== false ? "text-emerald-700" : "text-gray-500"}`}
-                      >
-                        {s.is_active !== false ? "Active" : "Inactive"}
-                      </span>
-                      {(() => {
-                        // "Inactive 30d+" only if their most recent touchpoint is
-                        // older than 30 days. A brand-new hire has no activity yet, so
-                        // fall back to created_at as the floor — otherwise a
-                        // 5-minute-old account wrongly showed as stale.
-                        const ref = lastActivityMap[s.id] || s.created_at;
-                        if (!ref || (Date.now() - new Date(ref)) / 86400000 <= 30) return null;
-                        return <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', background: '#f5f6f8', borderRadius: 10, padding: '1px 7px' }}>Inactive 30d+</span>;
-                      })()}
+                      {/* The account switch, said once, only when it is OFF (an on account needs no
+                          pill). How the salesman is DOING is the database's word (_team_health), the
+                          same one the table above shows; the card's own "Inactive 30d+" rule is gone. */}
+                      {s.is_active === false && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Switched off</span>
+                      )}
+                      {s.role === 'salesman' && s.is_active !== false && <StatusWord status={scoreById[s.id]?.status} />}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500">
                       <span className="truncate max-w-[200px]">{s.email}</span>
@@ -3810,44 +3764,8 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             </span>
                           </div>
                         )}
-                        <div className="grid grid-cols-3 gap-2 max-w-xs">
-                          {[
-                            [String(analyticsMap[s.slug]?.clicks || 0), "Clicks"],
-                            [String(analyticsMap[s.slug]?.whatsapp || 0), "WhatsApp"],
-                            [String(soldMap[s.id]?.sold || 0), "Sales"],
-                          ].map(([v, lbl]) => (
-                            <div
-                              key={lbl}
-                              className="rounded-lg px-2.5 py-2"
-                              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
-                            >
-                              <p
-                                className={`text-sm font-bold ${(lbl === "Sales" || lbl === "WhatsApp") && Number(v) > 0 ? "text-emerald-700" : "text-gray-900"}`}
-                              >
-                                {v}
-                              </p>
-                              <p className="text-[10px] text-gray-500 mt-0.5">
-                                {lbl}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                        {/* What this rep has actually done lately: pipeline work
-                            (stage moves, calls, WhatsApps, notes, claims) and chat
-                            replies to buyers, from get_team_activity. */}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            Last active <span className="font-semibold text-gray-900">{lastActiveText(lastActivityMap[s.id])}</span>
-                          </span>
-                          <span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{activityCountMap[s.id] || 0}</span> pipeline actions
-                          </span>
-                          <span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{chatCountMap[s.id] || 0}</span> chat replies
-                          </span>
-                          <span className="text-gray-400">last 30 days</span>
-                        </div>
+                        {/* Clicks, WhatsApp, sales and activity moved to the table above (one row per
+                            salesman, plan step 4c); this card keeps the tools: link, cars, commission. */}
                         {/* Assigned cars — exclusivity lock. Shows which units this rep
                             is solely responsible for (commission locked to them). */}
                         <div style={{ marginTop: 10 }}>
@@ -7900,7 +7818,7 @@ export default function DashboardPage() {
     team: { title: "Team", sub: "Manage salespeople" },
     analytics: ({
       revenue:     { title: "Revenue",     sub: "Sales, gross and add-on revenue" },
-      performance: { title: "Performance", sub: "Team and website traffic" },
+      performance: { title: "Traffic", sub: "Website visits, car views and WhatsApp taps" },
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
@@ -7918,7 +7836,7 @@ export default function DashboardPage() {
       items: [
         { id: "overview",  Icon: Gauge,       label: "Overview" },
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
-        { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
+        { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Traffic" },
       ],
     },
     {

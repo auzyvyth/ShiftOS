@@ -10,7 +10,7 @@ while two screens show two figures only moves the confusion). Steps, in order, o
 > sum `carPnl()` through `useCarMoney`, and `costMissing` exists (`ownerMoney.js:77`). Step 3: one clock (`daysHeld`)
 > and one threshold (`AGEING_DAYS`); the last hardcoded 60 in `moneyExplain.js` now uses it. Left on their own
 > numbers on purpose: `AccountantPanel.jsx` (stored `days_in_stock`, unused role). Fast List was removed from the app.
-> Open: steps 4c, 4d and 5 (4a Reports > Listings and 4b AI Manager card are done).
+> Open: steps 4d and 5 (4a, 4b and 4c are done).
 
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
@@ -39,6 +39,12 @@ while two screens show two figures only moves the confusion). Steps, in order, o
       opens Overview with the card open. Same gates: not on `dealer_starter`, the `tab_ai_manager` switch. Light restyle of
       `AISalesManager.jsx`; the automatic first ask is no longer shown as a user bubble.
    c. Performance + Team become one people screen (merge by subject, not by report type); redirect.
+      **DONE 2026-11-16:** Team's top table `dashboard/TeamScoreboard.jsx` (+ `hooks/useTeamScores.js`) is the one
+      judgement of each salesman (status, score, won/leads, close rate, reply, avg profit if `view_gross`, link clicks, sold).
+      Removed: Team Leaderboard (it had its own gross formula), the card's "Inactive 30d+" rule, the card's clicks grid and
+      activity line, Performance's Team Performance table and Salesman Performance list. Performance renamed "Traffic".
+      Still overlapping: Revenue's per-salesman reply-time bars (`RevOpsPage.jsx:611`). Migration `20261116i` (queued) points
+      the team-health push at /dashboard/team.
    d. Kill the `add` tab, keep only `AddCarSheet` (5 entry points today); HP Board becomes a Sales pill.
 5. **Split the rest of `DashboardPage.jsx` (9,573 lines), in this order, one block per commit:** Settings
    (`dashboard/settings/` with SettingsSection/SettingsField/SaveBtn/ErrMsg, PermissionsMatrix, WaTemplatesEditor,

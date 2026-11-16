@@ -1,20 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { useCachedFetch } from '../hooks/useCachedFetch';
-import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
-import SalesmanHealthSheet from './team/SalesmanHealthSheet';
-import { STATUS, TONE, issueText, noScoreReason, fmtMinutes, needsAttention } from '../utils/teamHealth';
+import { Globe, TrendingUp, Eye, Share2 } from 'lucide-react';
 import { premiumLight as PL } from '../theme/tokens';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
-const fmtRM = (n) =>
-  `RM ${Number(n || 0).toLocaleString('en-MY', { maximumFractionDigits: 0 })}`;
-const fmtRMShort = (n) => {
-  const v = Number(n || 0);
-  if (v >= 1_000_000) return `RM ${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `RM ${(v / 1_000).toFixed(0)}k`;
-  return `RM ${v}`;
-};
+// Analytics > Traffic (was "Performance" until 2026-11-16, plan step 4c). The WEBSITE only:
+// visits, car views, WhatsApp taps, share platforms. How each salesman is doing moved to Team
+// (`dashboard/TeamScoreboard.jsx`), so people are judged on one screen.
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
@@ -53,31 +46,6 @@ function KpiTile({ label, value, sub, valueColor = '#111827', warn = false }) {
       <p style={{ fontSize: 24, fontWeight: 800, color: valueColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, margin: '4px 0 0' }}>{value}</p>
       {sub && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{sub}</p>}
     </div>
-  );
-}
-
-function ScoreBar({ score }) {
-  const color = score >= 50 ? '#111827' : '#b91c1c';
-  const pct = Math.min(100, Math.max(0, score));
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-      <div style={{ width: 48, height: 5, background: '#eceef1', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
-      </div>
-      <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{score}</span>
-    </div>
-  );
-}
-
-// Small one-word pill; the WORD carries the meaning, the colour only backs it.
-function StatusPill({ status }) {
-  const st = STATUS[status];
-  if (!st) return null;
-  const t = TONE[st.tone];
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, color: t.fg, background: t.bg, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-      {st.label}
-    </span>
   );
 }
 
@@ -137,24 +105,9 @@ function EngagementTooltip({ active, payload, label }) {
 
 export default function PerformanceTab({ dealerId, listings = [] }) {
   const [range, setRange] = useState(30);
-  const [openRep, setOpenRep] = useState(null); // the salesman whose detail pop-up is open
 
   // All four loads are cached (stale-while-revalidate, per-dealer) so the tab
   // paints instantly on revisit and refreshes in the background / daily.
-  const { data: scoresRaw, loading: teamLoading } = useCachedFetch(
-    dealerId ? `perf:scores:${dealerId}` : null,
-    // Throw on a failed read so useCachedFetch keeps the last good copy on
-    // screen. Returning [] here wiped the team table on every DB stall.
-    async () => {
-      const { data, error } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId });
-      if (error) throw error;
-      return data || [];
-    },
-    { enabled: !!dealerId },
-  );
-  const scores = scoresRaw || [];
-
-
   const { data: trafficRaw, loading: trafficLoading } = useCachedFetch(
     dealerId ? `perf:traffic:${dealerId}:${range}` : null,
     async () => {
@@ -175,19 +128,17 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
   const { data: eng, loading: engLoading } = useCachedFetch(
     dealerId ? `perf:eng:${dealerId}` : null,
     async () => {
-      const [carRes, slugRes, dailyRes] = await Promise.all([
+      const [carRes, dailyRes] = await Promise.all([
         supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId }),
-        supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
         supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
       ]);
-      const err = carRes.error || slugRes.error || dailyRes.error;
+      const err = carRes.error || dailyRes.error;
       if (err) throw err;
-      return { car: carRes.data || [], slug: slugRes.data || [], daily: dailyRes.data || [] };
+      return { car: carRes.data || [], daily: dailyRes.data || [] };
     },
     { enabled: !!dealerId },
   );
   const carStats = useMemo(() => eng?.car || [], [eng]);
-  const slugStats = useMemo(() => eng?.slug || [], [eng]);
   const daily = useMemo(() => eng?.daily || [], [eng]);
 
   // ── Derived: traffic metrics ───────────────────────────────────────────────
@@ -254,14 +205,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     });
   }, [daily]);
 
-  const topSalesmen = useMemo(() => {
-    const acc = {};
-    slugStats.forEach(r => {
-      if (r.slug && r.slug.trim()) acc[r.slug] = { clicks: Number(r.clicks) || 0, whatsapp: Number(r.whatsapp) || 0 };
-    });
-    return Object.entries(acc).sort((a, b) => b[1].whatsapp - a[1].whatsapp);
-  }, [slugStats]);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "system-ui,sans-serif", minWidth: 0 }}>
 
@@ -304,92 +247,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           </div>
         )}
       </SectionShell>
-
-      {/* ── Team Performance ──────────────────────────────────────────────────── */}
-      <SectionShell>
-        <PerfSectionHeader
-          icon={Users}
-          label="Team Performance"
-          desc="Last 30 days. Activity counts only what each salesman did themselves. Tap a name for details"
-          right={
-            teamLoading ? null :
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', background: PL.raised, borderRadius: 999, padding: '4px 12px' }}>
-              {needsAttention(scores) > 0
-                ? `${needsAttention(scores)} need attention`
-                : `${scores.length} on team`}
-            </span>
-          }
-        />
-        {teamLoading ? (
-          <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading…</p>
-          </div>
-        ) : scores.length === 0 ? (
-          <EmptyState icon={Users} text="No salesman activity recorded yet." />
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 580 }}>
-              <thead>
-                <tr style={{ background: PL.raised }}>
-                  {['#', 'Salesman', 'Score', 'Conv.', 'Response', 'Avg GP', 'Docs', 'Leads (30d)'].map(h => (
-                    <th key={h} style={{ padding: '9px 14px', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: h === '#' || h === 'Salesman' ? 'left' : 'right', border: 'none', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {scores.map((s, i) => (
-                  <tr
-                    key={s.id || i}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setOpenRep(s)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenRep(s); } }}
-                    title="See details"
-                    className="perf-row"
-                    style={{ borderBottom: i < scores.length - 1 ? `1px solid ${PL.line}` : 'none', cursor: 'pointer' }}
-                  >
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#9ca3af', width: 28 }}>#{i + 1}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        {s.avatar_url
-                          ? <img src={s.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
-                          : <div style={{ width: 28, height: 28, borderRadius: 14, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>
-                        }
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{s.name || '—'}</span>
-                            <StatusPill status={s.status} />
-                          </div>
-                          {(s.issues || []).length > 0 && (
-                            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap' }}>
-                              {s.issues.map((c) => issueText(c, s)).filter(Boolean).slice(0, 2).join(' · ')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                      {s.score != null
-                        ? <ScoreBar score={s.score} />
-                        : <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{noScoreReason(s) || '—'}</span>}
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.conv_rate != null && (s.leads_30d ?? 0) >= 3 ? `${Number(s.conv_rate).toFixed(1)}%` : '—'}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: s.avg_response_min > 60 ? '#b91c1c' : '#047857' }}>
-                      {s.avg_response_min != null ? fmtMinutes(s.avg_response_min) : '—'}
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.avg_gp != null ? fmtRMShort(s.avg_gp) : '—'}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.doc_rate_pct != null ? `${s.doc_rate_pct}%` : '—'}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.won_30d != null ? `${s.won_30d}/${s.leads_30d ?? s.won_30d}` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SectionShell>
-
-      {openRep && <SalesmanHealthSheet person={openRep} onClose={() => setOpenRep(null)} />}
-      <style>{`.perf-row:hover{background:#f5f6f8}.perf-row:focus-visible{outline:2px solid #111827;outline-offset:-2px}`}</style>
 
       {/* Listings & Inventory was here: days on lot, capital tied up and aged cars, on two clocks
           of its own. Overview's stock block is the one place for those numbers (owner rule: each
@@ -496,35 +353,6 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         )}
       </SectionShell>
 
-      {/* ── Salesman Performance (moved from Listings tab) ─────────────────────── */}
-      <SectionShell>
-        <PerfSectionHeader
-          icon={BarChart2}
-          label="Salesman Performance"
-          desc="Listing clicks & WhatsApp contacts driven by each salesman link — last 30 days"
-          right={
-            !engLoading && topSalesmen.length > 0
-              ? <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', background: PL.raised, borderRadius: 999, padding: '4px 12px' }}>{topSalesmen.length} active</span>
-              : null
-          }
-        />
-        {engLoading ? (
-          <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>
-        ) : topSalesmen.length === 0 ? (
-          <EmptyState icon={Users} text="No salesman link activity recorded yet." />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {topSalesmen.map(([slug, { clicks, whatsapp }], i) => (
-              <div key={slug} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: PL.raised, borderRadius: PL.radius.row, border: 'none' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? '#111827' : '#9ca3af', minWidth: 20, textAlign: 'right' }}>#{i + 1}</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>/{slug}</span>
-                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#111827', fontWeight: 700 }}>{clicks}</span> clicks</span>
-                <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}><span style={{ color: '#047857', fontWeight: 700 }}>{whatsapp}</span> WA</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionShell>
     </div>
   );
 }

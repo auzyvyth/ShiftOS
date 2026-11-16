@@ -149,11 +149,11 @@ export const TAB_CAPABILITIES = [
   ...tab('tab_stock', 'Stock & costs', 'Buy prices and the profit of each car. Also needs "View stock cost".', true, false),
   ...tab('tab_sold', 'Sold', 'Handover, customers and documents (buyer IC and address).', true, true),
   ...tab('tab_revenue', 'Revenue', 'Sales and profit this month. Also needs "View gross profit".', true, false),
-  ...tab('tab_performance', 'Performance', 'Team scores and website traffic.', true, false),
+  ...tab('tab_performance', 'Traffic', 'Website visits, car views and WhatsApp taps.', true, false),
   ...tab('tab_reports_listings', 'Reports > Listings', 'Views and enquiries per car.', true, true),
   ...tab('tab_storefront', 'Storefront', 'The public page, hero and services catalogue.', false, false),
   ...tab('tab_ai_manager', 'AI Sales Manager', 'The briefing card on Overview (it quotes profit).', true, false),
-  ...tab('tab_team', 'Team', 'The team list and activity trail.', true, false),
+  ...tab('tab_team', 'Team', 'The team list, how each salesman is doing, and the activity trail.', true, false),
 ];
 
 // Never switchable: only the owner (owner, 2026-11-13).

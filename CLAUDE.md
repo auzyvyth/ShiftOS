@@ -399,6 +399,10 @@ fi_officer → /fi
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
 **Reports > Listings no longer exists (owner, 2026-11-16: merged into Inventory).** Everything on it was already in Inventory > Listings (status counts, incomplete tags, views + enquiries per car, the car pop-up's Analytics pill) or Stock (aged cars), so it was deleted (`dashboard/AnalyticsTab.jsx`); its CSV export is the Export button in Inventory > Listings; `?sub=listings` redirects. The `tab_reports_listings` switch in `permissions.js` is now unused (left so the DB mirror test keeps passing).
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, documents, storefront
+  ↳ **People are judged on ONE screen: Team (2026-11-16, plan step 4c).** Its top table (`TeamScoreboard`) replaced Team's
+    Leaderboard, its "Inactive 30d+" badge, and Performance's score table + link-clicks list. Analytics > Performance is now
+    "Traffic" (website only, `PerformanceTab.jsx`, route `?sub=performance` unchanged). Never add a per-salesman number back to
+    Traffic, or a second status rule to a salesman card.
   ↳ **AI Sales Manager is a CARD on Overview, not a tab (2026-11-16, `src/pages/dashboard/AiManagerCard.jsx`).** Closed on every visit: opening it runs the briefing, so a plain Overview visit spends no AI call; its snapshot loads only while open (`aiOpen`). `/dashboard/ai_manager` opens Overview with it open. Do not make it auto-open.
   ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
@@ -1606,7 +1610,9 @@ The old panel is deleted only AFTER the owner has tested linked mode on staging;
 
 ## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
 `_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
-`gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
+`gm_salesman_scores` (the Team tab's table, `dashboard/TeamScoreboard.jsx` via `useTeamScores`, which also gives each
+salesman card its status word) and the daily owner push `notify_team_health` (opens `/dashboard/team` once migration
+`20261116i` is applied; before that it opens Analytics > Traffic)
 (cron `team-health-daily`, 01:00 UTC) both call it; words for its codes: `src/utils/teamHealth.js`.
 - Activity = the salesman's OWN actions (their lead_activities, chat replies, activity_log). Never
   `leads.updated_at` or anything the dealer did on their lead: `diara` scored 90 after 45 idle days
