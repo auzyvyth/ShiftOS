@@ -1025,7 +1025,9 @@ function SellerStrip({ cars, title, th }) {
             <button key={c.id} className="cdp-ss-card" onClick={() => go(c)} style={{ flexShrink: 0, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
               <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
                 {img && <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                {c.is_recon && (
+                {(c.is_model_card || c.condition === "new") ? (
+                  <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 6, background: "rgba(15,23,42,0.88)", color: "#fff" }}>NEW</span>
+                ) : c.is_recon && (
                   <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 6, background: "rgba(109,40,217,0.92)", color: "#fff" }}>RECON</span>
                 )}
               </div>
@@ -1128,12 +1130,14 @@ export default function CarDetailPage() {
   const simRefDesktop = useRef(null);
   const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
-  // New cars (brand price-list cards and condition "new") get their own row
-  // UNDER the used & recon row (owner, 2026-11-16): mixed in one row, a
-  // RM90k new Vios sat between recon Vellfires and read as stock.
+  // ONE row, the seller's used & recon cars first and their new cars after
+  // (owner, 2026-11-16: no second row, no divider). A new car carries a NEW
+  // tag so it never reads as stock. The query is by dealer_id = the seller.
   const isNewCar = (c) => !!c.is_model_card || c.condition === "new";
-  const sellerUsedCars = sellerCars.filter((c) => !isNewCar(c)).slice(0, 12);
-  const sellerNewCars  = sellerCars.filter(isNewCar).slice(0, 12);
+  const sellerRow = [
+    ...sellerCars.filter((c) => !isNewCar(c)).slice(0, 12),
+    ...sellerCars.filter(isNewCar).slice(0, 8),
+  ];
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
@@ -1504,7 +1508,7 @@ export default function CarDetailPage() {
                 .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
-                .limit(24)
+                .limit(40)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
@@ -3047,14 +3051,9 @@ export default function CarDetailPage() {
 
 
         {/* More from this seller (mobile) — above the "More {brand}" section */}
-        {sellerUsedCars.length > 0 && (
+        {sellerRow.length > 0 && (
           <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
-            <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />
-          </div>
-        )}
-        {sellerNewCars.length > 0 && (
-          <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
-            <SellerStrip cars={sellerNewCars} title={sellerUsedCars.length > 0 ? "Brand New Cars" : "More From This Seller"} th={th} />
+            <SellerStrip cars={sellerRow} title="More From This Seller" th={th} />
           </div>
         )}
 
@@ -3840,14 +3839,9 @@ export default function CarDetailPage() {
             stopped by here. */}
         <div className="cdp-d-after">
           {/* MORE FROM THIS SELLER — above the "More {brand}" section */}
-          {sellerUsedCars.length > 0 && (
+          {sellerRow.length > 0 && (
             <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-              <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />
-            </div>
-          )}
-          {sellerNewCars.length > 0 && (
-            <div style={{ marginTop: sellerUsedCars.length > 0 ? 24 : 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-              <SellerStrip cars={sellerNewCars} title={sellerUsedCars.length > 0 ? "Brand New Cars" : "More From This Seller"} th={th} />
+              <SellerStrip cars={sellerRow} title="More From This Seller" th={th} />
             </div>
           )}
 
