@@ -389,7 +389,9 @@ admin → /dashboard, manager → /dashboard (ACCESS-1, owner 2026-11-13). They 
   (`trg_a_salesman_draft`; CarForm hides cost via `costHidden`). The owner, or a manager with
   `approve_listings`, approves in Inventory > Listings (`ApprovalQueue.jsx`) via `dealer_approve_listing`
   (refuses with no buy price) or `dealer_reject_listing` (reason required); the salesman is notified.
-  Never one shared login to add cars.
+  Never one shared login to add cars. **Edit + resubmit (migration `20261116h`, QUEUED):** the live DB had no UPDATE rule for a linked
+  salesman, so "Edit & resubmit" on a rejected car changed 0 rows (found 2026-11-16 by a rolled-back probe). `20261116h` lets them
+  update only a car THEY submitted while it is pending_approval / rejected, always back to pending_approval (`trg_a_linked_salesman_draft_edit`).
 accountant → /accountant
 fi_officer → /fi
 
