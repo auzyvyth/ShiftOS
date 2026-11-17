@@ -200,7 +200,11 @@ function PermissionsMatrix({ dealerId, actor }) {
         </div>
       </div>
       {CONFIGURABLE_ROLES.filter(({ value }) => (value !== 'manager' || hasManager) && (capabilitiesForRole(value).length || roleExtras(value).length)).map(({ value, label }) => {
-        const caps = capabilitiesForRole(value);
+        // A switch the app does not check yet (`enforced: false`, src/lib/permissions.js) is not shown:
+        // an owner who unticks it would believe the manager is limited when nothing stops them
+        // (DASH-TEST 12). Its saved value is kept (the save writes the whole row back). Show it again
+        // once the app AND the database (`dealer_can`) check it, by setting `enforced: true`.
+        const caps = capabilitiesForRole(value).filter((c) => c.enforced !== false);
         return (
           <div key={value} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
             <div className="flex items-center justify-between mb-3">
@@ -220,7 +224,6 @@ function PermissionsMatrix({ dealerId, actor }) {
                         <input type="checkbox" checked={!!rows[value]?.[cap.key]} onChange={() => toggle(value, cap.key)} style={{ accentColor: '#dc2626', marginTop: 2 }} />
                         <span>
                           <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{cap.label}</span>
-                          {cap.enforced === false && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: '#6b7280', background: '#eceef1', borderRadius: 999, padding: '1px 7px' }}>Saved, not active yet</span>}
                           <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>{cap.description}</span>
                         </span>
                       </label>

@@ -72,7 +72,8 @@
 
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
-(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px.
+(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 12 the 6 unchecked manager switches are hidden
+(`enforced: false` in permissions.js; saved values kept; flip to true once the app AND `dealer_can` check one).
 Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
 forms, ~20 owner/manager writes probed on the live DB in rolled-back transactions. No crashes, no console
 errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> customer) passes on the live DB.
@@ -100,8 +101,6 @@ With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad
   its "fill in at least 4 stats" error sits below the fold, so Save looks dead. Move to premiumLight, scroll to the first error.
 - [ ] 9. AI import page (`/dashboard/import-stock`) is still fully dark (page + its 3 step components); restyle to premiumLight. (The way back is done: "Back to listings".)
 - [ ] 11. Car detail drawer and Add Lead form are not portalled (overlay rule 1). Portal them.
-- [ ] 12. 6 of 8 manager switches are "Saved, not active yet" (`src/lib/permissions.js`: approve_deals,
-  assign_cars, assign_leads, change_price, delete_car, edit_settings). Enforce in the DB (`dealer_can`) or hide them.
 
 **Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis
 (`/api/ai-messages`) with one real .xlsx and one real .csv.

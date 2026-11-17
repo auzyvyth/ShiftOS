@@ -118,9 +118,9 @@ export const CAPABILITIES_BASE = [
     enforced: true,
   },
   // ── Manager authority (research 2026-11-12, docs/DEALER_ROLES_RESEARCH.md). Defaults are the
-  // proposal; the dealer interviews may change them. `enforced: false` = the switch is saved but the
-  // app does not check it yet: the matrix says so, and nothing may rely on it until it is wired AND
-  // backed by a database rule (a hidden button protects nothing).
+  // proposal; the dealer interviews may change them. `enforced: false` = the app does not check it
+  // yet, so Settings > Team HIDES it (DASH-TEST 12, 2026-11-17); nothing may rely on it until it is
+  // wired AND backed by a database rule (a hidden button protects nothing), then flip it to true.
   { key: 'assign_leads',    group: 'people', label: 'Assign and reassign leads', description: 'Give a lead to a salesman or move it to another.', roles: ['manager'], default: true,  enforced: false },
   { key: 'assign_cars',     group: 'people', label: 'Lock a car to a salesman',  description: 'Make a car exclusive to one salesman.', roles: ['manager'], default: true,  enforced: false },
   // Adding staff (owner, 2026-11-14): a manager may add SALESMEN and ADMINS only, by email setup
