@@ -121,6 +121,9 @@ export default function LeadGridCard({ lead, onOpen }) {
       )}
 
       {lead.broker_credit && <div style={{ marginBottom: 8 }}><BrokerChip credit={lead.broker_credit} /></div>}
+      {lead.won_requested_at && lead.stage !== 'won' && lead.stage !== 'closed_won' && (
+        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#f5f6f8', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>Broker says sold: confirm</div>
+      )}
 
       {/* Divider */}
       <div style={{ height: 1, background: 'rgba(17,24,39,0.06)', margin: carPrice ? '0 0 8px' : '6px 0 8px' }} />

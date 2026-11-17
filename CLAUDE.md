@@ -1723,6 +1723,13 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   dealer cars" (own list, one row per dealer car, never added into the broker's own-car commission), Received / Not received
   buttons + a WhatsApp link to the dealer (`dealer_phone` from `broker_my_regs`); dealer side in `DealerBrokers.jsx`. Apply after
   midnight, then probe in a rolled-back transaction.
+- **BROKER-4 (owner 2026-11-17, migration `20261117b_broker_stage_mirror.sql`, QUEUED):** the dealer's copy of a broker's
+  buyer MOVES WITH THE BROKER'S STAGE, like a linked salesman's lead. `leads.broker_twin_id` (on the broker's lead) points at
+  the dealer's lead; only definer code writes it (`app.broker_twin` flag, `trg_a0_broker_twin`). Restrictions: a broker's Won
+  is HELD (`won_requested_at` on both rows, dealer notified) until the owner answers in the lead drawer
+  (`dealer_decide_broker_won`); Deposit taken mirrors as Negotiating (it would reserve the dealer's car); a broker's Lost never
+  touches a reserved car; a dealer lead already Won is never moved. A dealer's own Won counts as approval and Undo sale puts the
+  broker back to Negotiating (`trg_zzz_broker_twin_won`). Tested on a local Postgres copy (12 cases), not yet on the live DB.
 - Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
 - (older note) leads that arrive through a broker's page are not attributed to the broker
   (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side

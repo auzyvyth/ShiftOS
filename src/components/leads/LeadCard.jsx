@@ -113,6 +113,7 @@ export default function LeadCard({ lead, onOpen }) {
               </div>
             )}
             {lead.broker_credit && <BrokerChip credit={lead.broker_credit} compact />}
+            {lead.won_requested_at && lead.stage !== 'won' && lead.stage !== 'closed_won' && <span style={{ fontSize: 9, fontWeight: 700, color: '#dc2626', background: '#f5f6f8', borderRadius: 6, padding: '1px 6px' }}>Confirm sale</span>}
             {ownerName && (
               <div title={`Lead by ${ownerName}`} style={{
                 display: 'flex', alignItems: 'center', gap: 4,

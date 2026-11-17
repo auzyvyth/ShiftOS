@@ -131,6 +131,7 @@ function calcRoadTaxEst(cc) {
 export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [], onOpenDoc }) {
   useModalHistory(true, onClose);
   const [lead, setLead]               = useState(initialLead);
+  const [brokerDeciding, setBrokerDeciding] = useState(false); // BROKER-4
   const [editingField, setEditingField] = useState(null); // 'name' | 'phone'
   // The in-app conversation behind this lead, if there is one. The dealer
   // dashboard has no Inbox tab, so this drawer is the only place a dealer can
@@ -786,6 +787,26 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }
   }
 
+  // BROKER-4: the broker pressed Won on this buyer; the dealer confirms or rejects (migration 20261117b).
+  async function decideBrokerWon(approve) {
+    setBrokerDeciding(true);
+    const { data, error } = await supabase.rpc('dealer_decide_broker_won', { p_lead: lead.id, p_approve: approve });
+    setBrokerDeciding(false);
+    if (error) {
+      toast.error(error.code === 'PGRST202' ? 'This goes live with tonight\'s update.' : 'Could not save your answer. Try again.');
+      return;
+    }
+    if (!data?.ok) {
+      const why = { car_already_won: 'This car is already sold to another buyer.', no_car: 'Link a car to this lead first.', forbidden: 'Only the dealership owner can confirm a broker\'s sale.', no_request: 'The broker has since changed this lead. Nothing to confirm.' };
+      toast.error(why[data?.reason] || 'Could not save your answer. Try again.');
+      if (data?.reason === 'no_request') setLead(p => ({ ...p, won_requested_at: null }));
+      return;
+    }
+    const updated = await onUpdate(lead.id, {}).catch(() => null);
+    setLead(p => ({ ...p, won_requested_at: null, ...(approve ? { stage: 'won' } : {}), ...(updated || {}) }));
+    toast.success(approve ? 'Sale confirmed. The car is sold and the broker\'s lead is Won.' : 'Not confirmed. The broker has been told.');
+  }
+
   async function confirmLoss() {
     if (!selectedLossReason) { toast.error('Please select a reason'); return; }
     setSavingLoss(true);
@@ -1275,6 +1296,22 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             )}
 
             <BrokerCreditPanel credit={initialLead?.broker_credit} />
+
+            {lead.won_requested_at && lead.stage !== 'won' && lead.stage !== 'closed_won' && (
+              <div className="pl-note" style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 4 }}>The broker says this buyer bought the car</div>
+                <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5, marginBottom: 10 }}>
+                  Confirm and this lead is Won: the car is marked sold, the buyer goes to Customers and the broker's commission is owed. Nothing changes until you answer.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="pl-btn-grey" disabled={brokerDeciding} onClick={() => decideBrokerWon(false)} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>Not sold</button>
+                  <button type="button" disabled={brokerDeciding} onClick={() => decideBrokerWon(true)} style={{ flex: 1, padding: '9px', borderRadius: 10, background: '#dc2626', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{brokerDeciding ? 'Saving...' : 'Confirm sale'}</button>
+                </div>
+              </div>
+            )}
+            {lead.via_broker_id && !lead.won_requested_at && (
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>This lead moves with the broker's stage. A Won from the broker waits for your confirmation.</div>
+            )}
 
             {/* ── Info strip: Assign + Follow-up ── */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>

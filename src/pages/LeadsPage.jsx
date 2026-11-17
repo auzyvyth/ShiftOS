@@ -104,6 +104,7 @@ function StageColumn({ stage, leads, onClick }) {
               }}>
                 <span style={{ fontWeight: 700, color: '#111827' }}>{lead.buyer_name || 'Unknown buyer'}</span>
                 {lead.car_listing && <span style={{ color: '#6b7280' }}> · {lead.car_listing.brand} {lead.car_listing.model}</span>}
+                {lead.won_requested_at && <span style={{ color: '#dc2626', fontWeight: 700 }}> · Confirm sale</span>}
               </div>
             ))}
             <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 2 }}>
