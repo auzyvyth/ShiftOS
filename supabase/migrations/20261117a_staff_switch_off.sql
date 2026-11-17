@@ -16,7 +16,7 @@
 --    getDealerIdFromProfile (src/hooks/useProfile.js), mirrors this.
 --    Checked 2026-11-17: all 7 linked staff live have is_active = true, so this locks nobody out.
 --
--- QUEUED: apply after midnight MYT with nobody live (one freeze). Then probe in a rolled-back
+-- APPLIED 2026-11-17 ~09:50 UTC (owner: "do the migration now", nobody live). Probed in a rolled-back
 -- transaction: owner switches a staff member off -> their get_my_dealer_id() is NULL; back on
 -- -> it is the dealer again; a manager calling it gets 'forbidden'; another dealer's staff
 -- gets 'not_your_staff'.

@@ -482,7 +482,7 @@ silently rejected (no error). Canonical rule (both sides):
   - dealer / superadmin / owner → profile.id (they ARE the dealer)
   - salesman with dealer_id = NULL (Salesman Lite) → profile.id (owns itself)
   - linked salesman / manager / admin → profile.dealer_id
-  - linked staff the owner switched off (`is_active = false`) or deleted → NULL (migration `20261117a`, queued):
+  - linked staff the owner switched off (`is_active = false`) or deleted → NULL (migration `20261117a`, APPLIED 2026-11-17):
     off means locked out of every dealer table. Owner switches staff on/off ONLY through `dealer_set_staff_active`;
     `StaffAccessGate` (App.jsx) tells them why. Never write `profiles.is_active` for staff from the browser.
 Prior bug: the JS helper had no `salesman` branch, so a linked salesman resolved to their
