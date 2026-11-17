@@ -5,16 +5,21 @@ import {
   Users,
   Package,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from '../hooks/usePersistentState';
 import { useCarMoney } from "../hooks/useCarMoney";
 import { GoalTracker, RevenueBreakdown } from "../components/reports/ReportSections";
+import { premiumLight as PL } from "../theme/tokens";
+import { worseTone } from "../theme/plStatus";
+import { isWorse } from "../utils/isWorse";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// A loss reads "− RM 6,130" (minus first), the same as Overview, never "RM -6,130".
 const fmtRM = (n) =>
   n == null
     ? "—"
-    : `RM ${Number(n).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    : `${Number(n) < 0 ? "− " : ""}RM ${Math.abs(Number(n)).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 const daysAgo = (iso) =>
   iso ? Math.floor((Date.now() - new Date(iso)) / 86400000) : null;
@@ -39,13 +44,15 @@ function MetricCard({
   loading,
   accentColor = "#3b82f6",
   icon: Icon,
+  tone,
 }) {
   return (
     <div
       className="relative flex flex-col gap-1.5 p-4 rounded-lg stat-card"
       style={{
         background: "#FFFFFF",
-        border: "1px solid #EAECF0",
+        border: "none",
+        borderRadius: PL.radius.card, boxShadow: PL.shadow,
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -63,12 +70,9 @@ function MetricCard({
         {Icon && (
           <span
             className="flex items-center justify-center w-6 h-6 rounded-md"
-            style={{
-              background: `${accentColor}18`,
-              border: `1px solid ${accentColor}30`,
-            }}
+            style={{ background: '#f5f6f8' }}
           >
-            <Icon style={{ width: 13, height: 13, color: accentColor }} />
+            <Icon style={{ width: 13, height: 13, color: '#4b5563' }} />
           </span>
         )}
       </div>
@@ -77,10 +81,10 @@ function MetricCard({
       ) : (
         <span
           style={{
-            fontFamily: "'Bebas Neue',cursive",
+            fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
             fontSize: 28,
             letterSpacing: "0.04em",
-            color: "#111827",
+            color: tone || "#111827",
             lineHeight: 1,
           }}
         >
@@ -102,13 +106,14 @@ function SectionCard({ title, children, loading, skeletonRows = 2 }) {
       className="rounded-lg overflow-hidden"
       style={{
         background: "#FFFFFF",
-        border: "1px solid #EAECF0",
+        border: "none",
+        borderRadius: PL.radius.card, boxShadow: PL.shadow,
       }}
     >
       {title && (
         <div
           className="px-5 py-3.5 flex items-center gap-2"
-          style={{ borderBottom: "1px solid #EAECF0" }}
+          style={{ borderBottom: "1px solid rgba(17,24,39,0.06)" }}
         >
           <span className="text-sm font-semibold" style={{ color: "#111827" }}>{title}</span>
         </div>
@@ -134,10 +139,10 @@ function SourcePill({ source, count }) {
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
       style={{
-        background: "rgba(59,130,246,0.1)",
-        border: "1px solid rgba(59,130,246,0.2)",
+        background: "#f5f6f8",
+        border: "none",
         fontSize: 11,
-        color: "#93c5fd",
+        color: "#4b5563",
         fontWeight: 600,
       }}
     >
@@ -146,23 +151,6 @@ function SourcePill({ source, count }) {
   );
 }
 
-function ResponseTimeDot({ minutes }) {
-  if (minutes == null) return null;
-  const color =
-    minutes < 30 ? "#4ade80" : minutes < 120 ? "#fbbf24" : "#f87171";
-  return (
-    <span
-      style={{
-        width: 6,
-        height: 6,
-        borderRadius: "50%",
-        background: color,
-        display: "inline-block",
-        marginRight: 4,
-      }}
-    />
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 // Alerts used to live here too; they are on Overview now (the ONE "needs you" list).
@@ -183,7 +171,11 @@ export default function RevOpsPage({ userId }) {
     costedRevenue: mo.costedRevenue,
     leftOut: mo.leftOut,
     unitsSoldMTD: mo.units,
+    // The same point of last month (one engine, useCarMoney): what turns a number red.
+    prev: money.prevToDate,
   } : null;
+  // "vs RM x same day last month" under a number that can go red, so the red explains itself.
+  const vsLast = (v, fmt = fmtRM) => (revData?.prev ? `${fmt(v)} same day last month` : null);
   const [revFetching, setRevLoading] = useState(true);
   const revLoading = revFetching && !revData;
 
@@ -191,7 +183,6 @@ export default function RevOpsPage({ userId }) {
   const [leadData, setLeadData] = usePersistentState(ck('lead'), null);
   const [leadFetching, setLeadLoading] = useState(true);
   const leadLoading = leadFetching && !leadData;
-  const [salesmanScores, setSalesmanScores] = usePersistentState(ck('scores'), []);
 
   // ── Add-on revenue ───────────────────────────────────────────────────────
   const [addonData, setAddonData] = usePersistentState(ck('addon'), null);
@@ -282,14 +273,6 @@ export default function RevOpsPage({ userId }) {
 
       setLeadData({ total, topSources, viewingRate, avgResponseMin });
 
-      const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
-      if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
-      else setSalesmanScores(
-        (scores || [])
-          .filter(s => s.avg_response_min != null)
-          .sort((a, b) => a.avg_response_min - b.avg_response_min)
-      );
-
       setLeadLoading(false);
     };
     fetch();
@@ -368,7 +351,7 @@ export default function RevOpsPage({ userId }) {
       <div>
         <h1
           style={{
-            fontFamily: "'Bebas Neue',cursive",
+            fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
             fontSize: 32,
             letterSpacing: "0.06em",
             color: "#111827",
@@ -389,7 +372,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Total Revenue This Month"
             value={revData ? fmtRM(revData.revMTD + (addonData?.totalRevenue || 0)) : null}
-            sub="cars + add-ons & F&I"
+            sub={revData && isWorse(revData.revMTD, revData.prev?.revenue) ? `car sales ${fmtRM(revData.revMTD)}, ${vsLast(revData.prev.revenue)}` : "cars + add-ons & F&I"}
+            tone={revData ? worseTone(revData.revMTD, revData.prev?.revenue) : undefined}
             loading={revLoading || addonLoading}
             icon={DollarSign}
             accentColor="#4ade80"
@@ -397,7 +381,8 @@ export default function RevOpsPage({ userId }) {
           <MetricCard
             label="Gross Profit This Month"
             value={revData ? fmtRM(revData.gpMTD) : null}
-            sub={revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
+            tone={revData ? worseTone(revData.gpMTD, revData.prev?.gross) : undefined}
+            sub={revData && isWorse(revData.gpMTD, revData.prev?.gross) ? vsLast(revData.prev.gross) : revData?.leftOut > 0 ? `${revData.leftOut} sold car${revData.leftOut === 1 ? '' : 's'} left out, no buy price` : "cars + add-ons, every cost counted"}
             loading={revLoading || !mo}
             icon={TrendingUp}
             accentColor="#34d399"
@@ -417,7 +402,8 @@ export default function RevOpsPage({ userId }) {
                 ? `${revData.unitsSoldMTD} / ${revData.activeCount}`
                 : null
             }
-            sub="sold this month / for sale"
+            sub={revData && isWorse(revData.unitsSoldMTD, revData.prev?.units) ? `sold / for sale · ${revData.prev.units} sold same day last month` : "sold this month / for sale"}
+            tone={revData ? worseTone(revData.unitsSoldMTD, revData.prev?.units) : undefined}
             loading={revLoading}
             icon={Package}
             accentColor="#a78bfa"
@@ -437,8 +423,8 @@ export default function RevOpsPage({ userId }) {
               className="grid grid-cols-3 gap-3 mt-3"
               style={{
                 background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 12,
+                border: "none",
+                borderRadius: PL.radius.card, boxShadow: PL.shadow,
                 padding: "12px 16px",
               }}
             >
@@ -446,7 +432,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Sales
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: worseTone(vehicleRev, revData.prev?.revenue) || "#111827", lineHeight: 1.1 }}>
                   {fmtRM(vehicleRev)}
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -457,7 +443,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Add-ons & F&I
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
                   {fmtRM(addonRev)}
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -468,7 +454,7 @@ export default function RevOpsPage({ userId }) {
                 <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Vehicle Margin
                 </span>
-                <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 22, color: "#111827", lineHeight: 1.1 }}>
+                <span style={{ fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 22, color: worseTone(marginPct) || "#111827", lineHeight: 1.1 }}>
                   {marginPct}%
                 </span>
                 <span style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -502,7 +488,7 @@ export default function RevOpsPage({ userId }) {
             </span>
             <span
               style={{
-                fontFamily: "'Bebas Neue',cursive",
+                fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                 fontSize: 26,
                 color: "#111827",
               }}
@@ -526,7 +512,7 @@ export default function RevOpsPage({ userId }) {
             </span>
             <span
               style={{
-                fontFamily: "'Bebas Neue',cursive",
+                fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                 fontSize: 26,
                 color: "#111827",
               }}
@@ -578,12 +564,12 @@ export default function RevOpsPage({ userId }) {
             {leadData?.avgResponseMin != null ? (
               <>
                 <div className="flex items-center gap-1">
-                  <ResponseTimeDot minutes={leadData.avgResponseMin} />
                   <span
                     style={{
-                      fontFamily: "'Bebas Neue',cursive",
+                      fontFamily: "inherit", fontWeight: 700, fontVariantNumeric: "tabular-nums",
                       fontSize: 26,
-                      color: "#111827",
+                      // Red past 2 hours (the rule the old green/amber/red dot used); no dot, the number says it.
+                      color: leadData.avgResponseMin >= 120 ? PL.accentText : "#111827",
                     }}
                   >
                     {leadData.avgResponseMin}
@@ -608,39 +594,9 @@ export default function RevOpsPage({ userId }) {
           </div>
         </div>
 
-        {salesmanScores.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em' }}>
-              Response Time by Salesman
-            </span>
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {salesmanScores.map(s => {
-                const mins = s.avg_response_min;
-                const label = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
-                const color = mins > 120 ? '#dc2626' : mins > 30 ? '#d97706' : '#16a34a';
-                // bar width relative to the slowest responder in the set, not a magic constant
-                const maxMins = Math.max(...salesmanScores.map(x => x.avg_response_min || 0), 1);
-                const pct = Math.min(100, Math.round((mins / maxMins) * 100));
-                return (
-                  <div key={s.salesman_id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: '#374151', width: 90, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name || '—'}
-                    </span>
-                    <div style={{ flex: 1, height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: color }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36, textAlign: 'right' }}>
-                      {label}
-                    </span>
-                    <span style={{ fontSize: 11, color: '#9ca3af', minWidth: 60, textAlign: 'right' }}>
-                      {s.leads_30d} leads
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <p style={{ marginTop: 16, marginBottom: 0, fontSize: 12, color: "#6b7280" }}>
+          Each salesman's reply time is on <Link to="/dashboard/team" style={{ color: "#111827", fontWeight: 600 }}>Team</Link>.
+        </p>
       </SectionCard>
 
 
@@ -712,8 +668,8 @@ export default function RevOpsPage({ userId }) {
           <div
             className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg"
             style={{
-              background: "#F7F8FA",
-              border: "1px solid #EAECF0",
+              background: "#f5f6f8",
+              border: "none",
             }}
           >
             <span
@@ -733,10 +689,10 @@ export default function RevOpsPage({ userId }) {
                 key={name}
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full"
                 style={{
-                  background: "rgba(167,139,250,0.1)",
-                  border: "1px solid rgba(167,139,250,0.2)",
+                  background: "#f5f6f8",
+                  border: "none",
                   fontSize: 11,
-                  color: "#c4b5fd",
+                  color: "#4b5563",
                   fontWeight: 600,
                 }}
               >

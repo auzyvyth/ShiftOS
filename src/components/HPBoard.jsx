@@ -2,26 +2,23 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useModalHistory } from '../hooks/useModalHistory';
 import { supabase } from '../supabaseClient';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { premiumLight as PL } from '../theme/tokens';
+import '../theme/premiumLight.css';
+import { REJECTION_CATEGORIES, rejectionLabel } from '../utils/loanRejection';
 
 // hp_docs holds the buyer's loan documents (IC, payslips) — never to disk.
 const redactHp = (rows) => (rows || []).map(({ hp_docs, ...rest }) => rest);
 
 const HP_STATUS = {
-  pending:   { label: 'Pending',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)' },
-  approved:  { label: 'Approved',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.2)' },
-  rejected:  { label: 'Rejected',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.2)' },
-  disbursed: { label: 'Disbursed', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  border: 'rgba(59,130,246,0.2)' },
+  // premiumLight (2026-11-16): one grey fill, the WORD carries the meaning. Waiting on the bank is
+  // plain; approved is the good green; disbursed is done (ink); rejected is red.
+  pending:   { label: 'Pending',   color: PL.textSec,    bg: PL.raised, border: 'transparent' },
+  approved:  { label: 'Approved',  color: PL.up,         bg: PL.raised, border: 'transparent' },
+  rejected:  { label: 'Rejected',  color: PL.accentText, bg: PL.raised, border: 'transparent' },
+  disbursed: { label: 'Disbursed', color: PL.text,       bg: PL.raised, border: 'transparent' },
 };
 
-const REJECTION_CATEGORIES = [
-  { value: 'ccris_issue',          label: 'CCRIS / Blacklist' },
-  { value: 'income_insufficient',  label: 'Income Insufficient' },
-  { value: 'dsr_exceeded',         label: 'DSR Exceeded' },
-  { value: 'age_limit',            label: 'Age Limit' },
-  { value: 'employment_type',      label: 'Employment Type' },
-  { value: 'vehicle_age',          label: 'Vehicle Too Old' },
-  { value: 'other',                label: 'Other' },
-];
+
 
 function fmtRM(n) {
   return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -53,7 +50,7 @@ function BankScorecard({ rows }) {
         b.rejected++;
         const d = daysBetween(r.submitted_at, r.rejected_at);
         if (d !== null) b.decisionDays.push(d);
-        const cat = r.rejection_reason_category || 'other';
+        const cat = rejectionLabel(r.rejection_reason_category) || 'Other';
         b.rejectionReasons[cat] = (b.rejectionReasons[cat] || 0) + 1;
       }
     }
@@ -63,12 +60,12 @@ function BankScorecard({ rows }) {
   if (banks.length === 0) return null;
 
   return (
-    <div style={{ marginBottom: 28 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase' }}>Bank Performance Scorecard</p>
+    <div style={{ marginBottom: 20, background: '#fff', borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 14px' }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: PL.text, margin: '0 0 10px' }}>How each bank is doing</p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #EAECF0' }}>
+            <tr style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
               {['Bank', 'Submitted', 'Approval Rate', 'Avg Decision', 'Disbursed', 'Top Rejection Reason'].map(h => (
                 <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
@@ -79,24 +76,24 @@ function BankScorecard({ rows }) {
               const approvalRate = b.total > 0 ? Math.round((b.approved / b.total) * 100) : 0;
               const avgDays = b.decisionDays.length > 0 ? Math.round(b.decisionDays.reduce((s, d) => s + d, 0) / b.decisionDays.length) : null;
               const topRejection = Object.entries(b.rejectionReasons).sort((a, z) => z[1] - a[1])[0];
-              const topRejLabel = topRejection ? REJECTION_CATEGORIES.find(c => c.value === topRejection[0])?.label ?? topRejection[0] : '—';
-              const rateColor = approvalRate >= 70 ? '#22c55e' : approvalRate >= 40 ? '#f59e0b' : '#ef4444';
+              const topRejLabel = topRejection ? topRejection[0] : '—';
+              const rateColor = approvalRate >= 70 ? PL.up : approvalRate >= 40 ? PL.text : PL.accentText;
               return (
-                <tr key={b.name} style={{ borderBottom: '1px solid #EAECF0' }}>
+                <tr key={b.name} style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: 700, color: '#111827' }}>{b.name}</td>
                   <td style={{ padding: '9px 12px', color: '#374151' }}>{b.total}</td>
                   <td style={{ padding: '9px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 700, color: rateColor }}>{approvalRate}%</span>
-                      <div style={{ width: 60, height: 4, background: '#E5E7EB', borderRadius: 2 }}>
+                      <div style={{ width: 60, height: 4, background: PL.raised, borderRadius: 2 }}>
                         <div style={{ width: `${approvalRate}%`, height: '100%', background: rateColor, borderRadius: 2 }} />
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '9px 12px', color: avgDays !== null && avgDays > 7 ? '#f59e0b' : '#9ca3af' }}>
+                  <td style={{ padding: '9px 12px', color: avgDays !== null && avgDays > 7 ? PL.accentText : '#9ca3af' }}>
                     {avgDays !== null ? `${avgDays}d` : '—'}
                   </td>
-                  <td style={{ padding: '9px 12px', color: '#3b82f6', fontWeight: 600 }}>{b.disbursed}</td>
+                  <td style={{ padding: '9px 12px', color: PL.text, fontWeight: 600 }}>{b.disbursed}</td>
                   <td style={{ padding: '9px 12px', color: '#6b7280', fontSize: 12 }}>{topRejLabel}</td>
                 </tr>
               );
@@ -114,7 +111,7 @@ function RejectModal({ onConfirm, onCancel }) {
   const [category, setCategory] = useState('');
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 28, width: 340 }}>
+      <div style={{ background: '#fff', borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: 24, width: 340, maxWidth: 'calc(100vw - 32px)' }}>
         <p style={{ fontWeight: 700, color: '#111827', marginBottom: 6 }}>Rejection Reason</p>
         <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 18 }}>Select the bank's rejection reason to track performance.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
@@ -124,9 +121,8 @@ function RejectModal({ onConfirm, onCancel }) {
               onClick={() => setCategory(c.value)}
               style={{
                 padding: '9px 14px', borderRadius: 8, textAlign: 'left', fontSize: 13, cursor: 'pointer',
-                background: category === c.value ? '#fef2f2' : '#f9fafb',
-                border: `1px solid ${category === c.value ? '#fca5a5' : '#e5e7eb'}`,
-                color: category === c.value ? '#dc2626' : '#374151',
+                background: category === c.value ? '#eceef1' : PL.raised, border: 'none',
+                color: category === c.value ? PL.text : '#374151', fontWeight: category === c.value ? 700 : 400,
                 fontWeight: category === c.value ? 600 : 400,
               }}
             >
@@ -135,7 +131,7 @@ function RejectModal({ onConfirm, onCancel }) {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <button className="pl-btn-grey" onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 10, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
           <button
             onClick={() => category && onConfirm(category)}
             disabled={!category}
@@ -209,17 +205,17 @@ export default function HPBoard({ dealerId }) {
       {rejectTarget && <RejectModal onConfirm={handleReject} onCancel={() => setRejectTarget(null)} />}
 
       {/* Summary strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
         {[
           { label: 'Pending', count: counts.pending, amount: summaryTotal.pending, ...HP_STATUS.pending },
           { label: 'Approved', count: counts.approved, amount: summaryTotal.approved, ...HP_STATUS.approved },
           { label: 'Disbursed', count: counts.disbursed, amount: summaryTotal.disbursed, ...HP_STATUS.disbursed },
           { label: 'Rejected', count: counts.rejected, amount: 0, ...HP_STATUS.rejected },
         ].map(s => (
-          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 16px' }}>
-            <p style={{ fontSize: 18, fontWeight: 800, color: s.color, margin: 0 }}>{s.count}</p>
-            <p style={{ fontSize: 11, color: s.color, opacity: 0.8, margin: '2px 0 0' }}>{s.label}</p>
-            {s.amount > 0 && <p style={{ fontSize: 11, color: s.color, opacity: 0.6, margin: '2px 0 0' }}>{fmtRM(s.amount)}</p>}
+          <div key={s.label} style={{ background: '#fff', borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 16px' }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: s.color, margin: 0 }}>{s.label}</p>
+            <p style={{ fontSize: 22, fontWeight: 800, color: PL.text, margin: '4px 0 0', fontVariantNumeric: 'tabular-nums' }}>{s.count}</p>
+            <p style={{ fontSize: 12, color: PL.textMuted, margin: '2px 0 0', fontVariantNumeric: 'tabular-nums' }}>{s.amount > 0 ? fmtRM(s.amount) : '\u00a0'}</p>
           </div>
         ))}
       </div>
@@ -229,19 +225,21 @@ export default function HPBoard({ dealerId }) {
         const recent = rows.filter(r => r.status_changed_at && new Date(r.status_changed_at) >= recentCutoff);
         if (recent.length === 0) return null;
         return (
-          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)' }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', marginBottom: 6 }}>{recent.length} status update{recent.length !== 1 ? 's' : ''} in the last 3 days</p>
+          <div className="pl-note" style={{ marginBottom: 16, padding: "10px 14px" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: PL.text, marginBottom: 6 }}>{recent.length} status update{recent.length !== 1 ? 's' : ''} in the last 3 days</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {recent.slice(0, 5).map(r => {
                 const s = HP_STATUS[r.status] || HP_STATUS.pending;
                 const car = r.lead?.car_listing;
                 return (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '1px 8px', fontSize: 11 }}>{s.label}</span>
-                    <span style={{ color: '#374151' }}>{r.bank_name}</span>
-                    {r.lead?.buyer_name && <span style={{ color: '#6b7280' }}>— {r.lead.buyer_name}</span>}
-                    {car && <span style={{ color: '#9ca3af' }}>{car.year} {car.brand} {car.model}</span>}
-                    <span style={{ color: '#9ca3af', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: s.color, background: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 11, flexShrink: 0 }}>{s.label}</span>
+                    <span style={{ flex: 1, minWidth: 0, color: '#374151' }}>
+                      {r.bank_name}
+                      {r.lead?.buyer_name && <span style={{ color: '#6b7280' }}> · {r.lead.buyer_name}</span>}
+                      {car && <span style={{ color: '#9ca3af' }}> · {car.year} {car.brand} {car.model}</span>}
+                    </span>
+                    <span style={{ color: '#9ca3af', whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {new Date(r.status_changed_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}
                     </span>
                   </div>
@@ -257,15 +255,14 @@ export default function HPBoard({ dealerId }) {
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {[['all', 'All', '#6b7280'], ...Object.entries(HP_STATUS).map(([k, v]) => [k, v.label, v.color])].map(([k, label, color]) => (
+        {[['all', 'All'], ...Object.entries(HP_STATUS).map(([k, v]) => [k, v.label])].map(([k, label]) => (
           <button
             key={k}
             onClick={() => setFilter(k)}
             style={{
-              fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-              background: filter === k ? `${color}15` : '#F7F8FA',
-              border: `1px solid ${filter === k ? `${color}30` : '#EAECF0'}`,
-              color: filter === k ? color : '#6b7280',
+              fontSize: 12, fontWeight: 600, padding: '7px 13px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+              background: filter === k ? '#eceef1' : 'transparent', border: 'none',
+              color: filter === k ? PL.text : PL.textSec,
             }}
           >
             {label} ({k === 'all' ? rows.length : counts[k] || 0})
@@ -289,7 +286,7 @@ export default function HPBoard({ dealerId }) {
             const s = HP_STATUS[row.status] || HP_STATUS.pending;
             const recentlyUpdated = row.status_changed_at && new Date(row.status_changed_at) >= recentCutoff;
             const rejLabel = row.rejection_reason_category
-              ? REJECTION_CATEGORIES.find(c => c.value === row.rejection_reason_category)?.label ?? row.rejection_reason_category
+              ? rejectionLabel(row.rejection_reason_category)
               : null;
             const figure = (label, value, strong) => (
               <div style={{ minWidth: 0 }}>
@@ -298,7 +295,7 @@ export default function HPBoard({ dealerId }) {
               </div>
             );
             return (
-              <div key={row.id} style={{ background: '#fff', border: `1px solid ${overdue ? 'rgba(239,68,68,0.4)' : '#e5e7eb'}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }}>
+              <div key={row.id} style={{ background: '#fff', borderRadius: PL.radius.card, padding: 16, boxShadow: PL.shadow }}>
                 {/* Header: bank + who/what, status on the right */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ minWidth: 0 }}>
@@ -308,37 +305,37 @@ export default function HPBoard({ dealerId }) {
                     </p>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 11px', borderRadius: 20, background: s.bg, border: `1px solid ${s.border}`, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>
-                    {recentlyUpdated && <span style={{ fontSize: 10, fontWeight: 600, color: '#3b82f6' }}>Updated recently</span>}
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>
+                    {recentlyUpdated && <span style={{ fontSize: 10, fontWeight: 600, color: PL.textMuted }}>Updated recently</span>}
                   </div>
                 </div>
 
                 {/* The numbers */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '12px 0', padding: '10px 0', borderTop: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '12px 0', padding: '10px 0', borderTop: '1px solid rgba(17,24,39,0.06)', borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
                   {figure('Amount', fmtRM(row.loan_amount), true)}
-                  {figure('Tenure', `${row.tenure_months}m`)}
+                  {figure('Tenure', row.tenure_months ? `${row.tenure_months} months` : '—')}
                   {figure('Monthly', row.monthly_install ? fmtRM(row.monthly_install) : '—')}
                 </div>
 
                 {/* Context + actions */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 11.5, color: '#9ca3af', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
-                    <span style={{ color: overdue ? '#ef4444' : '#9ca3af', fontWeight: overdue ? 700 : 400 }}>
+                    <span style={{ color: overdue ? PL.accentText : '#9ca3af', fontWeight: overdue ? 700 : 400 }}>
                       {days === 0 ? 'Submitted today' : `${days}d ago`}{overdue ? ' · overdue' : ''}
                     </span>
                     {row.lead?.salesman?.full_name && <span>· {row.lead.salesman.full_name}</span>}
-                    {row.status === 'rejected' && rejLabel && <span style={{ color: '#ef4444' }}>· {rejLabel}</span>}
+                    {row.status === 'rejected' && rejLabel && <span style={{ color: PL.accentText }}>· {rejLabel}</span>}
                   </div>
                   {(row.status === 'pending' || row.status === 'approved') && (
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       {row.status === 'pending' && (
                         <>
-                          <button onClick={() => handleStatusUpdate(row.id, { status: 'approved', approved_at: new Date().toISOString() })} style={{ fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 8, background: '#16a34a', border: '1px solid #16a34a', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Approve</button>
-                          <button onClick={() => setRejectTarget(row.id)} style={{ fontSize: 12, fontWeight: 500, padding: '7px 14px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb', color: '#6b7280', cursor: 'pointer' }}>Reject</button>
+                          <button onClick={() => handleStatusUpdate(row.id, { status: 'approved', approved_at: new Date().toISOString() })} style={{ fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 10, background: PL.accent, border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Approve</button>
+                          <button className="pl-btn-grey" onClick={() => setRejectTarget(row.id)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 10, cursor: 'pointer' }}>Reject</button>
                         </>
                       )}
                       {row.status === 'approved' && (
-                        <button onClick={() => handleStatusUpdate(row.id, { status: 'disbursed', disbursed_at: new Date().toISOString() })} style={{ fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 8, background: '#2563eb', border: '1px solid #2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Disbursed</button>
+                        <button onClick={() => handleStatusUpdate(row.id, { status: 'disbursed', disbursed_at: new Date().toISOString() })} style={{ fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 10, background: PL.text, border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Mark Disbursed</button>
                       )}
                     </div>
                   )}

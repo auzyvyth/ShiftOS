@@ -4,13 +4,19 @@ import { Upload, Link, FileSpreadsheet, FileText, X, Sparkles, Info, AlertCircle
 // Bulletproof-input limits. A .xlsx is a zip, so an oversized upload is the
 // first zip-bomb signal we can cheaply reject before any parser touches it.
 const MAX_FILE_MB = 20;
-const ALLOWED_EXT = ['xlsx', 'pdf'];
+const ALLOWED_EXT = ['xlsx', 'csv', 'pdf'];
 // Real signatures so a renamed executable can't slip through on extension alone.
 // PDF = "%PDF", XLSX = PK zip local-file header "PK\x03\x04".
 const MAGIC = { pdf: [0x25, 0x50, 0x44, 0x46], xlsx: [0x50, 0x4b, 0x03, 0x04] };
 
 async function sniffMagic(file, ext) {
   try {
+    if (ext === 'csv') {
+      // A CSV has no signature: accept it only if the start is plain text (no NUL bytes,
+      // which every binary file has and no text export does).
+      const start = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+      return start.length > 0 && !start.includes(0);
+    }
     const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
     const sig = MAGIC[ext];
     return sig.every((b, i) => head[i] === b);
@@ -27,14 +33,14 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
   const [showGuide, setShowGuide] = useState(false);
   const inputRef = useRef();
 
-  const accept = '.xlsx,.pdf';
+  const accept = '.xlsx,.csv,.pdf';
 
   const pickFile = async (f) => {
     if (!f) return;
     setErr('');
     const ext = f.name.split('.').pop().toLowerCase();
     if (!ALLOWED_EXT.includes(ext)) {
-      setErr('Unsupported file. Upload a .xlsx or .pdf stock list, or paste a Google Sheets link.');
+      setErr('Unsupported file. Upload a .xlsx, .csv or .pdf stock list, or paste a Google Sheets link.');
       return;
     }
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
@@ -68,17 +74,17 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
       <div className="flex flex-col items-center gap-5 py-10">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center"
-          style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}
+          style={{ background: '#f5f6f8', border: 'none' }}
         >
           <Sparkles className="w-7 h-7 text-red-500 animate-pulse" />
         </div>
 
         <div className="w-full space-y-2">
           <div className="flex justify-between items-center">
-            <p className="text-sm font-semibold text-white">{progressMsg || 'Analysing…'}</p>
-            <p className="text-xs font-bold tabular-nums" style={{ color: '#ef4444' }}>{progress}%</p>
+            <p className="text-sm font-semibold text-gray-900">{progressMsg || 'Analysing…'}</p>
+            <p className="text-xs font-bold tabular-nums" style={{ color: '#b91c1c' }}>{progress}%</p>
           </div>
-          <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'rgba(255,255,255,0.07)' }}>
+          <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: '#f5f6f8' }}>
             <div
               className="h-full rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #dc2626, #ef4444)' }}
@@ -96,11 +102,11 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
       <button
         onClick={() => setShowGuide(true)}
         className="w-full flex items-center gap-2.5 rounded-xl px-4 py-3 text-left transition-colors"
-        style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}
+        style={{ background: '#f5f6f8', border: 'none' }}
       >
-        <Info className="w-4 h-4 flex-shrink-0" style={{ color: '#ef4444' }} />
-        <span className="text-xs font-semibold text-white flex-1">Before you upload — how to get the best results</span>
-        <span className="text-xs font-bold" style={{ color: '#ef4444' }}>Read →</span>
+        <Info className="w-4 h-4 flex-shrink-0" style={{ color: '#b91c1c' }} />
+        <span className="text-xs font-semibold text-gray-900 flex-1">Before you upload — how to get the best results</span>
+        <span className="text-xs font-bold" style={{ color: '#b91c1c' }}>Read →</span>
       </button>
 
       {/* Drop zone */}
@@ -111,32 +117,32 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
         onDrop={onDrop}
         className="rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-12 px-6 text-center"
         style={{
-          borderColor: drag ? '#dc2626' : 'rgba(255,255,255,0.1)',
-          background: drag ? 'rgba(220,38,38,0.04)' : 'rgba(255,255,255,0.02)',
+          borderColor: drag ? '#dc2626' : '#d1d5db',
+          background: drag ? '#eceef1' : '#f5f6f8',
         }}
       >
         {file ? (
           <div className="flex items-center gap-3">
             <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
             <div className="text-left">
-              <p className="text-sm font-semibold text-white">{file.name}</p>
+              <p className="text-sm font-semibold text-gray-900">{file.name}</p>
               <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setFile(null); }}
-              className="ml-2 text-gray-600 hover:text-white transition-colors"
+              className="ml-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: '#f5f6f8' }}>
               <Upload className="w-6 h-6 text-red-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Drop file here or <span className="text-red-500">browse</span></p>
-              <p className="text-xs text-gray-600 mt-1">Supports .xlsx and .pdf</p>
+              <p className="text-sm font-semibold text-gray-900">Drop file here or <span className="text-red-500">browse</span></p>
+              <p className="text-xs text-gray-600 mt-1">Supports .xlsx, .csv and .pdf</p>
             </div>
           </>
         )}
@@ -151,17 +157,17 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
 
       {/* Validation error */}
       {err && (
-        <div className="flex items-start gap-2 rounded-xl px-4 py-3" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)' }}>
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
-          <p className="text-xs" style={{ color: '#fca5a5' }}>{err}</p>
+        <div className="flex items-start gap-2 rounded-xl px-4 py-3" style={{ background: '#f5f6f8', border: 'none' }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#b91c1c' }} />
+          <p className="text-xs" style={{ color: '#b91c1c' }}>{err}</p>
         </div>
       )}
 
       {/* Divider */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <div className="flex-1 h-px" style={{ background: '#f5f6f8' }} />
         <span className="text-xs text-gray-600 font-medium">OR</span>
-        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <div className="flex-1 h-px" style={{ background: '#f5f6f8' }} />
       </div>
 
       {/* Google Sheets URL */}
@@ -174,10 +180,10 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
           placeholder="https://docs.google.com/spreadsheets/d/…/edit?usp=sharing"
           value={sheetsUrl}
           onChange={(e) => { setSheetsUrl(e.target.value); setFile(null); }}
-          className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none transition-all"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(220,38,38,0.5)')}
-          onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
+          className="w-full rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none transition-all"
+          style={{ background: '#f5f6f8', border: '1px solid transparent' }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = '#d1d5db')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
         />
         <p className="text-xs text-gray-600">Must be a public share link (anyone with link can view)</p>
       </div>
@@ -187,8 +193,8 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
         disabled={!canProceed || loading}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all"
         style={{
-          background: canProceed ? '#dc2626' : 'rgba(255,255,255,0.05)',
-          color: canProceed ? '#fff' : '#4b5563',
+          background: canProceed ? '#dc2626' : '#f5f6f8',
+          color: canProceed ? '#fff' : '#9ca3af',
           cursor: canProceed ? 'pointer' : 'not-allowed',
         }}
       >
@@ -198,9 +204,9 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
       <button
         onClick={onSample}
         className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: '#4b5563' }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = '#4b5563'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
+        style={{ background: 'transparent', border: '1px solid transparent', color: '#9ca3af' }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'transparent'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = 'transparent'; }}
       >
         Load sample data (no token)
       </button>
@@ -232,11 +238,11 @@ function UploadGuide({ onClose }) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
     >
-      <div style={{ width: 'min(560px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#0d1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '24px 22px' }}>
+      <div style={{ width: 'min(560px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#fff', border: 'none', boxShadow: '0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)', borderRadius: 16, padding: '24px 22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <ShieldCheck className="w-5 h-5" style={{ color: '#ef4444' }} />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>Get the best import</h3>
+            <ShieldCheck className="w-5 h-5" style={{ color: '#b91c1c' }} />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Get the best import</h3>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><X className="w-5 h-5" /></button>
         </div>
@@ -244,27 +250,27 @@ function UploadGuide({ onClose }) {
           The importer reads your file as text and matches columns by meaning. Photos are pulled from the links in your file — so how the file is shared matters most.
         </p>
 
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4ade80', margin: '0 0 10px' }}>Do this</p>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#047857', margin: '0 0 10px' }}>Do this</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
           {OK.map((r) => (
             <div key={r.t} style={{ display: 'flex', gap: 9 }}>
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#4ade80', marginTop: 2 }} />
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#047857', marginTop: 2 }} />
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.t}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#8b97a7', lineHeight: 1.55 }}>{r.d}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827' }}>{r.t}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.55 }}>{r.d}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#f87171', margin: '0 0 10px' }}>Avoid</p>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#b91c1c', margin: '0 0 10px' }}>Avoid</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
           {AVOID.map((r) => (
             <div key={r.t} style={{ display: 'flex', gap: 9 }}>
-              <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#f87171', marginTop: 2 }} />
+              <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#b91c1c', marginTop: 2 }} />
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{r.t}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#8b97a7', lineHeight: 1.55 }}>{r.d}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827' }}>{r.t}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.55 }}>{r.d}</p>
               </div>
             </div>
           ))}

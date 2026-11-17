@@ -10,7 +10,7 @@ import {
   BellRing, X,
 } from "lucide-react";
 
-const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20Drevo%20for%20my%20dealership";
 
 // Content lives in src/config/featurePagesCopy.js (shared with api/og.js).
 const ICONS = { Banknote, BellRing, Calculator, CalendarClock, Car, ClipboardCheck, Clock, FileSignature, Gauge, Globe, Landmark, LineChart, MessageCircle, Package, Percent, Receipt, Tag, TrendingUp, Users, Wallet };

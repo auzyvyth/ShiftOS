@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Panduan praktikal cara urus dealership dan kedai kereta terpakai di Malaysia: kawal umur stok, susul lead, pantau prestasi salesman dan komisen, uruskan dokumen, handover selepas jual, dan nombor harian yang perlu dilihat.',
   datePublished: '2026-10-03',
-  dateModified: '2026-10-03',
+  dateModified: '2026-11-16',
   readMins: 8,
 };
 
@@ -209,7 +209,7 @@ export default function UrusDealershipArticle() {
                 Salesman yang menutup banyak unit dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang menutup kurang unit. Sebab itu komisen paling selamat dikira dari untung kasar. Formula dan contoh pengiraan ada di <Link to="/articles/cara-kira-komisen-salesman-kereta" style={A}>Komisen Jual Kereta: Berapa & Cara Kira</Link>.
               </p>
               <p style={P}>
-                Dalam ShiftOS, tab pasukan dealer memaparkan papan kedudukan salesman dengan unit terjual, untung kasar dan komisen setiap orang. Tab prestasi menunjukkan masa respons setiap salesman, dan papan Overview membandingkan bulan ini dengan tempoh yang sama bulan lepas. Lihat <Link to="/features/salesman-performance" style={A}>ciri prestasi salesman</Link> dan <Link to="/features/revenue-analytics" style={A}>ciri analitik hasil</Link>.
+                Dalam ShiftOS, tab Team menyenaraikan setiap salesman dengan jualan yang dimenangi, masa membalas pembeli dan untung bagi 30 hari lepas (untung hanya dipaparkan kepada peranan yang dibenarkan). Papan Overview menunjukkan jualan dan untung untuk minggu, bulan dan tahun ini. Lihat <Link to="/features/salesman-performance" style={A}>ciri prestasi salesman</Link> dan <Link to="/features/revenue-analytics" style={A}>ciri analitik hasil</Link>.
               </p>
             </section>
 

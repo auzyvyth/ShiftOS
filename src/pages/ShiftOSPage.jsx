@@ -8,7 +8,7 @@ import {
   Receipt, UserCheck, Calculator, Briefcase, ChevronRight, Car,
   Building2, ChevronDown,
 } from "lucide-react";
-import { PLAN_CONFIG } from "../utils/planConfig";
+import { PLAN_CONFIG, OPS_WHATSAPP } from "../utils/planConfig";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import HeroShowcase from "../components/shiftos/HeroShowcase";
@@ -464,7 +464,7 @@ const PLAN_META = {
 
 const SALESMAN_PLANS = ["salesman_lite", "salesman_full"];
 const DEALER_PLANS   = ["dealer_starter", "dealer_growth", "dealer_pro"];
-const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20ShiftOS%20for%20my%20dealership";
+const WA = "https://wa.me/601111521742?text=Hi%2C%20I%27m%20interested%20in%20Drevo%20for%20my%20dealership";
 
 // ─── Scroll progress bar ──────────────────────────────────────────────────────
 function ScrollProgress() {
@@ -561,6 +561,8 @@ function PriceCard({ planKey }) {
   const isPopular = meta.popular;
   const isGold    = meta.variant === "gold";
   const isSoon    = meta.soon;
+  // Every plan button opens the owner's WhatsApp for now (owner, 2026-11-16); accounts are set up by hand.
+  const planWa = `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(`Hi, I'm interested in the ${cfg.label} plan on Drevo`)}`;
 
   const borderCol = isPopular ? "#dc2626"
                   : isGold    ? "rgba(217,119,6,0.45)"
@@ -608,13 +610,13 @@ function PriceCard({ planKey }) {
       ) : (
         <>
           {meta.variant === "primary" && (
-            <Link to={meta.to} className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" className="sos-btn-primary" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</a>
           )}
           {meta.variant === "outline" && (
-            <Link to={meta.to} className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" className="sos-btn-outline" style={{ justifyContent: "center", fontSize: 14 }}>{cta}</a>
           )}
           {meta.variant === "gold" && (
-            <Link to={meta.to} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</Link>
+            <a href={planWa} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", boxShadow: "0 4px 20px rgba(180,120,40,0.38),inset 0 1px 0 rgba(255,255,255,0.14)", transition: "transform .15s,box-shadow .15s" }}>{cta}</a>
           )}
         </>
       )}

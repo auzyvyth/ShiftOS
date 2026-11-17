@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import CarCard from '../CarCard';
+import ShowroomCard from '../ShowroomCard';
 
 /* Which bucket a tab draws from, in display order. "all" is the blended,
    score-ranked default — model matches lead it. */
@@ -110,8 +110,6 @@ export default function SimilarCars({ car, buckets, ctaContext, variant = 'deskt
         letterSpacing: '0.06em',
         color: th?.text,
         margin: '0 0 16px',
-        borderLeft: '3px solid #dc2626',
-        paddingLeft: isMobile ? 12 : 14,
       }}>
         {headingFor(activeKey, car)}
       </h2>
@@ -126,34 +124,12 @@ export default function SimilarCars({ car, buckets, ctaContext, variant = 'deskt
         </>
       )}
 
-      {/* compact matches the marketplace home page's body-type carousels
-          (BodyTypeCarousel.jsx) — taller 4:3 photo + tighter text on mobile,
-          instead of CarCard's default full-width 16:9 shape, which read as
-          cramped photos at 2-up card widths. sizes is corrected per layout so
-          the image CDN isn't asked for a full-viewport-wide image for what is
-          actually a half-width (mobile) or quarter-width (desktop) slot. */}
-      {isMobile ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {cars.map((s) => (
-            <CarCard key={s.id} car={s} ctaContext={ctaContext} showCompare compact sizes="calc(50vw - 26px)" />
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="cdp-similar-grid">
-            {cars.map((s) => (
-              <CarCard key={s.id} car={s} ctaContext={ctaContext} showCompare compact sizes="(max-width: 1024px) calc(50vw - 40px), 300px" />
-            ))}
-          </div>
-          <div className="cdp-similar-scroll">
-            {cars.map((s) => (
-              <div key={s.id} style={{ flexShrink: 0, width: '72vw', scrollSnapAlign: 'start' }}>
-                <CarCard car={s} ctaContext={ctaContext} showCompare compact sizes="72vw" />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {/* THE marketplace card, same as the showroom (MARKET-CLEAN, 2026-11-16). */}
+      <div className="sc-grid">
+        {cars.map((s) => (
+          <ShowroomCard key={s.id} car={s} ctaContext={ctaContext} dark={th?.pageBg === '#060c14'} />
+        ))}
+      </div>
     </div>
   );
 }

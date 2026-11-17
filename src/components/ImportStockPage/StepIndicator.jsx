@@ -16,16 +16,16 @@ export default function StepIndicator({ current }) {
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
                 style={{
-                  background: done ? '#dc2626' : active ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: done ? '1px solid #dc2626' : active ? '1px solid rgba(220,38,38,0.6)' : '1px solid rgba(255,255,255,0.08)',
-                  color: done ? '#fff' : active ? '#ef4444' : '#4b5563',
+                  background: done ? '#dc2626' : active ? '#111827' : '#e3e6ea',
+                  border: 'none',
+                  color: done || active ? '#fff' : '#6b7280',
                 }}
               >
                 {done ? <Check className="w-3.5 h-3.5" /> : idx}
               </div>
               <span
                 className="text-xs font-medium whitespace-nowrap"
-                style={{ color: active ? '#f3f4f6' : done ? '#dc2626' : '#4b5563' }}
+                style={{ color: active ? '#111827' : done ? '#b91c1c' : '#6b7280' }}
               >
                 {label}
               </span>
@@ -33,7 +33,7 @@ export default function StepIndicator({ current }) {
             {i < STEPS.length - 1 && (
               <div
                 className="flex-1 h-px mx-3 mb-5"
-                style={{ background: done ? '#dc2626' : 'rgba(255,255,255,0.06)', minWidth: 32 }}
+                style={{ background: done ? '#dc2626' : '#f5f6f8', minWidth: 32 }}
               />
             )}
           </React.Fragment>

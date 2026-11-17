@@ -9,12 +9,14 @@ import { creditForLead } from '../utils/brokerCredit';
 import LeadDrawer from '../components/leads/LeadDrawer';
 import AddLeadModal from '../components/leads/AddLeadModal';
 import { useModalHistory } from '../hooks/useModalHistory';
+import { premiumLight as PL } from '../theme/tokens';
 import {
   STAGE_ORDER, STAGE_CONFIG, SOURCE_CONFIG, canonicalStage,
 } from '../lib/leadsHelpers';
 
 const T = {
-  btnRed: { background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' },
+  btnRed: { background: PL.accent, boxShadow: 'none' },
+  card: { background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, border: 'none', overflow: 'hidden' },
 };
 
 // ─── Empty state ───────────────────────────────────────────────────────────────
@@ -22,10 +24,10 @@ function EmptyState({ onAdd }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 text-center">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-        style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.12)' }}>
-        <Inbox className="w-7 h-7 text-red-500/40" />
+        style={{ background: '#f5f6f8', border: 'none' }}>
+        <Inbox className="w-7 h-7 text-gray-500" />
       </div>
-      <h3 className="text-white font-bold text-lg mb-2">No leads yet</h3>
+      <h3 className="text-gray-900 font-bold text-lg mb-2">No leads yet</h3>
       <p className="text-gray-500 text-sm max-w-xs leading-relaxed mb-6">
         Add your first lead manually or share your Drevo listing to start capturing enquiries.
       </p>
@@ -36,6 +38,10 @@ function EmptyState({ onAdd }) {
   );
 }
 
+// Each stage keeps its own colour (owner, 2026-11-16: "differentiate every stage by colour"), shown as a dot,
+// the header word and the selected chip: never a tinted box. Lost is red, Won green.
+const dotFor = (cfg) => cfg.headerBorder;
+
 // Pipeline stages shown as grid columns (legacy test_drive added only if populated).
 const GRID_STAGES = ['new', 'contacted', 'viewing_booked', 'negotiating', 'deposit_taken', 'won', 'lost'];
 
@@ -45,21 +51,21 @@ function StageColumnHeader({ cfg, count, onClose }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 7,
       padding: '9px 12px', flexShrink: 0,
-      background: '#fff', borderBottom: `2px solid ${cfg.headerBorder}`,
+      background: '#fff', borderBottom: `1px solid ${PL.line}`,
     }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.headerBorder, flexShrink: 0 }} />
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotFor(cfg), flexShrink: 0 }} />
       <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.headerBorder }}>
         {cfg.label}
       </span>
       <span style={{
         marginLeft: onClose ? 8 : 'auto', fontSize: 11, fontWeight: 700, color: '#6b7280',
-        background: '#f3f4f6', borderRadius: 20, padding: '1px 8px', minWidth: 22, textAlign: 'center',
+        background: PL.raised, borderRadius: 20, padding: '1px 8px', minWidth: 22, textAlign: 'center',
       }}>
         {count}
       </span>
       {onClose && (
         <button onClick={onClose} aria-label="Close" style={{
-          marginLeft: 'auto', background: '#f3f4f6', border: 'none', borderRadius: '50%',
+          marginLeft: 'auto', background: PL.raised, border: 'none', borderRadius: '50%',
           width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', color: '#6b7280', flexShrink: 0,
         }}>
@@ -79,7 +85,7 @@ function StageColumn({ stage, leads, onClick }) {
       onClick={onClick}
       style={{
         display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%', textAlign: 'left',
-        background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
+        background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow, overflow: 'hidden',
         cursor: 'pointer', padding: 0, font: 'inherit', touchAction: 'manipulation',
       }}
     >
@@ -94,10 +100,11 @@ function StageColumn({ stage, leads, onClick }) {
             {preview.map(lead => (
               <div key={lead.id} style={{
                 fontSize: 12, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 10px',
+                background: PL.raised, border: 'none', borderRadius: PL.radius.row, padding: '8px 12px',
               }}>
                 <span style={{ fontWeight: 700, color: '#111827' }}>{lead.buyer_name || 'Unknown buyer'}</span>
                 {lead.car_listing && <span style={{ color: '#6b7280' }}> · {lead.car_listing.brand} {lead.car_listing.model}</span>}
+                {lead.won_requested_at && <span style={{ color: '#dc2626', fontWeight: 700 }}> · Confirm sale</span>}
               </div>
             ))}
             <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 2 }}>
@@ -116,7 +123,7 @@ function StagePanel({ stage, leads, onOpen }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', minWidth: 0,
-      background: '#f4f5f7', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
+      background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow, overflow: 'hidden',
     }}>
       <StageColumnHeader cfg={cfg} count={leads.length} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
@@ -149,7 +156,7 @@ function StageModal({ stage, leads, onOpen, onClose }) {
         onClick={e => e.stopPropagation()}
         className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl"
         style={{
-          background: '#fff', border: '1px solid #e5e7eb',
+          background: PL.card, border: 'none', boxShadow: PL.shadow,
           maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
@@ -197,7 +204,8 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
   // Back gesture / swipe-left closes the open drawer or modal instead of leaving the page.
   // LeadDrawer registers itself. The stage popup -> lead detail hand-off used to
   // close the drawer it had just opened; the shared stack in useModalHistory fixed that.
-  useModalHistory(showAdd,    () => setShowAdd(false));
+  // The Add Lead form registers Back itself (AddLeadModal.jsx), with "ask before losing what is
+  // typed"; registering it here too made Back pop this entry first and skip the question.
   useModalHistory(!!openStage, () => setOpenStage(null));
 
   useEffect(() => {
@@ -302,16 +310,17 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
         }
       `}</style>
 
-      {/* ── Top bar ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5"
-        style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+      {/* ── Top bar + filters: one floating card ── */}
+      <div style={{ ...T.card, marginBottom: 12 }}>
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-3"
+        style={{ borderBottom: `1px solid ${PL.line}`, background: '#fff' }}>
         <div>
           <h1 className="text-sm font-bold text-gray-900">Pipeline</h1>
           <p className="text-xs text-gray-400">{filtered.length}{filtered.length !== leads.length ? `/${leads.length}` : ''} lead{leads.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm text-white font-semibold flex-shrink-0"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm text-white font-semibold flex-shrink-0"
           style={T.btnRed}
         >
           <Plus className="w-4 h-4" />Add Lead
@@ -319,7 +328,7 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
       </div>
 
       {/* ── Filter + Stage bar ── */}
-      <div className="flex-shrink-0" style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+      <div className="flex-shrink-0" style={{ background: '#fff' }}>
         {/* Search + dropdowns */}
         <div className="lp-filter-bar flex items-center gap-2 px-3 pt-2 pb-1.5 overflow-x-auto">
           <div className="relative flex-1" style={{ minWidth: 120 }}>
@@ -328,8 +337,8 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search buyer or car…"
               aria-label="Search leads"
-              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg focus:outline-none"
-              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#111827' }}
+              className="w-full pl-8 pr-7 py-2 text-xs rounded-lg focus:outline-none"
+              style={{ background: PL.raised, border: 'none', color: '#111827' }}
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }}>
@@ -340,7 +349,7 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)}
             aria-label="Filter by source"
             className="lp-src-select text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-            style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
+            style={{ background: PL.raised, border: 'none', color: '#374151' }}>
             <option value="">All Sources</option>
             {Object.entries(SOURCE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
@@ -348,14 +357,14 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
             <select value={filterAssigned} onChange={e => setFilterAssigned(e.target.value)}
               aria-label="Filter by salesperson"
               className="lp-assigned-select text-xs py-1.5 px-2.5 rounded-lg appearance-none flex-shrink-0"
-              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}>
+              style={{ background: PL.raised, border: 'none', color: '#374151' }}>
               <option value="">All Salespeople</option>
               {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
             </select>
           )}
           {hasFilters && (
             <button onClick={() => { setSearch(''); setFilterSource(''); setFilterAssigned(''); }}
-              style={{ fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, touchAction: 'manipulation' }}>
+              style={{ fontSize: 11, color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, touchAction: 'manipulation' }}>
               <X className="w-3 h-3" />Clear
             </button>
           )}
@@ -364,10 +373,10 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
         {/* Stage tabs */}
         <div className="lp-stage-tabs flex items-center gap-1 px-3 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           <button onClick={() => setActiveStage('all')} style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
-            fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-            background: activeStage === 'all' ? '#dc2626' : '#f9fafb',
-            border: activeStage === 'all' ? '1px solid #dc2626' : '1px solid #e5e7eb',
+            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 20,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+            background: activeStage === 'all' ? PL.text : PL.raised,
+            border: 'none',
             color: activeStage === 'all' ? '#fff' : '#374151',
             touchAction: 'manipulation',
           }}>
@@ -378,30 +387,32 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
             const active = activeStage === stage;
             return (
               <button key={stage} onClick={() => setActiveStage(stage)} style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
-                fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
-                background: active ? cfg.headerBorder : '#f9fafb',
-                border: active ? `1px solid ${cfg.headerBorder}` : '1px solid #e5e7eb',
+                display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 20,
+                fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.12s',
+                background: active ? cfg.headerBorder : PL.raised,
+                border: 'none',
                 color: active ? '#fff' : '#374151',
                 touchAction: 'manipulation',
               }}>
-                {cfg.label} <span style={{ opacity: 0.8 }}>{stageTabCounts[stage]}</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? '#fff' : cfg.headerBorder, flexShrink: 0 }} />{cfg.label} <span style={{ opacity: 0.8 }}>{stageTabCounts[stage]}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      </div>
+
       {/* ── List body ── */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center" style={{ background: '#f3f4f6' }}>
+        <div className="flex-1 flex items-center justify-center">
           <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading leads…</p>
         </div>
       ) : leads.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="flex-1" style={{ background: '#f3f4f6' }}>
-          <div className="lp-grid" style={{ padding: 12, paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
+        <div className="flex-1">
+          <div className="lp-grid" style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
             {activeStage === 'all' ? (
               gridStages.map(stage => (
                 <StageColumn key={stage} stage={stage} leads={byStage[stage] || []} onClick={() => setOpenStage(stage)} />

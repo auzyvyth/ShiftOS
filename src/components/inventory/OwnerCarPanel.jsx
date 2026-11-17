@@ -10,6 +10,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import { carPnl } from '../../utils/carPnl';
 import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { premiumLight as PL } from '../../theme/tokens';
+import { plPill } from '../../theme/plStatus';
 import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
@@ -355,14 +356,14 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {onStatusChange ? (
             <select value={status} onChange={(e) => { const val = e.target.value; if (val === 'sold') { onMarkSold && onMarkSold(); } else { onStatusChange(val); } }} disabled={statusUpdating}
-              style={{ fontSize: 12, fontWeight: 700, padding: '4px 26px 4px 9px', borderRadius: 6, border: `1px solid ${statusCfg.c}40`, background: `${statusCfg.c}12`, color: statusCfg.c, cursor: statusUpdating ? 'wait' : 'pointer', appearance: 'none', backgroundImage: 'none', outline: 'none' }}>
+              style={{ ...plPill(statusCfg.c), fontSize: 12, fontWeight: 700, cursor: statusUpdating ? 'wait' : 'pointer', appearance: 'none', backgroundImage: 'none' }}>
               <option value="available">Available</option>
               <option value="reserved">Reserved</option>
               <option value="sold">Sold — record sale…</option>
               <option value="unpublished">Unpublished</option>
             </select>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 700, color: statusCfg.c, background: `${statusCfg.c}15`, border: `1px solid ${statusCfg.c}30`, borderRadius: 6, padding: '3px 10px' }}>{statusCfg.l}</span>
+            <span style={{ ...plPill(statusCfg.c), fontSize: 12, fontWeight: 700, cursor: 'default' }}>{statusCfg.l}</span>
           )}
           {status === 'sold' && (unit.sold_date || listing.sold_date) && <span style={{ fontSize: 12, color: '#6b7280' }}>on {fmtD(unit.sold_date || listing.sold_date)}</span>}
           {status === 'sold' && (unit.sold_price || listing.sold_price) > 0 && <span style={{ fontSize: 12, color: '#111827', fontWeight: 600 }}>{rm(unit.sold_price || listing.sold_price)}</span>}

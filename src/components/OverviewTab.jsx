@@ -18,6 +18,7 @@ import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, A
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
+import { isWorse } from '../utils/isWorse';
 import '../theme/premiumLight.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,10 +66,13 @@ function effectiveActType(a) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
   if (n == null || n === '' || isNaN(Number(n))) return '—';
-  const v = Number(n);
-  if (v >= 1_000_000) return `RM ${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `RM ${(v / 1_000).toFixed(1)}K`;
-  return `RM ${v.toLocaleString()}`;
+  // A loss reads "− RM 6.1K" (minus first, shortened like a gain), never "RM -6,130".
+  const raw = Number(n);
+  const sign = raw < 0 ? '− ' : '';
+  const v = Math.abs(raw);
+  if (v >= 1_000_000) return `${sign}RM ${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${sign}RM ${(v / 1_000).toFixed(1)}K`;
+  return `${sign}RM ${v.toLocaleString()}`;
 }
 function delta(val, prev) {
   if (!prev || prev === 0) return val > 0 ? 100 : null;
@@ -94,14 +98,14 @@ const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase'
 
 // A tile states ONE number. No coloured icon square, no border: a white card
 // on the grey canvas. The change vs last month is coloured TEXT, no pill.
-function KpiCard({ label, value, sub, trend, onOpen }) {
+function KpiCard({ label, value, sub, trend, onOpen, bad }) {
   const up = trend != null && trend >= 0;
   const Tag = onOpen ? 'button' : 'div';
   return (
     <Tag {...(onOpen ? { type: 'button', className: 'pl-key', onClick: onOpen, 'aria-label': `${label}: where it comes from` } : {})}
       style={{ background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px', minWidth: 0, border: 'none', textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: onOpen ? 'pointer' : 'default' }}>
       <p style={MICRO}>{label}</p>
-      <p style={{ fontSize: 26, fontWeight: 700, color: PL.text, margin: '8px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ fontSize: 26, fontWeight: 700, color: bad ? PL.accentText : PL.text, margin: '8px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
       <p style={{ fontSize: 11, color: PL.textMuted, margin: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         {trend != null && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 600, color: up ? PL.up : PL.accentText, fontVariantNumeric: 'tabular-nums' }}>
@@ -418,6 +422,17 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
       {/* ── Needs Attention strip ── */}
       {(() => {
         const alerts = [];
+        // Gross profit went the wrong way for the chosen period (owner, 2026-11-16): the same rule that
+        // turns the number red (isWorse), so the strip never says "All clear" in a losing month.
+        // A loss is urgent (red dot); a fall is not. Opens Revenue, which says what drove it.
+        if (mtd && isWorse(mtd.gross, lmtd?.gross)) alerts.push({
+          key: 'gross_down', urgent: mtd.gross < 0, Icon: TrendingDown,
+          label: mtd.gross < 0 ? `Losing money ${PT.name}` : `Gross profit down ${PT.name}`,
+          detail: mtd.gross < 0
+            ? `gross ${fmt(mtd.gross)} · see which cars`
+            : `${fmt(mtd.gross)} vs ${fmt(lmtd.gross)} ${PT.vs.replace(/^vs /, 'by ')}`,
+          go: 'analytics',
+        });
         // Urgent = a red dot. Info = no dot. Everything else is ink on a white
         // card: no tinted background with a matching solid border.
         if (snapshot.priceWaiting > 0) alerts.push({
@@ -523,12 +538,12 @@ export default function OverviewTab({ dealerId, onNavigate, role, can }) {
               { heading: 'By where they came from', rows: Object.entries(snapshot.sourceCounts).map(([k, v]) => ({ label: SOURCE_LABELS[k] || k.replace(/_/g, ' '), value: v })) },
             ], 'The newest 300 leads, not yet won or lost.')) },
             active_listings: { label: 'Active listings',  value: snapshot.activeListings, sub: !money ? 'counting...' : money.stock.over60 ? `${money.stock.over60} on lot 60d+` : 'none over 60 days', open: () => money && openMoney('stock_brand') },
-            sold_month:      { label: `Sold ${PT.name}`,  value: mtd ? mtd.units : '-', sub: PT.vs, trend: unitTrend, open: () => money && openMoney('units') },
-            gross_month:     { label: `Gross ${PT.name}`, value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend, open: () => money && openMoney('gross') },
+            sold_month:      { label: `Sold ${PT.name}`,  value: mtd ? mtd.units : '-', sub: PT.vs, trend: unitTrend, bad: !!mtd && isWorse(mtd.units, lmtd?.units), open: () => money && openMoney('units') },
+            gross_month:     { label: `Gross ${PT.name}`, value: mtd ? fmt(mtd.gross) : '-', sub: grossSub, trend: gpTrend, bad: !!mtd && isWorse(mtd.gross, lmtd?.gross), open: () => money && openMoney('gross') },
             appts_today:     { label: 'Appointments today', value: snapshot.aptsToday, sub: 'test drives and viewings' },
             money_tied:      { label: 'Money tied up',    value: money ? fmt(money.stock.atCost) : '-', sub: tiedSub, open: () => money && openMoney('tied') },
           }[id];
-          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} onOpen={K.open || (id === 'appts_today' ? () => onNavigate?.('crm', { sub: 'bookings' }) : undefined)} /> : null;
+          return K ? <KpiCard key={id} label={K.label} value={K.value} sub={K.sub} trend={K.trend} bad={K.bad} onOpen={K.open || (id === 'appts_today' ? () => onNavigate?.('crm', { sub: 'bookings' }) : undefined)} /> : null;
         })}
       </div>
 

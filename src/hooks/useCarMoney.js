@@ -13,7 +13,7 @@ import { loadBrokerCommission } from '../lib/brokerCommission';
 
 async function load(dealerId) {
   const [l, u, a, t, d, c, bc] = await Promise.all([
-    supabase.from('car_listings').select('id, brand, model, variant, year, status, selling_price, sold_price, sold_at, created_at, commission_amount, included_services_cost, engine_cc, warranty_months').eq('dealer_id', dealerId).neq('status', 'archived'),
+    supabase.from('car_listings').select('id, brand, model, variant, year, status, assigned_to, selling_price, sold_price, sold_at, created_at, commission_amount, included_services_cost, engine_cc, warranty_months').eq('dealer_id', dealerId).neq('status', 'archived'),
     supabase.from('stock_units').select('id, listing_id, purchase_price, purchase_date, recon_cost, recon_actual, asking_price, sold_price, sold_date, status, created_at, engine_cc, brand, model, year').eq('dealer_id', dealerId),
     supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', dealerId),
     supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),

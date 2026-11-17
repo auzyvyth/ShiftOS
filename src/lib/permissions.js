@@ -118,9 +118,9 @@ export const CAPABILITIES_BASE = [
     enforced: true,
   },
   // ── Manager authority (research 2026-11-12, docs/DEALER_ROLES_RESEARCH.md). Defaults are the
-  // proposal; the dealer interviews may change them. `enforced: false` = the switch is saved but the
-  // app does not check it yet: the matrix says so, and nothing may rely on it until it is wired AND
-  // backed by a database rule (a hidden button protects nothing).
+  // proposal; the dealer interviews may change them. `enforced: false` = the app does not check it
+  // yet, so Settings > Team HIDES it (DASH-TEST 12, 2026-11-17); nothing may rely on it until it is
+  // wired AND backed by a database rule (a hidden button protects nothing), then flip it to true.
   { key: 'assign_leads',    group: 'people', label: 'Assign and reassign leads', description: 'Give a lead to a salesman or move it to another.', roles: ['manager'], default: true,  enforced: false },
   { key: 'assign_cars',     group: 'people', label: 'Lock a car to a salesman',  description: 'Make a car exclusive to one salesman.', roles: ['manager'], default: true,  enforced: false },
   // Adding staff (owner, 2026-11-14): a manager may add SALESMEN and ADMINS only, by email setup
@@ -149,11 +149,11 @@ export const TAB_CAPABILITIES = [
   ...tab('tab_stock', 'Stock & costs', 'Buy prices and the profit of each car. Also needs "View stock cost".', true, false),
   ...tab('tab_sold', 'Sold', 'Handover, customers and documents (buyer IC and address).', true, true),
   ...tab('tab_revenue', 'Revenue', 'Sales and profit this month. Also needs "View gross profit".', true, false),
-  ...tab('tab_performance', 'Performance', 'Team scores and website traffic.', true, false),
+  ...tab('tab_performance', 'Traffic', 'Website visits, car views and WhatsApp taps.', true, false),
   ...tab('tab_reports_listings', 'Reports > Listings', 'Views and enquiries per car.', true, true),
   ...tab('tab_storefront', 'Storefront', 'The public page, hero and services catalogue.', false, false),
-  ...tab('tab_ai_manager', 'AI Manager', 'The morning briefing (it quotes profit).', true, false),
-  ...tab('tab_team', 'Team', 'The team list and activity trail.', true, false),
+  ...tab('tab_ai_manager', 'AI Sales Manager', 'The briefing card on Overview (it quotes profit).', true, false),
+  ...tab('tab_team', 'Team', 'The team list, how each salesman is doing, and the activity trail.', true, false),
 ];
 
 // Never switchable: only the owner (owner, 2026-11-13).

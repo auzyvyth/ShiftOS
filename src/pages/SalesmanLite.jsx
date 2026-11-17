@@ -135,6 +135,7 @@ import {
 import { refreshListingFromNotice } from "../utils/listingNotice";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import ProfileLoadError from "../components/ProfileLoadError";
+import AppLoader from "../components/AppLoader";
 import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
@@ -6048,31 +6049,7 @@ export default function SalesmanLite() {
 
   // ── LOADING ───────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#05070e",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            border: "2px solid rgba(255,255,255,0.08)",
-            borderTopColor: "#dc2626",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
-  }
+  if (loading) return <AppLoader theme="dark" />;
 
   // ── SCHEDULED-DELETION GATE (self-service restore within 30-day grace) ─────
   if (profile?.account_status === "deleted") {

@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
+// Every pop-up CarForm opens (option picker, full-screen photos, the "Post Anyway?" check) sits on
+// this layer. CarForm itself is shown inside other pop-ups: the dealer's Add car (9000) and the
+// Stock editor (11000), so a lower layer opened BEHIND them and Save looked dead (DASH-TEST 1).
+// Keep it above the highest host that renders <CarForm>.
+const FORM_POPUP_Z = 12000;
 import { useNavigate } from "react-router-dom";
 import { STATE_CITIES, cityOptionsFor, matchKnownLocation } from "../utils/locations";
 import { toast } from "sonner";
@@ -300,7 +305,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
       </button>
       {open &&
         createPortal(
-           <div className="fixed inset-0 z-[300] flex items-start justify-center pt-4 sm:pt-16">
+           <div className="fixed inset-0 flex items-start justify-center pt-4 sm:pt-16" style={{ zIndex: FORM_POPUP_Z }}>
             <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
               <div className="relative w-full sm:max-w-md bg-white rounded-2xl max-h-[85vh] flex flex-col shadow-xl mx-3 sm:mx-0">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
@@ -3407,7 +3412,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           )}
           {photosFull && createPortal(
             <div
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col"
+              style={{ zIndex: FORM_POPUP_Z }}
               onClick={() => setPhotosFull(false)}
             >
               <div
@@ -4298,7 +4304,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       )}
 
       {gapConfirm && createPortal(
-        <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">
+        <div className="fixed inset-0 flex items-end sm:items-center sm:justify-center" style={{ zIndex: FORM_POPUP_Z }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setGapConfirm(null)} />
           <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6">
             <div className="flex items-start gap-3 mb-3">

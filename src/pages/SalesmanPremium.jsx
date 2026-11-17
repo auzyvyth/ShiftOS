@@ -188,7 +188,7 @@ const WARM_TABS = [
 // missing field would have had to be added by hand.
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
-import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError } from "../lib/brokerApi";
+import { getPageCars, refreshPageCars, subscribePageCars, myRegistrations as myBrokerRegs, shortDate as brokerDate, money as brokerMoney, removeFromPage as removeBrokerCar, applyPageCar as applyBrokerPageCar, brokerError, confirmReceived as confirmBrokerReceived } from "../lib/brokerApi";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
@@ -222,6 +222,7 @@ import {
  ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
 import ProfileLoadError from "../components/ProfileLoadError";
+import AppLoader from "../components/AppLoader";
 import { isAuthRejected, recoverRejectedSession } from "../utils/sessionRecovery";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
@@ -661,6 +662,14 @@ export default function SalesmanPremium() {
  const [dealerPick, setDealerPick] = useState(null);
  const [brokerRegs, setBrokerRegs] = useState([]);
  const loadBrokerRegs = useCallback(() => { myBrokerRegs().then((r) => { if (!r.error) setBrokerRegs(r.rows); }); }, []);
+ // BROKER-3: the broker answers the dealer's "paid". The dealer is told; "not received" never erases their record.
+ const handleBrokerReceived = useCallback(async (reg, received) => {
+   const res = await confirmBrokerReceived(reg.id, received);
+   if (!res.ok) { toast.error(brokerError(res.reason)); return false; }
+   toast.success(received ? "Thanks. Marked as received." : "The dealer was told it has not arrived.");
+   loadBrokerRegs();
+   return true;
+ }, [loadBrokerRegs]);
  // Loaded up front and kept live, so "Dealer stock" in Link a car is there the moment it opens.
  useEffect(() => {
  if (!isBroker) return undefined;
@@ -2669,7 +2678,8 @@ export default function SalesmanPremium() {
  const plainWon = () => supabase
  .from("leads")
  .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
- .eq("id", leadId);
+ .eq("id", leadId)
+ .select("stage, won_requested_at");
  const writeWon = !isLinked ? plainWon : async () => {
  if (wonPrompt.variantId) await supabase.from("leads").update({ new_car_model_id: wonPrompt.variantId }).eq("id", leadId);
  const { data: res, error } = await supabase.rpc("close_deal_at_price", { p_lead: leadId, p_agreed: agreed });
@@ -2694,6 +2704,16 @@ export default function SalesmanPremium() {
  : m.includes("forbidden") ? "This lead is not yours to close."
  : t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
+ return;
+ }
+ // BROKER-4: a buyer on a dealer's car. The database keeps the lead where it was and asks the
+ // dealer to approve the Won; the lead moves to Won when they do (migration 20261117b).
+ const back = Array.isArray(won.data) ? won.data[0] : null;
+ if (back && back.stage !== "won" && back.stage !== "closed_won" && back.won_requested_at) {
+ setLeads((p) => p.map((l) => l.id === leadId ? { ...l, won_requested_at: back.won_requested_at } : l));
+ toast.success(`Sent to ${wonDealerSale?.reg?.dealer_name || "the dealer"} to approve. It moves to Won once they confirm.`);
+ setWonSaving(false);
+ setWonPrompt(null);
  return;
  }
  if (won.pending) {
@@ -3583,6 +3603,13 @@ export default function SalesmanPremium() {
  {/* SOLD-1: this buyer's car went to someone else. Keep the lead, offer another. */}
  {carSoldToOther(lead, carsById) && (
  <CarSoldLine onOffer={() => { setLinkCarMode("offer"); setLinkCarLeadId(lead.id); }} onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)} />
+ )}
+
+ {/* BROKER-4: Won pressed on a dealer's car, waiting for the dealer to confirm. */}
+ {!isWonLead && lead.won_requested_at && (
+ <div style={{ fontSize: 12, color: PD.textSec, background: PD.raised, borderRadius: 10, padding: "8px 10px", marginTop: 8 }}>
+ Won is waiting for the dealer to confirm the sale.
+ </div>
  )}
 
  {/* Won -> what happens next. Tapping opens this buyer's handover checklist. */}
@@ -7109,31 +7136,7 @@ export default function SalesmanPremium() {
 
  // LOADING 
 
- if (loading) {
- return (
- <div
- style={{
- minHeight: "100vh",
- background: "#05070e",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- }}
- >
- <div
- style={{
- width: 28,
- height: 28,
- borderRadius: "50%",
- border: "2px solid rgba(255,255,255,0.08)",
- borderTopColor: "#2563eb",
- animation: "spin 0.8s linear infinite",
- }}
- />
- <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
- </div>
- );
- }
+ if (loading) return <AppLoader theme="dark" />;
 
  // Payment gate — premium salesman awaiting payment confirmation (manual QR flow).
  if (pendingPay) {
@@ -7660,6 +7663,7 @@ export default function SalesmanPremium() {
  channelMap={channelMap} commissionDetails={canSeeCommission ? commissionDetails : []} isMobile={isMobile}
  leads={leads} onOpenTab={switchTab} minipageStats={minipageStats}
  brokerRegs={isBroker ? brokerRegs : []}
+ onBrokerReceived={handleBrokerReceived}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  />
  </Suspense>

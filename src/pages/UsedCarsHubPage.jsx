@@ -144,7 +144,7 @@ export default function UsedCarsHubPage() {
           )}
 
           {brand && (
-            <div className="uch-grid">
+            <div className="uch-grid sc-grid">
               {cars === null
                 ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="uch-cell"><ShowroomCardSkeleton /></div>)
                 : cars.map((car) => <div key={car.id} className="uch-cell"><ShowroomCard car={car} ctaContext={ctaCtx} /></div>)}
@@ -239,8 +239,8 @@ const CSS = `
     transition: border-color .15s ease, background .15s ease; }
   .uch-chip span { color: #6b7280; font-weight: 500; }
   .uch-chip:hover { border-color: #0f1115; }
-  .uch-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
-  .uch-cell { flex: 1 1 280px; max-width: 340px; min-width: 0; }
+  .uch-cell { min-width: 0; display: flex; }
+  .uch-cell > * { flex: 1; }
   .uch-more, .uch-faq { margin-top: 48px; }
   .uch-faq { max-width: 760px; }
   .uch-faq-item { padding: 16px 0; border-top: 1px solid rgba(0,0,0,0.06); }

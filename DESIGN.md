@@ -155,6 +155,13 @@ marketplace, dark car detail on subdomains):
 
 Accent (both): `#dc2626`, hover `#b91c1c`; soft fills `rgba(220,38,38,0.06–0.12)`.
 
+**Crimson (owner, 2026-11-16, "Glossy Crimson" swatch): ONE flat gradient, the same
+everywhere.** `--xd-crimson` in `src/index.css` (`#ff4f63 -> #de1c3e -> #ac082d`, 120deg).
+Use the classes, never a new gradient: `.xd-crimson-fill` on a main red button,
+`.xd-crimson-text` on a price. No shine, no glow, no lighter/darker copies per surface
+(owner: "do not make other darker and other lighter"). Where: card prices, Get Started,
+Find Cars, See all, Book a Viewing, the agent sign-up button. Selected chips stay INK.
+
 ## Spacing
 Use this scale (px): **4, 6, 8, 10, 12, 16, 20, 24, 28, 32, 40, 48, 72**.
 Section vertical rhythm ~72px desktop / ~48px mobile.
@@ -165,10 +172,11 @@ Section vertical rhythm ~72px desktop / ~48px mobile.
   Header, hero, trust strip, brand strip, body-type strip, and the cars wrap all
   share it so every section's left/right edge lines up. Do not reintroduce
   per-section gutters (20/24/36/60) — that misalignment is the "clanky" look.
-- **Card grid:** flex-wrap + `justify-content: center`; each card
-  `flex: 1 1 280px; max-width: 340px`. Cards fill full rows but center on sparse
-  rows / few results. Never use `repeat(auto-fill, minmax(…,1fr))` for cards — it
-  reserves empty columns and cards hug the left.
+- **Card grid = `.sc-grid` (src/index.css), the ONE grid for car cards, and ONE card,
+  `ShowroomCard` (2026-11-16).** Columns of at least 240px, 20px gap; a phone gets two
+  per row, 12px gap. The card sizes its text off its own width (container queries), so
+  it reads the same in a 4-wide grid and a 2-wide phone row. Never add a second card
+  component or a per-page grid.
 
 ## Elevation / radius
 - Resting card shadow `0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)`

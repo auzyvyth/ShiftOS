@@ -70,6 +70,44 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
+Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
+(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 3 owner switches staff on/off: migration `20261117a` APPLIED 2026-11-17 09:5x UTC (owner "do it now", nobody live) and
+probed in a rolled-back transaction (off -> manager locked out; manager can't switch; back on works; other dealer's staff
+refused; signed-out refused); app side on staging,
+12 the 6 unchecked manager switches are hidden,
+2 Mark as Sold asks who bought it with no default and no way past it (lead on the car / a new walk-in buyer / sold
+elsewhere), one helper `dashboard/closeSale.js` for Listings AND the Stock tab (the Stock tab used to drop the pick);
+probed on the live DB in a rolled-back transaction: walk-in lead -> won -> car sold, 1 customer, 8 handover steps,
+9 AI import page + its steps + the guide are light,
+8 Edit Slide pop-up is light (premiumLight, badge = grey pill + coloured word), portalled with Back; Save no longer greys
+out after a failed try and scrolls to the first error,
+11 car drawer + Add Lead portalled with scroll lock (drawer on layer 45, under its own 50 pop-ups); Add Lead's Back asks
+before losing typing (LeadsPage registered Back for it too, which skipped the question; removed),
+1 Add car saves again (CarForm's pop-ups on one layer, `FORM_POPUP_Z` 12000, above the 9000 / 11000 hosts; proven before/after in the browser),
+(`enforced: false` in permissions.js; saved values kept; flip to true once the app AND `dealer_can` check one).
+Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
+forms, ~20 owner/manager writes probed on the live DB in rolled-back transactions. No crashes, no console
+errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> customer) passes on the live DB.
+With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad (gone with the container).
+
+**Must fix before launch**
+- [ ] 2b. DATA REPAIR, owner call (the code half of 2 is DONE 2026-11-17): 23 dealer cars are sold with no won
+  lead. 11 are `sentimas` (sold Mar-Jul 2026, before any buyer picker existed), 12 are the XDRIVE dealer on `vyth`
+  (looks like the owner's test dealership; 4 of them had an open lead on the car). Query: status='sold', no lead
+  with stage won/closed_won on the car, dealer/owner accounts. Per car: attach the buyer (win their lead) or leave
+  it as sold elsewhere. Nothing is changed until the owner says which.
+
+**Should fix (small)**
+
+**Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis
+(`/api/ai-messages`) with one real .xlsx and one real .csv.
+
+**Checked and fine:** commission RM600 -> 0 (old TODO line) not reproducible: both add paths send 600 and the
+live DB keeps it through insert + stock update. CSV import, Market demand, Studio templates/save, Storefront
+slides, handover checklist, customers, documents, every Settings save, permissions, manager view (all tabs load,
+Storefront owner-only, money follows `view_gross`), undo sale, sold-car guard, assign, delete = archive.
+
 ## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
 **Restructure plan + 2026-11-09 handoff: `docs/DEALER_DASHBOARD_PLAN.md`** (15 tabs -> 6, duplicates, broken links; branch `ccr-10f2178f-k01t0b` not on staging; team-health migration `20261110a` queued).
 Full report stays OUT of this public repo until part 2 is fixed (it shows how to break in).
@@ -162,7 +200,6 @@ production, or sign-in pages lose the throttle (they fail open, sign-in still wo
   get a receipt): payments rows under `deal_financials`; total received / balance by trigger;
   `leads.deposit_*` + `car_listings.deposit_amount` become copies; receipts numbered per payment
   and filled from the deal (no retyping in DocumentsTab).
-- [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 
 ## LINKED-PREMIUM: salesman under a dealer gets Premium + dealer connections (owner, 2026-11-11)
@@ -3038,6 +3075,67 @@ Background (from the idea):
     Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
+
+- **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
+  motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
+  a pure-red "CONTACT NOW" on every card, "0 - 4k" km bands) and called the Malaysian marketplace underserved. Angle:
+  most live Drevo stock is RM170k-900k recon from KL agents, exactly the buyer who notices clutter. A public "no
+  third-party ads, ever" promise + the marketplace redesign previewed 2026-11-16 (one card, crimson gradient,
+  structured titles). Constraint: design alone does not win buyers, stock count does (40 live cars vs thousands); a
+  no-ads promise also closes off ad revenue for good, so it is an owner call before it is ever stated publicly.
+- **IDEA-40: "Build your own deal" + "Send my deal" on the car page (owner, 2026-11-16; seen at AutoBandit.com, US, by @raffimoosh)** — a buyer
+  picks deposit + tenure on a car, presses submit, and the seller gets a lead with those terms filled in. AutoBandit's pitch: dealers
+  list cars with the monthly price, the buyer "builds their own deal", then picks up the car and signs. Drevo already has the pieces
+  (`financing.js`, `BudgetFinder.jsx`, Live presenter chips); the missing step is the buyer's submit. Small version: a button on the car
+  page that files a lead (existing `resolve_lead_salesman` + lead notes + push), no new table. Limits: never worded as an approval ("the
+  bank decides", HP-EIR rules); no lease (US product); the JPJ transfer needs both people in person, so "online" ends at the handover.
+  Owner: draft only, "just an idea we can copy over"; the focus is the dealer dashboard redesign first. Not scheduled.
+- **IDEA-39: Drevo AI, a WhatsApp AI sales assistant (owner, 2026-11-15)** — a seller talks to an assistant in plain
+  language ("hottest leads", "move Ahmad to negotiation", "post my Civic tomorrow") and gets a morning briefing;
+  tools over the existing CRM, Claude Haiku 5.5 (US$0.10 in / 0.50 out per MTok, checked in the claude-api skill),
+  Zernio for posts; plans Free / Pro RM49 / AI RM99 / AI Plus RM149 (CLAUDE.md "Founding price" says Premium is RM35
+  now). Blockers, verified 2026-11-15: (1) CLAUDE.md "AI trust boundary": AI drafts, a HUMAN sends; the concept's
+  "eventually send customer replies" and Phase 5 break that rule; (2) SOCIAL-1: sellers no longer post, the OWNER
+  presses Post on Drevo's own Pages, TikTok needs a human preview, so "Post my Civic tomorrow" cannot be built as
+  written; (3) WhatsApp Business API: Meta's terms from 15 Jan 2026 bar AI-provider/general-purpose assistants, but allow
+  a business using AI for its own workflow; read Meta's own terms before building, a 8:30 briefing is business-initiated so
+  it needs an approved template and costs per message; (4) Telegram is already integrated (`send-telegram`,
+  `telegram-notify`), free and no 24h window, BUT only 2 of 14 sellers have it linked (2026-11-16) while all 14 have a WhatsApp number: WhatsApp is the channel sellers actually use; (5) a shared `ai-proxy` exists
+  (`FEATURES`, `supabase/functions/ai-proxy/index.ts:9`) and the AI must read `chat_messages_ai`, never raw chat;
+  (6) 0 logged payments on 2026-11-15: do not build before people pay for Premium. Not scheduled.
+  **FUTURE, step 0 (owner said keep it, 2026-11-15): hand-sent "top 3 to call" test sent by WHATSAPP by hand (owner's own number, no Meta setup), no code.** For 5 working
+  days the owner sends the message below at ~8:30 to the 2 sellers who have real leads, built by eye from This week
+  (`src/utils/thisWeek.js` ranking: never replied > due reminder > going quiet / renewal > trade-up; one line per
+  PERSON). Format, EN: "Good morning, {seller}. Your top 3 to call today: 1. {buyer first name}, {car}: asked {n}
+  days ago, no reply from you yet. 2. {buyer first name}, {car}: you said you would follow up on {date}. 3. {buyer
+  first name}, {car}: quiet {n} days since your last message. Open Drevo: {link}". BM: same lines, "Selamat pagi,
+  {seller}. 3 pelanggan untuk dihubungi hari ini:". Rules: first name + car only (NO phone, IC, address or chat text:
+  Telegram is a third party, CDP-3 / PDPA); every line states a real count or date, never a guess; no price,
+  instalment, discount or approval; fewer than 3 real leads = send fewer, never pad; nothing to say = send nothing;
+  the link is built from `SITE_URL` (`src/config/site.js`), never a typed domain; it only tells the SELLER who to call,
+  the seller messages the buyer. Success check after 5 days, asked by message: "did you call any of them?" and "would
+  you pay to keep getting this?". If both sellers act on it, then build the same text from `thisWeek.js` + a WhatsApp
+  Cloud API send (needs Meta business verification, a NEW dedicated number, one approved utility template, each seller's
+  opt-in, token in an edge function secret, webhook signature check) behind a cron guarded by `where exists` (IO-1),
+  no AI. Start the Meta setup in parallel with the hand test: approval has lead time.
+  **UPDATE 2026-11-16 (owner): NO WhatsApp for now. Build the assistant as a CHAT INSIDE the Premium + dealer dashboards,
+  and pull Zernio analytics / DMs / comments / likes into Drevo.** Budget scoped in chat (1-2 salesmen + 1 dealer):
+  Zernio is per CONNECTED ACCOUNT (first 2 free for the whole Drevo team, 3-10 $6 each, 11-100 $3 each; Drevo's own
+  Facebook Page + TikTok already use the free two; inbox, comments, analytics, webhooks included; first 10,000 sent
+  messages a month free), about RM100 a month lean to RM215 full; AI (Haiku 5.5, US$0.10 / 0.50 per MTok) about RM15-60
+  a month. Rules: the assistant runs as the USER's login (RLS), never the service role, so a linked salesman cannot ask it
+  for buy prices; social comments / DMs are untrusted text (prompt injection) and personal data of third parties: redacted
+  view for the AI like `chat_messages_ai`, read-only tools first, a human sends every reply; Zernio inbox is a SEPARATE
+  connect from posting (extra permissions screen for the seller, test); list Zernio + networks in Privacy / DPA before
+  launch. App stores: Play yes later, Apple not now (see chat 2026-11-16); stays paused until revenue (MOBILE note).
+  **How a seller connects (owner asked 2026-11-16):** the owner has ONE Zernio account + ONE API key (edge function secret).
+  Sellers never get a Zernio login. Seller taps Connect in Drevo -> edge function `zernio-connect` (planned, NOT built;
+  only `zernio-post` exists) finds/creates the seller's Zernio PROFILE (`externalId` = owner id) and returns `authUrl` ->
+  seller logs in on Facebook/TikTok's own page and approves -> Zernio keeps the token, Drevo keeps ids only -> webhook
+  `account.connected` (signature + event-id dedupe) -> `social_accounts`. Every connected account is billed to the owner.
+  No own Meta/TikTok developer app needed; consent screen is co-branded with Zernio. Inbox/DM access is a SEPARATE connect
+  from posting (a second permissions screen): test with the owner's own Page before promising it. Details:
+  `docs/DREVO_ACTION_PLAN.md:140-150`.
 
 - **IDEA-38 -> BUILT 2026-11-15 as NICKNAME-1 (CLAUDE.md "Seller nickname"; staging; migration `20261116b_seller_nickname.sql` QUEUED, not applied). Left: an in-app search by nickname, a nickname step in signup, the nickname on the share-card picture.** Original scope: **IDEA-38: A nickname / social media name for sellers (owner, 2026-11-15)** — a seller's
   `full_name` is the only name Google sees, and sellers already stuff brands into it ("Fedaus Perodua Sales",

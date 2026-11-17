@@ -358,7 +358,7 @@ export default function AccountPage() {
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div className="sc-grid">
               {cars.map(car => (
                 <ShowroomCard
                   key={car.id} car={car} ctaContext={ctaCtx}

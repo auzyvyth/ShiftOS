@@ -10,6 +10,7 @@ import * as Sentry from "@sentry/react";
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
 import StayInApp from "./components/StayInApp";
+import StaffAccessGate from "./components/StaffAccessGate";
 import ConsentBanner from "./components/ConsentBanner";
 import InstallPrompt from "./components/InstallPrompt";
 import OfflineBanner from "./components/OfflineBanner";
@@ -160,6 +161,8 @@ function App() {
       <ScrollToTop />
       {/* Installed app: our own pages open in the app, not Chrome's black-bar browser */}
       <StayInApp />
+      {/* A staff member the owner switched off: one screen on every staff page (DASH-TEST 3) */}
+      <StaffAccessGate />
       <Toaster
         position="bottom-right"
         toastOptions={{

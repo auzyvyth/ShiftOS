@@ -55,12 +55,29 @@ export default function AnalyticsTab({
  // BROKER-2: a broker's registrations (broker_my_regs). The sold ones are income of their own,
  // shown beside the car commission and never added into it: it is owed by a dealer, not a sale of theirs.
  brokerRegs = [],
+ onBrokerReceived,
 }) {
   const [sub, setSub] = useState("selling");
   const [showBroker, setShowBroker] = useState(false);
-  const brokerSold = (brokerRegs || []).filter((r) => r.status === "sold" && Number(r.commission_amount) > 0);
-  const brokerPaid = brokerSold.filter((r) => r.paid_at).reduce((s, r) => s + Number(r.commission_amount), 0);
-  const brokerOwed = brokerSold.filter((r) => !r.paid_at).reduce((s, r) => s + Number(r.commission_amount), 0);
+  // One state per dealer car: claimed (waiting for the dealer) > owed > paid by the dealer (broker answers) >
+  // not received (dealer told) > received. Money owed = sold and not yet received.
+  const brokerRows = (brokerRegs || []).filter((r) => (r.status === "sold" && Number(r.commission_amount) > 0) || (r.status === "registered" && r.sale_claimed_at));
+  const brokerSold = brokerRows.filter((r) => r.status === "sold");
+  const brokerPaid = brokerSold.filter((r) => r.received_at).reduce((s, r) => s + Number(r.commission_amount), 0);
+  const brokerOwed = brokerSold.filter((r) => !r.received_at).reduce((s, r) => s + Number(r.commission_amount), 0);
+  const brokerState = (r) => {
+    if (r.status === "registered") return { text: "waiting for the dealer to approve", ask: false };
+    if (r.received_at) return { text: `received ${new Date(r.received_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`, ask: false };
+    if (r.not_received_at) return { text: "you said not received, the dealer was told", ask: false, chase: true };
+    if (r.paid_at) return { text: `dealer says paid ${new Date(r.paid_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`, ask: true };
+    return { text: "owed by the dealer", ask: false };
+  };
+  const [brokerBusy, setBrokerBusy] = useState(null);
+  const answerReceived = async (r, received) => {
+    if (!onBrokerReceived || brokerBusy) return;
+    setBrokerBusy(r.id);
+    try { await onBrokerReceived(r, received); } finally { setBrokerBusy(null); }
+  };
   // Which slice of "where did my traffic come from" is on screen. Car pages and
   // the mini page are two different journeys — a tap from an Instagram bio link
   // lands on the mini page, a shared listing link lands on a car — so they are
@@ -645,7 +662,7 @@ export default function AnalyticsTab({
             <b style={{ color: PD.text }}>{soldCount}</b> {t("salesmanPremium.perf.carsLower")} · {t("salesmanPremium.perf.allTimeLower")}
           </p>
         </div>
-        {brokerSold.length > 0 && (
+        {brokerRows.length > 0 && (
           <>
             <button
               onClick={() => setShowBroker((v) => !v)}
@@ -653,26 +670,42 @@ export default function AnalyticsTab({
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 18px", background: "transparent", border: "none", borderTop: `1px solid ${PD.line}`, cursor: "pointer", fontFamily: "inherit", color: PD.textSec, fontSize: T.size.base, fontWeight: T.weight.semibold }}
             >
               <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                <span>Broker commission <b style={{ color: PD.text }}>{money(brokerPaid + brokerOwed)}</b></span>
+                <span>Commission on dealer cars <b style={{ color: PD.text }}>{money(brokerPaid + brokerOwed)}</b></span>
                 <span style={{ fontSize: T.size.sm, fontWeight: T.weight.medium, color: PD.textMuted }}>
-                  {brokerPaid > 0 ? `${money(brokerPaid)} paid` : ""}{brokerPaid > 0 && brokerOwed > 0 ? " · " : ""}{brokerOwed > 0 ? `${money(brokerOwed)} owed by the dealer` : ""}
+                  {brokerPaid > 0 ? `${money(brokerPaid)} received` : ""}{brokerPaid > 0 && brokerOwed > 0 ? " · " : ""}{brokerOwed > 0 ? `${money(brokerOwed)} not yet received` : ""}{brokerSold.length === 0 ? "waiting for the dealer to approve" : ""}
                 </span>
               </span>
               {showBroker ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
-            {showBroker && brokerSold.map((r) => (
-              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 18px", borderTop: `1px solid ${PD.line}` }}>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: T.size.base, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.car_label}</span>
-                  <span style={{ display: "block", fontSize: T.size.sm, color: PD.textMuted }}>
-                    {r.dealer_name} · {r.buyer_name} · {r.paid_at ? `paid ${new Date(r.paid_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}` : "owed"}
+            {showBroker && brokerRows.map((r) => {
+              const st = brokerState(r);
+              const wa = st.chase && r.dealer_phone ? `https://wa.me/${r.dealer_phone}?text=${encodeURIComponent(`Hi, I have not received the commission for ${r.car_label} yet. Can we settle it?`)}` : null;
+              return (
+              <div key={r.id} style={{ padding: "11px 18px", borderTop: `1px solid ${PD.line}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: T.size.base, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.car_label}</span>
+                    <span style={{ display: "block", fontSize: T.size.sm, color: PD.textMuted }}>{r.dealer_name} · {r.buyer_name} · {st.text}</span>
                   </span>
-                </span>
-                <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: r.paid_at ? PD.up : PD.text }}>
-                  +{money(r.commission_amount)}
-                </span>
+                  <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: r.received_at ? PD.up : PD.text }}>
+                    {r.status === "sold" ? `+${money(r.commission_amount)}` : "—"}
+                  </span>
+                </div>
+                {st.ask && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" disabled={brokerBusy === r.id} onClick={() => answerReceived(r, true)}
+                      className="lk-red" style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", color: "#fff", fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>Received</button>
+                    <button type="button" disabled={brokerBusy === r.id} onClick={() => answerReceived(r, false)}
+                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>Not received</button>
+                  </div>
+                )}
+                {wa && (
+                  <a href={wa} target="_blank" rel="noopener noreferrer"
+                    style={{ minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, textDecoration: "none" }}>Settle with the dealer on WhatsApp</a>
+                )}
               </div>
-            ))}
+              );
+            })}
           </>
         )}
         {commissionDetails.length > 0 && (

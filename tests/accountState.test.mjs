@@ -1,7 +1,7 @@
 // Guards the platform console's single account-state answer. Each case is a
 // real row shape that the console once mislabelled.
 // Run with: npm run test:accountstate
-import { accessState, reviewState, billingState, headlineState, isPlatformAccount, matchesStatusFilter } from '../src/utils/accountState.js';
+import { accessState, reviewState, billingState, headlineState, isPlatformAccount, matchesStatusFilter, isActiveAccount } from '../src/utils/accountState.js';
 
 const NOW = Date.parse('2026-10-05T12:00:00Z');
 const D = 86400000;
@@ -52,6 +52,12 @@ check('linked salesman billed via dealer', billingState(linked, NOW).id, 'via_de
 check('filter: review catches the pending premium signup', matchesStatusFilter(premiumSignup, 'review', NOW), true);
 check('filter: off catches the ghost-off dealer', matchesStatusFilter(ghostOff, 'off', NOW), true);
 check('filter: money catches unconfirmed', matchesStatusFilter(ghostOff, 'money', NOW), true);
+
+check('split: a working seller is active', isActiveAccount(premiumSignup, NOW), true);
+check('split: unfinished signup is inactive', isActiveAccount(unfinished, NOW), false);
+check('split: switched-off dealer is inactive', isActiveAccount(ghostOff, NOW), false);
+check('split: suspended is inactive', isActiveAccount({ ...premiumSignup, is_active: false, suspended_at: '2026-10-01' }, NOW), false);
+check('split: deleted is inactive', isActiveAccount({ ...premiumSignup, account_status: 'deleted' }, NOW), false);
 
 if (fail) { console.log(`\n${fail} failed`); process.exit(1); }
 console.log('\nall passed');

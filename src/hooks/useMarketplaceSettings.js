@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 const SINGLETON_ID = '00000000-0000-0000-0000-000000000001';
 
 export const MARKETPLACE_FALLBACK = {
-  brand_tagline:        "Malaysia's first fully-verified car marketplace. Every car. Every budget. Every dealer — certified.",
+  // Only what is true (2026-11-16): nothing on Drevo verifies every car or
+  // certifies dealers, so the old "fully-verified ... every dealer certified"
+  // line was a claim we could not back (CPA 1999 s.10). The live text is the
+  // marketplace_settings row (console > Marketplace > Settings); this is its fallback.
+  brand_tagline:        'Used, recon and new cars from dealers and agents across Malaysia.',
   support_email:        'hello@xdrive.my',
   support_whatsapp:     '601111521742',
   support_phone:        '+60 11-1152 1742',

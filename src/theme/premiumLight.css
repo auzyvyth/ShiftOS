@@ -38,3 +38,14 @@
   .pl-key { transition: none; }
   .pl-key:hover, .pl-key:active { translate: none; }
 }
+
+/* No tints (owner, 2026-11-16: "remove all tint colours"). A note, alert or result box is ONE grey fill with
+   no border; the WORD carries the meaning (ink = info, red = problem, green = done). Never a coloured
+   background with a matching border. A button that used to be a tinted pill is .pl-btn-grey. */
+.pl-note { background: #f5f6f8; color: #4b5563; border: none; border-radius: 12px; }
+.pl-note-bad { background: #f5f6f8; color: #b91c1c; border: none; border-radius: 12px; }
+.pl-note-good { background: #f5f6f8; color: #047857; border: none; border-radius: 12px; }
+.pl-well { background: #f5f6f8; border: none; color: #374151; }
+.pl-btn-grey { background: #f5f6f8; color: #111827; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.pl-btn-grey:hover { background: #eceef1; }
+.pl-btn-grey:disabled { opacity: .45; cursor: default; }

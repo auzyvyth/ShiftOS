@@ -1,5 +1,5 @@
 // Run: npm run test:ownermoney. The owner's money totals must equal the sum of the cars.
-import { ownerMoney, mergeCars, monthKey } from '../src/utils/ownerMoney.js';
+import { ownerMoney, mergeCars, monthKey, sellerTotals } from '../src/utils/ownerMoney.js';
 import { carPnl } from '../src/utils/carPnl.js';
 
 let pass = 0;
@@ -28,6 +28,20 @@ const ctx = { cfg, ads: { ua: 300 }, handover: { a: 130 }, addons: { a: { rev: 1
 const cars = mergeCars(listings, units);
 eq(cars.length, 6, 'stock record without a listing still counts');
 const m = ownerMoney(cars, ctx, NOW);
+
+// Per-salesman totals (Team tab) are Overview's totals grouped, never a second formula.
+{
+  const L = listings.map((l) => ({ ...l, assigned_to: { a: 'rep1', b: 'rep1', e: 'rep2' }[l.id] || null }));
+  const mm = ownerMoney(mergeCars(L, units), ctx, NOW);
+  const st = sellerTotals(mm.rows, NOW - 30 * 86400000, NOW + 1);
+  eq(st.rep1.units, 2, 'rep1 sold two cars in 30 days');
+  eq(st.rep1.leftOut, 1, 'the car with no buy price is left out of rep1 profit');
+  eq(Math.round(st.rep1.gross), Math.round(mm.rows.find((r) => r.id === 'a').p.net), 'rep1 profit = the costed car, same engine');
+  eq(st.rep2.units, 1, 'rep2 sold one');
+  const ten = sellerTotals(mm.rows, NOW - 10 * 86400000, NOW + 1);
+  eq(ten.rep2, undefined, 'a sale outside the window is not counted');
+  eq(Object.keys(sellerTotals(mm.rows, 0, NOW + 1)).length, 2, 'cars with no seller belong to nobody');
+}
 
 eq(monthKey(NOW), '2026-11', 'month key in Malaysia time');
 eq(m.month.units, 2, 'two sold this month');

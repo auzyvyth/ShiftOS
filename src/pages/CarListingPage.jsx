@@ -32,6 +32,7 @@ import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
+import NewBrandRow from '../components/marketplace/NewBrandRow';
 import Pagination from '../components/ui/Pagination';
 import { storefront as SF } from '../theme/tokens';
 import { StorefrontError } from '../components/ErrorScreen';
@@ -449,13 +450,9 @@ export default function CarListingPage() {
   const [isWide, setIsWide] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth > 1024
   );
-  const [isTwoCols, setIsTwoCols] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth > 640
-  );
   useEffect(() => {
     const update = () => {
       setIsWide(window.innerWidth > 1024);
-      setIsTwoCols(window.innerWidth > 640);
     };
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -740,16 +737,12 @@ export default function CarListingPage() {
           .cl-layout { flex-direction:column !important }
         }
         @media(max-width:640px) {
-          .cl-grid { grid-template-columns:1fr !important; gap:10px !important }
           .cl-topbar { flex-wrap:wrap !important }
           .cl-topbar-search { width:100% !important; flex:unset !important }
           /* Controls (sort + filters + save-search) drop to their own full-width
              row under the search and never wrap again — keeps the alert bell at
              the screen's right edge so its dropdown opens inward, not off-screen. */
           .cl-topbar-controls { width:100% !important; }
-        }
-        @media(min-width:641px) and (max-width:900px) {
-          .cl-grid { grid-template-columns:repeat(2,1fr) !important }
         }
       `}</style>
 
@@ -879,6 +872,7 @@ export default function CarListingPage() {
                 </button>
               ))}
             </div>
+            {isMarketplace && <NewBrandRow />}
           </div>
         </div>
 
@@ -944,7 +938,7 @@ export default function CarListingPage() {
                       <span style={{ background:T.ink, color:T.inkText, fontSize:'11px', fontWeight:'700', padding:'4px 8px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
-                  <div className="cl-grid" style={{ display:'grid', gridTemplateColumns: isTwoCols ? 'repeat(2,1fr)' : '1fr', gap: isTwoCols ? '14px' : '10px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
+                  <div className="cl-grid sc-grid" style={{ opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
                       ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
                       : cars.length === 0

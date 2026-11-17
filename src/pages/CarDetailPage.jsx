@@ -57,6 +57,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import AffordabilityCheck from "../components/AffordabilityCheck";
+import { isTitleRepeat } from "../utils/cardTitle";
 import SimilarCars from "../components/car/SimilarCars";
 import { recordCarProgress, scrollProgress } from "../utils/viewProgress";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
@@ -773,7 +774,7 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 // field is simply undefined, nothing errors, and "Cars like this" is where a
 // buyer is comparing sellers hardest.
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price, is_model_card";
 
 /* ─── skeleton ─── */
 // The loading screen. When the buyer came from a card, `preview` holds that
@@ -784,7 +785,7 @@ function Skeleton({ preview = null }) {
   const pvImg = preview?.image ? cdnImg(preview.image, 1280, 72) : null;
   const pvSet = preview?.image ? cdnSrcSet(preview.image, HERO_WIDTHS, 72) : undefined;
   const isXdrive = !isSubdomain();
-  const pageBg    = isXdrive ? '#F6F7F9' : '#060c14';
+  const pageBg    = isXdrive ? '#F7F6F2' : '#060c14';
   const card      = isXdrive ? '#ffffff' : '#0a1220';
   const shimmerGr = isXdrive
     ? 'linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%)'
@@ -964,7 +965,7 @@ function useCarSchema(listing, dealer) {
    Used for "More From This Seller". On a phone 2 cards and a slice of the
    third show, so it reads as scrollable (owner, 2026-11-03); on desktop the
    round arrows beside the heading scroll it, and only when it overflows. */
-function SellerStrip({ cars, title, th }) {
+function SellerStrip({ cars, title, th, small = false }) {
   const navigate = useNavigate();
   const rowRef = useRef(null);
   const [edge, setEdge] = useState({ can: false, start: true, end: false });
@@ -1005,10 +1006,14 @@ function SellerStrip({ cars, title, th }) {
         @media (max-width: 900px) { .cdp-ss-card { width: calc((100% - 24px) / 2.3); } .cdp-ss-arrows { display: none !important; } }
         @media (hover:hover) and (pointer:fine) { .cdp-ss-arrow:not(:disabled):hover { border-color: ${th.text}; } }
       `}</style>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 16px" }}>
-        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0, borderLeft: "3px solid #dc2626", paddingLeft: "12px" }}>
-          {title}
-        </h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: small ? "0 0 10px" : "0 0 16px" }}>
+        {small ? (
+          <h3 style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: th.textSec, margin: 0 }}>{title}</h3>
+        ) : (
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0 }}>
+            {title}
+          </h2>
+        )}
         {edge.can && (
           <div className="cdp-ss-arrows" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             {arrow(-1, edge.start)}
@@ -1020,12 +1025,14 @@ function SellerStrip({ cars, title, th }) {
         {cars.map((c) => {
           const img   = cdnImg(Array.isArray(c.images) ? c.images[0] : null, 400, 70);
           const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
-          const price = c.selling_price ? "RM " + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
+          const price = c.selling_price ? (c.is_model_card ? "From RM " : "RM ") + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
           return (
             <button key={c.id} className="cdp-ss-card" onClick={() => go(c)} style={{ flexShrink: 0, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
               <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
                 {img && <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                {c.is_recon && (
+                {(c.is_model_card || c.condition === "new") ? (
+                  <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 6, background: "rgba(15,23,42,0.88)", color: "#fff" }}>NEW</span>
+                ) : c.is_recon && (
                   <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 6, background: "rgba(109,40,217,0.92)", color: "#fff" }}>RECON</span>
                 )}
               </div>
@@ -1042,6 +1049,19 @@ function SellerStrip({ cars, title, th }) {
 }
 
 /* ─── main ─── */
+// The monthly estimate IS the way into the calculator (MARKET-CLEAN, 2026-11-16):
+// a tinted "Calculate" box sat beside "Can I afford this?", two buttons for one
+// question. Now: the number (tap = calculator) + the one affordability button.
+function MonthlyLink({ amount, th, onOpen }) {
+  return (
+    <button type="button" onClick={onOpen} aria-label="Open financing calculator"
+      style={{ background:'none', border:0, padding:0, cursor:'pointer', fontSize:13, color: th.textSec, fontFamily:'var(--xd-font-body)', display:'inline-flex', alignItems:'center', gap:4 }}>
+      <Calculator size={13} />
+      <span>~<span style={{ color: th.text, fontWeight:600, textDecoration:'underline', textDecorationStyle:'dotted', textUnderlineOffset:3 }}>RM {fmt(amount)}</span>/mo</span>
+    </button>
+  );
+}
+
 export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
   // On a dealer's own site only THAT dealer's cars may open. The route took any
@@ -1052,7 +1072,7 @@ export default function CarDetailPage() {
 
   /* ── Light-theme colour tokens (drevo.my only) ── */
   const th = isXdrive ? {
-    pageBg:    '#F6F7F9',
+    pageBg:    '#F7F6F2',
     card:      '#ffffff',
     card2:     '#EEF1F5',
     text:      '#0F172A',
@@ -1128,6 +1148,23 @@ export default function CarDetailPage() {
   const simRefDesktop = useRef(null);
   const simFetched = useRef(false);
   const [sellerCars, setSellerCars] = useState([]);
+  // One block, two rows (owner, 2026-11-16): the seller's used & recon cars,
+  // then their new cars under a small "New cars" label in the SAME card, not
+  // a second section. A new car also carries a NEW tag. Query is by
+  // dealer_id = the seller on this page.
+  const isNewCar = (c) => !!c.is_model_card || c.condition === "new";
+  const sellerUsedCars = sellerCars.filter((c) => !isNewCar(c)).slice(0, 12);
+  const sellerNewCars  = sellerCars.filter(isNewCar).slice(0, 12);
+  const sellerRows = (sellerUsedCars.length > 0 || sellerNewCars.length > 0) && (
+    <>
+      {sellerUsedCars.length > 0 && <SellerStrip cars={sellerUsedCars} title="More From This Seller" th={th} />}
+      {sellerNewCars.length > 0 && (
+        sellerUsedCars.length > 0
+          ? <div style={{ marginTop: 20 }}><SellerStrip cars={sellerNewCars} title="New cars" small th={th} /></div>
+          : <SellerStrip cars={sellerNewCars} title="More From This Seller" th={th} />
+      )}
+    </>
+  );
   const [salesmanProfile, setSalesmanProfile] = useState(null);
 
   /* gallery */
@@ -1498,7 +1535,7 @@ export default function CarDetailPage() {
                 .in("status", ["available", "reserved"])
                 .neq("id", carData.id)
                 .order("created_at", { ascending: false })
-                .limit(12)
+                .limit(40)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
@@ -2068,7 +2105,7 @@ export default function CarDetailPage() {
   // string in 4.4rem Bebas breaks the page, and every SEO surface (title tag,
   // og:title, JSON-LD, breadcrumb, alt text) has to stay the structured name so
   // Google keeps matching "<model> <chassis code>" queries to this listing.
-  const sellerHeadline = (car.listing_title || '').trim();
+  const sellerHeadline = isTitleRepeat(car.listing_title, car) ? '' : (car.listing_title || '').trim();
   // Display nameplate: model, then trim, then engine size (derived from cc so it
   // reads "6.5L" not the raw "6.5" baked into the variant), then year — e.g.
   // "812 Superfast 6.5L 2021". The variant often carries a leading displacement
@@ -2086,8 +2123,12 @@ export default function CarDetailPage() {
     // Non-breaking hyphen so multi-part trims ("TYPE-R", "CX-5") don't split
     // across lines mid-word in the big display nameplate.
     .replace(/-/g, "‑");
+  // Logged-out buyers cannot read `profiles`, so `dealer` is null for them and an
+  // agent's car said "Be the first to review Dealer". Fall back to the agent's
+  // public profile (get_salesman_by_id), then to a neutral word, never "Dealer".
   const dealerName =
-    dealer?.site_name || dealer?.dealership || dealer?.full_name || "Dealer";
+    dealer?.site_name || dealer?.dealership || dealer?.full_name
+    || salesmanProfile?.full_name || "this seller";
   // Seller mini-page link: dealer subdomain/slug, or the standalone agent's /s/slug.
   // Standalone agents (Salesman Lite) have no dealer profile, so without this their
   // listing showed no "Visit page" link at all.
@@ -2486,8 +2527,8 @@ export default function CarDetailPage() {
 
       {/* ── Drevo light-theme overrides ── */}
       {isXdrive && <style>{`
-        body { background: #F6F7F9 !important; }
-        .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
+        body { background: #F7F6F2 !important; }
+        .cdp-root { background: #F7F6F2 !important; color: #0F172A !important; }
         .cdp-header {
           background: rgba(246,247,249, calc(0.85 * var(--cdp-progress, 0))) !important;
           backdrop-filter: blur(calc(20px * var(--cdp-progress, 0))) !important;
@@ -2622,15 +2663,7 @@ export default function CarDetailPage() {
             </div>
           )}
           <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8, flexWrap:'wrap' }}>
-            {calcMonthly(shownPrice) ? (
-              <span style={{ fontSize:13, color: th.textSec }}>
-                ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
-              </span>
-            ) : null}
-            <button onClick={() => setCalcOpen(true)} aria-label="Open financing calculator"
-              style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(220,38,38,0.10)', border:'1px solid rgba(220,38,38,0.35)', borderRadius:8, color: isXdrive ? '#dc2626' : '#f87171', fontSize:12.5, fontWeight:700, padding:'5px 10px', cursor:'pointer', fontFamily:"var(--xd-font-body)", whiteSpace:'nowrap' }}>
-              <Calculator size={14} /> Calculate
-            </button>
+            {calcMonthly(shownPrice) ? <MonthlyLink amount={calcMonthly(shownPrice)} th={th} onOpen={() => setCalcOpen(true)} /> : null}
             {!isOwnListing && (
               <AffordabilityCheck
                 carPrice={shownPrice}
@@ -3041,9 +3074,9 @@ export default function CarDetailPage() {
 
 
         {/* More from this seller (mobile) — above the "More {brand}" section */}
-        {sellerCars.length > 0 && (
+        {sellerRows && (
           <div className="cdp-mobile-only" style={{ background: th.pageBg, padding:'28px 20px 0' }}>
-            <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+            {sellerRows}
           </div>
         )}
 
@@ -3152,18 +3185,7 @@ export default function CarDetailPage() {
                   </div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                  {calcMonthly(shownPrice) ? (
-                    <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>
-                      ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
-                    </p>
-                  ) : null}
-                  <button
-                    onClick={() => setCalcOpen(true)}
-                    aria-label="Open financing calculator"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(220,38,38,0.10)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 8, color: isXdrive ? "#dc2626" : "#f87171", fontSize: 12.5, fontWeight: 700, padding: "5px 10px", cursor: "pointer", fontFamily: "var(--xd-font-body)", whiteSpace: "nowrap" }}
-                  >
-                    <Calculator size={14} /> Calculate
-                  </button>
+                  {calcMonthly(shownPrice) ? <MonthlyLink amount={calcMonthly(shownPrice)} th={th} onOpen={() => setCalcOpen(true)} /> : null}
                   {!isOwnListing && (
                     <AffordabilityCheck
                       carPrice={shownPrice}
@@ -3801,6 +3823,7 @@ export default function CarDetailPage() {
             {/* CTA BUTTONS — one red primary; Contact is the outlined second. */}
             {!isOwnListing && (
             <button
+              className="xd-crimson-fill"
               onClick={handleBookingClick}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 1px 2px rgba(15,23,42,0.08)', transition: 'background .15s' }}
               onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = '#b91c1c'; }}
@@ -3829,9 +3852,9 @@ export default function CarDetailPage() {
             stopped by here. */}
         <div className="cdp-d-after">
           {/* MORE FROM THIS SELLER — above the "More {brand}" section */}
-          {sellerCars.length > 0 && (
+          {sellerRows && (
             <div style={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}>
-              <SellerStrip cars={sellerCars} title="More From This Seller" th={th} />
+              {sellerRows}
             </div>
           )}
 
@@ -3843,7 +3866,7 @@ export default function CarDetailPage() {
                 buckets={simBuckets}
                 ctaContext={ctaCtx}
                 th={th}
-                wrapStyle={{ marginTop: 64, background: th.card2, border: `1px solid ${th.borderSec}`, borderRadius: 16, padding: '32px 28px' }}
+                wrapStyle={{ marginTop: 64, padding: '8px 0' }}
               />
             )}
           </div>
@@ -3972,7 +3995,7 @@ export default function CarDetailPage() {
             onCall={handleCall} callLoading={callLoading} showCall={hasContact} />
         </div>
         {!isOwnListing && (
-        <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>
+        <button className="cdp-mobile-bar-book xd-crimson-fill" onClick={handleBookingClick}>Book a Viewing</button>
         )}
       </div>
 

@@ -7,7 +7,8 @@ const SUPPORT_WHATSAPP = "601111521742";
 
 // variant: "floating" = fixed circle (legacy, used in salesman lite),
 //          "inline"   = small header icon button (sits next to the nav, no overlap)
-export default function ReportBugButton({ context = "", userLabel = "", variant = "floating" }) {
+// tapSize: inline only. A minimum hit area in px (the icon stays 16px). The dealer bar passes 40.
+export default function ReportBugButton({ context = "", userLabel = "", variant = "floating", tapSize = null }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   useModalHistory(open, () => setOpen(false), { isDirty: () => !!text.trim() });
@@ -40,6 +41,7 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
             cursor: "pointer",
             color: "#6b7280",
             padding: 4,
+            ...(tapSize ? { minWidth: tapSize, minHeight: tapSize } : {}),
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

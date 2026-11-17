@@ -1,7 +1,7 @@
 // Words for the team health the database works out (TEAM-HEALTH, 2026-11-09).
 // The RULES live in ONE place, the SQL function `_team_health`
 // (supabase/migrations/20261110a_team_health.sql), used by both the dealer's
-// Performance table (gm_salesman_scores) and the daily owner alert
+// Team table (gm_salesman_scores, dashboard/TeamScoreboard.jsx) and the daily owner alert
 // (notify_team_health). This file only turns its codes into words, so the
 // screen and the alert can never disagree about who is inactive.
 

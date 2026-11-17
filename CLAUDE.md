@@ -53,6 +53,7 @@ Full plan and status: `TODO.md` BRAND-1.
   those redirects while xdrive.my is renewed.
 - "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
   becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+  The photo/poster editor is "Drevo Studio" (owner, 2026-11-16); its buttons say so.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
   the temporary "Split D" lockup.** One red wordmark for Drevo AND the seller software, the same
   file on light and dark surfaces: `public/drevo-logo-white.png` (dark surfaces) and
@@ -63,6 +64,8 @@ Full plan and status: `TODO.md` BRAND-1.
   `drevo-badge-96.png` (white-only notification badge). Old filenames (`xdrivelogo.png`,
   `logo-shiftos*.png`, `pwa-*.png`, `shiftos-notif-*.png`) hold the same art for outside links;
   code points at the drevo-* names. Swapping the logo = replace these files, nothing else.
+  `drevo-logo.svg` (2026-11-16) is the same wordmark traced to a vector from the PNG (same 688x120 box,
+  #F40000, checked pixel by pixel); the marketplace header uses it. A new logo = re-trace it too.
 - Never rename identifiers to match (`ShiftOSPage`, the `/shiftos` route,
   `xd_*` storage keys, DB values like `drevo_enquiry`): renaming a key resets
   every user's saved setting; renaming a route breaks links.
@@ -262,7 +265,28 @@ Project ID: lemdkdizdlcirhbzqlos
   + search + the ONE red button (New document); rows not a 7-column table; a draft's Issue is the dark key;
   the three pop-ups are portalled with a scroll lock. Still uncached (IC + address). The pop-ups' insides
   are the old light look. Sold is now done.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings.
+  **The Overview tab IS the design (owner, 2026-11-16: "check the Overview tab, that's how it is now").** Every dealer card = white,
+  `PL.radius.card` (20px) corners, `PL.shadow`, NO border (OwnerMoney's `card`). It is set in ONE place for the shared styles:
+  `T` in `src/pages/dashboard/shared.js` and `.dash-card` / `.stat-card` / `.settings-section` / `.glass-modal` in DashboardPage's CSS
+  string; a new inline card copies those, never `border: 1px solid #e5e7eb`. Dividers inside a card = `rgba(17,24,39,0.06)`.
+  Numbers are bold sans with tabular figures (RevOpsPage had Bebas Neue, which renders as a serif on the light dashboard).
+  **No tints, anywhere on the dealer dashboard (owner, 2026-11-16: "remove all tint colours").** A tinted fill with a matching
+  border (pink / amber / blue / green / purple boxes and pills, tinted icon wells, red-tint active nav + red left bar, gradient avatars
+  and gradient number text, colour glows) is gone from `DashboardPage.jsx`, `dashboard/AnalyticsTab.jsx`, `DocumentsTab.jsx`,
+  `RevOpsPage.jsx`, `ServicesPage.jsx`, `LeadsPage.jsx`, `CRMPanel.jsx` and `components/leads/*`. Use the classes in
+  `src/theme/premiumLight.css`: `.pl-note` (info), `.pl-note-bad` (problem), `.pl-note-good` (done), `.pl-well` (icon well),
+  `.pl-btn-grey` (button); all one grey `#f5f6f8` fill, no border, the WORD carries the meaning.
+  **A bad number is RED TEXT (owner, 2026-11-16: "negative or low numbers do not communicate").** ONE rule, `isWorse(value,
+  before)` (`src/utils/isWorse.js`, `npm run test:isworse`; `worseTone` in `plStatus.js`): below zero, or lower than the same point
+  of the period before. No fixed "low" threshold. Only for more-is-better numbers (sales, gross, cars sold, add-ons, margin < 0),
+  never a cost. A number that can go red carries its comparison line, so the red explains itself. Money reads "− RM 6,130". The same rule
+  puts ONE alert in Overview's strip (`gross_down`, `dealerRoles.js`, needs `view_gross`): "Losing money" (red dot) or "Gross profit
+  down" for the chosen period, so the strip never says All clear in a losing month. Selected = `#eceef1`. New code
+  never writes a tinted background or `${hex}18` alpha suffix. Shared with the salesman panels and NOT changed: `OutreachHub`,
+  `ServicePackages`, `NudgeQueue`. 2026-11-16 pass 2 (colour + card recipe, rendered with mock data): CRM (`CRMPanel.jsx`: pill switch,
+  Appointments, Add Booking + reminder pop-ups now light), the pipeline board (`LeadsPage.jsx`, `LeadGridCard.jsx`: stage colours as a dot + header word + selected chip only, owner 2026-11-16 "differentiate every stage by colour"; never a tinted box), `LeadDrawer.jsx`, Analytics > Performance (`PerformanceTab.jsx`,
+  chart lines by lightness, traffic dashed) and Listings report. Not yet redesigned (layout, not colour): Settings forms, Outreach
+  (`OutreachHub` is shared with the salesman panels).
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
@@ -374,14 +398,34 @@ admin → /dashboard, manager → /dashboard (ACCESS-1, owner 2026-11-13). They 
   (`trg_a_salesman_draft`; CarForm hides cost via `costHidden`). The owner, or a manager with
   `approve_listings`, approves in Inventory > Listings (`ApprovalQueue.jsx`) via `dealer_approve_listing`
   (refuses with no buy price) or `dealer_reject_listing` (reason required); the salesman is notified.
-  Never one shared login to add cars.
+  Never one shared login to add cars. **Edit + resubmit (migration `20261116h`, QUEUED):** the live DB had no UPDATE rule for a linked
+  salesman, so "Edit & resubmit" on a rejected car changed 0 rows (found 2026-11-16 by a rolled-back probe). `20261116h` lets them
+  update only a car THEY submitted while it is pending_approval / rejected, always back to pending_approval (`trg_a_linked_salesman_draft_edit`).
 accountant → /accountant
 fi_officer → /fi
 
 ## Dashboard nav tabs (DashboardPage.jsx)
 listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documents, revops, services, settings
-Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
-  ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of the 9.5k-line DashboardPage.jsx into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
+**Reports > Listings no longer exists (owner, 2026-11-16: merged into Inventory).** Everything on it was already in Inventory > Listings (status counts, incomplete tags, views + enquiries per car, the car pop-up's Analytics pill) or Stock (aged cars), so it was deleted (`dashboard/AnalyticsTab.jsx`); its CSV export is the Export button in Inventory > Listings; `?sub=listings` redirects. The `tab_reports_listings` switch in `permissions.js` is now unused (left so the DB mirror test keeps passing).
+Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, stock, handover, analytics, team, customers, outreach, documents, storefront
+  ↳ **Adding a car is a POP-UP, not a tab (2026-11-16, step 4d).** The Add car sheet's "Full listing" opens AddCarForm then CarForm,
+    "Stock only" opens `AddCarForm mode="internal"`, both in one full-screen pop-up (`addMode`, `closeAddFlow`, DashboardPage.jsx).
+    StockTab has NO add form of its own any more (it made nameless stock records). `/dashboard/add` opens Listings with the sheet.
+  ↳ **HP Board is a pill in Leads / CRM** (`CRMPanel hpBoard`, shown only when `tabAllowed('hp')`); `/dashboard/hp` -> `crm?sub=hp`.
+  ↳ **People are judged on ONE screen: Team (2026-11-16, plan step 4c).** Its top table (`TeamScoreboard`) replaced Team's
+    Leaderboard, its "Inactive 30d+" badge, and Performance's score table + link-clicks list. Analytics > Performance is now
+    "Traffic" (website only, `PerformanceTab.jsx`, route `?sub=performance` unchanged). Never add a per-salesman number back to
+    Traffic, or a second status rule to a salesman card.
+    **Team layout (owner, 2026-11-16 design pass):** ONE switch People | Brokers | Activity (`TeamBrokersSwitch`, Activity = the
+    audit trail, opened by `?trail=`), then one top line ("N salesmen · M need a look" + grey Message pop-up + the one red Add
+    staff), the salesman list (ONE window, last 30 days: Won of new leads, Reply, Profit only with `view_gross`; a row says
+    "RM x commission to approve/pay"), then "Other staff". There are NO per-person cards: a row opens `SalesmanHealthSheet`
+    with the tools as `children` (setup email, commission approve/pay, cars locked to them, their link, switch off/remove).
+    Profit per salesman = Overview's engine grouped by seller (`sellerTotals`, ownerMoney.js, `carRow.sellerId` =
+    `assigned_to`), never `soldMap.gross` (a local formula, gone). Removed: the all-time "cars sold" tile, role tabs, the
+    always-open Message card, score / close rate / link clicks columns (the score lives in the sheet).
+  ↳ **AI Sales Manager is a CARD on Overview, not a tab (2026-11-16, `src/pages/dashboard/AiManagerCard.jsx`).** Closed on every visit: opening it runs the briefing, so a plain Overview visit spends no AI call; its snapshot loads only while open (`aiOpen`). `/dashboard/ai_manager` opens Overview with it open. Do not make it auto-open.
+  ↳ **Inventory = ONE nav item, three pills: Listings | Stock & costs | Market demand** (`INVENTORY_TABS`; `/dashboard/market` still works). Tab code is moving out of DashboardPage.jsx (9.1k lines, now 2.9k) into `src/pages/dashboard/` (done: DocumentsTab, AnalyticsTab, shared.js, widgets.jsx, settings/SettingsTab.jsx, CostProcurementForm, PriceEditModal, MarkSoldModal, TeamTab, ListingDetailDrawer, StockTab, styles.js; small pieces in widgets.jsx); the order of work is in `docs/DEALER_DASHBOARD_PLAN.md` "CURRENT PLAN". After moving a block, lint with `react/jsx-no-undef` too and render it: a green build does not prove it loads.
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
   ↳ **Sold = ONE nav item, three pills: Handover | Customers | Documents (owner, 2026-11-10)**, same shape
@@ -438,6 +482,9 @@ silently rejected (no error). Canonical rule (both sides):
   - dealer / superadmin / owner → profile.id (they ARE the dealer)
   - salesman with dealer_id = NULL (Salesman Lite) → profile.id (owns itself)
   - linked salesman / manager / admin → profile.dealer_id
+  - linked staff the owner switched off (`is_active = false`) or deleted → NULL (migration `20261117a`, APPLIED 2026-11-17):
+    off means locked out of every dealer table. Owner switches staff on/off ONLY through `dealer_set_staff_active`;
+    `StaffAccessGate` (App.jsx) tells them why. Never write `profiles.is_active` for staff from the browser.
 Prior bug: the JS helper had no `salesman` branch, so a linked salesman resolved to their
 OWN id — handover board empty, salesman-logged calls/appointments silently RLS-rejected.
 
@@ -1587,7 +1634,9 @@ The old panel is deleted only AFTER the owner has tested linked mode on staging;
 
 ## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
 `_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
-`gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
+`gm_salesman_scores` (the Team tab's table, `dashboard/TeamScoreboard.jsx` via `useTeamScores`, which also gives each
+salesman card its status word) and the daily owner push `notify_team_health` (opens `/dashboard/team` once migration
+`20261116i` is applied; before that it opens Analytics > Traffic)
 (cron `team-health-daily`, 01:00 UTC) both call it; words for its codes: `src/utils/teamHealth.js`.
 - Activity = the salesman's OWN actions (their lead_activities, chat replies, activity_log). Never
   `leads.updated_at` or anything the dealer did on their lead: `diara` scored 90 after 45 idle days
@@ -1667,6 +1716,20 @@ for several dealers. Tables `dealer_brokers` (requested / active / paused / revo
   numbers are Week | Month | Year (`periodWindow` in `ownerMoney.js`) and EVERY money number opens its breakdown
   (`MoneyDetailSheet` + `explain()` in `moneyExplain.js`, every list adds to 100%). Last year is shown only when a car really sold in that window. "Link a car" shows a "Dealer stock" group
   (`CarPickerSheet dealerCars`): picking one opens `RegisterSheet` (consent tick), never links the car to the lead.
+- **BROKER-3 (2026-11-16, migration `20261116g_broker_commission_receipt.sql`, QUEUED, not applied, not probed):** the broker
+  answers the dealer's "paid". Chain: dealer `broker_mark_sold` -> dealer `broker_mark_paid` -> broker `broker_confirm_received(reg,
+  received)`. "Not received" sets `not_received_at` BESIDE the dealer's `paid_at` (never erases it), tells the dealer, puts the money
+  back in `dealer_my_brokers.owed`, and the dealer can mark it paid again; "received" is final. UI: Analytics > "Commission on
+  dealer cars" (own list, one row per dealer car, never added into the broker's own-car commission), Received / Not received
+  buttons + a WhatsApp link to the dealer (`dealer_phone` from `broker_my_regs`); dealer side in `DealerBrokers.jsx`. Apply after
+  midnight, then probe in a rolled-back transaction.
+- **BROKER-4 (owner 2026-11-17, migration `20261117b_broker_stage_mirror.sql`, QUEUED):** the dealer's copy of a broker's
+  buyer MOVES WITH THE BROKER'S STAGE, like a linked salesman's lead. `leads.broker_twin_id` (on the broker's lead) points at
+  the dealer's lead; only definer code writes it (`app.broker_twin` flag, `trg_a0_broker_twin`). Restrictions: a broker's Won
+  is HELD (`won_requested_at` on both rows, dealer notified) until the owner answers in the lead drawer
+  (`dealer_decide_broker_won`); Deposit taken mirrors as Negotiating (it would reserve the dealer's car); a broker's Lost never
+  touches a reserved car; a dealer lead already Won is never moved. A dealer's own Won counts as approval and Undo sale puts the
+  broker back to Negotiating (`trg_zzz_broker_twin_won`). Tested on a local Postgres copy (12 cases), not yet on the live DB.
 - Not built yet: in-app chat and bookings on a broker's page still go to the dealer only
 - (older note) leads that arrive through a broker's page are not attributed to the broker
   (`resolve_lead_salesman` rule 2 is scoped to the dealer's own team); per-car commission; dealer-side

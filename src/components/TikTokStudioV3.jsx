@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../supabaseClient";
 import i18n from "i18next";
+import { toast } from "sonner";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { calcMonthly } from "../utils/financing";
 import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYTES } from "../lib/cutout";
@@ -299,7 +300,8 @@ function loadJSZip() {
       s.src =
         "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
       s.onload = () => res(window.JSZip);
-      s.onerror = rej;
+      // Forget a failed load so the next press tries again instead of failing forever.
+      s.onerror = () => { _zip = null; s.remove(); rej(new Error("zip_load_failed")); };
       document.head.appendChild(s);
     });
   return _zip;
@@ -3202,34 +3204,43 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
   const saveAll = useCallback(async () => {
     setDownloading(true);
-    if (isIOS()) {
-      for (let i = 0; i < total; i++) {
-        const blob = await toBlob(i);
-        const url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 15000);
-        await new Promise((r) => setTimeout(r, 600));
+    try {
+      if (isIOS()) {
+        for (let i = 0; i < total; i++) {
+          const blob = await toBlob(i);
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+          setTimeout(() => URL.revokeObjectURL(url), 15000);
+          await new Promise((r) => setTimeout(r, 600));
+        }
+        return;
       }
+      const JSZip = await loadJSZip();
+      const zip = new JSZip();
+      for (let i = 0; i < total; i++) zip.file(exportName(i), await toBlob(i));
+      const out = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(out);
+      const d = (theme.watermarkText || "Drevo").replace(/\s+/g, "");
+      const c = `${listing?.brand || ""}${listing?.model || ""}`.replace(
+        /\s+/g,
+        "",
+      );
+      const dt = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const a = document.createElement("a");
+      a.download = `${d}_${c}_${dt}.zip`;
+      a.href = url;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      console.warn("Export all failed", e);
+      toast.error(
+        i18n.language?.startsWith("ms")
+          ? "Eksport gagal. Semak internet anda dan cuba lagi, atau simpan slaid satu per satu."
+          : "Export failed. Check your connection and try again, or save the slides one at a time.",
+      );
+    } finally {
       setDownloading(false);
-      return;
     }
-    const JSZip = await loadJSZip();
-    const zip = new JSZip();
-    for (let i = 0; i < total; i++) zip.file(exportName(i), await toBlob(i));
-    const out = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(out);
-    const d = (theme.watermarkText || "Drevo").replace(/\s+/g, "");
-    const c = `${listing?.brand || ""}${listing?.model || ""}`.replace(
-      /\s+/g,
-      "",
-    );
-    const dt = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const a = document.createElement("a");
-    a.download = `${d}_${c}_${dt}.zip`;
-    a.href = url;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    setDownloading(false);
   }, [total, toBlob, theme, listing]);
 
   // ── Save / load design ───────────────────────────────────────────────────

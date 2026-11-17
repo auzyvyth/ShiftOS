@@ -7,6 +7,8 @@
 // decimal, largest-remainder rounded so the section adds to exactly 100.0), or null for a row that is a
 // sign / result rather than a share (a loss, an overhead line). `kind` is 'rm' (default), 'count' or 'days'.
 
+import { AGEING_DAYS } from './carPnl.js';
+
 const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 /**
@@ -187,8 +189,8 @@ export function explain(m, periodKey, key) {
     ], 'Floor-plan interest plus a share of the monthly overhead, for each car standing on the lot.');
   }
   if (key === 'over60') {
-    const old = stock.filter((r) => (r.p.days || 0) > 60);
-    return out('Over 60 days in stock', old.length, 'count', [
+    const old = stock.filter((r) => (r.p.days || 0) > AGEING_DAYS);
+    return out(`Over ${AGEING_DAYS} days in stock`, old.length, 'count', [
       section('Oldest first, by money tied up', old.filter((r) => !r.costMissing).sort((a, b) => b.p.days - a.p.days).map((r) => ({ label: r.title, sub: `${r.p.days} days`, value: r.cost })), { sort: false }),
     ], 'Share is each car\'s part of the money tied up in these cars.');
   }

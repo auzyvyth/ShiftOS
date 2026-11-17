@@ -29,7 +29,10 @@ function Tile({ label, value, note }) {
   );
 }
 
-export default function SalesmanHealthSheet({ person: s, onClose }) {
+// `children` = the person's tools (link, cars, commission, account), shown under the numbers. Team's
+// rows open this sheet, so there is no second card per person on the page. `staff` = a non-salesman
+// (manager, admin...): no score or numbers, only the header and the tools; `subtitle` replaces the line under the name.
+export default function SalesmanHealthSheet({ person: s, onClose, children, staff = false, subtitle, word }) {
   useModalHistory(true, onClose);
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -57,7 +60,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
         aria-modal="true"
         aria-label={`${s.name || 'Salesman'} performance`}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: PL.canvas, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0', fontFamily: 'system-ui, sans-serif' }}
+        style={{ background: PL.canvas, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0', fontFamily: 'inherit' }}
       >
         {/* Header */}
         <div style={{ background: PL.card, borderBottom: `1px solid ${PL.line}`, padding: '16px 16px 14px', display: 'flex', gap: 12, alignItems: 'center', position: 'sticky', top: 0 }}>
@@ -67,22 +70,23 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: INK }}>{s.name || 'Salesman'}</span>
-              {st && <span style={{ fontSize: 10, fontWeight: 700, color: tone.fg, background: tone.bg, borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>{st.label}</span>}
+              {(word || st) && <span style={{ fontSize: 10, fontWeight: 700, color: tone.fg, background: tone.bg, borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>{word || st.label}</span>}
             </div>
-            <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{lastActiveText(s)}</div>
+            <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{subtitle ?? lastActiveText(s)}</div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          {!staff && <div style={{ textAlign: 'right' }}>
             <div style={MICRO}>Score</div>
             {s.score != null
               ? <div style={{ ...NUM, fontSize: 22, fontWeight: 700, color: INK }}>{s.score}<span style={{ fontSize: 12, color: MUTED, fontWeight: 600 }}>/100</span></div>
               : <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 4 }}>{noScoreReason(s) || '—'}</div>}
-          </div>
+          </div>}
           <button onClick={onClose} aria-label="Close" style={{ border: 'none', background: PL.raised, borderRadius: 999, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <X size={16} color={MUTED} />
           </button>
         </div>
 
         <div style={{ padding: 16, display: 'grid', gap: 16 }}>
+          {staff ? children : (<>
           {/* What needs attention */}
           <section>
             <div style={{ ...MICRO, marginBottom: 8 }}>What needs your attention</div>
@@ -113,6 +117,8 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
             </div>
           </section>
 
+          {children}
+
           {/* How the score is made */}
           <section>
             <div style={{ ...MICRO, marginBottom: 8 }}>How the score is made</div>
@@ -142,6 +148,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
               </div>
             </div>
           </section>
+          </>)}
         </div>
       </div>
     </div>,

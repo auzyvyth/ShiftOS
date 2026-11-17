@@ -5,6 +5,15 @@ Decided after five read-only research passes (navigation, code structure, data l
 speed). Two of them independently said: **fix the numbers BEFORE merging more screens** (moving tabs
 while two screens show two figures only moves the confusion). Steps, in order, one commit each:
 
+> **Status check 2026-11-16 (code read, not assumed):** steps 1, 2 and 3 are DONE in the code. Step 1: AnalyticsTab
+> checks `error` and keeps the last value; DocumentsTab keeps the list on a failed read. Step 2: Overview and Revenue
+> sum `carPnl()` through `useCarMoney`, and `costMissing` exists (`ownerMoney.js:77`). Step 3: one clock (`daysHeld`)
+> and one threshold (`AGEING_DAYS`); the last hardcoded 60 in `moneyExplain.js` now uses it. Left on their own
+> numbers on purpose: `AccountantPanel.jsx` (stored `days_in_stock`, unused role). Fast List was removed from the app.
+> Open: step 5 (4a, 4b, 4c and 4d are done). 4d (2026-11-16): adding a car is a pop-up from the Add car sheet (no `add`
+> tab; "Stock only" opens the real AddCarForm internal form, StockTab's nameless "Add Stock Unit" form is gone), and HP
+> Board is a pill in Leads / CRM (`CRMPanel hpBoard`), restyled to premiumLight. `/dashboard/add` and `/dashboard/hp` redirect.
+
 1. **Two read-failure bugs (about 15 lines, no visible change).**
    - `src/pages/dashboard/AnalyticsTab.jsx:46-54`: `carRes.data || []` ignores `error`, so a failed read
      paints zeros, and a rejected promise leaves `eventsLoading` true forever. Check `error`, keep the last
@@ -27,7 +36,19 @@ while two screens show two figures only moves the confusion). Steps, in order, o
       Inventory row lacks (incomplete-listings list, CSV export, CVR); keep only what is unique, then delete it
       and redirect `analytics?sub=listings` to `listings`.
    b. AI Manager tab becomes a card on Overview (the starter-plan gate moves with it); redirect `ai_manager`.
+      **DONE 2026-11-16:** `src/pages/dashboard/AiManagerCard.jsx` on Overview, closed by default (opening it runs the
+      briefing; the snapshot loads only while open, `aiOpen` in DashboardPage). Nav item + tab gone; `/dashboard/ai_manager`
+      opens Overview with the card open. Same gates: not on `dealer_starter`, the `tab_ai_manager` switch. Light restyle of
+      `AISalesManager.jsx`; the automatic first ask is no longer shown as a user bubble.
    c. Performance + Team become one people screen (merge by subject, not by report type); redirect.
+      **DONE 2026-11-16:** Team's top table `dashboard/TeamScoreboard.jsx` (+ `hooks/useTeamScores.js`) is the one
+      judgement of each salesman (status, score, won/leads, close rate, reply, avg profit if `view_gross`, link clicks, sold).
+      Removed: Team Leaderboard (it had its own gross formula), the card's "Inactive 30d+" rule, the card's clicks grid and
+      activity line, Performance's Team Performance table and Salesman Performance list. Performance renamed "Traffic".
+      Design pass the same day: one switch People | Brokers | Activity, rows open a sheet with the tools (no cards), one
+      30-day window, profit per salesman from `sellerTotals`. Week | Month | Year on Team needs `_team_health` to take a window.
+      Still overlapping: Revenue's per-salesman reply-time bars (`RevOpsPage.jsx:611`). Migration `20261116i` (queued) points
+      the team-health push at /dashboard/team.
    d. Kill the `add` tab, keep only `AddCarSheet` (5 entry points today); HP Board becomes a Sales pill.
 5. **Split the rest of `DashboardPage.jsx` (9,573 lines), in this order, one block per commit:** Settings
    (`dashboard/settings/` with SettingsSection/SettingsField/SaveBtn/ErrMsg, PermissionsMatrix, WaTemplatesEditor,
@@ -37,7 +58,17 @@ while two screens show two figures only moves the confusion). Steps, in order, o
    -> shared-state hooks last (about 69 states; do not build a context until the leaf moves are done).
    Verify EVERY move with: `eslint` rules `no-undef` AND `react/jsx-no-undef` (the first alone MISSED
    `Sparkline` and `AgeBadge`, caught only by rendering), a `vite build`, and a mocked render of the moved
-   component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`).
+   component. Moved so far: DocumentsTab, AnalyticsTab (+ `dashboard/shared.js`, `dashboard/widgets.jsx`),
+   Settings (2026-11-16: `dashboard/settings/SettingsTab.jsx`, 2,160 lines, byte-identical move; all 18 sections
+   clicked through in a mocked render), `dashboard/CostProcurementForm.jsx`, `dashboard/PriceEditModal.jsx`,
+   `dashboard/MarkSoldModal.jsx` `dashboard/TeamTab.jsx` (+ lastActiveText, staffAddError), `dashboard/ListingDetailDrawer.jsx` (SelectTick stays:
+   the listings grid uses it) `dashboard/StockTab.jsx` (StockTab, StockStatsStrip as a named export, stock* helpers, STOCK_* constants,
+   bucketGPByMonth), then TabErrorBoundary / SubTabBar / SelectTick / Avatar into `dashboard/widgets.jsx` and the CSS
+   string into `dashboard/styles.js` (all byte-identical; the unused HeroCarouselIcon deleted). DashboardPage 9,131 -> 2,909
+   lines. Whole dashboard rendered with mocked data, all 13 tabs at 1280 and 375 wide, no crash, no page error.
+   Next: the shared-state hooks (about 69 states; no context until asked).
+   Design items seen while moving were fixed 2026-11-16 (8127abb): Mark sold red key, grey notes, the car
+   drawer action rail as grey rows with one red Mark as Sold, status pill on grey, close X clear of the tabs.
 6. **Smaller items found by the research:** Fast List modal (`DashboardPage.jsx` `showFastModal`) is a fixed
    overlay with no portal and no scroll lock (overlay rules 1-2); parallelise the profile fetch with the
    cars/salesmen/stock queries; trim the ~70-column `car_listings` select; `vendor-charts` 457 KB is on the

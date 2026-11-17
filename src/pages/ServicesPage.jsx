@@ -552,7 +552,7 @@ export default function ServicesPage({ userId, profile = null }) {
                           e.currentTarget.style.borderColor =
                             "rgba(220,38,38,0.35)";
                           e.currentTarget.style.background =
-                            "rgba(220,38,38,0.04)";
+                            "rgba(17,24,39,0.06)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = "#D1D5DB";
@@ -629,21 +629,16 @@ export default function ServicesPage({ userId, profile = null }) {
                                   whiteSpace: "nowrap",
                                   ...(p.stock_qty === 0
                                     ? {
-                                        background: "rgba(239,68,68,0.1)",
-                                        border: "1px solid rgba(239,68,68,0.3)",
+                                        background: '#f5f6f8', border: 'none',
                                         color: "#f87171",
                                       }
                                     : p.stock_qty <= p.low_stock_alert
                                       ? {
-                                          background: "rgba(251,191,36,0.1)",
-                                          border:
-                                            "1px solid rgba(251,191,36,0.3)",
-                                          color: "#fbbf24",
+                                          background: '#f5f6f8', border: 'none',
+                                          color: "#b91c1c",
                                         }
                                       : {
-                                          background: "rgba(74,222,128,0.1)",
-                                          border:
-                                            "1px solid rgba(74,222,128,0.3)",
+                                          background: '#f5f6f8', border: 'none',
                                           color: "#4ade80",
                                         }),
                                 }}
@@ -982,7 +977,7 @@ export default function ServicesPage({ userId, profile = null }) {
                               borderRadius: 20,
                               background:
                                 i === 0
-                                  ? "rgba(220,38,38,0.08)"
+                                  ? "rgba(17,24,39,0.06)"
                                   : "#F3F4F6",
                               border: `1px solid ${i === 0 ? "rgba(220,38,38,0.25)" : "#E5E7EB"}`,
                               color: i === 0 ? "#dc2626" : "#374151",
@@ -1235,9 +1230,8 @@ export default function ServicesPage({ userId, profile = null }) {
                         style={{
                           fontSize: 10,
                           fontWeight: 600,
-                          color: "#d97706",
-                          background: "#fffbeb",
-                          border: "1px solid #fde68a",
+                          color: "#b91c1c",
+                          background: '#f5f6f8', border: 'none',
                           borderRadius: 20,
                           padding: "2px 8px",
                           whiteSpace: "nowrap",
@@ -1253,8 +1247,7 @@ export default function ServicesPage({ userId, profile = null }) {
                             fontSize: 10,
                             fontWeight: 600,
                             color: "#16a34a",
-                            background: "#f0fdf4",
-                            border: "1px solid #bbf7d0",
+                            background: '#f5f6f8', border: 'none',
                             borderRadius: 20,
                             padding: "2px 8px",
                             whiteSpace: "nowrap",
@@ -1584,7 +1577,7 @@ export default function ServicesPage({ userId, profile = null }) {
                 >
                   {form.track_stock ? (
                     <ToggleRight
-                      style={{ width: 26, height: 26, color: "#38bdf8" }}
+                      style={{ width: 26, height: 26, color: "#4b5563" }}
                     />
                   ) : (
                     <ToggleLeft

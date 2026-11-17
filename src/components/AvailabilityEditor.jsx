@@ -36,7 +36,7 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false, th
     ? { card: PD.card, border: "transparent", text: PD.text, muted: PD.textMuted, chipBg: PD.raised, chipBorder: "transparent", inputBg: PD.raised, box: PD.textMuted }
     : dark
     ? { card: "#0d1117", border: "rgba(255,255,255,0.08)", text: "#f1f5f9", muted: "#64748b", chipBg: "rgba(255,255,255,0.04)", chipBorder: "rgba(255,255,255,0.1)", inputBg: "rgba(255,255,255,0.05)" }
-    : { card: "#fff", border: "#e5e7eb", text: "#111827", muted: "#6b7280", chipBg: "#f9fafb", chipBorder: "#e5e7eb", inputBg: "#fff" };
+    : { card: "#fff", border: "transparent", text: "#111827", muted: "#6b7280", chipBg: "#f5f6f8", chipBorder: "transparent", inputBg: "#f5f6f8" };
 
   useEffect(() => {
     if (!ownerId) return;
