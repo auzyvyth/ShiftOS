@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { getDealerIdFromProfile } from './useProfile';
 import { usePersistentState } from './usePersistentState';
 import { redactLeadsForCache } from '../utils/panelCache';
+import { liveChannel } from '../lib/liveChannel';
 
 const SELECT_QUERY = `
   *,
@@ -43,8 +44,8 @@ export function useLeads(dealerIdHint = null) {
     return dealerIdRef.current;
   }, []);
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
+  const fetchLeads = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     const dealerId = await resolveDealerId();
     let query = supabase
       .from('leads')
@@ -59,12 +60,31 @@ export function useLeads(dealerIdHint = null) {
 
     const { data, error: err } = await query;
 
-    if (err) { setError(err); setLoading(false); return; }
+    if (err) { if (!silent) setError(err); setLoading(false); return; }
     setLeads(data || []);
     setLoading(false);
   }, [resolveDealerId]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
+
+  // Live: a lead changed by someone else (a broker's stage mirrored onto the dealer's
+  // copy, a salesman moving a lead) repaints the board without a reload. Filter stays
+  // `col=eq.val` so liveChannel + the hidden-screen replay (IO-2 / IO-6) both work.
+  useEffect(() => {
+    let ch = null, timer = null, dead = false;
+    (async () => {
+      const dealerId = await resolveDealerId();
+      if (dead || !dealerId) return;
+      const refresh = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fetchLeads({ silent: true }), 400);
+      };
+      ch = liveChannel(supabase, 'leads_board_' + dealerId)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `dealer_id=eq.${dealerId}` }, refresh)
+        .subscribe();
+    })();
+    return () => { dead = true; clearTimeout(timer); if (ch) supabase.removeChannel(ch); };
+  }, [resolveDealerId, fetchLeads]);
 
   const addLead = useCallback(async (payload) => {
     const dealerId = await resolveDealerId();
