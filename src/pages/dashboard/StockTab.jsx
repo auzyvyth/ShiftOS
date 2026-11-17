@@ -9,6 +9,7 @@ import { supabase } from "../../supabaseClient";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Sparkline } from "./widgets";
 import MarkSoldModal from "./MarkSoldModal";
+import { sellToBuyer, saleErrorText } from "./closeSale";
 import PhoneInput from "../../components/ui/PhoneInput";
 import AppraisalChecklist from "../../components/AppraisalChecklist";
 import { color, border, font, premiumLight } from "../../theme/tokens";
@@ -418,7 +419,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // the sale: trg_sync_stock_sold_to_listing flips the car to sold with this
   // price + date, so no second car_listings status write here. Closer and
   // commission live on the car, so they are written first.
-  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, soldDate = null } = {}) => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, soldDate = null, leadId = null, newBuyer = null } = {}) => {
     setSoldSaving(true);
     const listingId = soldTarget.listing_id || null;
     if (listingId) {
@@ -432,6 +433,25 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
           setSoldSaving(false);
           return;
         }
+      }
+    }
+    // A buyer was picked (or typed in): the sale is a won lead, so the customer record and
+    // handover steps are made (closeSale.js). This pop-up used to show the buyer picker and
+    // then ignore it, so every Stock-tab sale had no customer (DASH-TEST 2).
+    if (listingId && (leadId || newBuyer)) {
+      try {
+        const res = await sellToBuyer({ dealerId: userId, listingId, leadId, newBuyer, soldBy, soldPrice });
+        if (res.status === 'pending') {
+          toast.success('Sent to the dealer to approve the price. The car is marked sold once they say yes.');
+          setSoldTarget(null);
+          setSoldSaving(false);
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error(saleErrorText(e));
+        setSoldSaving(false);
+        return;
       }
     }
     const payload = {
@@ -459,7 +479,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     await fetchUnits();
     setSoldTarget(null);
     setSoldSaving(false);
-    toast.success('Marked sold.');
+    toast.success(leadId || newBuyer
+      ? 'Marked sold. The buyer is in Sold > Customers and the handover steps are ready.'
+      : 'Marked sold.');
   };
 
   // HP-3: PUSPAKOM B7 (hire-purchase inspection) — valid 30 days from inspection.

@@ -4,7 +4,9 @@ import { suggestCommission, describeCommissionRule } from "../../utils/commissio
 import { supabase } from "../../supabaseClient";
 import { border, font, premiumLight as PL } from "../../theme/tokens";
 import "../../theme/premiumLight.css";
-import { X, CheckCircle2 } from "lucide-react";
+import { X, CheckCircle2, Check, UserPlus, Store } from "lucide-react";
+import PhoneInput from "../../components/ui/PhoneInput";
+import { isValidMyPhone, MY_PHONE_ERROR } from "../../lib/phone";
 
 // Asks for the three things a sale needs and nothing else did: who sold it,
 // what it actually sold for, and the commission. Without them 18 of 25 sold cars
@@ -30,8 +32,13 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
   const [commissionConfig, setCommissionConfig] = useState(null);
   // Who bought it: an open lead on this car. Picking one makes the sale a real win
   // (customer, handover steps, renewals); "no buyer" is a car sold off the platform.
-  const [buyerLeads, setBuyerLeads] = useState([]);
-  const [leadId, setLeadId] = useState("");
+  // There is NO default answer (DASH-TEST 2): the old dropdown started on "no buyer", so
+  // pressing Confirm without looking made a sale with no customer, handover or renewals.
+  // choice = "lead:<id>" | "new" (walk-in, a lead is made) | "elsewhere" (status only).
+  const [buyerLeads, setBuyerLeads] = useState(null);
+  const [choice, setChoice] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   useEffect(() => {
     if (!listing.id) return;
     supabase.from("leads").select("id, buyer_name, stage, salesman_id")
@@ -39,6 +46,13 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
       .not("stage", "in", "(won,closed_won,lost,closed_lost)")
       .then(({ data }) => setBuyerLeads(data || []));
   }, [listing.id]);
+  const leadId = choice.startsWith("lead:") ? choice.slice(5) : "";
+  const phoneBad = choice === "new" && newPhone !== "" && !isValidMyPhone(newPhone);
+  const buyerReady = !hasListing || (choice === "new" ? newName.trim().length > 0 && !phoneBad : choice !== "");
+  const pickLead = (l) => {
+    setChoice(`lead:${l.id}`);
+    if (l.salesman_id && !soldBy) setSoldBy(l.salesman_id);
+  };
   useEffect(() => {
     if (!listing.dealer_id) return;
     supabase.from("profiles").select("commission_config").eq("id", listing.dealer_id).maybeSingle()
@@ -63,6 +77,7 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
     commission: commission === "" ? null : Number(commission),
     soldDate: soldDate || null,
     leadId: leadId || null,
+    newBuyer: choice === "new" ? { name: newName.trim(), phone: newPhone || null } : null,
   });
   return (
     <div
@@ -90,17 +105,24 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
         <div className="flex flex-col gap-3 mb-5">
           {hasListing && <div>
             <label className={labelCls}>Who bought it?</label>
-            <select value={leadId} onChange={(e) => {
-              setLeadId(e.target.value);
-              const l = buyerLeads.find((x) => x.id === e.target.value);
-              if (l?.salesman_id && !soldBy) setSoldBy(l.salesman_id);
-            }} className={fieldCls}>
-              <option value="">No buyer on file (sold elsewhere or walk-in)</option>
-              {buyerLeads.map((l) => (
-                <option key={l.id} value={l.id}>{l.buyer_name || "Unnamed buyer"} ({l.stage})</option>
+            <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Who bought it?">
+              {buyerLeads === null && <p className="text-xs text-gray-500 py-1">Loading buyers on this car...</p>}
+              {(buyerLeads || []).map((l) => (
+                <ChoiceRow key={l.id} on={choice === `lead:${l.id}`} onClick={() => pickLead(l)}
+                  title={l.buyer_name || "Unnamed buyer"} sub={`In your pipeline · ${l.stage}`} />
               ))}
-            </select>
-            {!leadId && <p className="text-[11px] text-gray-500 mt-1">With no buyer, no customer record or handover steps are made.</p>}
+              <ChoiceRow on={choice === "new"} onClick={() => setChoice("new")} Icon={UserPlus}
+                title="A new buyer" sub="Walk-in or not in your leads yet" />
+              {choice === "new" && (
+                <div className="flex flex-col gap-2 px-1 pb-1">
+                  <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Buyer's name" className={fieldCls} autoFocus />
+                  <PhoneInput value={newPhone} onChange={setNewPhone} placeholder="Phone (optional)" />
+                  {phoneBad && <p className="text-[11px]" style={{ color: PL.accentText }}>{MY_PHONE_ERROR}</p>}
+                </div>
+              )}
+              <ChoiceRow on={choice === "elsewhere"} onClick={() => setChoice("elsewhere")} Icon={Store}
+                title="Sold elsewhere" sub="No customer record, handover steps or renewal reminders" />
+            </div>
           </div>}
           {hasListing && <div>
             <label className={labelCls}>Sold by</label>
@@ -140,7 +162,7 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
           </button>
           <button
             onClick={submit}
-            disabled={loading}
+            disabled={loading || !buyerReady}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
             style={{ background: PL.accent }}
           >
@@ -159,5 +181,25 @@ export default function MarkSoldModal({ listing, salesmen = [], onClose, onConfi
         </div>
       </div>
     </div>
+  );
+}
+
+// One answer to "who bought it?": a grey row, the picked one a shade darker with a tick
+// (premiumLight: no tints, no borders; the words carry the meaning).
+function ChoiceRow({ on, onClick, title, sub, Icon }) {
+  return (
+    <button type="button" role="radio" aria-checked={on} onClick={onClick}
+      className="w-full flex items-center gap-3 text-left rounded-xl px-3 py-2.5"
+      style={{ background: on ? "#eceef1" : "#f5f6f8", border: "none", cursor: "pointer", minHeight: 48 }}>
+      {Icon && <Icon className="w-4 h-4 flex-shrink-0" style={{ color: "#6b7280" }} />}
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-semibold text-gray-900 truncate">{title}</span>
+        <span className="block text-[11px] text-gray-500">{sub}</span>
+      </span>
+      <span className="flex-shrink-0 rounded-full flex items-center justify-center"
+        style={{ width: 20, height: 20, background: on ? "#111827" : "#fff", boxShadow: on ? "none" : "inset 0 0 0 1.5px #d1d5db" }}>
+        {on && <Check className="w-3 h-3" style={{ color: "#fff" }} />}
+      </span>
+    </button>
   );
 }

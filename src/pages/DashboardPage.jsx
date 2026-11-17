@@ -66,6 +66,7 @@ import SettingsTab from "./dashboard/settings/SettingsTab";
 import CostProcurementForm from "./dashboard/CostProcurementForm";
 import PriceEditModal from "./dashboard/PriceEditModal";
 import MarkSoldModal from "./dashboard/MarkSoldModal";
+import { sellToBuyer, saleErrorText } from "./dashboard/closeSale";
 import TeamTab from "./dashboard/TeamTab";
 import ListingDetailDrawer from "./dashboard/ListingDetailDrawer";
 import StockTab, { StockStatsStrip } from "./dashboard/StockTab";
@@ -922,30 +923,23 @@ export default function DashboardPage() {
   // Which Settings section the Verify-ID prompt should land on.
   const [settingsJump, setSettingsJump] = useState(null);
 
-  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, leadId = null } = {}) => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, leadId = null, newBuyer = null } = {}) => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
-      if (leadId) {
-        // A real win: the won trigger flips the car, makes the customer and seeds the handover.
-        // close_deal_at_price records the price as the agreed price (batch 6a); a discount over
-        // the limit from a role that cannot approve waits for the dealer instead.
-        const { data: res, error: rpcErr } = await supabase.rpc("close_deal_at_price", {
-          p_lead: leadId, p_agreed: soldPrice ?? null, p_closer: soldBy || null,
+      if (leadId || newBuyer) {
+        // A real win (closeSale.js): the won trigger flips the car, makes the customer and
+        // seeds the handover. A discount over the limit from a role that cannot approve
+        // waits for the dealer instead.
+        const res = await sellToBuyer({
+          dealerId: getDealerIdFromProfile(profile), listingId: markSoldListing.id,
+          leadId, newBuyer, soldBy, soldPrice,
         });
-        if (rpcErr && rpcErr.code !== "PGRST202") throw rpcErr;
-        if (res?.status === "pending") {
+        if (res.status === "pending") {
           toast.success("Sent to the dealer to approve the price. The car is marked sold once they say yes.");
           setMarkSoldListing(null);
           setMarkSoldLoading(false);
           return;
-        }
-        if (rpcErr) {
-          // Function not on the database yet (queued migration): the old write.
-          const { data: won, error: winErr } = await supabase
-            .from("leads").update({ stage: "won", ...(soldBy ? { salesman_id: soldBy } : {}) }).eq("id", leadId).select("id");
-          if (winErr) throw winErr;
-          if (!won?.length) throw new Error("lead update refused");
         }
       }
       const update = {
@@ -969,18 +963,14 @@ export default function DashboardPage() {
       setListings((p) => p.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
       setDetailListing((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setMarkSoldListing(null);
-      toast.success(leadId
+      toast.success(leadId || newBuyer
         ? "Marked sold. The buyer is in Sold > Customers and the handover steps are ready."
         : "Marked sold.");
       // The merged listings state above feeds StockTab's P&L; TeamTab refetches
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
-      const m = String(e?.message || "");
-      toast.error(m.includes("car_already_won")
-        ? "This car is already sold to another buyer. Undo that sale first."
-        : m.includes("bad_price") ? "Enter the price agreed with the buyer."
-        : "Could not mark the car as sold. Try again.");
+      toast.error(saleErrorText(e));
     }
     setMarkSoldLoading(false);
   };

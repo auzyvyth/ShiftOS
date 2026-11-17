@@ -73,6 +73,9 @@
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
 (price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 12 the 6 unchecked manager switches are hidden,
+2 Mark as Sold asks who bought it with no default and no way past it (lead on the car / a new walk-in buyer / sold
+elsewhere), one helper `dashboard/closeSale.js` for Listings AND the Stock tab (the Stock tab used to drop the pick);
+probed on the live DB in a rolled-back transaction: walk-in lead -> won -> car sold, 1 customer, 8 handover steps,
 1 Add car saves again (CarForm's pop-ups on one layer, `FORM_POPUP_Z` 12000, above the 9000 / 11000 hosts; proven before/after in the browser),
 (`enforced: false` in permissions.js; saved values kept; flip to true once the app AND `dealer_can` check one).
 Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
@@ -81,12 +84,11 @@ errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> custom
 With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad (gone with the container).
 
 **Must fix before launch**
-- [ ] 2. "Mark as Sold" in the car drawer skips the buyer (`src/pages/dashboard/MarkSoldModal.jsx`): writes
-  `status='sold'` alone, so no customer, no handover steps, no renewals (proven on the live DB). Breaks SOLD-1.
-  Route it through "Who bought it?" (`WhoBoughtSheet` -> won lead) like Lite/Premium; keep "Sold elsewhere".
-  **Data repair: 23 live dealer cars are already sold with no won lead** (query: status='sold' and no lead
-  with stage won/closed_won on the car, dealer/owner accounts). Decide per car: attach the buyer or leave as
-  sold-elsewhere.
+- [ ] 2b. DATA REPAIR, owner call (the code half of 2 is DONE 2026-11-17): 23 dealer cars are sold with no won
+  lead. 11 are `sentimas` (sold Mar-Jul 2026, before any buyer picker existed), 12 are the XDRIVE dealer on `vyth`
+  (looks like the owner's test dealership; 4 of them had an open lead on the car). Query: status='sold', no lead
+  with stage won/closed_won on the car, dealer/owner accounts. Per car: attach the buyer (win their lead) or leave
+  it as sold elsewhere. Nothing is changed until the owner says which.
 - [ ] 3. Owner cannot switch staff off. `TeamTab.jsx:453` updates `profiles.is_active` directly and the DB
   changes 0 rows (live probe, manager row); the screen says "Could not save". Needs a SECURITY DEFINER
   function (owner of that dealer only, staff of that dealer only), like `set_account_suspended`. A fired
