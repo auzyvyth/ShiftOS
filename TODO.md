@@ -72,7 +72,8 @@
 
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
-(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 12 the 6 unchecked manager switches are hidden
+(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 12 the 6 unchecked manager switches are hidden,
+1 Add car saves again (CarForm's pop-ups on one layer, `FORM_POPUP_Z` 12000, above the 9000 / 11000 hosts; proven before/after in the browser),
 (`enforced: false` in permissions.js; saved values kept; flip to true once the app AND `dealer_can` check one).
 Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
 forms, ~20 owner/manager writes probed on the live DB in rolled-back transactions. No crashes, no console
@@ -80,11 +81,6 @@ errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> custom
 With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad (gone with the container).
 
 **Must fix before launch**
-- [ ] 1. Add car > Full listing cannot be saved. CarForm's "Post Anyway?" gap warning
-  (`src/components/CarForm.jsx:4300`, `z-[300]`) opens BEHIND the Add car pop-up (`DashboardPage.jsx:2329`,
-  zIndex 9000): Save looks dead, nothing can be pressed. Fires for any car with a gap (few photos, no VIN,
-  no colour), i.e. most new cars. Edit car is fine (warning sits on top there). Fix: portal the warning above
-  every host (or pass a z base), then re-test add + edit.
 - [ ] 2. "Mark as Sold" in the car drawer skips the buyer (`src/pages/dashboard/MarkSoldModal.jsx`): writes
   `status='sold'` alone, so no customer, no handover steps, no renewals (proven on the live DB). Breaks SOLD-1.
   Route it through "Who bought it?" (`WhoBoughtSheet` -> won lead) like Lite/Premium; keep "Sold elsewhere".
