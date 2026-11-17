@@ -9,26 +9,49 @@ import { premiumLight as PL } from '../../theme/tokens';
 const WINDOWS = [[7, '7 days'], [30, '30 days'], [90, '90 days']];
 const num = (n) => Number(n || 0).toLocaleString();
 
+// Last good answer per dealer + window, for this page visit: reopening a car (or switching back to a
+// window) paints at once, and a failed read keeps the numbers instead of blanking them.
+const lastGood = new Map();
+
 export default function CarAnalyticsPanel({ listing, dealerId }) {
   const [days, setDays] = useState(30);
   const [state, setState] = useState({ loading: true, error: false, row: null, scans: null });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!dealerId) return undefined;
     let off = false;
-    setState((s) => ({ ...s, loading: true, error: false }));
-    Promise.all([
+    const key = `${dealerId}:${days}`;
+    const pick = (hit) => ({
+      row: (hit.cars || []).find((r) => r.car_id === listing.id) || null,
+      scans: hit.scans == null ? null : Number((hit.scans.find((r) => r.car_id === listing.id) || {}).scans) || 0,
+    });
+    const cached = lastGood.get(key);
+    setState(cached ? { loading: false, error: false, ...pick(cached) } : { loading: true, error: false, row: null, scans: null });
+    const read = () => Promise.all([
       supabase.rpc('get_dealer_car_analytics', { p_dealer_id: dealerId, p_days: days }),
       supabase.rpc('get_dealer_sticker_scans', { p_dealer_id: dealerId, p_days: days }),
-    ]).then(([a, s]) => {
+    ]);
+    (async () => {
+      // A busy database cancels the read after 8s (2026-11-17: a 500 on both calls). Try once more
+      // by itself before showing anything; only then say so, with a button.
+      let res = await read().catch(() => null);
+      if (!res || res[0].error) {
+        await new Promise((r) => setTimeout(r, 2500));
+        if (off) return;
+        res = await read().catch(() => null);
+      }
       if (off) return;
-      if (a.error) { setState({ loading: false, error: true, row: null, scans: null }); return; }
-      const row = (a.data || []).find((r) => r.car_id === listing.id) || null;
-      const scanRow = s.error ? null : (s.data || []).find((r) => r.car_id === listing.id);
-      setState({ loading: false, error: false, row, scans: s.error ? null : Number(scanRow?.scans) || 0 });
-    }).catch(() => { if (!off) setState({ loading: false, error: true, row: null, scans: null }); });
+      if (!res || res[0].error) {
+        setState((p) => (cached ? { ...p, loading: false } : { loading: false, error: true, row: null, scans: null }));
+        return;
+      }
+      const hit = { cars: res[0].data || [], scans: res[1].error ? null : res[1].data || [] };
+      lastGood.set(key, hit);
+      setState({ loading: false, error: false, ...pick(hit) });
+    })();
     return () => { off = true; };
-  }, [dealerId, listing.id, days]);
+  }, [dealerId, listing.id, days, attempt]);
 
   const views = Number(state.row?.views) || 0;
   const wa = Number(state.row?.whatsapp) || 0;
@@ -51,7 +74,9 @@ export default function CarAnalyticsPanel({ listing, dealerId }) {
 
       {state.error ? (
         <div role="alert" style={{ background: PL.raised, borderRadius: PL.radius.row, padding: 14, fontSize: 13.5, color: PL.accentText }}>
-          Could not load the numbers. Close this and open the car again.
+          <div style={{ marginBottom: 10 }}>The database is busy and the numbers did not load.</div>
+          <button type="button" onClick={() => setAttempt((n) => n + 1)}
+            style={{ height: 34, padding: '0 16px', borderRadius: PL.radius.pill, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', background: '#fff', color: PL.text }}>Try again</button>
         </div>
       ) : (
         <>
