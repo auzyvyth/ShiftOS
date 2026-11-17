@@ -76,6 +76,8 @@ Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboardi
 2 Mark as Sold asks who bought it with no default and no way past it (lead on the car / a new walk-in buyer / sold
 elsewhere), one helper `dashboard/closeSale.js` for Listings AND the Stock tab (the Stock tab used to drop the pick);
 probed on the live DB in a rolled-back transaction: walk-in lead -> won -> car sold, 1 customer, 8 handover steps,
+8 Edit Slide pop-up is light (premiumLight, badge = grey pill + coloured word), portalled with Back; Save no longer greys
+out after a failed try and scrolls to the first error,
 11 car drawer + Add Lead portalled with scroll lock (drawer on layer 45, under its own 50 pop-ups); Add Lead's Back asks
 before losing typing (LeadsPage registered Back for it too, which skipped the question; removed),
 1 Add car saves again (CarForm's pop-ups on one layer, `FORM_POPUP_Z` 12000, above the 9000 / 11000 hosts; proven before/after in the browser),
@@ -102,8 +104,6 @@ With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad
   tonight.
 
 **Should fix (small)**
-- [ ] 8. Storefront > Edit Slide pop-up is DARK on the light dashboard (`components/xdrive/HeroSlideForm.jsx`);
-  its "fill in at least 4 stats" error sits below the fold, so Save looks dead. Move to premiumLight, scroll to the first error.
 - [ ] 9. AI import page (`/dashboard/import-stock`) is still fully dark (page + its 3 step components); restyle to premiumLight. (The way back is done: "Back to listings".)
 
 **Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis

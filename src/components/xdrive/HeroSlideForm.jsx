@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalHistory } from '../../hooks/useModalHistory';
+import { premiumLight as PL } from '../../theme/tokens';
 import {
   DndContext,
   closestCenter,
@@ -26,10 +29,12 @@ const BADGE_OPTS = ['HOT DEAL', 'RARE FIND', 'NEW ARRIVAL'];
 const TX_OPTS    = ['Auto', 'Manual', 'CVT', 'EV'];
 const FUEL_OPTS  = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
 
+// Dealer dashboard = premiumLight (DASH-TEST 8): a picked badge is the grey "selected" fill
+// with its word in colour, never a tinted pill.
 const BADGE_STYLES = {
-  'HOT DEAL':    { bg: 'rgba(220,38,38,0.15)',  border: 'rgba(220,38,38,0.3)',  color: '#f87171' },
-  'RARE FIND':   { bg: 'rgba(124,58,237,0.15)', border: 'rgba(124,58,237,0.3)', color: '#a78bfa' },
-  'NEW ARRIVAL': { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.3)', color: '#34d399' },
+  'HOT DEAL':    { bg: '#e3e6ea', border: 'transparent', color: '#b91c1c' },
+  'RARE FIND':   { bg: '#e3e6ea', border: 'transparent', color: '#5b21b6' },
+  'NEW ARRIVAL': { bg: '#e3e6ea', border: 'transparent', color: '#047857' },
 };
 
 const genId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -41,15 +46,16 @@ const makeDefaultStats = () => [
   { id: genId(), type: 'Engine CC', value: '', unit: ''   },
 ];
 
-const iCls = 'w-full bg-white/[0.05] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/20 transition-all';
-const smlCls = 'bg-white/[0.05] border border-white/10 rounded-xl px-2.5 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/20 transition-all';
+const iCls = 'w-full bg-[#f5f6f8] border border-transparent rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white transition-all';
+const smlCls = 'bg-[#f5f6f8] border border-transparent rounded-xl px-2.5 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white transition-all';
 
 const Label = ({ children }) => (
   <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest mb-1.5 mt-0">{children}</p>
 );
 
+// data-form-error: Save scrolls the first one into view (DASH-TEST 8: it sat below the fold).
 const ErrMsg = ({ msg }) => msg ? (
-  <p className="text-red-400 text-xs mt-1">{msg}</p>
+  <p data-form-error className="text-xs mt-1" style={{ color: PL.accentText }}>{msg}</p>
 ) : null;
 
 // ─── Sortable stat row ────────────────────────────────────────────────────────
@@ -85,7 +91,7 @@ function SortableStat({ stat, onUpdate, onRemove, canRemove }) {
         className={smlCls + ' flex-shrink-0 w-24 sm:w-32'}
       >
         {STAT_TYPES.map(t => (
-          <option key={t} value={t} style={{ background: '#111118' }}>{t}</option>
+          <option key={t} value={t} >{t}</option>
         ))}
       </select>
 
@@ -267,9 +273,17 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
   const isValid = Object.keys(validate()).length === 0;
 
   // ── Save ──────────────────────────────────────────────────────────────────
+  const bodyRef = useRef(null);
   const handleSave = async () => {
     setAttempted(true);
-    if (!isValid) return;
+    if (!isValid) {
+      // The errors render on this press; show the first one (DASH-TEST 8: "fill in at least
+      // 4 stats" sat below the fold and Save looked dead).
+      requestAnimationFrame(() => {
+        bodyRef.current?.querySelector('[data-form-error]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
+    }
     setSaving(true);
     setGeneralError('');
 
@@ -312,8 +326,16 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
 
   const showImageManual = imageOverride || !form.image_url || !selectedListing;
 
+  // Overlay rules (CLAUDE.md, DASH-TEST 8): portalled, page scroll locked, Back closes it and
+  // asks first once a car is picked or a name typed.
+  useModalHistory(true, onClose, { isDirty: () => !isEdit && !!(form.car_name || form.image_url) });
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)', fontFamily: "system-ui,sans-serif" }}
@@ -323,24 +345,18 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
         className="relative w-full sm:max-w-lg flex flex-col rounded-t-2xl sm:rounded-2xl"
         style={{
           maxHeight: '92vh',
-          background: 'rgba(11,11,15,0.98)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 0 0 1px rgba(220,38,38,0.07), 0 32px 64px rgba(0,0,0,0.72)',
+          background: '#fff',
+          boxShadow: PL.shadow,
         }}
       >
-        {/* Top accent line */}
-        <div
-          className="absolute top-0 left-0 right-0 h-px pointer-events-none z-10 rounded-t-2xl"
-          style={{ background: 'linear-gradient(90deg,transparent 8%,rgba(220,38,38,0.55) 38%,rgba(56,189,248,0.38) 68%,transparent 92%)' }}
-        />
 
         {/* ── Header ── */}
         <div
           className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+          style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}
         >
           <div>
-            <h3 className="text-white font-semibold text-base m-0">
+            <h3 className="text-gray-900 font-semibold text-base m-0">
               {isEdit ? 'Edit Slide' : 'New Slide'}
             </h3>
             <p className="text-gray-500 text-xs mt-0.5 m-0">
@@ -349,7 +365,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1.5 rounded-lg flex items-center"
+            className="text-gray-500 hover:text-gray-900 transition-colors p-1.5 rounded-lg flex items-center"
             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -359,7 +375,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
         </div>
 
         {/* ── Scrollable body ── */}
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-7">
+        <div ref={bodyRef} className="overflow-y-auto flex-1 px-5 py-5 space-y-7">
 
           {/* ════ STEP 1: Search listings ════ */}
           <div>
@@ -368,7 +384,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                 className="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0"
                 style={{ background: '#dc2626' }}
               >1</span>
-              <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest m-0">Search Your Listings</p>
+              <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest m-0">Search Your Listings</p>
             </div>
 
             <div className="relative" ref={dropdownRef}>
@@ -399,7 +415,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                 />
                 {loadingListings && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-3.5 h-3.5 border-2 border-white/10 border-t-red-500 rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-gray-200 border-t-red-500 rounded-full animate-spin" />
                   </div>
                 )}
               </div>
@@ -410,9 +426,9 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                   className="absolute top-full left-0 right-0 mt-1 rounded-xl z-50 overflow-hidden"
                   style={{
                     maxHeight: 220, overflowY: 'auto',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(11,11,15,0.98)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                    border: 'none',
+                    background: '#fff',
+                    boxShadow: PL.shadow,
                   }}
                 >
                   {filteredResults.length === 0 ? (
@@ -428,10 +444,10 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                         style={{
                           background: selectedListing?.id === l.id ? 'rgba(220,38,38,0.08)' : 'none',
                           border: 'none',
-                          borderBottom: i < filteredResults.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                          borderBottom: i < filteredResults.length - 1 ? '1px solid rgba(17,24,39,0.06)' : 'none',
                           cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                         }}
-                        onMouseEnter={e => { if (selectedListing?.id !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                        onMouseEnter={e => { if (selectedListing?.id !== l.id) e.currentTarget.style.background = '#f5f6f8'; }}
                         onMouseLeave={e => { if (selectedListing?.id !== l.id) e.currentTarget.style.background = 'none'; }}
                       >
                         {Array.isArray(l.images) && l.images[0] ? (
@@ -439,7 +455,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                         ) : (
                           <div
                             className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-700"
-                            style={{ background: 'rgba(255,255,255,0.05)' }}
+                            style={{ background: '#f5f6f8' }}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                               <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
@@ -448,7 +464,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-semibold m-0 truncate">{l.year} {l.brand} {l.model}</p>
+                          <p className="text-gray-900 text-sm font-semibold m-0 truncate">{l.year} {l.brand} {l.model}</p>
                           {l.selling_price && (
                             <p className="text-gray-500 text-xs m-0">RM {Number(l.selling_price).toLocaleString()}</p>
                           )}
@@ -481,7 +497,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold m-0 truncate">{form.car_name}</p>
+                  <p className="text-gray-900 text-sm font-semibold m-0 truncate">{form.car_name}</p>
                   <p className="text-gray-500 text-xs m-0">{form.transmission} · {form.fuel_type}</p>
                 </div>
                 <div className="text-red-500 flex-shrink-0">
@@ -500,7 +516,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                 className="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0"
                 style={{ background: '#dc2626' }}
               >2</span>
-              <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest m-0">Customize</p>
+              <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest m-0">Customize</p>
             </div>
 
             <div className="space-y-4">
@@ -543,7 +559,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     onChange={e => setForm(f => ({ ...f, transmission: e.target.value }))}
                     className={iCls}
                   >
-                    {TX_OPTS.map(o => <option key={o} value={o} style={{ background: '#111118' }}>{o}</option>)}
+                    {TX_OPTS.map(o => <option key={o} value={o} >{o}</option>)}
                   </select>
                 </div>
                 <div>
@@ -553,7 +569,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     onChange={e => setForm(f => ({ ...f, fuel_type: e.target.value }))}
                     className={iCls}
                   >
-                    {FUEL_OPTS.map(o => <option key={o} value={o} style={{ background: '#111118' }}>{o}</option>)}
+                    {FUEL_OPTS.map(o => <option key={o} value={o} >{o}</option>)}
                   </select>
                 </div>
               </div>
@@ -566,9 +582,9 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     onClick={() => setForm(f => ({ ...f, badge: null }))}
                     className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                     style={{
-                      background: !form.badge ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${!form.badge ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)'}`,
-                      color: !form.badge ? 'white' : '#6b7280',
+                      background: !form.badge ? '#e3e6ea' : '#f5f6f8',
+                      border: `1px solid ${!form.badge ? '#e3e6ea' : '#f5f6f8'}`,
+                      color: !form.badge ? '#111827' : '#6b7280',
                       cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                     }}
                   >
@@ -583,8 +599,8 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                         onClick={() => setForm(f => ({ ...f, badge: b }))}
                         className="px-3 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all"
                         style={{
-                          background: active ? bs.bg : 'rgba(255,255,255,0.04)',
-                          border: `1px solid ${active ? bs.border : 'rgba(255,255,255,0.08)'}`,
+                          background: active ? bs.bg : '#f5f6f8',
+                          border: `1px solid ${active ? bs.border : '#f5f6f8'}`,
                           color: active ? bs.color : '#6b7280',
                           cursor: 'pointer', fontFamily: "system-ui,sans-serif",
                         }}
@@ -604,8 +620,8 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                   value={form.whatsapp_number}
                   onChange={v => setForm(f => ({ ...f, whatsapp_number: v }))}
                   className={iCls}
-                  prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0"
-                  inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                  prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 flex-shrink-0"
+                  inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
                 />
               </div>
 
@@ -616,7 +632,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                   <div className="flex items-center gap-3">
                     <div
                       className="w-24 h-16 rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+                      style={{ border: 'none' }}
                     >
                       <img
                         src={form.image_url} alt=""
@@ -628,8 +644,8 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                       <p className="text-gray-400 text-sm m-0 mb-2">Using listing image</p>
                       <button
                         onClick={() => setImageOverride(true)}
-                        className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
+                        className="text-xs text-gray-400 hover:text-gray-900 transition-colors px-3 py-1.5 rounded-lg"
+                        style={{ background: '#f5f6f8', border: 'none', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
                       >
                         Change
                       </button>
@@ -648,7 +664,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     {form.image_url && (
                       <div
                         className="h-28 rounded-xl overflow-hidden mt-2"
-                        style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+                        style={{ border: 'none' }}
                       >
                         <img
                           src={form.image_url} alt="Preview"
@@ -664,17 +680,17 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
               {/* Active toggle */}
               <div
                 className="flex items-center justify-between py-2 px-3 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                style={{ background: '#f5f6f8', border: 'none' }}
               >
                 <div>
-                  <p className="text-white text-sm font-medium m-0">Active</p>
+                  <p className="text-gray-900 text-sm font-medium m-0">Active</p>
                   <p className="text-gray-500 text-xs m-0">Show on homepage carousel</p>
                 </div>
                 <button
                   onClick={() => setForm(f => ({ ...f, active: !f.active }))}
                   style={{
                     position: 'relative', width: 40, height: 22, borderRadius: 11,
-                    background: form.active ? '#dc2626' : 'rgba(255,255,255,0.1)',
+                    background: form.active ? '#dc2626' : '#e3e6ea',
                     border: 'none', cursor: 'pointer', padding: 0,
                     transition: 'background 0.2s', flexShrink: 0,
                   }}
@@ -684,7 +700,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                     left: form.active ? 21 : 3,
                     width: 16, height: 16, borderRadius: '50%',
                     background: 'white', transition: 'left 0.2s',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                    boxShadow: '0 1px 3px rgba(17,24,39,0.25)',
                   }} />
                 </button>
               </div>
@@ -716,7 +732,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
                   className="w-full mt-2 py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all"
                   style={{
                     background: 'none',
-                    border: `1px dashed ${form.stats.length >= 6 ? 'rgba(255,255,255,0.06)' : 'rgba(220,38,38,0.3)'}`,
+                    border: `1px dashed ${form.stats.length >= 6 ? '#f5f6f8' : 'rgba(220,38,38,0.3)'}`,
                     color: form.stats.length >= 6 ? '#1f2937' : '#ef4444',
                     cursor: form.stats.length >= 6 ? 'not-allowed' : 'pointer',
                     fontFamily: "system-ui,sans-serif",
@@ -745,23 +761,23 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
         {/* ── Footer ── */}
         <div
           className="flex gap-2.5 px-5 py-4 flex-shrink-0"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+          style={{ borderTop: '1px solid rgba(17,24,39,0.06)' }}
         >
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-all"
-            style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'none', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
+            className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 hover:text-gray-900 transition-all"
+            style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: "system-ui,sans-serif" }}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || (attempted && !isValid)}
+            disabled={saving}
             className="py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all"
             style={{
               flex: 2,
-              background: (saving || (attempted && !isValid)) ? 'rgba(220,38,38,0.35)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
-              boxShadow: (saving || (attempted && !isValid)) ? 'none' : '0 2px 10px rgba(220,38,38,0.28)',
+              background: saving ? 'rgba(220,38,38,0.35)' : 'linear-gradient(135deg,#dc2626,#b91c1c)',
+              boxShadow: saving ? 'none' : '0 2px 10px rgba(220,38,38,0.28)',
               border: 'none', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "system-ui,sans-serif",
             }}
           >
@@ -781,6 +797,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
