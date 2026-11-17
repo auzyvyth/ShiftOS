@@ -44,5 +44,19 @@ export function getDealerIdFromProfile(profile) {
   if (['dealer', 'superadmin', 'owner'].includes(profile.role)) return profile.id;
   // Linked salesman / manager / admin belong to a dealer; an unlinked salesman
   // (Salesman Lite) has dealer_id = null and owns itself.
-  return profile.dealer_id || profile.id;
+  if (!profile.dealer_id) return profile.id;
+  // A linked staff member who is switched off (or deleted) belongs to no dealer: the
+  // same rule as get_my_dealer_id() (migration 20261117a). A profile loaded without
+  // these columns reads as active, as before.
+  if (isStaffSwitchedOff(profile)) return null;
+  return profile.dealer_id;
+}
+
+// Linked staff (salesman / manager / admin / accountant / F&I under a dealer) that the
+// owner switched off, the platform suspended (is_active false) or that was deleted.
+// Dealers, owners and standalone sellers are never "staff".
+export function isStaffSwitchedOff(profile) {
+  if (!profile || !profile.dealer_id) return false;
+  if (['dealer', 'superadmin', 'owner'].includes(profile.role)) return false;
+  return profile.is_active === false || profile.account_status === 'deleted';
 }

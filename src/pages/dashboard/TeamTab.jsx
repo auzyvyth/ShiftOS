@@ -451,16 +451,22 @@ export function TeamTab({ managerDealership, dealerId, profile }) {
     // Switching staff on or off is the owner's (owner-only list, Settings > Team).
     if (!["dealer", "owner", "superadmin"].includes(profile?.role)) { toast.error("Only the owner can do this."); return; }
     setTogglingId(s.id);
-    const { data: saved, error } = await supabase
-      .from("profiles")
-      .update({ is_active: !s.is_active })
-      .eq("id", s.id)
-      .select("id");
-    if (error || !saved?.length) toast.error("Could not save. Try again.");
-    else
-      setSalespeople((p) =>
-        p.map((x) => (x.id === s.id ? { ...x, is_active: !s.is_active } : x)),
-      );
+    // Through dealer_set_staff_active (migration 20261117a): profiles has no UPDATE rule for
+    // the dealer, so a direct update changed 0 rows, and a switch back ON is refused by the
+    // escalation guard unless that function asks for it (DASH-TEST 3).
+    const next = s.is_active === false;
+    const { data, error } = await supabase.rpc("dealer_set_staff_active", { p_staff: s.id, p_active: next });
+    if (error) {
+      const m = String(error.message || "");
+      toast.error(error.code === "PGRST202" ? "Switching staff off goes live with tonight's update. Try again tomorrow."
+        : m.includes("platform_suspended") ? "Drevo has suspended this account. Contact Drevo support."
+        : m.includes("forbidden") ? "Only the owner can do this."
+        : "Could not save. Try again.");
+    } else {
+      const saved = data?.is_active ?? next;
+      setSalespeople((p) => p.map((x) => (x.id === s.id ? { ...x, is_active: saved } : x)));
+      toast.success(saved ? `${s.full_name || "They"} can sign in again.` : `${s.full_name || "They"} can no longer open the dashboard.`);
+    }
     setTogglingId(null);
   };
   const deleteSalesman = async (id) => {

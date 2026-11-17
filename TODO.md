@@ -89,10 +89,15 @@ With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad
   (looks like the owner's test dealership; 4 of them had an open lead on the car). Query: status='sold', no lead
   with stage won/closed_won on the car, dealer/owner accounts. Per car: attach the buyer (win their lead) or leave
   it as sold elsewhere. Nothing is changed until the owner says which.
-- [ ] 3. Owner cannot switch staff off. `TeamTab.jsx:453` updates `profiles.is_active` directly and the DB
-  changes 0 rows (live probe, manager row); the screen says "Could not save". Needs a SECURITY DEFINER
-  function (owner of that dealer only, staff of that dealer only), like `set_account_suspended`. A fired
-  employee currently keeps access until the platform admin acts.
+- [ ] 3. Owner cannot switch staff off: CODE DONE 2026-11-17 (staging), DB change QUEUED:
+  `supabase/migrations/20261117a_staff_switch_off.sql`. Apply after midnight MYT, nobody live, then probe in a
+  rolled-back transaction (steps at the top of the file). It adds `dealer_set_staff_active` (owner only, own staff only),
+  lets `prevent_profile_privilege_escalation` allow the switch back ON for that one call (`app.staff_toggle`; the rest of
+  the trigger is byte-identical to live, md5 checked), and makes `get_my_dealer_id()` NULL for a switched-off linked staff
+  member, so off really means locked out (before, a switched-off manager still read every dealer table). Browser side:
+  Team calls the function (`TeamTab.jsx:450`), `getDealerIdFromProfile` mirrors the rule, and `StaffAccessGate`
+  (App.jsx) shows one "Your access is switched off" screen on staff pages. Until applied, the button says it goes live
+  tonight.
 
 **Should fix (small)**
 - [ ] 8. Storefront > Edit Slide pop-up is DARK on the light dashboard (`components/xdrive/HeroSlideForm.jsx`);
