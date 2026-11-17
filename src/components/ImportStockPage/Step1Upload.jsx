@@ -4,13 +4,19 @@ import { Upload, Link, FileSpreadsheet, FileText, X, Sparkles, Info, AlertCircle
 // Bulletproof-input limits. A .xlsx is a zip, so an oversized upload is the
 // first zip-bomb signal we can cheaply reject before any parser touches it.
 const MAX_FILE_MB = 20;
-const ALLOWED_EXT = ['xlsx', 'pdf'];
+const ALLOWED_EXT = ['xlsx', 'csv', 'pdf'];
 // Real signatures so a renamed executable can't slip through on extension alone.
 // PDF = "%PDF", XLSX = PK zip local-file header "PK\x03\x04".
 const MAGIC = { pdf: [0x25, 0x50, 0x44, 0x46], xlsx: [0x50, 0x4b, 0x03, 0x04] };
 
 async function sniffMagic(file, ext) {
   try {
+    if (ext === 'csv') {
+      // A CSV has no signature: accept it only if the start is plain text (no NUL bytes,
+      // which every binary file has and no text export does).
+      const start = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+      return start.length > 0 && !start.includes(0);
+    }
     const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
     const sig = MAGIC[ext];
     return sig.every((b, i) => head[i] === b);
@@ -27,14 +33,14 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
   const [showGuide, setShowGuide] = useState(false);
   const inputRef = useRef();
 
-  const accept = '.xlsx,.pdf';
+  const accept = '.xlsx,.csv,.pdf';
 
   const pickFile = async (f) => {
     if (!f) return;
     setErr('');
     const ext = f.name.split('.').pop().toLowerCase();
     if (!ALLOWED_EXT.includes(ext)) {
-      setErr('Unsupported file. Upload a .xlsx or .pdf stock list, or paste a Google Sheets link.');
+      setErr('Unsupported file. Upload a .xlsx, .csv or .pdf stock list, or paste a Google Sheets link.');
       return;
     }
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
@@ -136,7 +142,7 @@ export default function Step1Upload({ onNext, onSample, loading, progress = 0, p
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Drop file here or <span className="text-red-500">browse</span></p>
-              <p className="text-xs text-gray-600 mt-1">Supports .xlsx and .pdf</p>
+              <p className="text-xs text-gray-600 mt-1">Supports .xlsx, .csv and .pdf</p>
             </div>
           </>
         )}

@@ -71,6 +71,8 @@
 > with `target: production`), not just that `git status` says clean.
 
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
+Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
+(price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px.
 Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
 forms, ~20 owner/manager writes probed on the live DB in rolled-back transactions. No crashes, no console
 errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> customer) passes on the live DB.
@@ -92,27 +94,17 @@ With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad
   changes 0 rows (live probe, manager row); the screen says "Could not save". Needs a SECURITY DEFINER
   function (owner of that dealer only, staff of that dealer only), like `set_account_suspended`. A fired
   employee currently keeps access until the platform admin acts.
-- [ ] 4. Documents > Print throws when the browser blocks the pop-up (`dashboard/DocumentsTab.jsx:984`:
-  `window.open` result used without a check). Check for null and say "allow pop-ups", or print from an iframe.
 
 **Should fix (small)**
-- [ ] 5. Onboarding "done" never saves: `DashboardPage.jsx:1347` builds the update but never awaits it, so it
-  is never sent. Add `await` / `.then()`.
-- [ ] 6. No confirmation after Change Price, Mark as Sold, Assign Salesman, Delete Listing (they save; nothing says so). Add a toast each.
-- [ ] 7. Studio "Export all" has no try/catch (`TikTokStudioV3.jsx:3216`): if the zip script fails to load the
-  button stays on "Exporting..." forever. Catch, reset, show a message.
 - [ ] 8. Storefront > Edit Slide pop-up is DARK on the light dashboard (`components/xdrive/HeroSlideForm.jsx`);
   its "fill in at least 4 stats" error sits below the fold, so Save looks dead. Move to premiumLight, scroll to the first error.
-- [ ] 9. AI import page (`/dashboard/import-stock`) is fully dark and has no visible way back to the dashboard.
-- [ ] 10. Add car sheet says AI import takes "any stock list, spreadsheet or PDF"; it refuses .csv
-  (`ImportStockPage/Step1Upload.jsx:30`, `.xlsx,.pdf`). Accept CSV or change the words.
+- [ ] 9. AI import page (`/dashboard/import-stock`) is still fully dark (page + its 3 step components); restyle to premiumLight. (The way back is done: "Back to listings".)
 - [ ] 11. Car detail drawer and Add Lead form are not portalled (overlay rule 1). Portal them.
 - [ ] 12. 6 of 8 manager switches are "Saved, not active yet" (`src/lib/permissions.js`: approve_deals,
   assign_cars, assign_leads, change_price, delete_car, edit_settings). Enforce in the DB (`dealer_can`) or hide them.
-- [ ] 13. Header icons are under 28px tap targets on phone (3 per page).
 
 **Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis
-(`/api/ai-messages`) with one real .xlsx.
+(`/api/ai-messages`) with one real .xlsx and one real .csv.
 
 **Checked and fine:** commission RM600 -> 0 (old TODO line) not reproducible: both add paths send 600 and the
 live DB keeps it through insert + stock update. CSV import, Market demand, Studio templates/save, Storefront

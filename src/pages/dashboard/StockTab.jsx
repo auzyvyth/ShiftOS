@@ -459,6 +459,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     await fetchUnits();
     setSoldTarget(null);
     setSoldSaving(false);
+    toast.success('Marked sold.');
   };
 
   // HP-3: PUSPAKOM B7 (hire-purchase inspection) — valid 30 days from inspection.

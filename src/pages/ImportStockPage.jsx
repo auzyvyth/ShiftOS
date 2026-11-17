@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../supabaseClient";
@@ -134,9 +135,12 @@ async function buildClaudeMessages(file, sheetsUrl) {
 
   const ext = file.name.split(".").pop().toLowerCase();
 
-  if (ext === "xlsx") {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
+  if (ext === "xlsx" || ext === "csv") {
+    // A .csv is read by the same library into the same grid, so it gets the same
+    // size guard and photo-link scan as a .xlsx.
+    const wb = ext === "csv"
+      ? XLSX.read(await file.text(), { type: "string" })
+      : XLSX.read(await file.arrayBuffer(), { type: "array" });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     if (!sheet || !sheet["!ref"]) throw new Error("That sheet looks empty.");
 
@@ -569,8 +573,16 @@ export default function ImportStockPage() {
       style={{ background: "#080C14" }}
     >
       <div className="max-w-2xl mx-auto px-4 py-10">
-        {/* Header */}
+        {/* Header. The page has no dashboard nav, so this is the way back (DASH-TEST 9). */}
         <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/listings")}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white"
+            style={{ minHeight: 44, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to listings
+          </button>
           <h1 className="text-2xl font-bold text-white">Import Stock</h1>
           <p className="text-sm text-gray-500 mt-1">
             Upload a spreadsheet or PDF and let AI extract your listings

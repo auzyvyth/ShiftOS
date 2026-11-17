@@ -242,7 +242,6 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState(seed.uid);
   const [salesmen,         setSalesmen]         = useState(() => seed.uid ? (readCache(`dash_salesmen_${seed.uid}`) || []) : []);
   const [assignDropdownId, setAssignDropdownId] = useState(null);
-  const [assignToast,      setAssignToast]      = useState(null);
   const [detailListing,    setDetailListing]    = useState(null);
   // Which button the car pop-up opens on: 'owner' from a Stock & costs row, else Details. Resets when it closes.
   const [detailInitialTab, setDetailInitialTab] = useState('specs');
@@ -754,9 +753,11 @@ export default function DashboardPage() {
       toast.error("Could not delete listing. You may not have permission.");
       return;
     }
+    const gone1 = listings.find((l) => l.id === id);
     setListings((p) => p.filter((l) => l.id !== id));
     if (detailListing?.id === id) setDetailListing(null);
     setDeleteId(null);
+    toast.success(gone1 ? `Deleted ${[gone1.year, gone1.brand, gone1.model].filter(Boolean).join(" ")}` : "Listing deleted");
   };
   const handleAssign = async (listingId, salesmanId, name) => {
     setAssignDropdownId(null);
@@ -765,8 +766,7 @@ export default function DashboardPage() {
     const { data: saved, error: assignErr } = await supabase.from("car_listings")
       .update({ assigned_to: salesmanId }).eq("id", listingId).select("id");
     if (assignErr || !saved?.length) {
-      setAssignToast({ listingId, msg: "Could not assign. Try again." });
-      setTimeout(() => setAssignToast(null), 3000);
+      toast.error("Could not assign. Try again.");
       return;
     }
     // Assignment is exclusive: evict any other salesmen who had featured this car
@@ -780,16 +780,14 @@ export default function DashboardPage() {
     );
     const listing = listings.find(l => l.id === listingId);
     logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'assigned', summary: `Assigned to ${name} — ${listing?.brand || ''} ${listing?.model || ''} ${listing?.year || ''}`.trim(), fieldChanges: { assigned_to: { to: name } } });
-    setAssignToast({ listingId, msg: `Assigned to ${name}` });
-    setTimeout(() => setAssignToast(null), 2000);
+    toast.success(`Assigned to ${name}`);
   };
   const handleUnassign = async (listingId) => {
     setAssignDropdownId(null);
     const { data: saved, error: unassignErr } = await supabase.from("car_listings")
       .update({ assigned_to: null }).eq("id", listingId).select("id");
     if (unassignErr || !saved?.length) {
-      setAssignToast({ listingId, msg: "Could not unassign. Try again." });
-      setTimeout(() => setAssignToast(null), 3000);
+      toast.error("Could not unassign. Try again.");
       return;
     }
     setListings((prev) =>
@@ -797,8 +795,7 @@ export default function DashboardPage() {
     );
     const listing = listings.find(l => l.id === listingId);
     logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: listingId, action: 'unassigned', summary: `Unassigned — ${listing?.brand || ''} ${listing?.model || ''} ${listing?.year || ''}`.trim() });
-    setAssignToast({ listingId, msg: "Unassigned" });
-    setTimeout(() => setAssignToast(null), 2000);
+    toast.success("Unassigned");
   };
   useEffect(() => {
     if (activeTab !== 'listings' || !interestDealer) return undefined;
@@ -910,6 +907,7 @@ export default function DashboardPage() {
   const handlePriceSave = (u) => {
     setListings((p) => p.map((l) => (l.id === u.id ? { ...l, ...u } : l)));
     setDetailListing((prev) => (prev?.id === u.id ? { ...prev, ...u } : prev));
+    toast.success(`Price updated to RM ${Number(u.selling_price || 0).toLocaleString("en-MY")}`);
   };
   const handleUpdate = (u) => {
     // Merge (not replace) so fields the edit form doesn't manage — e.g. the
@@ -971,6 +969,9 @@ export default function DashboardPage() {
       setListings((p) => p.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
       setDetailListing((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setMarkSoldListing(null);
+      toast.success(leadId
+        ? "Marked sold. The buyer is in Sold > Customers and the handover steps are ready."
+        : "Marked sold.");
       // The merged listings state above feeds StockTab's P&L; TeamTab refetches
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
@@ -1344,7 +1345,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!allOnboardingDone || !userId || profile?.onboarding_complete) return;
-    supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
+    // A Supabase query is only sent once it is awaited or .then()-ed; without this it never left the browser.
+    supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId)
+      .then(({ error }) => { if (error) console.warn('onboarding_complete not saved', error.message); });
     setOnboardingDismissed(true);
     setOnboardingToast(true);
     const id = setTimeout(() => setOnboardingToast(false), 5000);
@@ -1498,16 +1501,17 @@ export default function DashboardPage() {
               const rect = sidebarBellRef.current?.getBoundingClientRect() ?? null;
               setSidebarBellRect(notifOpen ? null : rect);
               setNotifOpen(p => !p);
-            }} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            }} aria-label="Notifications" style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted, padding: 4, minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell className="w-4 h-4" />
-              {notifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
+              {notifCount > 0 && <span style={{ position: 'absolute', top: 4, right: 4, background: '#DC2626', color: '#fff', fontSize: 8, fontWeight: 800, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifCount > 9 ? '9+' : notifCount}</span>}
             </button>
           </div>
-          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
+          <ReportBugButton variant="inline" tapSize={40} context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <button
             onClick={() => startTransition(() => setSidebarOpen(false))}
-            className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
-            style={{ color: color.textMuted }}
+            aria-label="Close menu"
+            className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0 flex items-center justify-center"
+            style={{ color: color.textMuted, minWidth: 40, minHeight: 40 }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -1700,8 +1704,9 @@ export default function DashboardPage() {
         >
           <button
             onClick={() => startTransition(() => setSidebarOpen(true))}
-            className="p-1.5 rounded-lg transition-all flex-shrink-0"
-            style={{ color: color.textMuted }}
+            aria-label="Open menu"
+            className="p-1.5 rounded-lg transition-all flex-shrink-0 flex items-center justify-center"
+            style={{ color: color.textMuted, minWidth: 40, minHeight: 40 }}
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -1716,21 +1721,23 @@ export default function DashboardPage() {
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}
           </span>
-          <ReportBugButton variant="inline" context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
+          <ReportBugButton variant="inline" tapSize={40} context="Dealer Dashboard" userLabel={profile?.full_name || profile?.email || ""} />
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setNotifOpen(p => !p)}
               style={{
                 position: 'relative', background: 'transparent',
                 border: 'none', borderRadius: 8, padding: 6,
+                minWidth: 40, minHeight: 40,
                 cursor: 'pointer', color: notifCount > 0 ? '#DC2626' : color.textMuted,
-                display: 'flex',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
+              aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
               {notifCount > 0 && (
                 <span style={{
-                  position: 'absolute', top: -3, right: -3,
+                  position: 'absolute', top: 3, right: 3,
                   background: '#DC2626', color: '#fff',
                   fontSize: 8, fontWeight: 800, borderRadius: '50%',
                   width: 14, height: 14,
@@ -2717,21 +2724,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Assign toast */}
-      {assignToast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white"
-          style={{
-            background: "rgba(22,163,74,0.92)",
-            border: "1px solid rgba(74,222,128,0.3)",
-            backdropFilter: "blur(8px)",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-          }}
-        >
-          <Check className="w-4 h-4 text-green-200" />
-          {assignToast.msg}
-        </div>
-      )}
 
       {/* Edit listing modal */}
       {editListing && (

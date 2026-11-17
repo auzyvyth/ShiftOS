@@ -42,7 +42,9 @@ export default function PriceEditModal({ listing, onClose, onSave, profile, deal
         .eq("id", listing.id)
         .select();
       if (error) throw error;
-      const saved = data?.[0] ?? { ...listing, ...payload };
+      // A refused write comes back as 0 rows with no error: never report that as saved.
+      if (!data?.length) throw new Error("The price was not saved. You may not have permission to change it.");
+      const saved = data[0];
       logActivity({ dealerId, actor: profile, tableName: 'car_listings', recordId: listing.id, action: 'price_changed', summary: `Price changed from RM ${cur.toLocaleString()} to RM ${npv.toLocaleString()} — ${listing.brand} ${listing.model} ${listing.year}`, fieldChanges: { selling_price: { from: cur, to: npv } } });
       onSave(saved);
       onClose();
