@@ -76,6 +76,7 @@ Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboardi
 2 Mark as Sold asks who bought it with no default and no way past it (lead on the car / a new walk-in buyer / sold
 elsewhere), one helper `dashboard/closeSale.js` for Listings AND the Stock tab (the Stock tab used to drop the pick);
 probed on the live DB in a rolled-back transaction: walk-in lead -> won -> car sold, 1 customer, 8 handover steps,
+9 AI import page + its steps + the guide are light,
 8 Edit Slide pop-up is light (premiumLight, badge = grey pill + coloured word), portalled with Back; Save no longer greys
 out after a failed try and scrolls to the first error,
 11 car drawer + Add Lead portalled with scroll lock (drawer on layer 45, under its own 50 pop-ups); Add Lead's Back asks
@@ -104,7 +105,6 @@ With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad
   tonight.
 
 **Should fix (small)**
-- [ ] 9. AI import page (`/dashboard/import-stock`) is still fully dark (page + its 3 step components); restyle to premiumLight. (The way back is done: "Back to listings".)
 
 **Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis
 (`/api/ai-messages`) with one real .xlsx and one real .csv.

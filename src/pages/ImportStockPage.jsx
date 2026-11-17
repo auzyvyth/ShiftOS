@@ -545,13 +545,13 @@ export default function ImportStockPage() {
     return (
       <div
         className="min-h-screen font-['system-ui',sans-serif] flex items-center justify-center px-4"
-        style={{ background: "#080C14" }}
+        style={{ background: "#eef0f4" }}
       >
         <div
           className="max-w-md w-full rounded-2xl p-6 text-center"
-          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "#fff", boxShadow: "0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)" }}
         >
-          <h1 className="text-xl font-bold text-white mb-2">AI Stock Import is locked</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">AI Stock Import is locked</h1>
           <p className="text-sm text-gray-500 mb-5">
             This feature is available to dealer accounts. Sign in with a dealer account to unlock AI-powered stock import.
           </p>
@@ -570,7 +570,7 @@ export default function ImportStockPage() {
   return (
     <div
       className="min-h-screen font-['system-ui',sans-serif]"
-      style={{ background: "#080C14" }}
+      style={{ background: "#eef0f4" }}
     >
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Header. The page has no dashboard nav, so this is the way back (DASH-TEST 9). */}
@@ -578,12 +578,12 @@ export default function ImportStockPage() {
           <button
             type="button"
             onClick={() => navigate("/dashboard/listings")}
-            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
             style={{ minHeight: 44, background: "none", border: "none", padding: 0, cursor: "pointer" }}
           >
             <ArrowLeft className="w-4 h-4" /> Back to listings
           </button>
-          <h1 className="text-2xl font-bold text-white">Import Stock</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Import Stock</h1>
           <p className="text-sm text-gray-500 mt-1">
             Upload a spreadsheet or PDF and let AI extract your listings
           </p>
@@ -594,14 +594,14 @@ export default function ImportStockPage() {
         <div
           className="rounded-2xl p-6"
           style={{
-            background: "rgba(255,255,255,0.025)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            background: "#fff",
+            boxShadow: "0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)",
           }}
         >
           {step === 1 && (
             <>
               {analyseError && (
-                <div className="mb-4 rounded-xl px-4 py-3 text-sm text-red-400 break-all" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                <div className="mb-4 rounded-xl px-4 py-3 text-sm text-red-700 break-all" style={{ background: '#f5f6f8', border: 'none' }}>
                   <p className="font-bold mb-1">Analysis failed</p>
                   <p>{analyseError}</p>
                 </div>
