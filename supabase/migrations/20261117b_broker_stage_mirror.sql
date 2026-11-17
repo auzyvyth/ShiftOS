@@ -26,12 +26,12 @@
 --    lead of the broker's now gets a dealer copy too (it had none, so the dealer never saw the buyer).
 --    Backfill links the pairs that exist.
 --
--- QUEUED: apply after midnight MYT with nobody live, then probe in a rolled-back transaction.
+-- APPLIED 2026-11-17 ~12:05 UTC (owner: "apply all the migrations now"). Fixed by 20261117d.
 
 begin;
 
 alter table public.leads
-  add column if not exists broker_twin_id uuid references public.leads(id) on delete set null,
+  add column if not exists broker_twin_id uuid,  -- plain column, NO foreign key: a second key on leads broke every embed once (20261116e)
   add column if not exists won_requested_at timestamptz;
 create index if not exists leads_broker_twin_id_idx on public.leads (broker_twin_id) where broker_twin_id is not null;
 
