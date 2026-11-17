@@ -203,7 +203,8 @@ export default function LeadsPage({ dealerId = null, openLeadId = null, onOpenDo
   // Back gesture / swipe-left closes the open drawer or modal instead of leaving the page.
   // LeadDrawer registers itself. The stage popup -> lead detail hand-off used to
   // close the drawer it had just opened; the shared stack in useModalHistory fixed that.
-  useModalHistory(showAdd,    () => setShowAdd(false));
+  // The Add Lead form registers Back itself (AddLeadModal.jsx), with "ask before losing what is
+  // typed"; registering it here too made Back pop this entry first and skip the question.
   useModalHistory(!!openStage, () => setOpenStage(null));
 
   useEffect(() => {

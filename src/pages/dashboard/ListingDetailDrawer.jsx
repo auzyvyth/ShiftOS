@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import ShareMenu from "../../components/ShareMenu";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
@@ -55,11 +56,18 @@ export default function ListingDetailDrawer({
   const btnBase = { width: '100%', background: '#f5f6f8', borderRadius: 10, padding: '11px 14px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s', border: 'none', fontFamily: 'inherit', color: '#111827' };
   const BTN_HOVER = '#eceef1';
 
-  return (
+  // Overlay rules (DASH-TEST 11): portalled out of the dashboard, page scroll locked. Layer 45,
+  // not 50: the pop-ups this drawer opens (Change price, Mark as Sold, Delete, Edit) are drawn
+  // by DashboardPage at 50 and NOT portalled, so a portalled drawer at 50 would cover them.
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+        className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 45, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
         onClick={onClose}
       >
         {/* Panel */}
@@ -329,6 +337,7 @@ export default function ListingDetailDrawer({
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body,
   );
 }

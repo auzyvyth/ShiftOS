@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalHistory } from '../../hooks/useModalHistory';
 import { toast } from 'sonner';
 import { X, UserPlus, Search } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
@@ -33,6 +35,13 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
   const [carSearch, setCarSearch] = useState('');
   const [saving, setSaving]   = useState(false);
   const [errors, setErrors]   = useState({});
+  // Overlay rules (CLAUDE.md, DASH-TEST 11): Back closes it (and asks first once something
+  // is typed), the page behind does not scroll, and it is portalled out of the Leads tab.
+  useModalHistory(true, onClose, { isDirty: () => JSON.stringify(form) !== JSON.stringify(EMPTY) });
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -102,7 +111,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
@@ -315,6 +324,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
