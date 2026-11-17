@@ -70,6 +70,55 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
+Every tab, pop-up and Settings section clicked (~450 clicks, mock data, desktop + 375px phone), 12 filled-in
+forms, ~20 owner/manager writes probed on the live DB in rolled-back transactions. No crashes, no console
+errors, no sideways scroll. Core loop (lead -> won -> sold -> handover -> customer) passes on the live DB.
+With items 1-4 fixed: about 8.5/10. Test scripts lived in the session scratchpad (gone with the container).
+
+**Must fix before launch**
+- [ ] 1. Add car > Full listing cannot be saved. CarForm's "Post Anyway?" gap warning
+  (`src/components/CarForm.jsx:4300`, `z-[300]`) opens BEHIND the Add car pop-up (`DashboardPage.jsx:2329`,
+  zIndex 9000): Save looks dead, nothing can be pressed. Fires for any car with a gap (few photos, no VIN,
+  no colour), i.e. most new cars. Edit car is fine (warning sits on top there). Fix: portal the warning above
+  every host (or pass a z base), then re-test add + edit.
+- [ ] 2. "Mark as Sold" in the car drawer skips the buyer (`src/pages/dashboard/MarkSoldModal.jsx`): writes
+  `status='sold'` alone, so no customer, no handover steps, no renewals (proven on the live DB). Breaks SOLD-1.
+  Route it through "Who bought it?" (`WhoBoughtSheet` -> won lead) like Lite/Premium; keep "Sold elsewhere".
+  **Data repair: 23 live dealer cars are already sold with no won lead** (query: status='sold' and no lead
+  with stage won/closed_won on the car, dealer/owner accounts). Decide per car: attach the buyer or leave as
+  sold-elsewhere.
+- [ ] 3. Owner cannot switch staff off. `TeamTab.jsx:453` updates `profiles.is_active` directly and the DB
+  changes 0 rows (live probe, manager row); the screen says "Could not save". Needs a SECURITY DEFINER
+  function (owner of that dealer only, staff of that dealer only), like `set_account_suspended`. A fired
+  employee currently keeps access until the platform admin acts.
+- [ ] 4. Documents > Print throws when the browser blocks the pop-up (`dashboard/DocumentsTab.jsx:984`:
+  `window.open` result used without a check). Check for null and say "allow pop-ups", or print from an iframe.
+
+**Should fix (small)**
+- [ ] 5. Onboarding "done" never saves: `DashboardPage.jsx:1347` builds the update but never awaits it, so it
+  is never sent. Add `await` / `.then()`.
+- [ ] 6. No confirmation after Change Price, Mark as Sold, Assign Salesman, Delete Listing (they save; nothing says so). Add a toast each.
+- [ ] 7. Studio "Export all" has no try/catch (`TikTokStudioV3.jsx:3216`): if the zip script fails to load the
+  button stays on "Exporting..." forever. Catch, reset, show a message.
+- [ ] 8. Storefront > Edit Slide pop-up is DARK on the light dashboard (`components/xdrive/HeroSlideForm.jsx`);
+  its "fill in at least 4 stats" error sits below the fold, so Save looks dead. Move to premiumLight, scroll to the first error.
+- [ ] 9. AI import page (`/dashboard/import-stock`) is fully dark and has no visible way back to the dashboard.
+- [ ] 10. Add car sheet says AI import takes "any stock list, spreadsheet or PDF"; it refuses .csv
+  (`ImportStockPage/Step1Upload.jsx:30`, `.xlsx,.pdf`). Accept CSV or change the words.
+- [ ] 11. Car detail drawer and Add Lead form are not portalled (overlay rule 1). Portal them.
+- [ ] 12. 6 of 8 manager switches are "Saved, not active yet" (`src/lib/permissions.js`: approve_deals,
+  assign_cars, assign_leads, change_price, delete_car, edit_settings). Enforce in the DB (`dealer_can`) or hide them.
+- [ ] 13. Header icons are under 28px tap targets on phone (3 per page).
+
+**Still to test on staging (needs Vercel, could not run locally):** AI import's real analysis
+(`/api/ai-messages`) with one real .xlsx.
+
+**Checked and fine:** commission RM600 -> 0 (old TODO line) not reproducible: both add paths send 600 and the
+live DB keeps it through insert + stock update. CSV import, Market demand, Studio templates/save, Storefront
+slides, handover checklist, customers, documents, every Settings save, permissions, manager view (all tabs load,
+Storefront owner-only, money follows `view_gross`), undo sale, sold-car guard, assign, delete = archive.
+
 ## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
 **Restructure plan + 2026-11-09 handoff: `docs/DEALER_DASHBOARD_PLAN.md`** (15 tabs -> 6, duplicates, broken links; branch `ccr-10f2178f-k01t0b` not on staging; team-health migration `20261110a` queued).
 Full report stays OUT of this public repo until part 2 is fixed (it shows how to break in).
@@ -162,7 +211,6 @@ production, or sign-in pages lose the throttle (they fail open, sign-in still wo
   get a receipt): payments rows under `deal_financials`; total received / balance by trigger;
   `leads.deposit_*` + `car_listings.deposit_amount` become copies; receipts numbered per payment
   and filled from the deal (no retyping in DocumentsTab).
-- [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 
 ## LINKED-PREMIUM: salesman under a dealer gets Premium + dealer connections (owner, 2026-11-11)
