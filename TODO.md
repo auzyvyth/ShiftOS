@@ -3076,6 +3076,8 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-42: Dealer plan at RM1,000+/month with omni-channel chat, auto-post and an AI assistant (owner, 2026-11-18)** — owner's target: once the dealer dashboard is factual and proven, charge RM1,000 minimum (RM499 is 'already cheap'), with high retention, by adding (1) one omni-channel inbox, (2) auto-post, (3) an AI assistant. Pricing ladder + the proof gate (DASH-TEST fixed, numbers trusted, isolation tests, a dealer renewing at month 2) were discussed the same day; founding RM299 for the first 5 dealers is the working plan. Constraints that block building it as worded: (a) AI never messages a buyer unsupervised, so the inbox may DRAFT, a human sends; (b) SOCIAL-1 says never add an auto-post path (TikTok needs a human to preview and consent per post), so 'auto-post' must mean one-tap post after the dealer approves; (c) WhatsApp Cloud API needs Meta opt-in/template approval and PDPA s.43 makes a 'stop' final, so verify the real rules before building (legal rule), today it is wa.me with a human send; (d) the AI assistant must quote only database numbers and never invent a price, discount or approval.
+
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
   a pure-red "CONTACT NOW" on every card, "0 - 4k" km bands) and called the Malaysian marketplace underserved. Angle:
