@@ -3076,6 +3076,14 @@ Background (from the idea):
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
+- **IDEA-42: A free "what to check when buying a car" guide for new visitors (owner, 2026-11-19)** — give an anonymous
+  visitor something useful for free (a "top 10 tips / what to check" checklist, downloadable as a PDF) so Drevo earns
+  trust before they ever message a seller. Already half-built: the page `/guides/buying` exists
+  (`src/config/guidesCopy.js:19`, inspection tips at lines 51 and 57), so the PDF is a printable version of it, not new
+  writing. Leaning: keep the page public and crawlable (a gated PDF cannot rank on Google) and offer the PDF as a plain
+  download; an email box before the download only if the owner wants a list, and then it needs PDPA consent wording
+  (verify the rule before building, do not assume). Copy rule: never promise anything about Drevo listings the platform
+  does not check (no "every car is inspected"). Not scheduled until the owner decides to build it.
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
   a pure-red "CONTACT NOW" on every card, "0 - 4k" km bands) and called the Malaysian marketplace underserved. Angle:
