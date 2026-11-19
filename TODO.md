@@ -3084,6 +3084,12 @@ Background (from the idea):
   download; an email box before the download only if the owner wants a list, and then it needs PDPA consent wording
   (verify the rule before building, do not assume). Copy rule: never promise anything about Drevo listings the platform
   does not check (no "every car is inspected"). Not scheduled until the owner decides to build it.
+  **Free-info shortlist (owner asked what people SELL that Drevo could give away, 2026-11-19):** what buyers pay for or
+  get charged for elsewhere: vehicle history / accident / mileage checks, price valuations, loan + insurance + road-tax
+  calculators (sold as Excel files), JPJ transfer + Puspakom walkthroughs, credit-record (CTOS/CCRIS) prep, new-car price
+  and rebate lists. Drevo already holds the engines for most: `src/utils/financing.js`, `motorInsurance.js`,
+  `ownership.js`, `postSaleSteps.js` (JPJ/Puspakom steps + fees), `modelHubs.js` (real asking prices), `/calculator`.
+  Do NOT build a plate / owner lookup (PDPA) or a history report Drevo cannot source.
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
   a pure-red "CONTACT NOW" on every card, "0 - 4k" km bands) and called the Malaysian marketplace underserved. Angle:
