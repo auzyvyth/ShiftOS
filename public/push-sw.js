@@ -1,5 +1,5 @@
 /*
- * Push notification handlers for the ShiftOS service worker.
+ * Push notification handlers for the DrevoOS service worker.
  *
  * WHY THIS IS A SEPARATE FILE: vite-plugin-pwa runs in `generateSW` mode, which
  * writes sw.js from scratch on every build — there is nowhere in that generated
@@ -29,7 +29,7 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data ? event.data.text() : '' };
   }
 
-  const title = payload.title || 'ShiftOS';
+  const title = payload.title || 'DrevoOS';
   const tag = payload.tag || 'shiftos';
   const options = {
     body: payload.body || '',

@@ -82,7 +82,7 @@ export default function FeaturePage() {
         <section className="fp-wrap" style={{ padding: "72px 24px 8px", textAlign: "center" }}>
           <Reveal>
             <Link to="/shiftos#features" className="fp-back">
-              <ArrowLeft size={13} /> ShiftOS features
+              <ArrowLeft size={13} /> DrevoOS features
             </Link>
           </Reveal>
           <Reveal delay={60}>
@@ -188,7 +188,7 @@ export default function FeaturePage() {
         {/* Cross-links to other features */}
         <section className="fp-wrap" style={{ paddingTop: 72 }}>
           <Reveal>
-            <p className="fp-kicker" style={{ textAlign: "center", marginBottom: 22 }}>The rest of ShiftOS</p>
+            <p className="fp-kicker" style={{ textAlign: "center", marginBottom: 22 }}>The rest of DrevoOS</p>
           </Reveal>
           <div className="fp-more-grid">
             {others.map((s) => {
@@ -214,7 +214,7 @@ export default function FeaturePage() {
         <section className="fp-wrap" style={{ padding: "72px 24px 96px" }}>
           <Reveal>
             <div className="fp-glass" style={{ padding: "60px 32px", textAlign: "center", background: "radial-gradient(ellipse 800px 400px at 50% -10%, rgba(220,38,38,0.2) 0%, rgba(255,255,255,0.04) 100%)" }}>
-              <h2 className="fp-h" style={{ fontSize: 46, color: "#fff", marginBottom: 14 }}>Run your dealership on ShiftOS</h2>
+              <h2 className="fp-h" style={{ fontSize: 46, color: "#fff", marginBottom: 14 }}>Run your dealership on DrevoOS</h2>
               <p className="fp-muted" style={{ maxWidth: 500, margin: "0 auto 34px" }}>
                 One system for stock, leads, F&I, revenue and handover. Start free — no card, live in 30 minutes.
               </p>
@@ -241,7 +241,7 @@ export default function FeaturePage() {
               <Link to="/" className="fp-nav-link">drevo.my</Link>
             </div>
           </div>
-          <p style={{ fontSize: 12, color: "#1f2937", marginTop: 20 }}>© {new Date().getFullYear()} Drevo · ShiftOS</p>
+          <p style={{ fontSize: 12, color: "#1f2937", marginTop: 20 }}>© {new Date().getFullYear()} Drevo · DrevoOS</p>
         </footer>
       </div>
     </div>

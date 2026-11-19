@@ -157,7 +157,7 @@ import { useNudges } from "../hooks/useNudges";
 const loadSellerInbox = () => import("../components/chat/SellerInbox");
 const SellerInbox = React.lazy(loadSellerInbox);
 const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
-// ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
+// DrevoOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 const MotionPosterSheet = React.lazy(() => import("../components/poster/MotionPosterSheet"));
@@ -421,7 +421,7 @@ export default function SalesmanPremium() {
  // ordered by last_message_at desc, so the first one seen is the live one.
  chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
  const [chatSheet, setChatSheet] = useState(null);
- const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
+ const [studioCar, setStudioCar] = useState(null); // DrevoOS Studio target listing
  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
  const [motionCar, setMotionCar] = useState(null); // Moving poster sheet target (IDEA-29)
@@ -5689,7 +5689,7 @@ export default function SalesmanPremium() {
  body: {
  dealer_id: getDealerIdFromProfile(profile),
  channel_id: chatId,
- message: `Telegram connected! You'll get appointment + booking reminders here. — ${profile?.full_name || "ShiftOS"}`,
+ message: `Telegram connected! You'll get appointment + booking reminders here. — ${profile?.full_name || "DrevoOS"}`,
  },
  headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
  });
@@ -8486,7 +8486,7 @@ export default function SalesmanPremium() {
  </Suspense>
  )}
 
- {/* ShiftOS Studio: full-screen, mounted at page level so no parent
+ {/* DrevoOS Studio: full-screen, mounted at page level so no parent
      stacking context can clip it (overlay rule 1). */}
  {/* COACH-1 share tour: rings the car's Share button on Listings. */}
  {shareTourCar && activeTab === "listings" && (

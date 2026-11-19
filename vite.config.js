@@ -50,8 +50,8 @@ export default defineConfig({
 			registerType: 'prompt',
 				injectRegister: false,
 			manifest: {
-				name: 'ShiftOS by Drevo',
-				short_name: 'ShiftOS',
+				name: 'DrevoOS by Drevo',
+				short_name: 'DrevoOS',
 				description: 'Car dealership management platform',
 				lang: 'en',
 				theme_color: '#080C14',

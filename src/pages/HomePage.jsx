@@ -816,7 +816,7 @@ const HomePage = () => {
               url: "https://drevo.my",
               logo: "https://drevo.my/drevo-mark-512.png",
               description:
-                "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of ShiftOS, a used-car dealer management system (DMS).",
+                "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of DrevoOS, a used-car dealer management system (DMS).",
               areaServed: "MY",
               sameAs: [
                 "https://facebook.com/xdrive.my",
@@ -1645,7 +1645,7 @@ const HomePage = () => {
                   }}
                 >
                   Run your dealership smarter with{" "}
-                  <span style={{ color: "#DC2626" }}>ShiftOS.</span>
+                  <span style={{ color: "#DC2626" }}>DrevoOS.</span>
                 </h2>
                 <p
                   style={{
@@ -1662,7 +1662,7 @@ const HomePage = () => {
               </div>
               <div style={{ flexShrink: 0, position: "relative", zIndex: 1 }}>
                 <Link to="/shiftos" className="primary-btn" style={primaryBtn}>
-                  Learn About ShiftOS <ArrowRight size={14} />
+                  Learn About DrevoOS <ArrowRight size={14} />
                 </Link>
               </div>
             </div>

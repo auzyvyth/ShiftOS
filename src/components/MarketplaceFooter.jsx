@@ -16,7 +16,7 @@ const FOOTER_TIERS = [
   { key: 'dealer_growth',   href: '/shiftos#pricing' },
   { key: 'dealer_pro',      href: '/shiftos#pricing' },
   // The salesman tiers point at the dedicated Lite landing page, not the
-  // ShiftOS salesman track. /for-salesmen is the page the whole Lite pitch is
+  // DrevoOS salesman track. /for-salesmen is the page the whole Lite pitch is
   // written for (and the one that's in the sitemap); /shiftos?for=salesman is
   // a second, thinner telling of the same story on the dealer page.
   { key: 'salesman_lite',   href: '/for-salesmen' },
@@ -65,7 +65,7 @@ export default function MarketplaceFooter() {
         { label: 'Salesman Performance', to: '/features/salesman-performance' },
         { label: 'F&I & Documents',    to: '/features/fi-documents' },
         { label: 'Post-Sale Handover', to: '/features/post-sale-handover' },
-        { label: 'Partner with Drevo', href: `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / ShiftOS for my dealership. Can we discuss?")}` },
+        { label: 'Partner with Drevo', href: `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / DrevoOS for my dealership. Can we discuss?")}` },
       ],
     },
     {
@@ -100,7 +100,7 @@ export default function MarketplaceFooter() {
   return (
     <footer className="bg-white border-t border-gray-100" style={{ fontFamily: "'Outfit', sans-serif" }}>
 
-      {/* ── ShiftOS DMS band ─────────────────────────────────────────── */}
+      {/* ── DrevoOS DMS band ─────────────────────────────────────────── */}
       {settings.shiftos_band_enabled && (
         <div id="shiftos" className="bg-gray-950 border-b border-white/5">
           <div className="max-w-6xl mx-auto px-5 py-10 flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-16">

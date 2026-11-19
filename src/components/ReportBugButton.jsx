@@ -16,7 +16,7 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
   const send = () => {
     if (!text.trim()) return;
     const lines = [
-      "Bug report — ShiftOS",
+      "Bug report — DrevoOS",
       context ? `From: ${context}` : null,
       userLabel ? `User: ${userLabel}` : null,
       "",

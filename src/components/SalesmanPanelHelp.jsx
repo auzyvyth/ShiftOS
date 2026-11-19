@@ -34,7 +34,7 @@ const CONTENT = {
   en: {
     overview: {
       title: 'What is the Salesman Panel?',
-      body: 'The Salesman Panel is your workspace as part of a dealership on ShiftOS. Unlike the standalone Salesman Lite, this panel is connected live to your dealer — the cars you sell, the leads you work, and the deals you close all feed straight into the dealer dashboard. Your owner and managers can see your pipeline; you can see the dealer\'s stock, your assigned cars, and the commission set for each one.',
+      body: 'The Salesman Panel is your workspace as part of a dealership on DrevoOS. Unlike the standalone Salesman Lite, this panel is connected live to your dealer — the cars you sell, the leads you work, and the deals you close all feed straight into the dealer dashboard. Your owner and managers can see your pipeline; you can see the dealer\'s stock, your assigned cars, and the commission set for each one.',
       items: [
         { label: 'Connected to your dealer', desc: 'A banner at the top of your Dashboard shows your dealership and a "Synced" badge. Every booking, enquiry, lead and sale you log is shared with the dealer\'s system in real time — no separate reporting needed.' },
         { label: 'Dealer stock access', desc: 'In the Listings tab you can browse the dealer\'s Available Inventory and feature any car on your own listings to sell it. Featuring a car does NOT create a fake lead — your pipeline stays clean for real buyers only.' },
@@ -170,7 +170,7 @@ const CONTENT = {
       ],
     },
     faq: [
-      { q: 'How is the Salesman Panel different from Salesman Lite?', a: 'Salesman Lite is a free standalone account with no dealer behind it. The Salesman Panel is for salesmen who work under a dealer on ShiftOS — it is connected live to the dealer\'s stock, leads, commission rules, handover board and team features. If you joined a dealership with an invite code, you are on the Panel.' },
+      { q: 'How is the Salesman Panel different from Salesman Lite?', a: 'Salesman Lite is a free standalone account with no dealer behind it. The Salesman Panel is for salesmen who work under a dealer on DrevoOS — it is connected live to the dealer\'s stock, leads, commission rules, handover board and team features. If you joined a dealership with an invite code, you are on the Panel.' },
       { q: 'I sold a car but I can\'t see it — where did it go?', a: 'Sold cars are hidden from the default Listings view. In the Listings tab, switch the status filter to "Sold" to see all your closed cars along with the commission you earned and the sale date.' },
       { q: 'How do I know how much commission I\'ll get on a car?', a: 'Every active listing card and every linked lead card shows the commission as an amber "Earn RM X" badge. The dealer sets this — either a fixed amount or a percentage. If a card shows no figure, the dealer uses a margin-based rule that isn\'t exposed; ask your manager for the number.' },
       { q: 'A lead won\'t move past Test Drive — is it broken?', a: 'No — advancing past Test Drive shows a confirmation asking whether the test drive actually happened. Tap "Yes, test drive done" to continue. This is a safeguard so deals aren\'t pushed forward by accident.' },
@@ -188,7 +188,7 @@ const CONTENT = {
   ms: {
     overview: {
       title: 'Apa itu Panel Jurujual?',
-      body: 'Panel Jurujual adalah ruang kerja anda sebagai sebahagian daripada sebuah pusat kereta di ShiftOS. Berbeza daripada akaun Salesman Lite yang berdiri sendiri, panel ini disambungkan secara langsung kepada dealer anda — kereta yang anda jual, lead yang anda uruskan, dan deal yang anda tutup semuanya mengalir terus ke dalam papan pemuka dealer. Pemilik dan pengurus anda boleh melihat pipeline anda; anda boleh melihat stok dealer, kereta yang ditugaskan kepada anda, dan komisyen yang ditetapkan untuk setiap satu.',
+      body: 'Panel Jurujual adalah ruang kerja anda sebagai sebahagian daripada sebuah pusat kereta di DrevoOS. Berbeza daripada akaun Salesman Lite yang berdiri sendiri, panel ini disambungkan secara langsung kepada dealer anda — kereta yang anda jual, lead yang anda uruskan, dan deal yang anda tutup semuanya mengalir terus ke dalam papan pemuka dealer. Pemilik dan pengurus anda boleh melihat pipeline anda; anda boleh melihat stok dealer, kereta yang ditugaskan kepada anda, dan komisyen yang ditetapkan untuk setiap satu.',
       items: [
         { label: 'Disambungkan kepada dealer anda', desc: 'Sepanduk di bahagian atas Papan Pemuka anda menunjukkan nama pusat kereta dan lencana "Synced". Setiap tempahan, pertanyaan, lead dan jualan yang anda log dikongsi dengan sistem dealer secara masa nyata — tiada laporan berasingan diperlukan.' },
         { label: 'Akses stok dealer', desc: 'Dalam tab Listing anda boleh melayari Inventori Tersedia dealer dan menampilkan mana-mana kereta dalam listing anda sendiri untuk dijual. Menampilkan sebuah kereta TIDAK mencipta lead palsu — pipeline anda kekal bersih untuk pembeli sebenar sahaja.' },
@@ -325,7 +325,7 @@ const CONTENT = {
       ],
     },
     faq: [
-      { q: 'Apa perbezaan Panel Jurujual dengan Salesman Lite?', a: 'Salesman Lite adalah akaun percuma berdiri sendiri tanpa dealer di belakangnya. Panel Jurujual adalah untuk jurujual yang bekerja di bawah dealer di ShiftOS — ia disambungkan secara langsung kepada stok dealer, lead, peraturan komisyen, papan serahan dan ciri pasukan. Jika anda menyertai pusat kereta dengan kod jemputan, anda berada di Panel.' },
+      { q: 'Apa perbezaan Panel Jurujual dengan Salesman Lite?', a: 'Salesman Lite adalah akaun percuma berdiri sendiri tanpa dealer di belakangnya. Panel Jurujual adalah untuk jurujual yang bekerja di bawah dealer di DrevoOS — ia disambungkan secara langsung kepada stok dealer, lead, peraturan komisyen, papan serahan dan ciri pasukan. Jika anda menyertai pusat kereta dengan kod jemputan, anda berada di Panel.' },
       { q: 'Saya telah menjual kereta tetapi tidak dapat melihatnya — di mana ia pergi?', a: 'Kereta yang telah dijual disembunyikan dari paparan Listing lalai. Dalam tab Listing, tukar penapis status kepada "Sold" untuk melihat semua kereta yang telah ditutup bersama komisyen yang anda perolehi dan tarikh jualan.' },
       { q: 'Bagaimana saya tahu berapa komisyen yang akan saya dapat pada sebuah kereta?', a: 'Setiap kad listing aktif dan setiap kad lead yang dipautkan menunjukkan komisyen sebagai lencana amber "Earn RM X". Dealer menetapkan ini — sama ada amaun tetap atau peratusan. Jika kad tidak menunjukkan angka, dealer menggunakan peraturan berasaskan margin yang tidak dedahkan; tanya pengurus anda untuk angka tersebut.' },
       { q: 'Lead tidak boleh bergerak melepasi Ujian Pandu — adakah ia rosak?', a: 'Tidak — memajukan melepasi Ujian Pandu menunjukkan pengesahan yang bertanya sama ada ujian pandu benar-benar berlaku. Ketik "Yes, test drive done" untuk meneruskan. Ini adalah perlindungan supaya deal tidak ditolak ke hadapan secara tidak sengaja.' },
@@ -486,7 +486,7 @@ export default function SalesmanPanelHelp() {
             </p>
           </div>
           <a
-            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20the%20ShiftOS%20Salesman%20Panel"
+            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20the%20DrevoOS%20Salesman%20Panel"
             target="_blank"
             rel="noopener noreferrer"
             style={{

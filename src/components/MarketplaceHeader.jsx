@@ -69,7 +69,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const { search } = useLocation();
   const isHotDeals = new URLSearchParams(search).get('hot_deals') === 'true';
 
-  const partnerWa = `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / ShiftOS for my dealership. Can we discuss?")}`;
+  const partnerWa = `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / DrevoOS for my dealership. Can we discuss?")}`;
 
   const BROWSE = [
     { to: '/showroom',                  Icon: LayoutGrid, label: 'All Cars',       desc: 'Every car on Drevo' },
@@ -82,7 +82,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   ];
   const DEALERS = [
     { to: '/shiftos#features', Icon: PlusCircle,      label: 'List Your Inventory', desc: 'Put your stock in front of buyers' },
-    { to: '/shiftos',          Icon: LayoutDashboard, label: 'ShiftOS DMS',         desc: 'Run your whole dealership' },
+    { to: '/shiftos',          Icon: LayoutDashboard, label: 'DrevoOS DMS',         desc: 'Run your whole dealership' },
     { to: '/shiftos#pricing',  Icon: Tag,             label: 'Dealer Pricing',      desc: 'Plans from RM299/mo' },
     // SENSUS-1: owner's call (2026-10-17) to list the Sensus AI page here.
     { to: '/sensus-ai',        Icon: Bot,             label: 'Dealership AI Agent', desc: 'Answers enquiries 24/7' },

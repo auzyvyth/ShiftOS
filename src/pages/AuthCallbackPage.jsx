@@ -260,7 +260,7 @@ export default function AuthCallbackPage() {
           letterSpacing: 4,
           color: '#E8EDF5',
         }}>
-          SHIFTOS
+          DREVOOS
         </span>
       </div>
 

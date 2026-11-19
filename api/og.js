@@ -715,25 +715,25 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
 }
 
 // ── Static content pages (mirror SPA Helmet) ──────────────────────────────────
-const SHIFTOS_DESC = "ShiftOS ialah software dealer kereta Malaysia & used car DMS untuk urus stok kereta terpakai, lead CRM, rekod jualan dan komisen salesman. Sistem urus stok kereta terpakai untuk dealer & salesman — mula percuma.";
+const SHIFTOS_DESC = "DrevoOS ialah software dealer kereta Malaysia & used car DMS untuk urus stok kereta terpakai, lead CRM, rekod jualan dan komisen salesman. Sistem urus stok kereta terpakai untuk dealer & salesman — mula percuma.";
 
 const SHIFTOS_FAQS = [
-  { q: "Apa itu ShiftOS?", a: "ShiftOS ialah sistem urus stok kereta terpakai (used car DMS Malaysia) yang direka khas untuk dealer kereta di Malaysia. Ia satu app urus stok kereta dan app untuk dealer kereta terpakai yang menggabungkan CRM lead, rekod jualan, komisen salesman dan analitik keuntungan." },
-  { q: "Berapa harga ShiftOS?", a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM35/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual." },
-  { q: "Adakah ShiftOS sesuai untuk dealer kecil?", a: "Ya. ShiftOS sesuai untuk dealer kereta terpakai kecil dan besar. Dealer kecil boleh mula dengan Dealer Starter RM299/bulan, manakala salesman individu boleh guna Salesman Lite percuma — app salesman kereta Malaysia untuk urus listing, lead dan komisen sendiri." },
-  { q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?", a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront Drevo sendiri." },
-  { q: "What is the best app for Malaysian used car dealers?", a: "ShiftOS is a purpose-built used car dealer software Malaysia — combining car inventory management Malaysia, a car dealer CRM Malaysia, salesman commission tracking, F&I and revenue analytics, designed for local workflows." },
-  { q: "Is there a DMS for used car dealers in Malaysia?", a: "Yes. ShiftOS is a used car DMS Malaysia (dealer management system) and car dealer management app Malaysia built for independent dealers, replacing spreadsheets with one system for stock, leads, sales and reporting." },
+  { q: "Apa itu DrevoOS?", a: "DrevoOS ialah sistem urus stok kereta terpakai (used car DMS Malaysia) yang direka khas untuk dealer kereta di Malaysia. Ia satu app urus stok kereta dan app untuk dealer kereta terpakai yang menggabungkan CRM lead, rekod jualan, komisen salesman dan analitik keuntungan." },
+  { q: "Berapa harga DrevoOS?", a: "Harga DrevoOS bermula RM0 untuk Salesman Lite (percuma) dan RM35/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual." },
+  { q: "Adakah DrevoOS sesuai untuk dealer kecil?", a: "Ya. DrevoOS sesuai untuk dealer kereta terpakai kecil dan besar. Dealer kecil boleh mula dengan Dealer Starter RM299/bulan, manakala salesman individu boleh guna Salesman Lite percuma — app salesman kereta Malaysia untuk urus listing, lead dan komisen sendiri." },
+  { q: "Boleh ke guna DrevoOS dengan Mudah dan Carlist?", a: "Boleh. DrevoOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam DrevoOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront Drevo sendiri." },
+  { q: "What is the best app for Malaysian used car dealers?", a: "DrevoOS is a purpose-built used car dealer software Malaysia — combining car inventory management Malaysia, a car dealer CRM Malaysia, salesman commission tracking, F&I and revenue analytics, designed for local workflows." },
+  { q: "Is there a DMS for used car dealers in Malaysia?", a: "Yes. DrevoOS is a used car DMS Malaysia (dealer management system) and car dealer management app Malaysia built for independent dealers, replacing spreadsheets with one system for stock, leads, sales and reporting." },
 ];
 
 const SOFTWARE_LD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "ShiftOS",
+  name: "DrevoOS",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   url: `${SITE_URL}/shiftos`,
-  description: "ShiftOS is a used car dealer software Malaysia (used car DMS) for inventory management, leads CRM, sales records, salesman commission tracking and profit analytics. Built for Malaysian used car dealers.",
+  description: "DrevoOS is a used car dealer software Malaysia (used car DMS) for inventory management, leads CRM, sales records, salesman commission tracking and profit analytics. Built for Malaysian used car dealers.",
   inLanguage: ["ms-MY", "en-MY"],
   offers: [
     { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR" },
@@ -814,8 +814,8 @@ function buildFeatureHtml(slug) {
     <h2>What it does</h2>
     ${f.capabilities.map((c) => `<h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p>`).join("\n    ")}
     ${steps}
-    <h2>More ShiftOS features</h2><ul>${others}</ul>
-    <p><a href="${SITE_URL}/shiftos">ShiftOS for dealers</a> · <a href="${SITE_URL}/plans">Plans &amp; pricing</a></p>
+    <h2>More DrevoOS features</h2><ul>${others}</ul>
+    <p><a href="${SITE_URL}/shiftos">DrevoOS for dealers</a> · <a href="${SITE_URL}/plans">Plans &amp; pricing</a></p>
   </main>`,
   });
 }
@@ -834,11 +834,11 @@ const STATIC_PAGES = {
     <p>${esc(SHIFTOS_DESC)}</p>
     <h2>Soalan Lazim (FAQ)</h2>
     ${SHIFTOS_FAQS.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
-    <p><a href="${SITE_URL}/shiftos">Mula guna ShiftOS</a></p>
+    <p><a href="${SITE_URL}/shiftos">Mula guna DrevoOS</a></p>
   </main>`;
     return htmlShell({
       lang: "ms",
-      title: "ShiftOS — Software Dealer Kereta Malaysia | Used Car DMS & Sistem Urus Stok Kereta",
+      title: "DrevoOS — Software Dealer Kereta Malaysia | Used Car DMS & Sistem Urus Stok Kereta",
       description: SHIFTOS_DESC,
       canonical: `${SITE_URL}/shiftos`,
       jsonLd: [SOFTWARE_LD, faqLd],

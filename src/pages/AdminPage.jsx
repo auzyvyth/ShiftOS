@@ -363,7 +363,7 @@ export default function AdminPage() {
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
   const [bulkRejectReason, setBulkRejectReason] = useState("");
   const [blastModal, setBlastModal] = useState(false);
-  const [blastMsg, setBlastMsg] = useState("Hi! ShiftOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
+  const [blastMsg, setBlastMsg] = useState("Hi! DrevoOS Lite is launching soon — free car listings, your own profile page, and lead tracking. You're on the early list. Stay tuned!");
   const [blastCopied, setBlastCopied] = useState(null); // "numbers" | "msg" | null
 
   // Marketplace settings tab
@@ -866,11 +866,11 @@ export default function AdminPage() {
   const reviewCount = pendingListings.length + pendingUsersCount;
 
   // ── One taxonomy: what am I doing (P1) ──────────────────────────────────────
-  // The rail used to mix two. "ShiftOS Ops" and "Drevo Ops" split by PRODUCT
+  // The rail used to mix two. "DrevoOS Ops" and "Drevo Ops" split by PRODUCT
   // while "Security" split by FUNCTION, so the top level answered no single
   // question -- neither "which product?" nor "what am I doing?", but both at
   // once -- and every navigation was a guess. The clearest symptom: marketplace
-  // SETTINGS lived under ShiftOS Ops while marketplace ANALYTICS lived under
+  // SETTINGS lived under DrevoOS Ops while marketplace ANALYTICS lived under
   // Drevo Ops. Same subject, two consoles, split by a rule invisible from the
   // outside. They are one section now.
   //
@@ -1744,7 +1744,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => {
                           const vcf = filtered.map(w =>
-                            `BEGIN:VCARD\nVERSION:3.0\nFN:${w.name} (ShiftOS #${w.position})\nTEL;TYPE=CELL:+${w.phone.replace(/^\+/, "")}\nEND:VCARD`
+                            `BEGIN:VCARD\nVERSION:3.0\nFN:${w.name} (DrevoOS #${w.position})\nTEL;TYPE=CELL:+${w.phone.replace(/^\+/, "")}\nEND:VCARD`
                           ).join("\n");
                           const blob = new Blob([vcf], { type: "text/vcard" });
                           const url = URL.createObjectURL(blob);
@@ -1765,7 +1765,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <p style={{ fontSize: 11, color: "#374151", marginBottom: 14 }}>
-                    💡 Import .vcf into phone contacts → WA Business → New Broadcast → select all ShiftOS contacts
+                    💡 Import .vcf into phone contacts → WA Business → New Broadcast → select all DrevoOS contacts
                   </p>
 
                   {/* Table */}
@@ -1988,10 +1988,10 @@ export default function AdminPage() {
                     </MktField>
                   </MktSection>
 
-                  {/* ShiftOS DMS Band */}
-                  <MktSection label="ShiftOS DMS Band" hint="The dark promotional band at the bottom of the footer">
+                  {/* DrevoOS DMS Band */}
+                  <MktSection label="DrevoOS DMS Band" hint="The dark promotional band at the bottom of the footer">
                     <MktToggle
-                      label="Show ShiftOS DMS promotional band in footer"
+                      label="Show DrevoOS DMS promotional band in footer"
                       value={!!mktSettings.shiftos_band_enabled}
                       onChange={val => setMktSettings(s => ({ ...s, shiftos_band_enabled: val }))}
                     />

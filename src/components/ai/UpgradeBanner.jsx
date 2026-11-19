@@ -24,7 +24,7 @@ export default function UpgradeBanner({ feature = "This feature" }) {
         {feature} is locked. Upgrade to unlock AI-powered tools.
         <br />
         <span style={{ color: "#4b5563" }}>
-          Or get it free — ask your dealer to subscribe to ShiftOS.
+          Or get it free — ask your dealer to subscribe to DrevoOS.
         </span>
       </p>
       <a

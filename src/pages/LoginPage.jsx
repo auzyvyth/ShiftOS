@@ -138,7 +138,7 @@ export default function LoginPage() {
   const [pendingUser, setPendingUser] = useState(null);
 
   useEffect(() => {
-    document.title = t("login.meta.title", { defaultValue: "ShiftOS · Login" });
+    document.title = t("login.meta.title", { defaultValue: "DrevoOS · Login" });
   }, [t]);
 
   // Tick down the lockout countdown.
@@ -576,7 +576,7 @@ export default function LoginPage() {
               fontSize: 28,
             }}
           >
-            ShiftOS
+            DrevoOS
           </span>
         </div>
         <div
@@ -917,7 +917,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="lr-left-footer" style={{ marginTop: 32 }}>
-                &copy; {new Date().getFullYear()} ShiftOS &nbsp;&middot;&nbsp;
+                &copy; {new Date().getFullYear()} DrevoOS &nbsp;&middot;&nbsp;
                 <a href="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms</a>
                 &nbsp;&middot;&nbsp;
                 <a href="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy</a>
@@ -941,7 +941,7 @@ export default function LoginPage() {
               <Clock size={14} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>
                 {idleDays
-                  ? `You hadn't used ShiftOS for ${idleDays} day${idleDays === 1 ? "" : "s"}, so we signed you out to keep your account safe.`
+                  ? `You hadn't used DrevoOS for ${idleDays} day${idleDays === 1 ? "" : "s"}, so we signed you out to keep your account safe.`
                   : "You'd been away a while, so we signed you out to keep your account safe."}
                 {" "}Sign in to pick up where you left off.
               </span>

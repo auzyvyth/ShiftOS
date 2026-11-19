@@ -1387,7 +1387,7 @@ export default function AccountantPanel() {
               margin: "3px 0 0",
             }}
           >
-            ShiftOS Financial
+            DrevoOS Financial
           </p>
         </div>
 
@@ -1773,7 +1773,7 @@ export default function AccountantPanel() {
               whiteSpace: "nowrap",
             }}
           >
-            {"ShiftOS Accounts › "}
+            {"DrevoOS Accounts › "}
             {NAV.find((n) => n.id === activeNav)?.label}
             {activeNav === "overview"
               ? ` › ${fmtMonth(viewMonth)}`
@@ -1877,7 +1877,7 @@ export default function AccountantPanel() {
                   const ws = utils.json_to_sheet(rows);
                   const wb = utils.book_new();
                   utils.book_append_sheet(wb, ws, fmtMonth(viewMonth));
-                  writeFile(wb, `ShiftOS_PL_${monthKey(viewMonth)}.xlsx`);
+                  writeFile(wb, `DrevoOS_PL_${monthKey(viewMonth)}.xlsx`);
                 }}
                 style={{
                   background: "rgba(34,197,94,0.08)",

@@ -189,7 +189,7 @@ export default function FunnelTab() {
               Marketing pages
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
-              <StatTile label="ShiftOS page (/shiftos)" value={num(landing?.shiftos?.visits)}
+              <StatTile label="DrevoOS page (/shiftos)" value={num(landing?.shiftos?.visits)}
                 cur={landing?.shiftos?.visits} prev={landing?.shiftos?.prev_visits} accent="#4ade80" />
               <StatTile label="For Salesmen page (/for-salesmen)" value={num(landing?.for_salesmen?.visits)}
                 cur={landing?.for_salesmen?.visits} prev={landing?.for_salesmen?.prev_visits} accent="#facc15" />

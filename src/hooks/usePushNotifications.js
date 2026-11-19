@@ -370,7 +370,7 @@ export function usePushNotifications(userId, client = supabase) {
       const { data: { session } } = await client.auth.getSession();
       const { data, error } = await client.functions.invoke('send-push', {
         body: {
-          title: 'ShiftOS notifications are on',
+          title: 'DrevoOS notifications are on',
           body: 'This is a test. Real alerts will arrive here even with the app closed.',
           url: '/',
           tag: 'push-test',

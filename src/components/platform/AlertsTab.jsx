@@ -124,7 +124,7 @@ export default function AlertsTab({ userId }) {
       <p style={{ margin: "16px 0 0", fontSize: 11, color: "#4b5563", lineHeight: 1.7, display: "flex", gap: 8, alignItems: "flex-start" }}>
         <Bell size={12} style={{ flexShrink: 0, marginTop: 3 }} />
         <span>
-          On iPhone, web push only works once ShiftOS is installed to the home
+          On iPhone, web push only works once DrevoOS is installed to the home
           screen (Share, then Add to Home Screen) and opened from there.
         </span>
       </p>

@@ -303,7 +303,7 @@ const Footer = () => {
           </span>
           <span className="ftr-bottom-brand">
             Powered by
-            <span style={{ color: "#DC2626", fontWeight: "600" }}>ShiftOS</span>
+            <span style={{ color: "#DC2626", fontWeight: "600" }}>DrevoOS</span>
           </span>
         </div>
       </div>

@@ -51,8 +51,10 @@ Full plan and status: `TODO.md` BRAND-1.
   `ROOT_DOMAIN` is `drevo.my`, xdrive.my stays in `OWN_DOMAINS` and every xdrive.my
   host 301s to the same path on drevo.my (`vercel.json` `redirects`). Never remove
   those redirects while xdrive.my is renewed.
-- "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
-  becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+- **The seller/dealer software is "DrevoOS" (owner, 2026-11-20).** App copy, dashboards, the /shiftos page,
+  i18n, the PWA name and push titles were renamed. NOT yet renamed (owner call pending): legal docs (the
+  operator name in Terms/Privacy/DPA), articles, `api/og.js` legal lines, `public/llms.txt`, edge-function emails,
+  social handles in the /shiftos schema. Never add new "ShiftOS" text.
   The photo/poster editor is "Drevo Studio" (owner, 2026-11-16); its buttons say so.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
   the temporary "Split D" lockup.** One red wordmark for Drevo AND the seller software, the same

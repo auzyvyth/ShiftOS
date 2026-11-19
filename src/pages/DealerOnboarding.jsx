@@ -582,7 +582,7 @@ export default function DealerOnboarding() {
                 <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer', fontSize: 12.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.55)' }}>
                   <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)}
                     style={{ width: 17, height: 17, marginTop: 1, flexShrink: 0, accentColor: '#dc2626', cursor: 'pointer' }} />
-                  <span>I consent to ShiftOS collecting and processing my personal data (including the owner's IC and business details) for account verification, in accordance with the PDPA 2010, and confirm the owner is at least 18 years old.</span>
+                  <span>I consent to DrevoOS collecting and processing my personal data (including the owner's IC and business details) for account verification, in accordance with the PDPA 2010, and confirm the owner is at least 18 years old.</span>
                 </label>
                 <button className="eo-btn" onClick={agreeLegal} disabled={!legalScrolled || !agreePdpa}>
                   I AGREE — CONTINUE

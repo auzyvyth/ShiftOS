@@ -36,7 +36,7 @@ const CONTENT = {
         { label: 'Lead list', desc: 'Every buyer who contacts you lands here. Move them through the stages, add notes, and mark the deal won when the car sells.' },
         { label: 'Inbox', desc: 'Drevo buyers who tap WhatsApp on your listing appear as Enquiries. Appointment requests show under Bookings.' },
         { label: 'Views and WhatsApp taps', desc: 'See how many buyers viewed each car and tapped WhatsApp. Close rate and where deals are lost are on Premium.' },
-        { label: 'Join a dealership', desc: 'If you work with a dealer on ShiftOS, enter their invite code to merge your account. Your listings and leads carry over.' },
+        { label: 'Join a dealership', desc: 'If you work with a dealer on DrevoOS, enter their invite code to merge your account. Your listings and leads carry over.' },
       ],
     },
     dashboard: {
@@ -93,12 +93,12 @@ const CONTENT = {
     },
     merge: {
       title: 'Join a Dealership',
-      body: 'If you work under a dealer who uses ShiftOS, merging your account connects you to their system. You get access to their stock, their lead pipeline, and their team features.',
+      body: 'If you work under a dealer who uses DrevoOS, merging your account connects you to their system. You get access to their stock, their lead pipeline, and their team features.',
       items: [
         { label: 'Getting an invite code', desc: 'Ask your dealer or manager for an invite code. It looks like DEALER-XXXX. Codes are generated from the dealer\'s Team tab.' },
         { label: 'Entering the code', desc: 'Go to the Join Dealership tab, paste the code, and tap Submit. Your account is linked immediately.' },
         { label: 'After merging', desc: 'You\'ll be redirected to the full Salesman Panel, which has access to the dealer\'s stock, leads assigned to you, and team commission reports. Your existing listings and leads carry over.' },
-        { label: 'Note', desc: 'Merging is permanent per account. If you need to unlink, contact your dealer or ShiftOS support.' },
+        { label: 'Note', desc: 'Merging is permanent per account. If you need to unlink, contact your dealer or DrevoOS support.' },
       ],
     },
     settings: {
@@ -109,7 +109,7 @@ const CONTENT = {
         { label: 'WhatsApp number', desc: 'Your WhatsApp number is what buyers use to contact you from listings. Enter digits only — the Malaysia (+60) country code is added automatically.' },
         { label: 'Username / Slug', desc: 'Your slug is your public profile URL: drevo.my/s/your-slug. It\'s set during onboarding. Contact support to change it.' },
         { label: 'State & City', desc: 'Shown on your profile page. Helps buyers know where you\'re based.' },
-        { label: 'IC Number', desc: 'Required for account verification. It is never shown publicly and is only accessible to ShiftOS admins.' },
+        { label: 'IC Number', desc: 'Required for account verification. It is never shown publicly and is only accessible to DrevoOS admins.' },
         { label: 'Language', desc: 'Toggle between English and Bahasa Malaysia. The entire dashboard switches language instantly.' },
         { label: 'Telegram notifications', desc: 'Connect your Telegram Chat ID to receive instant alerts for new enquiries and bookings. Instructions are in the Settings page.' },
       ],
@@ -137,7 +137,7 @@ const CONTENT = {
         { label: 'Senarai lead', desc: 'Setiap pembeli yang hubungi anda masuk di sini. Gerakkan mereka ikut peringkat, tambah nota, dan tanda deal menang bila kereta terjual.' },
         { label: 'Peti Masuk', desc: 'Pembeli Drevo yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
         { label: 'Views dan tap WhatsApp', desc: 'Lihat berapa ramai pembeli tengok setiap kereta dan tekan WhatsApp. Close rate dan di mana deal hilang ada di Premium.' },
-        { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di ShiftOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },
+        { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di DrevoOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },
       ],
     },
     dashboard: {
@@ -194,12 +194,12 @@ const CONTENT = {
     },
     merge: {
       title: 'Sertai Pengedar',
-      body: 'Jika anda bekerja di bawah pengedar yang menggunakan ShiftOS, menggabungkan akaun anda menghubungkan anda ke sistem mereka. Anda mendapat akses kepada stok mereka, saluran lead mereka, dan ciri pasukan mereka.',
+      body: 'Jika anda bekerja di bawah pengedar yang menggunakan DrevoOS, menggabungkan akaun anda menghubungkan anda ke sistem mereka. Anda mendapat akses kepada stok mereka, saluran lead mereka, dan ciri pasukan mereka.',
       items: [
         { label: 'Mendapatkan kod jemputan', desc: 'Minta kod jemputan daripada pengedar atau pengurus anda. Ia kelihatan seperti DEALER-XXXX. Kod dijana dari tab Pasukan pengedar.' },
         { label: 'Memasukkan kod', desc: 'Pergi ke tab Sertai Pengedar, tampal kod, dan ketik Hantar. Akaun anda dihubungkan dengan serta-merta.' },
         { label: 'Selepas bergabung', desc: 'Anda akan dihalakan ke Panel Jurujual penuh, yang mempunyai akses kepada stok pengedar, lead yang ditugaskan kepada anda, dan laporan komisen pasukan. Listing dan lead sedia ada anda dibawa bersama.' },
-        { label: 'Nota', desc: 'Penggabungan adalah kekal bagi setiap akaun. Jika anda perlu memutuskan hubungan, hubungi pengedar anda atau sokongan ShiftOS.' },
+        { label: 'Nota', desc: 'Penggabungan adalah kekal bagi setiap akaun. Jika anda perlu memutuskan hubungan, hubungi pengedar anda atau sokongan DrevoOS.' },
       ],
     },
     settings: {
@@ -210,7 +210,7 @@ const CONTENT = {
         { label: 'Nombor WhatsApp', desc: 'Nombor WhatsApp anda adalah cara pembeli menghubungi anda dari listing. Masukkan digit sahaja — kod negara Malaysia (+60) ditambah secara automatik.' },
         { label: 'Nama pengguna / Slug', desc: 'Slug anda adalah URL profil awam anda: drevo.my/s/slug-anda. Ia ditetapkan semasa onboarding. Hubungi sokongan untuk menukarnya.' },
         { label: 'Negeri & Bandar', desc: 'Ditunjukkan pada halaman profil anda. Membantu pembeli mengetahui di mana anda berada.' },
-        { label: 'Nombor IC', desc: 'Diperlukan untuk pengesahan akaun. Ia tidak pernah ditunjukkan kepada umum dan hanya boleh diakses oleh pentadbir ShiftOS.' },
+        { label: 'Nombor IC', desc: 'Diperlukan untuk pengesahan akaun. Ia tidak pernah ditunjukkan kepada umum dan hanya boleh diakses oleh pentadbir DrevoOS.' },
         { label: 'Bahasa', desc: 'Togol antara Inggeris dan Bahasa Malaysia. Keseluruhan papan pemuka bertukar bahasa dengan serta-merta.' },
         { label: 'Notifikasi Telegram', desc: 'Hubungkan Chat ID Telegram anda untuk menerima makluman segera bagi pertanyaan dan tempahan baru. Arahan terdapat di halaman Tetapan.' },
       ],
@@ -375,7 +375,7 @@ export default function SalesmanLiteHelp() {
             </p>
           </div>
           <a
-            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20ShiftOS%20Salesman%20Lite"
+            href="https://wa.me/601111521742?text=Hi%2C%20I%20need%20help%20with%20DrevoOS%20Salesman%20Lite"
             target="_blank"
             rel="noopener noreferrer"
             style={{

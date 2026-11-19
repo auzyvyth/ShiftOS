@@ -9,8 +9,8 @@ import { Download, Share, X } from 'lucide-react';
 // delay elapses — so the chunk stays deferred. (Same reasoning as
 // ConsentBanner's lazy LegalModal.) All the gating logic lives in the eager
 // gate; by the time this mounts the decision to show has already been made.
-// The name is ShiftOS on both surfaces because there is ONE manifest and it
-// installs one app: short_name 'ShiftOS' (vite.config.js) is what the home
+// The name is DrevoOS on both surfaces because there is ONE manifest and it
+// installs one app: short_name 'DrevoOS' (vite.config.js) is what the home
 // screen will read, so promising a buyer "Drevo" here would hand them an icon
 // called something else. Only the reason changes — an operator installs to work
 // out of it, a buyer installs to be reachable.
@@ -43,7 +43,7 @@ export default function InstallPromptCard({ mode, audience = 'app', onInstall, o
       >
         <div
           role="region"
-          aria-label="Install ShiftOS"
+          aria-label="Install DrevoOS"
           style={{
             pointerEvents: 'auto',
             maxWidth: 420, margin: '0 auto',
@@ -75,7 +75,7 @@ export default function InstallPromptCard({ mode, audience = 'app', onInstall, o
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#fff' }}>
-              {mode === 'ios' ? 'Add ShiftOS to your Home Screen' : 'Install ShiftOS'}
+              {mode === 'ios' ? 'Add DrevoOS to your Home Screen' : 'Install DrevoOS'}
             </p>
 
             {mode === 'ios' ? (
