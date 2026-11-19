@@ -70,6 +70,71 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## FIELD-1119: tasks from the owner's WhatsApp + Reddit + app screenshots (2026-11-19)
+Seven screenshots: two WhatsApp chats with a new-car advisor prospect being set up by hand, three of the r/Bolehland
+thread "My elder brother (36) is working as a recond car salesman" (u/Venkie2Maybach, 119 up / 37 comments), one Instagram
+comment thread on a car-salesman commission skit, one of the Premium "Dealer stock > My buyers" screen. No phone numbers
+or names are copied here (public repo). Order = what to do first.
+- [ ] **BROKER-5 (BUG, confirmed in the live DB): a buyer a broker registers by hand never reaches their Leads (owner
+  screenshot: "needs to automatically go to lead stage new").** `_broker_claim` only inserts the broker's own lead
+  `if v_blead is null and p_source = 'page'`; `broker_register_buyer` calls it with `'manual'`, so a manual registration
+  with no matching lead makes none. Live count 2026-11-19: `broker_registrations` has 4 rows, all `source='manual'`, 2 have
+  no `broker_lead_id`, 1 has no `dealer_lead_id`. Fix: drop the `p_source = 'page'` condition (new lead stage `new`,
+  `lead_source` `manual`, notes naming the dealer car; the existing dealer-twin code below it then mirrors it), backfill
+  the 2 rows, then probe in a rolled-back transaction (register -> lead exists at `new` -> dealer twin follows -> a
+  repeat registration makes no second lead). DB migration: write the file, queue it for the after-midnight slot.
+  Screen: `src/components/brokers/BrokerStock.jsx:217` ("My buyers"), RPC `broker_my_regs`. No migration is written yet.
+- [ ] **ONBOARD-PHONE: nothing in the seller setup asks for the WhatsApp number.** While setting up a prospect by hand the
+  owner could not find where she types it, and had to ask her to send it in chat. It lives only in Settings
+  (`src/pages/SalesmanPremium.jsx:5950`), and the setup checklist has no row for it (`PREMIUM_TASK_KEYS`,
+  `src/components/onboarding/StarterTasks.jsx:60`: account, listing, minipage, photo, bio, verified, biolink). Every
+  buyer WhatsApp button depends on it (`hasWhatsApp`, `SalesmanPremium.jsx:7693`). Add a "Add your WhatsApp number" row
+  (ticks when `whatsapp_number` is set) and check the console's "Set up a seller" form asks for it. Not checked yet.
+- [ ] **LINK-TRUST (owner decision first): a prospect said people are afraid to tap `drevo.my/s/<name>` in a bio.** A new
+  domain nobody knows, no preview in a bio. Options to discuss, none built: say what it is next to the link ("see my
+  cars, no sign-up"), a short branded alias, the verified badge on the first screen, the share preview card
+  (`api/agent-card.js`, only helps links sent in chat). Do NOT add a QR or third-party link on Live (TikTok rule, see
+  BIOLINK-1). Ask the owner which prospects said it, and how many.
+- [ ] **FEEDBACK-POPUP (owner asked 2026-11-19; nothing built, design agreed):** rate / feedback pop-ups for sellers.
+  Owner picked: audience = Lite + Premium sellers (15 today, plan-targeted, dealers excluded), a FIXED set of pop-ups
+  switched on/off per plan in the console, answers read in the console. Rules agreed: one pop-up per person per 14 days,
+  never in the first 2 days, never while a Live is running (`seller_live_state`), never on top of another sheet, "Not now"
+  snoozes, a second "Not now" retires it, tied to a moment (first car, first sale, 3 days before trial ends). Plan: ONE
+  table `app_feedback`; server RPCs decide which pop-up shows (the rules live in the DB, not in each panel); a host
+  component mounted in `App.jsx` beside `SocialConsentHost` (copy its sheet pattern: portal, scroll lock,
+  `useModalHistory`, quiet close if the RPC is missing); a console tab under Work; a 1-3 star answer goes through
+  `notify_ops`. Five pop-ups: rate us, what is missing, would you recommend, how was setup, bug or idea. DB part is a
+  queued migration (after midnight). Plus-points: 15 sellers only, so also WhatsApp the 12 Premium trials by hand.
+- [ ] **COPY-AUDIT (unverified, do first, 15 minutes): check no template or AI draft writes fake urgency.** A top
+  r/Bolehland comment: the thing a buyer hates most is a salesman "warning" that a car will be gone soon. Grep the
+  caption, WhatsApp opener and `ai-proxy` prompts for "gone soon", "last one", "hurry", and remove any. Only true,
+  measured facts (e.g. "N people saved this") are fine. Not searched yet.
+- [ ] **LEGAL-CHECK before any booking-fee feature or wording.** The thread's seller loses RM500 bookings when buyers back
+  out. Malaysian tribunal rulings often order the booking fee back, in full or part, especially when the buyer was not
+  told it was non-refundable or the loan was rejected (examples below); TTPM says deposit-refund disputes are among
+  the most reported used-car problems (The Star, 2026-08-04). So a seller's best protection is the terms said in writing
+  BEFORE the fee is taken. We already have `DEPOSIT_POLICY_COPY`. If a "booking receipt with terms" is built (dealer
+  documents already issue receipts), the wording needs a real legal read first, not a guess.
+- [ ] **GUARDRAIL, not a task: do not copy the thread's money-makers.** A comment says recond salesmen earn on the loan and
+  advertise "blacklisted can also apply loan". Never put approval or "blacklisted ok" wording on Drevo (Loan check
+  already says the bank decides). The "pay cash, avoid LHDN" comment is not a market to build for. Sambung bayar stays
+  removed (HP Act 1967 s.38).
+- [ ] **LAUNCH-1212 input (research):** a Mudah job ad for a used-car "live host" offers basic + commission + profit share
+  and asks for 6,000+ TikTok followers; the r/Bolehland brother earns RM600 base + 1% (RM1,700 on his figures) and is told
+  to sell on TikTok Live but dislikes it. That is the exact seller the 12 Dec ads target: someone paid mostly on
+  commission who is being told to sell on TikTok. Hook idea for the ad: "your boss wants you on TikTok Live; here is the
+  calculator that does the maths on screen." A commenter also says Proton EVs are in demand and showrooms are hiring:
+  supports the new-car advisor product (NEWCAR-1).
+- [ ] **RESEARCH GAP (unfinished): the Reddit thread's other 30+ comments, and the YouTube sellers a commenter named
+  (Che Din Kan Ada, Aamir Izzat).** Reddit and its mirrors refuse fetches from this session and the search tool cannot
+  see Reddit, so only what is in the screenshots was read. To finish: paste the remaining comment text here, or allow a
+  mirror host in the session network settings. The two YouTube names found no news coverage; a human should watch a few
+  of their videos and note how they open, price and close, then we compare with the Live presenter.
+Sources used: carlist.my "Brokerage commissions for selling a Proton X50" (informal RM200-300 introducer fees, case by case),
+thestar.com.my 2022-09-12 / 2022-11-09 / 2024-08-12 / 2025-06-25 (tribunal booking-fee and deposit refunds),
+thestar.com.my 2026-08-04 "When used car dream crashes" (TTPM complaint ranking), paultan.org 2023-05-10 (Carsome refund delays),
+weirdkaya.com / newswav (Malaysian salesmen's own TikTok content), mudah.my used-car live-host job ads.
+
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
 (price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 3 owner switches staff on/off: migration `20261117a` APPLIED 2026-11-17 09:5x UTC (owner "do it now", nobody live) and
@@ -3057,6 +3122,24 @@ Background (from the idea):
     Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
+
+- **IDEA-44: "Talk about what YouTube can't" per-car talking points (owner's Reddit screenshots, 2026-11-19)** — a
+  buyer on r/Bolehland says the thing they hate most is a salesman who only recites the spec sheet they already saw on
+  YouTube, and the second is fake urgency ("will be gone soon"). A per-car prompt for the seller ("what you know about
+  THIS car": history, owner, service record, flaws found, why it is priced so) could ride on the existing condition
+  report + caption flow. Never generates urgency lines. Blocked by: nothing, but check how often sellers fill the
+  existing fields first (COACH-1 shows what they skip).
+- **IDEA-43: proof of first contact, so a commission dispute has an answer (owner's Instagram screenshot, 2026-11-19)** —
+  a car salesman's top complaint: you close a sale, a coworker says "I said hi to them two months ago, pay me half", the
+  manager sides with whoever has been there longer. A comment from a dealership says their CRM rule is: no notes, no
+  data, no completed appointment = no half. Drevo already stamps `last_contacted_at` and `lead_activities`; a dealer-side
+  "who touched this buyer first, with what" line on the lead + one written ownership rule would settle it from data.
+  Dealer-only, so parked until a real dealership is live. Related: `resolve_lead_salesman`, TEAM-HEALTH.
+- **IDEA-42: trade-in on a lead (a new-car advisor prospect, 2026-11-19)** — an SA prospect described the common case:
+  the buyer sells their old Myvi and uses it as the deposit on a new Proton, and she gets stuck because nothing tracks
+  the old car. Capture only: "has a car to trade" + brand/model/year/mileage/photos on the lead, so the seller sees it
+  next to the new car. NEVER a trade-in value or payoff figure (same rule as RAPTOR-3: no table holds those, any number
+  is invented). Could also feed the used-car side: the traded-in car becomes a stock lead for a dealer or recon seller.
 
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
