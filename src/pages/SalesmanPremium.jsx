@@ -160,6 +160,7 @@ const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
 // ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
+const MarketplaceSheet = React.lazy(() => import("../components/fbmarketplace/MarketplaceSheet"));
 const MotionPosterSheet = React.lazy(() => import("../components/poster/MotionPosterSheet"));
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
@@ -424,6 +425,7 @@ export default function SalesmanPremium() {
  const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
+ const [marketCar, setMarketCar] = useState(null); // Facebook Marketplace checklist target (MKT-1)
  const [motionCar, setMotionCar] = useState(null); // Moving poster sheet target (IDEA-29)
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
@@ -7595,6 +7597,7 @@ export default function SalesmanPremium() {
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
       openLoanPoster={setPosterCar}
+      openMarketplace={setMarketCar}
       openMotionPoster={setMotionCar}
       onVerifyId={() => openSettings("profile")}
       onOpenNewCars={() => { setShowAddForm(false); openSettings("newcars"); }}
@@ -8500,6 +8503,11 @@ export default function SalesmanPremium() {
  {motionCar && (
  <Suspense fallback={null}>
  <MotionPosterSheet car={motionCar} seller={profile} onClose={() => setMotionCar(null)} />
+ </Suspense>
+ )}
+ {marketCar && (
+ <Suspense fallback={null}>
+ <MarketplaceSheet car={marketCar} seller={profile} onClose={() => setMarketCar(null)} onDownloadPhotos={(c) => loadListingsTab().then((m) => m.downloadListingImages(c))} />
  </Suspense>
  )}
  {posterCar && (
