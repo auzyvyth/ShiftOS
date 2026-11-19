@@ -323,10 +323,12 @@ export default function Header() {
         { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
         { name: "For Dealers",       path: "/shiftos",       key: "dealers", isSpecial: true },
       ];
-  if (isLoggedIn)
-    navLinks.push({ name: accountLabel, path: accountPath, key: "account" });
-  else
-    navLinks.push({ name: t("nav.login"), path: "/login", key: "login" });
+  // Sign in / My account is NOT a page of the site, so it sits with the actions
+  // on the right (language, account, WhatsApp), not in the page links. Mobile
+  // shows it as the last row of the sheet.
+  const accountLink = isLoggedIn
+    ? { name: accountLabel, path: accountPath, key: "account" }
+    : { name: t("nav.login"), path: "/login", key: "login" };
 
   const scrollToHash = (hash) => {
     const el = document.getElementById(hash);
@@ -367,22 +369,14 @@ export default function Header() {
                   <ShieldCheck size={14} strokeWidth={2.5} style={{ color: "#60a5fa", flexShrink: 0 }} aria-label="Verified Dealer" />
                 )}
               </span>
-              <span className="hdr-logo-sub">{isVerified ? "Verified Dealer" : "Trusted Auto"}</span>
+              {isVerified && <span className="hdr-logo-sub">Verified Dealer</span>}
             </div>
           </Link>
 
           {/* Desktop nav */}
           <nav className="hdr-nav">
             {navLinks.map((link) =>
-              link.key === "login" ? (
-                /* ONE sign-in door — the buyer/seller dropdown that used to live
-                   here asked people to classify themselves before they were
-                   identified, while both choices ran the same auth and the
-                   account's own role already decides the destination. */
-                <a key={link.key} href="/login" className="hdr-link">
-                  {link.name}
-                </a>
-              ) : link.isSpecial ? (
+              link.isSpecial ? (
                 <Link key={link.key} to={link.path} className="hdr-dealer">
                   <Crown size={12} style={{ flexShrink: 0 }} />
                   {link.name}
@@ -414,19 +408,18 @@ export default function Header() {
               <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`} aria-label="Switch to English" aria-pressed={isEn}>EN</button>
               <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`} aria-label="Switch to Malay" aria-pressed={!isEn}>BM</button>
             </div>
+            <span className="hdr-vsep" />
+            <Link to={accountLink.path} className="hdr-signin">{accountLink.name}</Link>
             {isLoggedIn && (
-              <>
-                <span className="hdr-vsep" />
-                <button
-                  className="hdr-logout"
-                  onClick={async () => {
-                    await supabase.auth.signOut();
-                    window.location.href = '/login';
-                  }}
-                >
-                  Logout
-                </button>
-              </>
+              <button
+                className="hdr-logout"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = '/login';
+                }}
+              >
+                Logout
+              </button>
             )}
             <a href={waHref} target="_blank" rel="noopener noreferrer" className="hdr-wa">
               <MessageCircle size={14} style={{ flexShrink: 0 }} />
@@ -450,13 +443,7 @@ export default function Header() {
         {mobileOpen && (
           <div className="hdr-mobile-sheet">
             {navLinks.map((link) =>
-              link.key === "login" ? (
-                /* One door on mobile too — see the desktop control above. */
-                <Link key={link.key} to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
-                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}><User size={16} /> Sign In</span>
-                  <ChevronRight size={16} style={{ opacity: 0.4 }} />
-                </Link>
-              ) : link.path.includes("#") ? (
+              link.path.includes("#") ? (
                 <button key={link.key} onClick={() => handleNav(link.path)} className="hdr-mlink">
                   <span>{link.name}</span>
                   <ChevronRight size={16} style={{ opacity: 0.4 }} />
@@ -476,6 +463,11 @@ export default function Header() {
                 </Link>
               )
             )}
+
+            <Link to={accountLink.path} onClick={() => setMobileOpen(false)} className="hdr-mlink">
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}><User size={16} /> {isLoggedIn ? accountLink.name : "Sign In"}</span>
+              <ChevronRight size={16} style={{ opacity: 0.4 }} />
+            </Link>
 
             <div className="hdr-mobile-bottom">
               <a href={waHref} target="_blank" rel="noopener noreferrer" className="hdr-wa-mobile">
