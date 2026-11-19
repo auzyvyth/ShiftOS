@@ -500,21 +500,6 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   restart, ~4.4 GB/day for a 58 MB DB), down from ~24/h before IO-5 but not gone. Owner: Dashboard >
   Reports > Database, 15:00-17:00 UTC Nov 5 (CPU, memory, swap, Disk IO budget) decides between
   "Disk IO budget ran out" and "host starved". Real fix stays PERF-LOAD-2 (paid compute).
-- [ ] **IO-9 the change poller never stopped (2026-11-09).** `realtime.list_changes` is still the
-  DB's #1 query (42k calls, 449 s in 3.5 days) though every screen uses `liveChannel`. Cause:
-  `liveChannel` fell back to postgres_changes on ANY `CHANNEL_ERROR`/`TIMED_OUT`, i.e. on every
-  dropped socket (phone sleep, wifi change) or slow join (`realtime.authorize` averages 425 ms),
-  and stayed there until reload; seller panels stay open for days. Fix BUILT (branch
-  `ccr-43610c49-zkh0gj`, `src/lib/liveChannel.js` `isRefusal`, `npm run test:livechannel` 34/34):
-  only a permission refusal falls back. Next: staging, then a few days later re-check
-  `list_changes` calls and apply `20261025a` (drop the publication) once it is near zero.
-  WAL archiving since the 2026-11-05 restart: 1,042 x 16 MB segments (~16.7 GB) for a 60 MB DB,
-  12.3/h; that is Supabase's archive_timeout (2 min, not ours to change) sealing a segment for
-  any 2-minute window with a write. Real fix is still PERF-LOAD-2 (Pro + Micro compute).
-  Noise: `realtimeIdle` replay hits `lead_activities` / `dealer_notifications` with
-  `updated_at` / `last_message_at`, which those tables lack (4 errors/day in postgres logs).
-- [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
-  subscribes to `lead_activities`, which is not in the publication (never fires).
 
 ## AUDIT-1021: repo-wide security + performance audit (2026-10-21)
 Checked live (advisors, grants, pg_stat_statements, cron), not from reading code.
@@ -565,9 +550,6 @@ Done 2026-10-21: SEC-4 (backup tables dropped), PREM-LAPSE leftovers (#515 + 202
   (same on `marketplace_settings`). Collapse into one policy per command.
 - [ ] PERF-IDX 78 unindexed FKs, 87 unused indexes; `analytics_rate_limit_ok` filters
   `session_id` with no index on every /api/track call (144ms avg).
-- [ ] BRAND-CORS `lib/cors.js:15` and `supabase/functions/_shared/cors.ts:20` have no `drevo.my`
-  (only `server/index.js` does). Switch day = native app + edge-function calls refused.
-  108 non-comment `xdrive.my` strings in src outside `src/config/site.js`.
 - [ ] ENG-DEPS `xlsx` installs from cdn.sheetjs.com (`package.json:92`), so `npm ci` fails on any
   network that blocks it (workaround used 2026-10-21: install a copy of package.json
   without xlsx in a scratch dir and symlink its node_modules; lint + `npm test` then pass). npm audit: 5 high / 3
