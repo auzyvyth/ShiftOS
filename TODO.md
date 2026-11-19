@@ -3075,6 +3075,7 @@ Background (from the idea):
     Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
+- **IDEA-42 (owner, 2026-11-20): win the ~70% of dealers who sit on Mudah.my / Carlist.** The giants give dealers a listing, not a system (leads, handover, P&L, team). Drevo does, so the pitch is the system, not another portal. Research so far: no public posting API on Mudah / Carousell / Carlist / Meta Marketplace (Mudah auto-syndicates to Carousell since 2026-08-20, which is one partner deal for two portals). Options to weigh, none chosen: (1) cheapest switch = import the dealer's own cars (CSV / pasted list, never scraping their Mudah page without checking Mudah's terms), (2) done-for-you setup like the seller offer, (3) ask Mudah / Carlist about a feed partnership, (4) work the dealers as prospects in Console > Prospects (human WhatsApp, PDPA). Blocker: the dealer dashboard still has no live users (DASH-TEST).
 
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,
