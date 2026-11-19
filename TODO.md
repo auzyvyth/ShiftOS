@@ -75,15 +75,20 @@ Seven screenshots: two WhatsApp chats with a new-car advisor prospect being set 
 thread "My elder brother (36) is working as a recond car salesman" (u/Venkie2Maybach, 119 up / 37 comments), one Instagram
 comment thread on a car-salesman commission skit, one of the Premium "Dealer stock > My buyers" screen. No phone numbers
 or names are copied here (public repo). Order = what to do first.
-- [ ] **BROKER-5 (BUG, confirmed in the live DB): a buyer a broker registers by hand never reaches their Leads (owner
-  screenshot: "needs to automatically go to lead stage new").** `_broker_claim` only inserts the broker's own lead
-  `if v_blead is null and p_source = 'page'`; `broker_register_buyer` calls it with `'manual'`, so a manual registration
-  with no matching lead makes none. Live count 2026-11-19: `broker_registrations` has 4 rows, all `source='manual'`, 2 have
-  no `broker_lead_id`, 1 has no `dealer_lead_id`. Fix: drop the `p_source = 'page'` condition (new lead stage `new`,
-  `lead_source` `manual`, notes naming the dealer car; the existing dealer-twin code below it then mirrors it), backfill
-  the 2 rows, then probe in a rolled-back transaction (register -> lead exists at `new` -> dealer twin follows -> a
-  repeat registration makes no second lead). DB migration: write the file, queue it for the after-midnight slot.
-  Screen: `src/components/brokers/BrokerStock.jsx:217` ("My buyers"), RPC `broker_my_regs`. No migration is written yet.
+- [ ] **BROKER-5 (BUG): a buyer a broker registers by hand never reached their Leads (owner screenshot: "needs to
+  automatically go to lead stage new"). FIX WRITTEN + PROBED 2026-11-19, NOT APPLIED: apply
+  `supabase/migrations/20261119a_broker_manual_lead.sql` after midnight MYT with nobody live (it is DDL: one function,
+  `_broker_claim`, same arguments, so no second overload).** Cause: `_broker_claim` only inserted the broker's own lead
+  `if v_blead is null and p_source = 'page'`, and the Register buyer form passes `'manual'`. The change drops that
+  condition (new lead stage `new`, `lead_source` `manual`, notes naming the dealer car); the dealer-twin code below it then
+  mirrors it onto the dealer's pipeline at the same stage, as for a page buyer. Probed on the live DB in a rolled-back
+  transaction (real broker + real dealer car, fake buyers): manual registration -> broker lead `new`/`manual` linked to
+  the dealer's car + dealer twin `new`/`referral`/via broker; same buyer again -> refused `mine`, no second lead; broker
+  already had a lead for that phone at `contacted` -> reused, dealer copy follows `contacted`; another broker -> `held`,
+  no lead made; page source still `whatsapp`. After applying: check `select count(*) from pg_proc where proname =
+  '_broker_claim'` is 1, and register one test buyer by hand in the app. NO backfill: the 2 registrations with no broker lead
+  are both already SOLD (dealer's lead is Won), so a "new" lead on them would be wrong. Separate, unexplained: one older
+  registered row (2026-11-15) has no dealer lead; it predates BROKER-4, left alone. Screen: `BrokerStock.jsx:217`.
 - [ ] **ONBOARD-PHONE: nothing in the seller setup asks for the WhatsApp number.** While setting up a prospect by hand the
   owner could not find where she types it, and had to ask her to send it in chat. It lives only in Settings
   (`src/pages/SalesmanPremium.jsx:5950`), and the setup checklist has no row for it (`PREMIUM_TASK_KEYS`,
