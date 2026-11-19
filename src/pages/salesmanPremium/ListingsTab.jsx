@@ -31,7 +31,7 @@ function loadJSZip() {
  return _jszipPromise;
 }
 
-export const downloadListingImages = async (car) => {
+const downloadListingImages = async (car) => {
  const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
  if (imgs.length === 0) { toast.error(tp("lst.noImages")); return; }
  const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
@@ -95,7 +95,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  coachFor, onCoach, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
- generateAiCaptions, onVerifyId, openStudio, openLoanPoster, openMotionPoster, openMarketplace,
+ generateAiCaptions, onVerifyId, openStudio, openLoanPoster, openMotionPoster,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -541,13 +541,6 @@ export default function ListingsTab({
  {openMotionPoster && (
  <button onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
  <Play size={13} /> {t("salesmanPremium.lst.motionPoster")}
- </button>
- )}
- {/* MKT-1: Facebook Marketplace checklist. Drevo prepares the text, the
-     seller presses Publish (nothing posts for them). */}
- {openMarketplace && (
- <button onClick={() => { openMarketplace(car); setActionMenuCarId(null); }} style={menuItem}>
- <Share2 size={13} /> Facebook Marketplace
  </button>
  )}
  {/* Studio: TikTok poster from this car. Post-list only, and it

@@ -3075,7 +3075,6 @@ Background (from the idea):
     Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
-- **MKT-1 (built 2026-11-20, owner: "build the safe version", NOT on staging):** Premium Listings > ··· > "Facebook Marketplace" (`src/components/fbmarketplace/MarketplaceSheet.jsx`, text rules `src/utils/marketplaceListing.js`, `npm run test:marketplace`). Drevo prepares photos + price/year/make/model/mileage/description; the seller copies them into Marketplace's own form and presses Publish. NEVER add a login/cookie robot that posts for the seller (breaks Meta's terms, restricts the SELLER's account; prompted by SnapPost's ad). Not built: Lite version, Malay copy, a Meta Marketplace Partnership application. Description link carries `?ref=<slug>&src=marketplace`; check `src=marketplace` is counted as a channel in `detectChannel.js`.
 
 - **IDEA-41: Drevo as the clean, no-ads marketplace for high-value cars (owner, 2026-11-16)** — owner looked at
   motortrader.com.my (ads in the way of a Ferrari listing, watermarked photos, all-caps cut-off titles, pastel pills,

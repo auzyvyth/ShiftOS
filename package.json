@@ -34,7 +34,6 @@
     "test:pagebudget": "node tests/pageBudget.test.mjs",
     "test:revisit": "node tests/viewProgress.test.mjs",
     "test:poster": "node tests/loanPoster.test.mjs",
-    "test:marketplace": "node tests/marketplaceListing.test.mjs",
     "test:backdrops": "node tests/studioBackdrops.test.mjs",
     "test:newcarcaption": "node tests/newCarCaption.test.mjs",
     "test:aftercare": "node tests/aftercare.test.mjs",
