@@ -7,7 +7,7 @@ export const VERSION_INFO = {
   hero: {
     a: { name: "Slides", note: "Your hero slides from Storefront > Hero Carousel." },
     b: { name: "Split", note: "Your name and a search box beside your newest car's photo." },
-    c: { name: "Showroom wall", note: "Your name over a wall of your three newest cars." },
+    c: { name: "Full screen", note: "Your name large over the whole first screen: one photo, or a wall of your newest cars." },
   },
   cars: {
     a: { name: "Grid", note: "Your newest cars in rows." },
@@ -40,6 +40,14 @@ export const VERSION_INFO = {
     b: { name: "Side by side", note: "Heading on the left, buyer reviews on the right." },
     c: { name: "Framed", note: "Buyer reviews in one card under a centred heading." },
   },
+};
+
+// Choices inside one version (look options, storefrontLayout.js OPTIONS), shown under it in the
+// editor: { section: { variant: { option, label, values: { value: name } } } }.
+export const VERSION_OPTIONS = {
+  hero: { c: { option: "heroBg", label: "Background", values: { photo: "Photo", cars: "Your cars" },
+    notes: { photo: "Your first hero slide, else your newest car's photo, under a dark fade. Two buttons: WhatsApp and Browse cars.",
+      cars: "Your three newest cars as a wall under your name." } } },
 };
 
 const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "calculator", "contact"];

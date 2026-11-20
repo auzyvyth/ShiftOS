@@ -4,10 +4,10 @@
 // the header/footer links and the database check (`storefront_layout_ok` in migration
 // 20261120a, `npm run test:storefrontlayout` checks both list the same sections).
 //
-// Saved on `profiles.storefront_layout` as { v: 1, sections: [{ id, on, variant }], font?, theme? }.
-// `font` and `theme` (stage 4) are left out when they are the default (theme rules:
-// storefrontTheme.js). The DB check reads only v + sections,
-// so the extra key needed no migration (checked against the live function 2026-11-20).
+// Saved on `profiles.storefront_layout` as { v: 1, sections: [{ id, on, variant }], font?, theme?,
+// heroBg?, header? }. `font`, `theme` and the look options (OPTIONS below) are top-level keys,
+// left out when they are the default (theme rules: storefrontTheme.js). The DB check reads only
+// v + sections, so the extra keys needed no migration (checked against the live function 2026-11-20).
 // Whatever is saved, `cleanLayout` turns it into a complete, valid layout, so a bad or old
 // saved value can never break the page: unknown ids are dropped, missing ones come back
 // in their usual place, the top banner stays first and Get in touch stays last.
@@ -80,7 +80,8 @@ export function cleanLayout(saved, available) {
 }
 
 // What gets saved. Always a full, cleaned list, so the database check sees one shape.
-// look = { font, theme } (stage 4); a default or unknown font, and an empty theme, are not saved.
+// look = { font, theme, ...OPTIONS } (stage 4); a default or unknown font, an empty theme and
+// a default option are not saved.
 export const toSaved = (layout, look = {}) => {
   const out = {
     v: LAYOUT_VERSION,
@@ -90,11 +91,16 @@ export const toSaved = (layout, look = {}) => {
   if (font !== DEFAULT_FONT) out.font = font;
   const theme = cleanTheme(look.theme);
   if (theme) out.theme = theme;
+  for (const k of OPTION_IDS) {
+    const v = validOption(k, look[k]);
+    if (v !== OPTIONS[k].def) out[k] = v;
+  }
   return out;
 };
 
 export const isDefaultLayout = (layout, look = {}) =>
   validFont(look.font) === DEFAULT_FONT && !cleanTheme(look.theme) &&
+  OPTION_IDS.every((k) => validOption(k, look[k]) === OPTIONS[k].def) &&
   JSON.stringify(cleanLayout({ v: LAYOUT_VERSION, sections: layout })) === JSON.stringify(defaultLayout());
 
 export const sectionOn = (savedOrLayout, id) => {
@@ -129,13 +135,17 @@ export const setVariant = (layout, id, variant, available) =>
 // and never hide the cars or the contact section.
 // A picked font rides along as one more part, "font.<id>" (no section is called "font", so
 // cleanLayout drops it and draftFont reads it). Colours the same way: "theme.<bg>.<card>.<accent>"
-// (storefrontTheme.js themeParam / draftTheme).
+// (storefrontTheme.js themeParam / draftTheme). A look option: "opt.<key>.<value>" (draftOptions).
 export const draftParam = (layout, look = {}) => {
   const parts = layout.map((r) => `${r.on ? "" : "-"}${r.id}.${r.variant}`);
   const font = validFont(look.font);
   if (font !== DEFAULT_FONT) parts.push(`font.${font}`);
   const theme = themeParam(look.theme);
   if (theme) parts.push(theme);
+  for (const k of OPTION_IDS) {
+    const v = validOption(k, look[k]);
+    if (v !== OPTIONS[k].def) parts.push(`opt.${k}.${v}`);
+  }
   return parts.join(",");
 };
 
@@ -194,6 +204,37 @@ export const fontSheet = (id) => {
   const sheet = FONTS[validFont(id)].sheet;
   return sheet ? `https://fonts.googleapis.com/css2?family=${sheet}&display=swap` : null;
 };
+
+// ── Look options (stage 4, phase A) ──────────────────────────────────────────
+// Small switches beside the sections, each a top-level key on the saved layout, each with a
+// fixed list of values and a default that is never written (so an untouched site saves nothing
+// new and draws exactly as before). A new option = one line here + its reader; cleaning,
+// saving, comparing and the preview link follow by themselves.
+//   heroBg: what fills top banner C "Full screen": "cars" = a wall of the dealer's newest cars
+//           (the old "Showroom wall", so a saved C keeps its look), "photo" = one full-width photo.
+export const OPTIONS = {
+  heroBg: { values: ["cars", "photo"], def: "cars" },
+};
+export const OPTION_IDS = Object.keys(OPTIONS);
+const validOption = (k, v) => (OPTIONS[k].values.includes(v) ? v : OPTIONS[k].def);
+export const defaultOptions = () => Object.fromEntries(OPTION_IDS.map((k) => [k, OPTIONS[k].def]));
+
+// The saved options, every key present, junk and unknown values back to the default.
+export function cleanOptions(saved) {
+  const ok = saved && typeof saved === "object" && saved.v === LAYOUT_VERSION;
+  return Object.fromEntries(OPTION_IDS.map((k) => [k, validOption(k, ok ? saved[k] : null)]));
+}
+
+// The options carried by a preview link ("opt.<key>.<value>" parts), every key present.
+export function draftOptions(param) {
+  const out = defaultOptions();
+  if (typeof param !== "string" || !param || param.length > 400) return out;
+  for (const part of param.split(",")) {
+    const [tag, k, v] = part.split(".");
+    if (tag === "opt" && Object.hasOwn(OPTIONS, k)) out[k] = validOption(k, v);
+  }
+  return out;
+}
 
 // ── Presets and Shuffle (stage 4) ────────────────────────────────────────────
 // A preset is a named look: a fixed version for each section that has versions, plus a

@@ -5,8 +5,9 @@ import {
   moveSection, toggleSection, draftParam, fromDraftParam, setVariant,
   DEFAULT_FONT, FONTS, FONT_IDS, cleanFont, fontCss, fontSheet, draftFont,
   PRESETS, applyPreset, presetOf, shuffleLook,
+  OPTIONS, OPTION_IDS, defaultOptions, cleanOptions, draftOptions,
 } from "../src/utils/storefrontLayout.js";
-import { AVAILABLE_VERSIONS, VERSION_INFO } from "../src/components/storefront/sections/versions.js";
+import { AVAILABLE_VERSIONS, VERSION_INFO, VERSION_OPTIONS } from "../src/components/storefront/sections/versions.js";
 
 const ids = (l) => l.map((r) => r.id);
 const DEFAULT = ids(defaultLayout());
@@ -108,6 +109,40 @@ assert.deepEqual(fromDraftParam(fp), defaultLayout(), "the font part is not a se
 assert.equal(draftFont(draftParam(defaultLayout())), DEFAULT_FONT);
 assert.equal(draftFont("hero.a,font.evil"), DEFAULT_FONT);
 
+// ── Stage 4 phase A: look options (top-level keys, defaults never saved) ──
+assert.deepEqual(cleanOptions(null), defaultOptions(), "nothing saved = defaults");
+assert.equal(defaultOptions().heroBg, "cars", "banner C defaults to the cars wall, so a saved C keeps its look");
+assert.equal(cleanOptions({ v: 1, sections: [], heroBg: "photo" }).heroBg, "photo");
+for (const bad of ["video", "__proto__", 5, null, { x: 1 }]) assert.equal(cleanOptions({ v: 1, sections: [], heroBg: bad }).heroBg, "cars", `junk heroBg ${bad}`);
+assert.equal(cleanOptions({ v: 2, heroBg: "photo" }).heroBg, "cars", "other version ignored");
+for (const k of OPTION_IDS) {
+  assert.ok(OPTIONS[k].values.includes(OPTIONS[k].def), `${k} default is one of its values`);
+  for (const v of OPTIONS[k].values) {
+    const look = { [k]: v };
+    const saved = toSaved(defaultLayout(), look);
+    if (v === OPTIONS[k].def) {
+      assert.ok(!(k in saved), `${k} default not saved`);
+      assert.ok(isDefaultLayout(defaultLayout(), look), `${k} default = the default layout`);
+    } else {
+      assert.equal(saved[k], v, `${k}=${v} saved`);
+      assert.ok(!isDefaultLayout(defaultLayout(), look), `${k}=${v} is not the default`);
+    }
+    assert.equal(cleanOptions(saved)[k], v, `${k}=${v} survives saving`);
+    const param = draftParam(defaultLayout(), look);
+    assert.equal(draftOptions(param)[k], v, `${k}=${v} rides the preview link`);
+    assert.deepEqual(fromDraftParam(param), defaultLayout(), `${k} part is not a section`);
+  }
+  assert.ok(!(k in toSaved(defaultLayout(), { [k]: "junk" })), `junk ${k} not saved`);
+}
+assert.ok(!draftParam(defaultLayout()).includes("opt."), "an untouched layout's link carries no option");
+assert.deepEqual(draftOptions("hero.c,opt.heroBg.evil,opt.nope.x"), defaultOptions(), "a hand-made link cannot set junk");
+assert.deepEqual(cleanLayout(toSaved(defaultLayout(), { heroBg: "photo" })), defaultLayout(), "sections unaffected by option keys");
+// The editor's option switches name only real options and values, under versions that exist.
+for (const [id, byV] of Object.entries(VERSION_OPTIONS)) for (const [v, o] of Object.entries(byV)) {
+  assert.ok(AVAILABLE_VERSIONS[id]?.includes(v), `${id}.${v} exists`);
+  assert.deepEqual(Object.keys(o.values).sort(), [...OPTIONS[o.option].values].sort(), `${id}.${v} switch lists every ${o.option}`);
+}
+
 // ── Stage 4: presets ──
 const AV = AVAILABLE_VERSIONS;
 assert.equal(PRESETS.length, 4, "four named looks");
@@ -157,4 +192,5 @@ assert.deepEqual(list("s->>'variant', '') not in (").sort(), [...VARIANTS].sort(
 // The check reads only v + sections, so the stage-4 `font` key needs no migration. If someone
 // tightens the check to list allowed keys, `font` must be in it or every font save fails.
 assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes("'font'"), "DB check must allow the font key");
+for (const k of ["theme", ...OPTION_IDS]) assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes(`'${k}'`), `DB check must allow the ${k} key`);
 console.log("storefrontLayout: all passed");

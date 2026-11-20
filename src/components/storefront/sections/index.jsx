@@ -26,6 +26,7 @@ const CalculatorCta = lazy(() => import("./CalculatorCta"));
 // Versions B and C: only the one a dealer picked is ever downloaded.
 const HeroSplit = lazy(() => import("./HeroSplit"));
 const HeroMosaic = lazy(() => import("./HeroMosaic"));
+const HeroPhoto = lazy(() => import("./HeroPhoto"));
 const InventoryRail = lazy(() => import("./InventoryRail"));
 const InventorySpotlight = lazy(() => import("./InventorySpotlight"));
 const AboutSplit = lazy(() => import("./AboutSplit"));
@@ -43,9 +44,13 @@ const ReviewsSplit = lazy(() => import("./ReviewsSplit"));
 const ReviewsFramed = lazy(() => import("./ReviewsFramed"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
+// Banner C "Full screen" has two backgrounds (look option heroBg, storefrontLayout.js): a wall
+// of the dealer's cars (the old "Showroom wall", the default, so a saved C looks the same) or
+// one photo. Each is its own lazy file: only the picked one downloads.
+const HeroFull = (props) => (props.look?.heroBg === "photo" ? <HeroPhoto {...props} /> : <HeroMosaic {...props} />);
 
 export const SECTION_VERSIONS = {
-  hero: { a: Hero, b: HeroSplit, c: HeroMosaic },
+  hero: { a: Hero, b: HeroSplit, c: HeroFull },
   strip: { a: DealerStrip },
   video: { a: HeroVideo },
   hot_deals: { a: HotDeals },

@@ -23,7 +23,7 @@ import { getSlugFromURL, trackEvent } from "../utils/analytics";
 import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
 import { SECTION_VERSIONS, AVAILABLE_VERSIONS, SECTION_FALLBACK } from "../components/storefront/sections";
-import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet } from "../utils/storefrontLayout";
+import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet, cleanOptions, draftOptions } from "../utils/storefrontLayout";
 import { themeOf, draftTheme, themeCss } from "../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
 import { accentTheme } from "../utils/liveAccent";
@@ -52,6 +52,7 @@ const HomePage = () => {
   const [draftLayout] = useState(() => fromDraftParam(new URLSearchParams(window.location.search).get("layout"), AVAILABLE_VERSIONS));
   const [draftFontId] = useState(() => draftFont(new URLSearchParams(window.location.search).get("layout")));
   const [draftThemeVal] = useState(() => draftTheme(new URLSearchParams(window.location.search).get("layout")));
+  const [draftOpts] = useState(() => draftOptions(new URLSearchParams(window.location.search).get("layout")));
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -218,8 +219,12 @@ const HomePage = () => {
   const theme = draftLayout ? draftThemeVal : themeOf(tenant?.storefront_layout);
   const themeVars = themeCss(theme, accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent);
 
+  // The look options (storefrontLayout.js OPTIONS: banner C's background, ...), every key present.
+  const look = draftLayout ? draftOpts : cleanOptions(tenant?.storefront_layout);
+
   // The same props for every section; each returns null when it has nothing to show.
   const ctx = {
+    look,
     tenant, siteName, carsBase, ctaCtx, stock, soldCount, soldDisplay, featured, hotDeals, loading,
     compare: { compareIds, addToCompare, removeFromCompare, isInCompare },
     onTradeIn: () => setTradeInOpen(true),

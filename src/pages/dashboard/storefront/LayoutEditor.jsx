@@ -18,8 +18,9 @@ import {
   sectionInfo, cleanLayout, defaultLayout, toSaved, isDefaultLayout,
   moveSection, toggleSection, draftParam, setVariant,
   cleanFont, DEFAULT_FONT, FONTS, PRESETS, applyPreset, presetOf, shuffleLook,
+  cleanOptions, defaultOptions,
 } from "../../../utils/storefrontLayout";
-import { AVAILABLE_VERSIONS, VERSION_INFO } from "../../../components/storefront/sections/versions";
+import { AVAILABLE_VERSIONS, VERSION_INFO, VERSION_OPTIONS } from "../../../components/storefront/sections/versions";
 import { themeOf, cleanTheme, resolveTheme, modeOf } from "../../../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../../utils/pageAccent";
 import { accentTheme } from "../../../utils/liveAccent";
@@ -136,7 +137,9 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   const [savedFont, setSavedFont] = useState(DEFAULT_FONT);
   const [font, setFont] = useState(DEFAULT_FONT);
   const [savedTheme, setSavedTheme] = useState(null);
-  const [theme, setTheme] = useState(null);       // { bg?, card?, accent? } or null
+  const [theme, setTheme] = useState(null);       // { mode?, accent? } or null
+  const [savedOpts, setSavedOpts] = useState(defaultOptions);
+  const [opts, setOpts] = useState(defaultOptions); // look options (storefrontLayout.js OPTIONS)
   const [columnMissing, setColumnMissing] = useState(false);
   const [status, setStatus] = useState({ kind: "", text: "" });
   const [saving, setSaving] = useState(false);
@@ -161,12 +164,15 @@ export default function LayoutEditor({ dealerId, canEdit }) {
       setFont(cleanFont(data?.storefront_layout));
       setSavedTheme(themeOf(data?.storefront_layout));
       setTheme(themeOf(data?.storefront_layout));
+      setSavedOpts(cleanOptions(data?.storefront_layout));
+      setOpts(cleanOptions(data?.storefront_layout));
     })();
     return () => { live = false; };
   }, [dealerId]);
 
   const empty = useMemo(() => emptyNow(row), [row]);
   const dirty = layout && saved && (font !== savedFont || JSON.stringify(theme) !== JSON.stringify(savedTheme) ||
+    JSON.stringify(opts) !== JSON.stringify(savedOpts) ||
     JSON.stringify(layout) !== JSON.stringify(saved));
   // With no accent picked the site uses the brand colour (shared.js accentOf), so does this preview.
   const brandAccent = accentTheme(chosenPageColor(row) || PAGE_COLOR_DEFAULT).accent;
@@ -190,7 +196,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
     if (!canEdit || columnMissing || saving) return;
     setSaving(true);
     // Called without the version list on purpose: toSaved keeps the chosen versions.
-    const value = isDefaultLayout(layout, { font, theme }) ? null : toSaved(layout, { font, theme });
+    const value = isDefaultLayout(layout, { font, theme, ...opts }) ? null : toSaved(layout, { font, theme, ...opts });
     const { data, error } = await supabase.from("profiles").update({ storefront_layout: value }).eq("id", dealerId).select("id");
     setSaving(false);
     if (error || !data?.length) {
@@ -200,11 +206,12 @@ export default function LayoutEditor({ dealerId, canEdit }) {
     setSaved(layout);
     setSavedFont(font);
     setSavedTheme(theme);
+    setSavedOpts(opts);
     setStatus({ kind: "good", text: "Saved. Your site shows this layout now." });
   };
 
   const sub = row?.subdomain;
-  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font, theme }))}`) : null;
+  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font, theme, ...opts }))}`) : null;
   const shown = layout.filter((r) => r.on);
 
   return (
@@ -320,6 +327,23 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                   </span>
                 </div>
               )}
+              {r.on && VERSION_OPTIONS[r.id]?.[r.variant] && (() => {
+                const o = VERSION_OPTIONS[r.id][r.variant];
+                return (
+                  <div className="sf-look">
+                    <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>{o.label}</span>
+                    <div className="sf-seg" role="group" aria-label={`${info.label} ${o.label.toLowerCase()}`}>
+                      {Object.entries(o.values).map(([v, name]) => (
+                        <button key={v} type="button" aria-pressed={opts[o.option] === v}
+                          onClick={() => { setOpts((p) => ({ ...p, [o.option]: v })); setStatus({ kind: "", text: "" }); }}>
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{o.notes?.[opts[o.option]]}</span>
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -352,8 +376,8 @@ export default function LayoutEditor({ dealerId, canEdit }) {
               See it on my site <ExternalLink size={14} />
             </a>
           )}
-          {!isDefaultLayout(layout, { font, theme }) && (
-            <button type="button" onClick={() => { changeLook({ layout: defaultLayout(), font: DEFAULT_FONT }); setTheme(null); }}
+          {!isDefaultLayout(layout, { font, theme, ...opts }) && (
+            <button type="button" onClick={() => { changeLook({ layout: defaultLayout(), font: DEFAULT_FONT }); setTheme(null); setOpts(defaultOptions()); }}
               style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "11px 4px" }}>
               Back to the usual layout
             </button>

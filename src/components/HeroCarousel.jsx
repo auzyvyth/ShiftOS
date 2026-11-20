@@ -15,6 +15,7 @@ import { cdnImg, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
 import ContactGate from "./ContactGate";
+import { loadHeroSlides } from "./storefront/heroSlides";
 
 const HC_CSS = `
 
@@ -710,29 +711,8 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           setSlides([]);
           return;
         }
-        const { data, error } = await supabase
-          .from("hero_carousel_slides")
-          .select("*")
-          .eq("active", true)
-          .eq("dealer_id", dealerId)
-          .order("sort_order", { ascending: true });
-        let rows = !error && data ? data : [];
-        // Enrich linked listings via the anon-safe public view. The base
-        // car_listings table is NOT readable by anon (it holds dealer
-        // financials), so embedding car_listings(...) here 403s the whole
-        // request for logged-out visitors and the hero renders empty. The
-        // public_car_listings view exposes slug/status publicly.
-        const carIds = [...new Set(rows.map(r => r.car_listing_id).filter(Boolean))];
-        if (carIds.length) {
-          const { data: cars } = await supabase
-            .from("public_car_listings")
-            .select("id, slug, status")
-            .in("id", carIds);
-          const byId = {};
-          (cars || []).forEach(c => { byId[c.id] = c; });
-          rows = rows.map(r => (r.car_listing_id ? { ...r, car_listings: byId[r.car_listing_id] || null } : r));
-        }
-        const live = rows.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold');
+        // The one read of the dealer's slides (storefront/heroSlides.js), shared with banner C.
+        const live = await loadHeroSlides(dealerId);
         setSlides(live);
       } catch {
         setSlides([]);
