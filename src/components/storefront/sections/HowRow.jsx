@@ -15,7 +15,7 @@ export default function HowRow({ tenant }) {
         .hrw { display: grid; grid-template-columns: repeat(${how.steps.length}, minmax(0, 1fr)); gap: 32px; list-style: none; margin: 0; padding: 0; }
         .hrw-step { position: relative; min-width: 0; }
         .hrw-step:not(:last-child)::after { content: ''; position: absolute; top: 15px; left: 48px; right: -16px; height: 2px;
-          background: rgba(255,255,255,0.10); border-radius: 2px; }
+          background: var(--sf-border, rgba(255,255,255,0.10)); border-radius: 2px; }
         .hrw-step .sfv-dot { margin-bottom: 20px; }
         @media (max-width: 900px) {
           .hrw { grid-template-columns: 1fr; gap: 24px; }

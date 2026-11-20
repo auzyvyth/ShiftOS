@@ -21,7 +21,7 @@ export default function Stats({ tenant, soldCount, stock }) {
           width: "700px",
           height: "500px",
           background:
-            "radial-gradient(ellipse,rgba(220,38,38,0.05) 0%,transparent 65%)",
+            "radial-gradient(ellipse,rgba(var(--sf-accent-rgb, 220,38,38),0.05) 0%,transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -39,8 +39,8 @@ export default function Stats({ tenant, soldCount, stock }) {
             display: "grid",
             gridTemplateColumns: `repeat(${statItems.length}, 1fr)`,
             gap: "1px",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--sf-border, rgba(255,255,255,0.06))",
+            border: "1px solid var(--sf-border, rgba(255,255,255,0.06))",
             borderRadius: "6px",
             overflow: "hidden",
           }}
@@ -53,7 +53,7 @@ export default function Stats({ tenant, soldCount, stock }) {
             <FadeIn key={s.label} delay={i * 0.08}>
               <div
                 style={{
-                  background: "#0C0C0E",
+                  background: "var(--sf-bg, #0C0C0E)",
                   padding: "36px 20px",
                   height: "100%",
                   display: "flex",
@@ -71,17 +71,17 @@ export default function Stats({ tenant, soldCount, stock }) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "rgba(220,38,38,0.08)",
-                    border: "1px solid rgba(220,38,38,0.2)",
+                    background: "rgba(var(--sf-accent-rgb, 220,38,38),0.08)",
+                    border: "1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.2)",
                   }}
                 >
-                  <s.icon size={19} style={{ color: "#DC2626" }} />
+                  <s.icon size={19} style={{ color: "var(--sf-accent-text, #DC2626)" }} />
                 </div>
                 <CountUp
                   end={s.value}
                   style={{
                     fontFamily: "'Outfit', sans-serif",
-                    color: "#F0F0F0",
+                    color: "var(--sf-text, #F0F0F0)",
                     fontSize: "clamp(1.9rem,5vw,3rem)",
                     fontWeight: 800,
                     letterSpacing: "-0.03em",
@@ -92,13 +92,13 @@ export default function Stats({ tenant, soldCount, stock }) {
                   style={{
                     width: "24px",
                     height: "2px",
-                    background: "#DC2626",
+                    background: "var(--sf-accent, #DC2626)",
                     borderRadius: "2px",
                   }}
                 />
                 <p
                   style={{
-                    color: "#8A8A94",
+                    color: "var(--sf-muted, #8A8A94)",
                     fontSize: "11px",
                     textTransform: "uppercase",
                     letterSpacing: "0.14em",

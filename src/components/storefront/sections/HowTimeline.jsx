@@ -16,7 +16,7 @@ export default function HowTimeline({ tenant }) {
         .htl-step { position: relative; display: flex; gap: 20px; padding-bottom: 32px; }
         .htl-step:last-child { padding-bottom: 0; }
         .htl-step:not(:last-child)::before { content: ''; position: absolute; left: 15px; top: 40px; bottom: 8px; width: 2px;
-          background: rgba(255,255,255,0.10); border-radius: 2px; }
+          background: var(--sf-border, rgba(255,255,255,0.10)); border-radius: 2px; }
         .htl-step .sfv-t { margin-top: 4px; }
       `}</style>
       <div style={wrap}>

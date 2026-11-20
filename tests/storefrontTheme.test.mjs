@@ -53,11 +53,14 @@ function check(theme, label) {
     assert.ok(contrast(r.muted, s) >= TEXT_MIN, `${label}: muted on ${s} ${contrast(r.muted, s).toFixed(2)}`);
     assert.ok(contrast(r.muted, s) >= 3, `${label}: muted >= 3`);
     assert.ok(contrast(r.accentText, s) >= TEXT_MIN, `${label}: accent as text on ${s}`);
+    assert.ok(contrast(r.waText, s) >= TEXT_MIN, `${label}: WhatsApp green as text on ${s}`);
+    assert.ok(contrast(r.badText, s) >= TEXT_MIN, `${label}: error red as text on ${s}`);
   }
   assert.ok(contrast(r.onAccent, r.accent) >= TEXT_MIN, `${label}: white on accent ${contrast(r.onAccent, r.accent).toFixed(2)}`);
   assert.ok(contrast(r.card, r.bg) >= CARD_STEP - 1e-9, `${label}: card apart from page ${contrast(r.card, r.bg).toFixed(3)}`);
   assert.ok(contrast(r.accent, r.bg) >= ACCENT_STEP, `${label}: accent apart from page ${contrast(r.accent, r.bg).toFixed(2)}`);
-  for (const k of ["bg", "bg2", "card", "text", "muted", "accent", "accentText"]) assert.match(r[k], /^#[0-9A-F]{6}$/, `${label} ${k}`);
+  assert.ok(contrast(r.onAccent, r.accentHover) >= TEXT_MIN, `${label}: white on the hover accent`);
+  for (const k of ["bg", "bg2", "card", "text", "muted", "accent", "accentText", "accentHover", "waText"]) assert.match(r[k], /^#[0-9A-F]{6}$/, `${label} ${k}`);
   return r;
 }
 

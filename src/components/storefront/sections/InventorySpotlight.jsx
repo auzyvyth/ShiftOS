@@ -24,19 +24,19 @@ export default function InventorySpotlight({ featured, loading, carsBase, ctaCtx
   return (
     <section className="sec-pad" style={secA}>
       <style>{`
-        .isp { display: grid; gap: 0; border-radius: 16px; overflow: hidden; background: #111113; border: 1px solid rgba(255,255,255,0.07); margin-bottom: 24px; }
+        .isp { display: grid; gap: 0; border-radius: 16px; overflow: hidden; background: var(--sf-card, #111113); border: 1px solid var(--sf-border, rgba(255,255,255,0.07)); margin-bottom: 24px; }
         @media (min-width: 900px) { .isp { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
-        .isp-photo { display: block; aspect-ratio: 16 / 10; background: #141416; overflow: hidden; }
+        .isp-photo { display: block; aspect-ratio: 16 / 10; background: var(--sf-card, #141416); overflow: hidden; }
         @media (min-width: 900px) { .isp-photo { aspect-ratio: auto; min-height: 360px; height: 100%; } }
         .isp-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s ease; }
         @media (hover: hover) { .isp-photo:hover img { transform: scale(1.03); } }
         .isp-body { padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-width: 0; }
-        .isp-eyebrow { color: #C4A265; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; margin: 0; }
-        .isp-name { color: #F0F0F0; font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; margin: 0; }
-        .isp-price { color: #F0F0F0; font-size: clamp(1.6rem, 3.4vw, 2.2rem); font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0 0; }
-        .isp-monthly { color: #9CA3AF; font-size: 13px; margin: 0; }
+        .isp-eyebrow { color: var(--sf-accent-text, #C4A265); font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; margin: 0; }
+        .isp-name { color: var(--sf-text, #F0F0F0); font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; margin: 0; }
+        .isp-price { color: var(--sf-text, #F0F0F0); font-size: clamp(1.6rem, 3.4vw, 2.2rem); font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0 0; }
+        .isp-monthly { color: var(--sf-muted, #9CA3AF); font-size: 13px; margin: 0; }
         .isp-specs { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; padding: 0; list-style: none; }
-        .isp-specs li { color: #C0C0C6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.05); border-radius: 6px; padding: 6px 10px; }
+        .isp-specs li { color: var(--sf-muted, #C0C0C6); font-size: 13px; font-weight: 600; background: var(--sf-card, rgba(255,255,255,0.05)); border-radius: 6px; padding: 6px 10px; }
         @media (max-width: 480px) { .isp-body { padding: 20px; } }
       `}</style>
       <div style={wrap}>

@@ -82,8 +82,8 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
     alignItems: "center",
     gap: "10px",
     padding: "24px 18px",
-    background: "#111113",
-    border: "1px solid rgba(255,255,255,0.07)",
+    background: "var(--sf-card, #111113)",
+    border: "1px solid var(--sf-border, rgba(255,255,255,0.07))",
     borderRadius: "8px",
     textDecoration: "none",
   };
@@ -102,7 +102,7 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
           width: "600px",
           height: "600px",
           background:
-            "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)",
+            "radial-gradient(circle,rgba(var(--sf-accent-rgb, 196,162,101),0.025) 0%,transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -125,7 +125,7 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
           <h2
             style={{
               fontFamily: "'Outfit', sans-serif",
-              color: "#F0F0F0",
+              color: "var(--sf-text, #F0F0F0)",
               fontSize: "clamp(2rem,7vw,3.6rem)",
               fontWeight: "800",
               letterSpacing: "-0.035em",
@@ -137,7 +137,7 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
           </h2>
           <p
             style={{
-              color: "#52525A",
+              color: "var(--sf-muted, #52525A)",
               fontSize: "clamp(13px,3.5vw,15px)",
               lineHeight: "1.8",
               margin: "0 auto 36px",
@@ -177,8 +177,8 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                 alignItems: "center",
                 gap: "8px",
                 background: "transparent",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "#C0C0C6",
+                border: "1px solid var(--sf-border, rgba(255,255,255,0.12))",
+                color: "var(--sf-muted, #C0C0C6)",
                 fontWeight: "600",
                 fontSize: "14px",
                 padding: "13px 28px",
@@ -200,8 +200,8 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                   alignItems: "center",
                   gap: "8px",
                   background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#C0C0C6",
+                  border: "1px solid var(--sf-border, rgba(255,255,255,0.12))",
+                  color: "var(--sf-muted, #C0C0C6)",
                   fontWeight: "600",
                   fontSize: "14px",
                   padding: "13px 28px",
@@ -224,8 +224,8 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                   alignItems: "center",
                   gap: "8px",
                   background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#C0C0C6",
+                  border: "1px solid var(--sf-border, rgba(255,255,255,0.12))",
+                  color: "var(--sf-muted, #C0C0C6)",
                   fontWeight: "600",
                   fontSize: "14px",
                   padding: "13px 28px",
@@ -253,15 +253,15 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: "rgba(196,162,101,0.08)",
-                        border: "1px solid rgba(196,162,101,0.18)",
+                        background: "rgba(var(--sf-accent-rgb, 196,162,101),0.08)",
+                        border: "1px solid rgba(var(--sf-accent-rgb, 196,162,101),0.18)",
                       }}
                     >
-                      <c.icon size={16} style={{ color: "#C4A265" }} />
+                      <c.icon size={16} style={{ color: "var(--sf-accent-text, #C4A265)" }} />
                     </div>
                     <p
                       style={{
-                        color: "#3A3A42",
+                        color: "var(--sf-muted, #3A3A42)",
                         fontSize: "10px",
                         textTransform: "uppercase",
                         letterSpacing: "0.14em",
@@ -273,7 +273,7 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                     </p>
                     <p
                       style={{
-                        color: "#F0F0F0",
+                        color: "var(--sf-text, #F0F0F0)",
                         fontSize: "13px",
                         fontWeight: 600,
                         margin: 0,
@@ -321,12 +321,12 @@ export default function Contact({ tenant, siteName, carsBase, ctaCtx, onTradeIn,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "#111113",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "var(--sf-card, #111113)",
+                    border: "1px solid var(--sf-border, rgba(255,255,255,0.08))",
                   }}
                   aria-label="Social link"
                 >
-                  <s.icon size={16} style={{ color: "#C0C0C6" }} />
+                  <s.icon size={16} style={{ color: "var(--sf-muted, #C0C0C6)" }} />
                 </a>
               ))}
             </div>

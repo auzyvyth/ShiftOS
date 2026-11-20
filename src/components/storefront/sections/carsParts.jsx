@@ -41,9 +41,9 @@ const chip = (active) => ({
   flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
   fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
   whiteSpace: "nowrap", transition: "all 0.15s",
-  border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
-  background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
-  color: active ? "#f87171" : "rgba(255,255,255,0.78)",
+  border: `1px solid ${active ? "rgba(var(--sf-accent-rgb, 220,38,38),0.4)" : "var(--sf-border, rgba(255,255,255,0.14))"}`,
+  background: active ? "rgba(var(--sf-accent-rgb, 220,38,38),0.12)" : "var(--sf-card, rgba(255,255,255,0.04))",
+  color: active ? "var(--sf-accent-text, #f87171)" : "var(--sf-muted, rgba(255,255,255,0.78))",
 });
 
 export function CarsToolbar({ carsBase }) {
@@ -103,8 +103,8 @@ export function ViewAllButton({ carsBase }) {
           alignItems: "center",
           gap: "8px",
           background: "transparent",
-          border: "1px solid rgba(255,255,255,0.1)",
-          color: "#C0C0C6",
+          border: "1px solid var(--sf-border, rgba(255,255,255,0.1))",
+          color: "var(--sf-muted, #C0C0C6)",
           fontWeight: "600",
           fontSize: "13px",
           padding: "12px 28px",

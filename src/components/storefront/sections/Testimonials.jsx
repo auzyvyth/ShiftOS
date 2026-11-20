@@ -53,13 +53,13 @@ export default function Testimonials({ tenant }) {
                       <Star
                         key={j}
                         size={11}
-                        style={{ fill: "#C4A265", color: "#C4A265" }}
+                        style={{ fill: "var(--sf-accent-text, #C4A265)", color: "var(--sf-accent-text, #C4A265)" }}
                       />
                     ))}
                   </div>
                   <p
                     style={{
-                      color: "#9090A0",
+                      color: "var(--sf-muted, #9090A0)",
                       fontSize: "13px",
                       lineHeight: "1.8",
                       marginBottom: "20px",
@@ -75,7 +75,7 @@ export default function Testimonials({ tenant }) {
                       alignItems: "center",
                       gap: "12px",
                       paddingTop: "16px",
-                      borderTop: "1px solid rgba(255,255,255,0.05)",
+                      borderTop: "1px solid var(--sf-border, rgba(255,255,255,0.05))",
                     }}
                   >
                     <div
@@ -83,8 +83,8 @@ export default function Testimonials({ tenant }) {
                         width: "32px",
                         height: "32px",
                         borderRadius: "50%",
-                        background: "rgba(196,162,101,0.08)",
-                        border: "1px solid rgba(196,162,101,0.2)",
+                        background: "rgba(var(--sf-accent-rgb, 196,162,101),0.08)",
+                        border: "1px solid rgba(var(--sf-accent-rgb, 196,162,101),0.2)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -93,7 +93,7 @@ export default function Testimonials({ tenant }) {
                     >
                       <span
                         style={{
-                          color: "#C4A265",
+                          color: "var(--sf-accent-text, #C4A265)",
                           fontWeight: "700",
                           fontSize: "13px",
                         }}
@@ -104,7 +104,7 @@ export default function Testimonials({ tenant }) {
                     <div>
                       <p
                         style={{
-                          color: "#F0F0F0",
+                          color: "var(--sf-text, #F0F0F0)",
                           fontWeight: "600",
                           fontSize: "13px",
                           margin: "0 0 2px 0",
@@ -114,7 +114,7 @@ export default function Testimonials({ tenant }) {
                       </p>
                       <p
                         style={{
-                          color: "#3A3A42",
+                          color: "var(--sf-muted, #3A3A42)",
                           fontSize: "11px",
                           margin: 0,
                           display: "flex",

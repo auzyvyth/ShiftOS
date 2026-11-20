@@ -128,7 +128,7 @@ export default function ReviewsSection({ dealerId, listingId, sellerName = 'this
       {!editing && (
         <div style={{ marginBottom: count > 0 ? 20 : 0 }}>
           {!uid ? (
-            <button onClick={signIn} style={{ ...btnStyle, background: 'rgba(220,38,38,0.1)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.25)' }}>
+            <button onClick={signIn} style={{ ...btnStyle, background: 'rgba(var(--sf-accent-rgb, 220,38,38),0.1)', color: 'var(--sf-accent-text, #dc2626)', border: '1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.25)' }}>
               <LogIn size={14} /> Sign in to write a review
             </button>
           ) : myReview ? (

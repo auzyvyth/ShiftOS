@@ -150,11 +150,22 @@ export function resolveTheme(theme, fallbackAccent = "#DC2626") {
   const accentText = okOn(accent, surfaces, TEXT_MIN) ? accent
     : stepUntil(accent, text, (c) => okOn(c, surfaces, TEXT_MIN), 0.04) || text;
 
+  // WhatsApp green as a word (the outline WhatsApp button): moved toward the text until it reads.
+  const green = [74, 222, 128]; // #4ADE80, today's
+  const waText = okOn(green, surfaces, TEXT_MIN) ? green
+    : stepUntil(green, text, (c) => okOn(c, surfaces, TEXT_MIN), 0.04) || text;
+
+  // Error red as a word (form messages in the trade-in / loan pop-ups), same way.
+  const red = [248, 113, 113]; // #F87171, today's
+  const badText = okOn(red, surfaces, TEXT_MIN) ? red
+    : stepUntil(red, text, (c) => okOn(c, surfaces, TEXT_MIN), 0.04) || text;
+
   const accentPick = t.accent ? t.accent : null;
   return {
     bg: toHex(bg), bg2: toHex(bg2), card: toHex(card), text: toHex(text), muted: toHex(muted),
     border: `rgba(${text.join(",")},${lightText ? 0.1 : 0.14})`,
     accent: toHex(accent), onAccent: "#FFFFFF", accentText: toHex(accentText), accentRgb: accent.join(","),
+    accentHover: toHex(mix(accent, BLACK, 0.16)), waText: toHex(waText), badText: toHex(badText),
     dark: lightText,
     adjusted: {
       card: !!picked && toHex(card) !== t.card,
@@ -171,13 +182,15 @@ export function themeVars(theme, fallbackAccent) {
   const r = resolveTheme(t, fallbackAccent);
   if (!r) return null;
   const accent = {
-    "--sf-accent": r.accent, "--sf-on-accent": r.onAccent, "--sf-accent-text": r.accentText,
-    "--sf-accent-rgb": r.accentRgb,
+    "--sf-accent": r.accent, "--sf-theme-accent": r.accent, "--sf-on-accent": r.onAccent, "--sf-accent-text": r.accentText,
+    "--sf-accent-rgb": r.accentRgb, "--sf-accent-hover": r.accentHover,
   };
   if (!t.bg && !t.card) return accent;
   return {
     "--sf-bg": r.bg, "--sf-bg2": r.bg2, "--sf-card": r.card, "--sf-border": r.border,
-    "--sf-text": r.text, "--sf-muted": r.muted, ...accent,
+    "--sf-text": r.text, "--sf-muted": r.muted, "--sf-wa-text": r.waText, "--sf-bad": r.badText,
+    // The car card price (marketplace crimson gradient) as one readable solid colour.
+    "--sf-price": r.accentText, ...accent,
   };
 }
 

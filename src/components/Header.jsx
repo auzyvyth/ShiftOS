@@ -9,7 +9,8 @@ import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from "../hooks/u
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { hasHowItWorks } from "../utils/storefrontCopy";
 
-// Same solid near-black bar as MarketplaceHeader (#0f1115) — that file is the
+// Same solid near-black bar as MarketplaceHeader (#0f1115; on a dealer site with a colour
+// theme, every colour here follows the theme's CSS variables, storefrontTheme.js) — that file is the
 // one place this "modern" language was already designed and approved, so this
 // reuses its tokens rather than inventing a second dark bar style. The old
 // version here was a floating glass pill (blur, inset margins, glow shadows),
@@ -23,11 +24,11 @@ const HDR_CSS = `
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 50;
-    background: #0f1115;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: var(--sf-bg, #0f1115);
+    border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.08));
     transition: transform 0.28s ease, box-shadow 0.25s, border-color 0.25s;
   }
-  .hdr-root.scrolled { box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-bottom-color: rgba(255,255,255,0.14); }
+  .hdr-root.scrolled { box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-bottom-color: var(--sf-border, rgba(255,255,255,0.14)); }
   .hdr-root.hidden { transform: translateY(-100%); }
   /* A hidden bar must still return for the keyboard, or tabbing into the nav
      moves focus somewhere the user cannot see. */
@@ -55,11 +56,11 @@ const HDR_CSS = `
   .hdr-mark {
     width: 32px; height: 32px;
     border-radius: 50%;
-    background: #DC2626;
+    background: var(--sf-accent, #DC2626);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     font-family: 'Outfit', sans-serif;
-    font-weight: 800; font-size: 14px; color: white;
+    font-weight: 800; font-size: 14px; color: var(--sf-on-accent, white);
     letter-spacing: -0.01em;
   }
   /* Uploaded dealer logo: show the whole thing (contain), fixed height, width
@@ -76,12 +77,12 @@ const HDR_CSS = `
   .hdr-logo-text { display: flex; flex-direction: column; min-width: 0; }
   .hdr-logo-name {
     font-family: 'Outfit', sans-serif;
-    font-size: 15px; font-weight: 700; color: #ffffff;
+    font-size: 15px; font-weight: 700; color: var(--sf-text, #ffffff);
     letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
   .hdr-logo-sub {
-    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4);
+    font-size: 10px; font-weight: 600; color: var(--sf-muted, rgba(255,255,255,0.4));
     letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
@@ -91,49 +92,49 @@ const HDR_CSS = `
   .hdr-link {
     display: flex; align-items: center;
     font-size: 14px; font-weight: 600;
-    color: rgba(255,255,255,0.72);
+    color: var(--sf-muted, rgba(255,255,255,0.72));
     text-decoration: none; white-space: nowrap;
     padding: 9px 13px; border-radius: 10px;
     background: none; border: none; cursor: pointer;
     font-family: inherit;
     transition: background 0.14s, color 0.14s;
   }
-  .hdr-link:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
-  .hdr-link.active { color: #ffffff; background: rgba(255,255,255,0.06); }
+  .hdr-link:hover { background: var(--sf-card, rgba(255,255,255,0.08)); color: var(--sf-text, #ffffff); }
+  .hdr-link.active { color: var(--sf-text, #ffffff); background: var(--sf-card, rgba(255,255,255,0.06)); }
 
   /* ── For Dealers — the ONE accent pill in the bar; radius on the button
      scale (10px), not a fully-rounded shape, per the "no pill on text" rule. ── */
   .hdr-dealer {
     display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 700; color: #fca5a5;
-    background: rgba(220,38,38,0.12);
-    border: 1px solid rgba(220,38,38,0.3);
+    font-size: 12px; font-weight: 700; color: var(--sf-accent-text, #fca5a5);
+    background: rgba(var(--sf-accent-rgb, 220,38,38),0.12);
+    border: 1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.3);
     border-radius: 10px; padding: 8px 13px;
     text-decoration: none; white-space: nowrap;
     letter-spacing: 0.01em;
     transition: background 0.14s, border-color 0.14s;
   }
-  .hdr-dealer:hover { background: rgba(220,38,38,0.2); border-color: rgba(220,38,38,0.5); }
+  .hdr-dealer:hover { background: rgba(var(--sf-accent-rgb, 220,38,38),0.2); border-color: rgba(var(--sf-accent-rgb, 220,38,38),0.5); }
 
   /* ── Desktop right actions ── */
   .hdr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .hdr-vsep { width: 1px; height: 24px; background: rgba(255,255,255,0.12); margin: 0 4px; }
+  .hdr-vsep { width: 1px; height: 24px; background: var(--sf-border, rgba(255,255,255,0.12)); margin: 0 4px; }
 
   /* ── Lang toggle — segmented control, 8px radius per the chip/segment scale ── */
   .hdr-lang {
     display: flex; align-items: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--sf-card, rgba(255,255,255,0.05));
+    border: 1px solid var(--sf-border, rgba(255,255,255,0.1));
     border-radius: 8px; padding: 2px;
   }
   .hdr-lang-btn {
     padding: 5px 10px; border-radius: 6px;
     font-size: 11px; font-weight: 700;
     border: none; cursor: pointer; transition: all 0.15s;
-    background: transparent; color: rgba(255,255,255,0.4);
+    background: transparent; color: var(--sf-muted, rgba(255,255,255,0.4));
     letter-spacing: 0.04em; font-family: 'Outfit', sans-serif;
   }
-  .hdr-lang-btn.on { background: rgba(255,255,255,0.12); color: #ffffff; }
+  .hdr-lang-btn.on { background: var(--sf-border, rgba(255,255,255,0.12)); color: var(--sf-text, #ffffff); }
 
   /* ── WhatsApp CTA — the bar's one primary action, button-scale radius ── */
   .hdr-wa {
@@ -150,38 +151,38 @@ const HDR_CSS = `
   /* ── Sign in / account — plain text link, red underline-on-hover, matches
      MarketplaceHeader's .mh-signin ── */
   .hdr-signin {
-    color: #ffffff; font-size: 14px; font-weight: 600;
+    color: var(--sf-text, #ffffff); font-size: 14px; font-weight: 600;
     text-decoration: none; padding: 9px 6px; position: relative;
     font-family: inherit; white-space: nowrap;
   }
   .hdr-signin::after {
     content: ''; position: absolute; left: 6px; right: 6px; bottom: 3px;
-    height: 2px; background: #dc2626; border-radius: 2px;
+    height: 2px; background: var(--sf-accent, #dc2626); border-radius: 2px;
     transform: scaleX(0); transform-origin: left; transition: transform 0.2s;
   }
   .hdr-signin:hover::after { transform: scaleX(1); }
 
   /* ── Logout ── */
   .hdr-logout {
-    font-size: 12px; color: rgba(255,255,255,0.4);
+    font-size: 12px; color: var(--sf-muted, rgba(255,255,255,0.4));
     background: none; border: none; cursor: pointer;
     padding: 9px 10px; border-radius: 8px;
     transition: color 0.15s, background 0.15s; font-family: 'Outfit', sans-serif;
   }
-  .hdr-logout:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
+  .hdr-logout:hover { color: var(--sf-text, #ffffff); background: var(--sf-card, rgba(255,255,255,0.06)); }
 
   /* ── Mobile burger — icon-only, circle is fine ── */
   .hdr-burger {
     width: 38px; height: 38px;
     padding: 0; border-radius: 10px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #ffffff;
+    background: var(--sf-card, rgba(255,255,255,0.06));
+    border: 1px solid var(--sf-border, rgba(255,255,255,0.1));
+    color: var(--sf-text, #ffffff);
     cursor: pointer; display: flex;
     align-items: center; justify-content: center;
     transition: background 0.14s;
   }
-  .hdr-burger:hover { background: rgba(255,255,255,0.1); }
+  .hdr-burger:hover { background: var(--sf-card, rgba(255,255,255,0.1)); }
 
   /* ── Responsive ── */
   .hdr-desktop { display: flex; align-items: center; gap: 8px; }
@@ -201,7 +202,7 @@ const HDR_CSS = `
     position: fixed;
     top: 64px; left: 0; right: 0; bottom: 0;
     z-index: 49;
-    background: #0f1115;
+    background: var(--sf-bg, #0f1115);
     display: flex; flex-direction: column;
     padding: 8px 16px 24px;
     overflow-y: auto;
@@ -210,14 +211,14 @@ const HDR_CSS = `
   .hdr-mlink {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 15px 6px; border-radius: 0;
-    font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.85);
+    font-size: 15px; font-weight: 600; color: var(--sf-text, rgba(255,255,255,0.85));
     text-decoration: none;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.07));
     background: none; border-left: none; border-right: none; border-top: none;
     cursor: pointer; width: 100%; text-align: left; font-family: inherit;
   }
-  .hdr-mlink.active { color: #ffffff; }
-  .hdr-mlink.special { color: #fca5a5; }
+  .hdr-mlink.active { color: var(--sf-text, #ffffff); }
+  .hdr-mlink.special { color: var(--sf-accent-text, #fca5a5); }
 
   .hdr-mobile-bottom {
     margin-top: 14px; padding-top: 16px;
@@ -232,8 +233,8 @@ const HDR_CSS = `
   }
   .hdr-signin-mobile {
     display: flex; align-items: center; justify-content: center; gap: 7px;
-    font-size: 14px; font-weight: 600; color: #ffffff;
-    background: transparent; border: 1.5px solid rgba(255,255,255,0.2);
+    font-size: 14px; font-weight: 600; color: var(--sf-text, #ffffff);
+    background: transparent; border: 1.5px solid var(--sf-border, rgba(255,255,255,0.2));
     border-radius: 10px; padding: 13px;
     text-decoration: none;
   }

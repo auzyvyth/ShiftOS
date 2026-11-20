@@ -16,10 +16,10 @@ export default function WhyUsSplit({ tenant, siteName }) {
         .wys { display: grid; gap: 28px; }
         @media (min-width: 900px) { .wys { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: start; }
           .wys-head { position: sticky; top: 96px; } }
-        .wys-row { display: flex; gap: 16px; padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.08); }
-        .wys-row:last-child { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .wys-row { display: flex; gap: 16px; padding: 20px 0; border-top: 1px solid var(--sf-border, rgba(255,255,255,0.08)); }
+        .wys-row:last-child { border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.08)); }
         .wys-tick { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
-          background: var(--sf-accent); color: #fff; margin-top: 2px; }
+          background: var(--sf-accent); color: var(--sf-on-accent, #fff); margin-top: 2px; }
       `}</style>
       <div style={wrap}>
         <div className="wys">

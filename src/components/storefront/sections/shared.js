@@ -8,24 +8,34 @@ import { accentTheme } from "../../../utils/liveAccent";
 // means "never chose", pageAccent.js). Darkened until white text on it reads (accentTheme),
 // so versions use it as a FILL or a line with white on top, never as text on the dark page
 // (a dark brand colour would vanish there). Set as --sf-accent on the section.
-export const accentOf = (tenant) => accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent;
+// A whole-site colour theme (storefrontTheme.js) wins: HomePage sets --sf-theme-accent only
+// when the dealer picked colours, so with no theme this is the brand colour as before.
+export const accentOf = (tenant) => `var(--sf-theme-accent, ${accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent})`;
+
+// One colour of the dealer's theme, written so that NO theme = the exact old value:
+// sv("text", "#F0F0F0") -> "var(--sf-text, #F0F0F0)". The variables are set on :root by
+// HomePage (storefrontTheme.js themeCss) only when the dealer picked colours.
+// Names: bg, bg2, card, border, text, muted, accent, on-accent, accent-text, accent-hover,
+// wa-text. sa(alpha, "220,38,38") = the accent at an alpha, old rgb as the fallback.
+export const sv = (name, old) => `var(--sf-${name}, ${old})`;
+export const sa = (alpha, oldRgb) => `rgba(var(--sf-accent-rgb, ${oldRgb}), ${alpha})`;
 
 export const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
-export const secA = { background: "#0C0C0E" };
-export const secB = { background: "#0F0F11" };
+export const secA = { background: sv("bg", "#0C0C0E") };
+export const secB = { background: sv("bg2", "#0F0F11") };
 export const secLight = {
-  background: "#0F0F11",
-  borderTop: "1px solid rgba(255,255,255,0.05)",
-  borderBottom: "1px solid rgba(255,255,255,0.05)",
+  background: sv("bg2", "#0F0F11"),
+  borderTop: `1px solid ${sv("border", "rgba(255,255,255,0.05)")}`,
+  borderBottom: `1px solid ${sv("border", "rgba(255,255,255,0.05)")}`,
 };
 
 export const primaryBtn = {
   display: "inline-flex",
   alignItems: "center",
   gap: "8px",
-  background: "#DC2626",
-  border: "1px solid #DC2626",
-  color: "white",
+  background: sv("accent", "#DC2626"),
+  border: `1px solid ${sv("accent", "#DC2626")}`,
+  color: sv("on-accent", "white"),
   fontWeight: "600",
   fontSize: "14px",
   padding: "13px 28px",
@@ -43,7 +53,7 @@ export const waBtn = {
   gap: "8px",
   background: "transparent",
   border: "1px solid rgba(37,211,102,0.3)",
-  color: "#4ade80",
+  color: sv("wa-text", "#4ade80"),
   fontWeight: "600",
   fontSize: "14px",
   padding: "13px 28px",
@@ -54,16 +64,16 @@ export const waBtn = {
   transition: "all 0.25s ease",
 };
 export const glassCard = {
-  background: "#111113",
-  border: "1px solid rgba(255,255,255,0.07)",
+  background: sv("card", "#111113"),
+  border: `1px solid ${sv("border", "rgba(255,255,255,0.07)")}`,
   borderRadius: "6px",
 };
 
 // Dark-surface theme tokens for ReviewsSection on the dealer storefront.
 export const DARK_REVIEW_TH = {
-  text: "#e8edf5", textSec: "rgba(255,255,255,0.62)", textMuted: "rgba(255,255,255,0.42)",
-  border: "rgba(255,255,255,0.08)", borderSec: "rgba(255,255,255,0.05)",
-  card: "rgba(255,255,255,0.03)", inputBg: "rgba(255,255,255,0.05)",
+  text: sv("text", "#e8edf5"), textSec: sv("muted", "rgba(255,255,255,0.62)"), textMuted: sv("muted", "rgba(255,255,255,0.42)"),
+  border: sv("border", "rgba(255,255,255,0.08)"), borderSec: sv("border", "rgba(255,255,255,0.05)"),
+  card: sv("card", "rgba(255,255,255,0.03)"), inputBg: sv("card", "rgba(255,255,255,0.05)"),
 };
 
 export const BODY_TYPES = ["Sedan", "SUV", "Hatchback", "MPV", "Pickup", "Coupe"];

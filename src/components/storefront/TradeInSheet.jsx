@@ -15,8 +15,8 @@ import { BRAND_OPTIONS, YEARS } from "../../config/marketplaceConfig";
 import { apiUrl } from "../../utils/apiUrl";
 
 const C = {
-  card: "#111113", field: "#0B0B0D", line: "rgba(255,255,255,0.09)",
-  text: "#F0F0F0", muted: "#8A8A93", bad: "#f87171",
+  card: "var(--sf-card, #111113)", field: "var(--sf-bg, #0B0B0D)", line: "var(--sf-border, rgba(255,255,255,0.09))",
+  text: "var(--sf-text, #F0F0F0)", muted: "var(--sf-muted, #8A8A93)", bad: "var(--sf-bad, #f87171)",
 };
 const field = {
   width: "100%", boxSizing: "border-box", background: C.field, color: C.text,
@@ -79,7 +79,7 @@ export default function TradeInSheet({ subdomain, siteName, whatsappNumber, onCl
         .tis-card { width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; background: ${C.card};
           border: 1px solid ${C.line}; border-radius: 18px 18px 0 0; padding: 22px 20px 28px;
           font-family: var(--xd-font-body); color: ${C.text}; }
-        .tis-card input::placeholder { color: #4A4A52; opacity: 1; }
+        .tis-card input::placeholder { color: var(--sf-muted, #4A4A52); opacity: 1; }
         .tis-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .tis-row > * { min-width: 0; }
         @media (min-width: 640px) { .tis-overlay { align-items: center; padding: 24px; } .tis-card { border-radius: 18px; } }
@@ -155,7 +155,7 @@ export default function TradeInSheet({ subdomain, siteName, whatsappNumber, onCl
               By sending, you agree to our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.text }}>Privacy Policy</a> and
               to being contacted about your trade-in.
             </p>
-            <button type="submit" style={{ width: "100%", background: whatsappNumber ? "#25D366" : "#DC2626", color: "#fff", border: "none", borderRadius: 8,
+            <button type="submit" style={{ width: "100%", background: whatsappNumber ? "#25D366" : "var(--sf-accent, #DC2626)", color: "#fff", border: "none", borderRadius: 8,
               padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "var(--xd-font-body)" }}>
               {whatsappNumber ? "Send on WhatsApp" : "Send my car details"}
             </button>

@@ -28,17 +28,17 @@ export default function HeroMosaic({ tenant, siteName, carsBase, featured, loadi
   return (
     <section className="hmo">
       <style>{`
-        .hmo { background: #0C0C0E; padding: 112px 0 72px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .hmo { background: var(--sf-bg, #0C0C0E); padding: 112px 0 72px; border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.05)); }
         .hmo-wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
         .hmo-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
-        .hmo-place { display: inline-flex; align-items: center; gap: 6px; color: #C4A265; font-size: 11px; font-weight: 700;
+        .hmo-place { display: inline-flex; align-items: center; gap: 6px; color: var(--sf-accent-text, #C4A265); font-size: 11px; font-weight: 700;
           letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 12px; }
-        .hmo-title { color: #F0F0F0; font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
+        .hmo-title { color: var(--sf-text, #F0F0F0); font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
           font-weight: var(--sf-head-weight, 800); text-transform: var(--sf-head-case, none); letter-spacing: var(--sf-head-track, -0.035em); line-height: 1.02; margin: 0; }
-        .hmo-line { color: #9CA3AF; font-size: 15px; line-height: 1.7; margin: 12px 0 0; max-width: 520px; }
+        .hmo-line { color: var(--sf-muted, #9CA3AF); font-size: 15px; line-height: 1.7; margin: 12px 0 0; max-width: 520px; }
         .hmo-wall { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .hmo-wall.n1 { grid-template-columns: minmax(0, 1fr); }
-        .hmo-tile { position: relative; display: block; border-radius: 16px; overflow: hidden; background: #141416; aspect-ratio: 4 / 3; text-decoration: none; }
+        .hmo-tile { position: relative; display: block; border-radius: 16px; overflow: hidden; background: var(--sf-card, #141416); aspect-ratio: 4 / 3; text-decoration: none; }
         .hmo-big { grid-column: 1 / -1; aspect-ratio: 16 / 10; }
         .hmo-wall.n2 .hmo-tile:not(.hmo-big) { grid-column: 1 / -1; aspect-ratio: 16 / 10; }
         .hmo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s ease; }
@@ -47,7 +47,7 @@ export default function HeroMosaic({ tenant, siteName, carsBase, featured, loadi
           padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .hmo-name { color: #F0F0F0; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .hmo-price { color: #F0F0F0; font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .hmo-skel { border-radius: 16px; aspect-ratio: 16 / 7; background: linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        .hmo-skel { border-radius: 16px; aspect-ratio: 16 / 7; background: linear-gradient(90deg,var(--sf-bg2, #141416) 25%,var(--sf-card, #1C1C1E) 50%,var(--sf-bg2, #141416) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @media (min-width: 900px) {
           .hmo-wall { grid-template-columns: 2fr 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); height: clamp(380px, 46vw, 560px); }
           .hmo-wall.n1 { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }

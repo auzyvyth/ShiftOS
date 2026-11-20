@@ -12,10 +12,10 @@ export default function StatsBig({ tenant, soldCount, stock }) {
     <section className="sec-pad" style={{ ...secLight, "--sf-accent": accentOf(tenant) }}>
       <style>{`
         .stb { display: grid; grid-template-columns: repeat(${items.length}, minmax(0, 1fr)); }
-        .stb-cell { padding: 8px 24px; border-left: 1px solid rgba(255,255,255,0.08); min-width: 0; }
+        .stb-cell { padding: 8px 24px; border-left: 1px solid var(--sf-border, rgba(255,255,255,0.08)); min-width: 0; }
         .stb-cell:first-child { border-left: none; padding-left: 0; }
         .stb-n { font-size: clamp(2.5rem, 6vw, 4.5rem); margin: 0 0 12px; }
-        .stb-l { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin: 0; }
+        .stb-l { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--sf-muted, rgba(255,255,255,0.55)); margin: 0; }
         @media (max-width: 720px) {
           .stb { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 0; }
           .stb-cell:nth-child(odd) { border-left: none; padding-left: 0; }

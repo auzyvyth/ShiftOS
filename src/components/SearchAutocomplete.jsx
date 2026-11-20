@@ -32,10 +32,11 @@ export default function SearchAutocomplete({
   // the full bar instead of stopping short at the input's own edge.
   anchorRef,
 }) {
-  const bg      = dark ? 'rgba(255,255,255,0.06)' : '#ffffff';
-  const border  = dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.1)';
-  const textCol = dark ? '#ffffff' : '#111827';
-  const iconCol = dark ? 'rgba(255,255,255,0.5)' : '#9ca3af';
+  // dark = a dealer site: follows the dealer's colour theme when one is set (storefrontTheme.js).
+  const bg      = dark ? 'var(--sf-card, rgba(255,255,255,0.06))' : '#ffffff';
+  const border  = dark ? '1px solid var(--sf-border, rgba(255,255,255,0.12))' : '1px solid rgba(0,0,0,0.1)';
+  const textCol = dark ? 'var(--sf-text, #ffffff)' : '#111827';
+  const iconCol = dark ? 'var(--sf-muted, rgba(255,255,255,0.5))' : '#9ca3af';
 
   const [focused, setFocused] = useState(false);
   const wrapRef = useRef(null);
@@ -130,8 +131,8 @@ export default function SearchAutocomplete({
           style={{
             position: 'fixed', top: rect.bottom + 6, left: rect.left, width: rect.width, zIndex: 1000,
             margin: 0, padding: '6px', listStyle: 'none',
-            background: dark ? '#141b2b' : '#ffffff',
-            border: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.1)',
+            background: dark ? 'var(--sf-card, #141b2b)' : '#ffffff',
+            border: dark ? '1px solid var(--sf-border, rgba(255,255,255,0.12))' : '1px solid rgba(0,0,0,0.1)',
             borderRadius: '10px', boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
             maxHeight: '280px', overflowY: 'auto',
             scrollbarWidth: 'thin',
@@ -149,7 +150,7 @@ export default function SearchAutocomplete({
                   padding: '9px 10px', borderRadius: '7px', border: 'none',
                   background: 'transparent', cursor: 'pointer', textAlign: 'left',
                   fontFamily: "'Outfit',sans-serif", fontSize: '13px',
-                  color: dark ? '#ffffff' : '#111827',
+                  color: dark ? 'var(--sf-text, #ffffff)' : '#111827',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}

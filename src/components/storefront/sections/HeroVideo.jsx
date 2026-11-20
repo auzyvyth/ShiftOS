@@ -9,7 +9,7 @@ export default function HeroVideo({ tenant }) {
         getEmbedUrl(tenant.hero_video_url) && (
           <section
             className="sec-pad"
-            style={{ background: "#080C14", paddingTop: 40, paddingBottom: 40 }}
+            style={{ background: "var(--sf-bg, #080C14)", paddingTop: 40, paddingBottom: 40 }}
           >
             <div
               style={{
@@ -24,7 +24,7 @@ export default function HeroVideo({ tenant }) {
                   style={{
                     fontSize: "clamp(20px,4vw,28px)",
                     fontWeight: 700,
-                    color: "#f3f4f6",
+                    color: "var(--sf-text, #f3f4f6)",
                     marginBottom: 20,
                     fontFamily: "system-ui,sans-serif",
                   }}
@@ -39,7 +39,7 @@ export default function HeroVideo({ tenant }) {
                   height: 0,
                   borderRadius: 16,
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: "1px solid var(--sf-border, rgba(255,255,255,0.1))",
                   boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
                 }}
               >

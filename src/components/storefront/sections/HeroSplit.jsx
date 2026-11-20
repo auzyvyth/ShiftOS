@@ -21,16 +21,16 @@ export default function HeroSplit({ tenant, siteName, carsBase, stock, featured,
   return (
     <section className="hsp">
       <style>{`
-        .hsp { background: #0C0C0E; padding: 112px 0 72px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .hsp { background: var(--sf-bg, #0C0C0E); padding: 112px 0 72px; border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.05)); }
         .hsp-wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; display: grid; gap: 40px; align-items: center; }
         @media (min-width: 900px) { .hsp-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; } }
-        .hsp-place { display: inline-flex; align-items: center; gap: 6px; color: #C4A265; font-size: 11px; font-weight: 700;
+        .hsp-place { display: inline-flex; align-items: center; gap: 6px; color: var(--sf-accent-text, #C4A265); font-size: 11px; font-weight: 700;
           letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 16px; }
-        .hsp-title { color: #F0F0F0; font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
+        .hsp-title { color: var(--sf-text, #F0F0F0); font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
           font-weight: var(--sf-head-weight, 800); text-transform: var(--sf-head-case, none); letter-spacing: var(--sf-head-track, -0.035em); line-height: 1.02; margin: 0 0 16px; }
-        .hsp-line { color: #9CA3AF; font-size: 15px; line-height: 1.7; margin: 0 0 28px; max-width: 460px; }
+        .hsp-line { color: var(--sf-muted, #9CA3AF); font-size: 15px; line-height: 1.7; margin: 0 0 28px; max-width: 460px; }
         .hsp-search { margin-bottom: 16px; max-width: 520px; }
-        .hsp-car { position: relative; display: block; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; background: #141416; text-decoration: none; }
+        .hsp-car { position: relative; display: block; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--sf-card, #141416); text-decoration: none; }
         .hsp-car img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s ease; }
         @media (hover: hover) { .hsp-car:hover img { transform: scale(1.03); } }
         .hsp-tag { position: absolute; left: 16px; right: 16px; bottom: 16px; background: rgba(12,12,14,0.78); border-radius: 10px;
@@ -38,7 +38,7 @@ export default function HeroSplit({ tenant, siteName, carsBase, stock, featured,
         .hsp-tag-name { color: #F0F0F0; font-size: 15px; font-weight: 700; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .hsp-tag-sub { color: #9CA3AF; font-size: 12px; margin: 2px 0 0; }
         .hsp-tag-price { color: #F0F0F0; font-size: 18px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .hsp-skel { border-radius: 16px; aspect-ratio: 4 / 3; background: linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        .hsp-skel { border-radius: 16px; aspect-ratio: 4 / 3; background: linear-gradient(90deg,var(--sf-bg2, #141416) 25%,var(--sf-card, #1C1C1E) 50%,var(--sf-bg2, #141416) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @media (max-width: 480px) {
           .hsp { padding: 92px 0 48px; } .hsp-line { margin-bottom: 20px; }
           .hsp-tag { left: 12px; right: 12px; bottom: 12px; padding: 10px 12px; flex-direction: column; align-items: flex-start; gap: 4px; }

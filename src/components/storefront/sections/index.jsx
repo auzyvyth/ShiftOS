@@ -66,5 +66,5 @@ export { AVAILABLE_VERSIONS } from "./versions";
 // What shows for the split second a lazily loaded top banner takes to arrive: the same dark
 // ground at banner height, so nothing below it jumps up and back down.
 export const SECTION_FALLBACK = {
-  hero: <div aria-hidden style={{ minHeight: "min(70vh, 640px)", background: "#0C0C0E" }} />,
+  hero: <div aria-hidden style={{ minHeight: "min(70vh, 640px)", background: "var(--sf-bg, #0C0C0E)" }} />,
 };

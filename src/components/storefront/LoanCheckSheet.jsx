@@ -19,8 +19,8 @@ import {
 } from "../../utils/loanEnquiry";
 
 const C = {
-  card: "#111113", field: "#0B0B0D", line: "rgba(255,255,255,0.09)", chip: "#18181B",
-  text: "#F0F0F0", muted: "#8A8A93", bad: "#f87171", accent: "#DC2626",
+  card: "var(--sf-card, #111113)", field: "var(--sf-bg, #0B0B0D)", line: "var(--sf-border, rgba(255,255,255,0.09))", chip: "var(--sf-bg2, #18181B)",
+  text: "var(--sf-text, #F0F0F0)", muted: "var(--sf-muted, #8A8A93)", bad: "var(--sf-bad, #f87171)", accent: "var(--sf-accent, #DC2626)",
 };
 const field = {
   width: "100%", boxSizing: "border-box", background: C.field, color: C.text,
@@ -39,7 +39,7 @@ function Chips({ options, value, onPick }) {
         const on = String(value) === String(v);
         return (
           <button key={v} type="button" onClick={() => onPick(v)} aria-pressed={on}
-            style={{ background: on ? C.text : C.chip, color: on ? "#0B0B0D" : C.text, border: `1px solid ${on ? C.text : C.line}`,
+            style={{ background: on ? C.text : C.chip, color: on ? "var(--sf-bg, #0B0B0D)" : C.text, border: `1px solid ${on ? C.text : C.line}`,
               borderRadius: 999, padding: "9px 14px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--xd-font-body)" }}>
             {text}
           </button>
@@ -162,7 +162,7 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
         .lcs-card { width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; background: ${C.card};
           border: 1px solid ${C.line}; border-radius: 18px 18px 0 0; padding: 20px 20px 28px;
           font-family: var(--xd-font-body); color: ${C.text}; }
-        .lcs-card input::placeholder { color: #4A4A52; opacity: 1; }
+        .lcs-card input::placeholder { color: var(--sf-muted, #4A4A52); opacity: 1; }
         .lcs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
         .lcs-row > * { min-width: 0; }
         @media (min-width: 640px) { .lcs-overlay { align-items: center; padding: 24px; } .lcs-card { border-radius: 18px; } }

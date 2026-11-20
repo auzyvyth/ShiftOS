@@ -12,7 +12,7 @@ export default function StatsBand({ tenant, soldCount, stock }) {
     <section style={{ background: accentOf(tenant), padding: "40px 0" }} aria-label="By the numbers">
       <style>{`
         .stc { display: grid; grid-template-columns: repeat(${items.length}, minmax(0, 1fr)); gap: 24px; text-align: center; }
-        .stc-n { font-size: clamp(2rem, 4.5vw, 3rem); margin: 0 0 8px; color: #fff; }
+        .stc-n { font-size: clamp(2rem, 4.5vw, 3rem); margin: 0 0 8px; color: var(--sf-on-accent, #fff); }
         .stc-l { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,0.85); margin: 0; }
         @media (max-width: 720px) { .stc { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; } }
       `}</style>

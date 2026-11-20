@@ -25,7 +25,7 @@ export default function AboutLead({ tenant, siteName }) {
     <section className="sec-pad" style={{ ...secB, "--sf-accent": accentOf(tenant) }}>
       <style>{`
         .ald { max-width: 860px; }
-        .ald-lead { margin: 0 0 24px; color: #F0F0F0;
+        .ald-lead { margin: 0 0 24px; color: var(--sf-text, #F0F0F0);
           font-size: clamp(1.25rem, 2.6vw, 1.75rem); font-weight: 600; line-height: 1.45; letter-spacing: -0.01em; white-space: pre-line; }
         .ald-rest { white-space: pre-line; max-width: 760px; }
         .ald-bar { width: 40px; height: 2px; border-radius: 2px; background: var(--sf-accent); margin: 0 0 24px; }

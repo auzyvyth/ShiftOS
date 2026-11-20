@@ -24,6 +24,9 @@ import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
 import { SECTION_VERSIONS, AVAILABLE_VERSIONS, SECTION_FALLBACK } from "../components/storefront/sections";
 import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet } from "../utils/storefrontLayout";
+import { themeOf, draftTheme, themeCss } from "../utils/storefrontTheme";
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
+import { accentTheme } from "../utils/liveAccent";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
@@ -48,6 +51,7 @@ const HomePage = () => {
   // dealer's own sections (never the cars or contact), and buyers still get the saved one.
   const [draftLayout] = useState(() => fromDraftParam(new URLSearchParams(window.location.search).get("layout"), AVAILABLE_VERSIONS));
   const [draftFontId] = useState(() => draftFont(new URLSearchParams(window.location.search).get("layout")));
+  const [draftThemeVal] = useState(() => draftTheme(new URLSearchParams(window.location.search).get("layout")));
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -208,6 +212,11 @@ const HomePage = () => {
   const font = draftLayout ? draftFontId : cleanFont(tenant?.storefront_layout);
   const fontVars = fontCss(font);
   const fontHref = fontSheet(font);
+  // The dealer's colours (stage 4, storefrontTheme.js): CSS variables on :root, so the trade-in
+  // and loan pop-ups (portalled to <body>) follow them too; "" for no theme = the page as before.
+  // With no accent picked, the accent is the brand colour from Settings (as accentOf).
+  const theme = draftLayout ? draftThemeVal : themeOf(tenant?.storefront_layout);
+  const themeVars = themeCss(theme, accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent);
 
   // The same props for every section; each returns null when it has nothing to show.
   const ctx = {
@@ -221,6 +230,7 @@ const HomePage = () => {
     <>
       <StorefrontStyles />
       {fontVars && <style>{fontVars}</style>}
+      {themeVars && <style>{themeVars}</style>}
 
       <Helmet>
         <link

@@ -14,7 +14,7 @@ export default function AboutSplit({ tenant, siteName }) {
       <style>{`
         .abs { display: grid; gap: 24px; }
         @media (min-width: 900px) { .abs { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; } }
-        .abs-place { display: inline-flex; align-items: center; gap: 6px; margin: 16px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
+        .abs-place { display: inline-flex; align-items: center; gap: 6px; margin: 16px 0 0; font-size: 13px; color: var(--sf-muted, rgba(255,255,255,0.55)); }
         .abs-text { white-space: pre-line; border-left: 2px solid var(--sf-accent); padding-left: 24px; }
         @media (max-width: 480px) { .abs-text { padding-left: 16px; } }
       `}</style>

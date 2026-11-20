@@ -27,12 +27,12 @@ export default function InventoryRail({ featured, loading, carsBase, ctaCtx, com
       <style>{`
         .irl { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 300px); gap: 20px; overflow-x: auto;
           scroll-snap-type: x mandatory; scroll-padding: 0 20px; padding: 4px 20px 16px; margin: 0 -20px 20px;
-          scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; overscroll-behavior-x: contain; }
+          scrollbar-width: thin; scrollbar-color: var(--sf-border, rgba(255,255,255,0.18)) transparent; overscroll-behavior-x: contain; }
         .irl > * { scroll-snap-align: start; min-width: 0; }
         .irl-arrows { display: none; gap: 8px; justify-content: flex-end; margin: -8px 0 12px; }
         .irl-arrow { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
-          background: #111113; border: 1px solid rgba(255,255,255,0.1); color: #C0C0C6; transition: border-color 0.2s ease; }
-        .irl-arrow:hover { border-color: rgba(255,255,255,0.24); }
+          background: var(--sf-card, #111113); border: 1px solid var(--sf-border, rgba(255,255,255,0.1)); color: var(--sf-muted, #C0C0C6); transition: border-color 0.2s ease; }
+        .irl-arrow:hover { border-color: var(--sf-border, rgba(255,255,255,0.24)); }
         @media (hover: hover) and (pointer: fine) { .irl-arrows { display: flex; } }
         @media (max-width: 640px) { .irl { grid-auto-columns: 72%; gap: 12px; } }
       `}</style>

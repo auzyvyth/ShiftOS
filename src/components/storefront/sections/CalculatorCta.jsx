@@ -17,8 +17,8 @@ export default function CalculatorCta() {
                 borderRadius: "6px",
                 overflow: "hidden",
                 position: "relative",
-                background: "#111113",
-                border: "1px solid rgba(255,255,255,0.07)",
+                background: "var(--sf-card, #111113)",
+                border: "1px solid var(--sf-border, rgba(255,255,255,0.07))",
                 display: "flex",
                 flexWrap: "wrap",
               }}
@@ -37,20 +37,20 @@ export default function CalculatorCta() {
                     width: "40px",
                     height: "40px",
                     borderRadius: "3px",
-                    background: "rgba(220,38,38,0.08)",
-                    border: "1px solid rgba(220,38,38,0.15)",
+                    background: "rgba(var(--sf-accent-rgb, 220,38,38),0.08)",
+                    border: "1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.15)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "20px",
                   }}
                 >
-                  <Calculator size={18} style={{ color: "#DC2626" }} />
+                  <Calculator size={18} style={{ color: "var(--sf-accent-text, #DC2626)" }} />
                 </div>
                 <h2
                   style={{
                     fontFamily: "'Outfit', sans-serif",
-                    color: "#F0F0F0",
+                    color: "var(--sf-text, #F0F0F0)",
                     fontSize: "clamp(1.2rem,4vw,1.8rem)",
                     fontWeight: "700",
                     letterSpacing: "-0.025em",
@@ -62,7 +62,7 @@ export default function CalculatorCta() {
                 </h2>
                 <p
                   style={{
-                    color: "#52525A",
+                    color: "var(--sf-muted, #52525A)",
                     fontSize: "13px",
                     lineHeight: "1.7",
                     margin: "0 0 24px 0",

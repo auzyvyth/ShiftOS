@@ -15,7 +15,7 @@ export default function About({ tenant, siteName }) {
               </div>
               <p
                 style={{
-                  color: "#9CA3AF",
+                  color: "var(--sf-muted, #9CA3AF)",
                   fontSize: "15px",
                   lineHeight: "1.9",
                   maxWidth: "760px",
