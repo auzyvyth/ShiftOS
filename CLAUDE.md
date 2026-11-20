@@ -382,13 +382,17 @@ still says "21 pages") — do not update it; it is pending removal.
   functions in `storefrontLayout.js`; the font is saved as `font` on the same jsonb (default not written, the live
   `storefront_layout_ok` reads only `v` + `sections`, so no migration), and `--sf-head-*` CSS variables are set only
   for a non-default font, so an untouched site is pixel-identical. Fonts show on the home page only.
-  **Stage 4, colours (2026-11-20, local commits):** three FREE pickers (Background, Cards, Accent) in Your look, saved as
-  `theme: {bg, card, accent}` on the same jsonb (no migration). ONE rules file, `src/utils/storefrontTheme.js`
-  (`npm run test:storefronttheme`): text / muted / card / accent are worked out so every word reads at 4.5:1 whatever is picked,
-  `adjusted` tells the editor. Every colour on a dealer site is written `var(--sf-x, <the old value>)` (`sv()` in `shared.js`),
-  and HomePage writes the variables on `:root` (so portalled pop-ups follow) ONLY when a theme is saved: no theme =
-  pixel-identical. A new colour on a dealer site must use a `--sf-*` variable with its old value as fallback. No accent picked =
-  the brand colour (`accentOf`, now `var(--sf-theme-accent, brand)`). /cars and car pages are not themed yet. The same-town
+  **Stage 4, colours (2026-11-20, on staging):** TWO themes, Dark or Light (owner: "they won't know how to mix and
+  match"; free Background/Cards pickers were tried the same day and dropped: a red or blue page came out as one solid
+  slab with no card edges), plus ONE optional accent. Saved as `theme: {mode?: "light", accent?}` on the same jsonb (Dark
+  = default, not written; no migration). ONE rules file, `src/utils/storefrontTheme.js` (`npm run test:storefronttheme`):
+  Light is a FIXED palette (`LIGHT`: grey page, white cards, a SOLID border, dark text), tested >= 4.5:1 for every word and
+  a visible card edge; the accent is darkened until white text on it reads. Every colour on a dealer site is written
+  `var(--sf-x, <the old value>)` (`sv()` in `shared.js`), and HomePage writes the variables on `:root` (so portalled pop-ups
+  follow) ONLY when a theme is saved: no theme = pixel-identical. Dark + accent sets only the accent variables. A new colour
+  on a dealer site must use a `--sf-*` variable with its old value as fallback, never a white alpha (it vanishes on Light).
+  No accent picked = the brand colour (`accentOf`, `var(--sf-theme-accent, brand)`). The top banner stays a dark photo band
+  on Light. /cars and car pages are not themed yet. The same-town
   check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from

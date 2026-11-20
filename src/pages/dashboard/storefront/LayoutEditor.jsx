@@ -7,7 +7,7 @@
 // the site today), and "See it on my site", which opens the real site with the unsaved layout
 // in the link (HomePage.jsx reads ?layout=, buyers keep the saved one).
 // Stage 4: "Your look" on top: four named looks (presets), Shuffle, the heading font and the
-// site's colours (Background, Cards, Accent: free pickers, made readable by storefrontTheme.js).
+// site's theme (Dark or Light) and accent colour (storefrontTheme.js).
 import { useEffect, useMemo, useState } from "react";
 import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette } from "lucide-react";
 import { supabase } from "../../../supabaseClient";
@@ -20,7 +20,7 @@ import {
   cleanFont, DEFAULT_FONT, FONTS, PRESETS, applyPreset, presetOf, shuffleLook,
 } from "../../../utils/storefrontLayout";
 import { AVAILABLE_VERSIONS, VERSION_INFO } from "../../../components/storefront/sections/versions";
-import { themeOf, cleanTheme, resolveTheme, DEFAULT_BG, DEFAULT_CARD } from "../../../utils/storefrontTheme";
+import { themeOf, cleanTheme, resolveTheme, modeOf } from "../../../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../../utils/pageAccent";
 import { accentTheme } from "../../../utils/liveAccent";
 
@@ -68,56 +68,62 @@ function Switch({ on, onClick, label }) {
   );
 }
 
-// The three free colour pickers (owner's choice, 2026-11-20). What a pick turns into on the site
-// is worked out by storefrontTheme.js (text is always chosen for the dealer, a card or accent
-// too close to unreadable is nudged); the swatch shows what the site will really use, and a
-// line says when a pick was changed.
-const COLOUR_KEYS = [
-  { k: "bg", label: "Background" },
-  { k: "card", label: "Cards" },
-  { k: "accent", label: "Accent" },
+// The site's theme (owner, 2026-11-20): Dark or Light, nothing in between, plus one optional
+// accent (buttons and lines). Each theme is a fixed palette in storefrontTheme.js; the accent is
+// darkened there until white text on it reads, and the swatch shows the colour the site will use.
+const MODE_OPTIONS = [
+  { k: "dark", label: "Dark", swatch: ["#0C0C0E", "#111113"] },
+  { k: "light", label: "Light", swatch: ["#F3F5F9", "#FFFFFF"] },
 ];
-function Colours({ theme, look, brandAccent, onPick, onReset }) {
-  const used = { bg: look?.bg || DEFAULT_BG, card: look?.card || DEFAULT_CARD, accent: look?.accent || brandAccent };
-  const fixed = [look?.adjusted.card && "Cards", look?.adjusted.accent && "Accent"].filter(Boolean);
+function Colours({ theme, look, brandAccent, onMode, onAccent, onResetAccent }) {
+  const mode = modeOf(theme);
+  const accent = look?.accent || brandAccent;
   return (
     <div style={{ marginTop: 16 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px 14px" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Colours</span>
-        {COLOUR_KEYS.map(({ k, label }) => {
-          const picked = theme?.[k];
-          const value = (picked || used[k]).toLowerCase();
-          return (
-            <label key={k} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px 6px 6px",
-              borderRadius: PL.radius.row, background: PL.raised, cursor: "pointer", minWidth: 0 }}>
-              <span aria-hidden style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: used[k],
-                boxShadow: "inset 0 0 0 1px rgba(17,24,39,0.12)", display: "grid", placeItems: "center",
-                color: look ? (k === "accent" ? look.onAccent : look.text) : "#fff" }}>
-                {!picked && <Pipette size={13} />}
-              </span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: PL.text }}>{label}</span>
-                <span style={{ display: "block", fontSize: 11, color: PL.textMuted }}>
-                  {picked ? used[k] : k === "accent" ? "Your brand colour" : "Usual"}
-                </span>
-              </span>
-              <input type="color" aria-label={`${label} colour`} value={value} onChange={(e) => onPick(k, e.target.value)}
-                style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }} />
-            </label>
-          );
-        })}
-        {theme && (
-          <button type="button" onClick={onReset}
+        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Theme</span>
+        <div role="radiogroup" aria-label="Site theme" style={{ display: "inline-flex", gap: 6, padding: 4, borderRadius: PL.radius.row, background: PL.raised }}>
+          {MODE_OPTIONS.map((o) => {
+            const on = mode === o.k;
+            return (
+              <button key={o.k} type="button" role="radio" aria-checked={on} onClick={() => onMode(o.k)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 12px 6px 6px", borderRadius: 10, border: "none",
+                  cursor: "pointer", background: on ? "#fff" : "transparent", boxShadow: on ? PL.shadow : "none",
+                  fontSize: 13, fontWeight: 600, color: on ? PL.text : PL.textSec }}>
+                <span aria-hidden style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${o.swatch[0]} 50%, ${o.swatch[1]} 50%)`,
+                  boxShadow: "inset 0 0 0 1px rgba(17,24,39,0.14)" }} />
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+        <label style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px 6px 6px",
+          borderRadius: PL.radius.row, background: PL.raised, cursor: "pointer", minWidth: 0 }}>
+          <span aria-hidden style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: accent,
+            boxShadow: "inset 0 0 0 1px rgba(17,24,39,0.12)", display: "grid", placeItems: "center", color: "#fff" }}>
+            {!theme?.accent && <Pipette size={13} />}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: PL.text }}>Accent</span>
+            <span style={{ display: "block", fontSize: 11, color: PL.textMuted }}>{theme?.accent ? accent : "Your brand colour"}</span>
+          </span>
+          <input type="color" aria-label="Accent colour" value={(theme?.accent || accent).toLowerCase()} onChange={(e) => onAccent(e.target.value)}
+            style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }} />
+        </label>
+        {theme?.accent && (
+          <button type="button" onClick={onResetAccent}
             style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "8px 4px" }}>
-            Reset colours
+            Use my brand colour
           </button>
         )}
       </div>
       <p style={{ margin: "8px 0 0", fontSize: 12, color: PL.textMuted, lineHeight: 1.5 }}>
-        {theme
-          ? `Text is set for you (${look?.dark ? "light" : "dark"} on this background) so it always reads.`
-          : "Your site uses the usual dark colours. Pick any colour; text is set for you so it always reads."}
-        {fixed.length > 0 && ` ${fixed.join(" and ")} ${fixed.length > 1 ? "were" : "was"} adjusted a little to stay readable and stand out from the background. The swatch shows the colour your site will use.`}
+        {mode === "light"
+          ? "Light: a soft grey page with white cards. Your top banner stays a dark photo band."
+          : "Dark: the usual dark site."}
+        {" "}The accent colours your buttons and lines.
+        {look?.adjusted.accent && " It was darkened a little so white text on your buttons reads. The swatch shows the colour your site will use."}
       </p>
     </div>
   );
@@ -254,8 +260,9 @@ export default function LayoutEditor({ dealerId, canEdit }) {
           <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{FONTS[font].note}</span>
         </div>
         <Colours theme={theme} look={look} brandAccent={brandAccent}
-          onPick={(k, hex) => { setTheme((t) => cleanTheme({ ...(t || {}), [k]: hex })); setStatus({ kind: "", text: "" }); }}
-          onReset={() => { setTheme(null); setStatus({ kind: "", text: "" }); }} />
+          onMode={(m) => { setTheme((t) => cleanTheme({ ...(t || {}), mode: m })); setStatus({ kind: "", text: "" }); }}
+          onAccent={(hex) => { setTheme((t) => cleanTheme({ ...(t || {}), accent: hex })); setStatus({ kind: "", text: "" }); }}
+          onResetAccent={() => { setTheme((t) => cleanTheme({ ...(t || {}), accent: null })); setStatus({ kind: "", text: "" }); }} />
       </div>
 
       <div style={card}>
@@ -368,7 +375,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                 height: tall ? 64 : 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.02em",
                 background: isEmpty ? "transparent" : look?.card || "rgba(255,255,255,0.08)",
-                border: isEmpty ? `1px dashed ${look?.border || "rgba(255,255,255,0.18)"}` : "none",
+                border: isEmpty ? `1px dashed ${look?.border || "rgba(255,255,255,0.18)"}` : look?.border ? `1px solid ${look.border}` : "none",
                 color: isEmpty ? look?.muted || "rgba(255,255,255,0.35)" : look?.text || "rgba(255,255,255,0.8)",
               }}>
                 {sectionInfo(r.id).label}{VERSION_INFO[r.id] ? `: ${VERSION_INFO[r.id][r.variant]?.name}` : ""}{isEmpty ? " (empty)" : ""}
