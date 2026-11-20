@@ -8,6 +8,8 @@
 // nothing makes, and appeared on every dealer that never filled the form in.
 // Settings saves blank boxes as "", so blanks are dropped here, not shown as empty cards.
 
+import { sectionOn } from "./storefrontLayout.js";
+
 const text = (v) => (typeof v === "string" ? v.trim() : "");
 
 function filled(list) {
@@ -30,7 +32,10 @@ export function storefrontHow(saved) {
   return { title: text(saved?.title) || "How it works", steps };
 }
 
-export const hasHowItWorks = (tenant) => !!storefrontHow(tenant?.storefront_how);
+// Written AND switched on in the dealer's layout (src/utils/storefrontLayout.js), so the
+// header and footer never link to a section the page does not draw.
+export const hasHowItWorks = (tenant) =>
+  !!storefrontHow(tenant?.storefront_how) && sectionOn(tenant?.storefront_layout, "how");
 
 // The Get in Touch section always shows (it holds the contact buttons), so each
 // blank field falls back on its own. Words fit a dealer team: no "I" / "me".

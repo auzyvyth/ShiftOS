@@ -359,6 +359,15 @@ still says "21 pages") — do not update it; it is pending removal.
   file in `src/components/storefront/sections/`, shown in `STOREFRONT_SECTIONS` order (index.jsx),
   all taking the same `ctx` props. A new section goes in that list, never back into HomePage.
   Plan for the rest: `docs/STOREFRONT_PLAN.md`.
+  **Stage 2 (2026-11-20): the dealer picks the order and on/off** in dashboard Storefront > Layout
+  (`src/pages/dashboard/storefront/LayoutEditor.jsx`), saved as `profiles.storefront_layout`. ONE rules
+  file, `src/utils/storefrontLayout.js` (`npm run test:storefrontlayout`): banner pinned first, Get in touch
+  last, cars + contact always on; `cleanLayout` turns ANY saved value into a valid full layout, so a bad
+  one never breaks the page. The DB check `storefront_layout_ok` (migration `20261120a`, QUEUED) lists the
+  same section ids: a new section = add it in both or saving fails. Versions per section:
+  `sections/versions.js` (data, the editor reads it) + `sections/index.jsx` (components). `?layout=` on the
+  site = the editor's unsaved preview (noindex). Below-the-fold sections load lazily; `#how-it-works` and
+  `#contact` stay eager so header links can scroll to them.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were

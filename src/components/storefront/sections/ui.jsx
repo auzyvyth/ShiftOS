@@ -50,6 +50,9 @@ export function CountUp({ end = 0, duration = 1500, style }) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
   useEffect(() => {
+    // Counted once already and the number changed (a count that arrived later): show the
+    // new number straight away instead of keeping the old one.
+    if (started.current) { setVal(end); return; }
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(

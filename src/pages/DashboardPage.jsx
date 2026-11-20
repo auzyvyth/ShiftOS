@@ -52,6 +52,7 @@ const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
 const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
+const LayoutEditor     = React.lazy(() => import("./dashboard/storefront/LayoutEditor"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
@@ -188,7 +189,7 @@ export default function DashboardPage() {
   // The AI Sales Manager card on Overview. Closed on every visit: opening it runs the briefing.
   const [aiOpen, setAiOpen] = useState(false);
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
-  const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
+  const [storefrontSub, setStorefrontSub] = useState("layout"); // layout | hero | services
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
   const [reactivating, setReactivating] = useState(false);
@@ -673,6 +674,7 @@ export default function DashboardPage() {
       marketplace: { tab: "analytics",    sub: ["analytics", "performance"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
+      layout:      { tab: "storefront", sub: ["storefront", "layout"] },
       // AI Manager is a card on Overview now (2026-11-16): old links open Overview with it open.
       ai_manager:  { tab: "overview",   sub: [], openAi: true },
       // Adding a car is a pop-up now (2026-11-16): an old /dashboard/add link opens Inventory with
@@ -1244,7 +1246,7 @@ export default function DashboardPage() {
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
-    storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
+    storefront: { title: "Storefront", sub: "Your site's layout, hero and add-on product catalogue" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
@@ -2445,10 +2447,14 @@ export default function DashboardPage() {
                 active={storefrontSub}
                 onChange={setStorefrontSub}
                 tabs={[
+                  { id: "layout",   label: "Layout" },
                   { id: "hero",     label: "Hero Carousel" },
                   { id: "services", label: "Services & Add-ons" },
                 ]}
               />
+              {storefrontSub === "layout" && (
+                <LayoutEditor dealerId={getDealerIdFromProfile(profile)} canEdit={getDealerIdFromProfile(profile) === profile?.id} />
+              )}
               {storefrontSub === "hero" && (
                 <HeroSlidesPage userId={userId} profile={profile} />
               )}

@@ -1,7 +1,8 @@
 // A dealer's own site (<sub>.drevo.my). App.jsx RootRoute renders this ONLY on a dealer
 // subdomain; the main domain gets MarketplacePage. This file loads the dealer's cars and
 // counts; every section of the page lives in src/components/storefront/sections/
-// (STOREFRONT-2 stage 1, docs/STOREFRONT_PLAN.md), shown in STOREFRONT_SECTIONS order.
+// (STOREFRONT-2, docs/STOREFRONT_PLAN.md), drawn in the dealer's saved layout order
+// (src/utils/storefrontLayout.js). ?layout=... = an unsaved preview from the editor.
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Helmet } from "react-helmet";
 import Header from "@/components/Header";
@@ -21,7 +22,8 @@ import { captureRef, getRef } from "../utils/refTracking";
 import { getSlugFromURL, trackEvent } from "../utils/analytics";
 import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
-import { STOREFRONT_SECTIONS } from "../components/storefront/sections";
+import { SECTION_VERSIONS, AVAILABLE_VERSIONS } from "../components/storefront/sections";
+import { cleanLayout, fromDraftParam } from "../utils/storefrontLayout";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
@@ -41,6 +43,10 @@ const HomePage = () => {
   const { tenant, loading: tenantLoading, error: tenantError } = useTenant();
   const [tradeInOpen, setTradeInOpen] = useState(false);
   const [loanOpen, setLoanOpen] = useState(false);
+  // "See it on my site" from Settings > Storefront > Layout: an unsaved layout in the link.
+  // Read through the same cleaner as the saved one, so a link can only reorder or hide the
+  // dealer's own sections (never the cars or contact), and buyers still get the saved one.
+  const [draftLayout] = useState(() => fromDraftParam(new URLSearchParams(window.location.search).get("layout"), AVAILABLE_VERSIONS));
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -196,6 +202,8 @@ const HomePage = () => {
   // AutoDealer schema for the dealer's own site (STOREFRONT-1), same builder as api/og.js.
   const dealerLd = tenant?.subdomain ? dealerSchema(tenant, `https://${tenant.subdomain}.${ROOT_DOMAIN}`) : null;
 
+  const layout = draftLayout || cleanLayout(tenant?.storefront_layout, AVAILABLE_VERSIONS);
+
   // The same props for every section; each returns null when it has nothing to show.
   const ctx = {
     tenant, siteName, carsBase, ctaCtx, stock, soldCount, soldDisplay, featured, hotDeals, loading,
@@ -220,7 +228,7 @@ const HomePage = () => {
         </title>
         <meta
           name="robots"
-          content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+          content={draftLayout ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"}
         />
         <meta
           name="description"
@@ -318,7 +326,19 @@ const HomePage = () => {
         </Suspense>
       )}
 
-      {STOREFRONT_SECTIONS.map(({ id, Component }) => <Component key={id} {...ctx} />)}
+      {draftLayout && (
+        <div role="status" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "#F0F0F0", color: "#0B0B0D", textAlign: "center", fontSize: 13, fontWeight: 600, padding: "10px 16px" }}>
+          Preview of your unsaved layout. Buyers still see the saved one.
+        </div>
+      )}
+      {layout.filter((r) => r.on).map(({ id, variant }) => {
+        const Section = SECTION_VERSIONS[id]?.[variant] || SECTION_VERSIONS[id]?.a;
+        return Section ? (
+          <Suspense key={id} fallback={null}>
+            <Section {...ctx} />
+          </Suspense>
+        ) : null;
+      })}
 
       <Footer />
       <StickyWhatsAppButton />

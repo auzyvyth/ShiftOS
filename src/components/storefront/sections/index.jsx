@@ -1,35 +1,46 @@
-// Every section of a dealer's own site, in the order the page shows them today.
-// STOREFRONT-2 (docs/STOREFRONT_PLAN.md): stage 1 split them out of HomePage.jsx with no
-// visible change; stage 2 turns this list into the dealer's saved layout. Each section
-// gets the same props (HomePage.jsx `ctx`) and returns null when it has nothing to show.
+// Every section of a dealer's own site and the versions of it the page can draw.
+// STOREFRONT-2 (docs/STOREFRONT_PLAN.md). Which sections show, in what order and which
+// version is the dealer's saved layout (src/utils/storefrontLayout.js); HomePage.jsx draws
+// it. Every section gets the same props (HomePage `ctx`) and returns null when it has
+// nothing to show.
+//
+// Loading: what usually sits on the first screen, and the two sections the header links
+// jump to (#how-it-works, #contact), load with the page. The rest load only when the page
+// draws them, one small file each, so a version a dealer did not pick is never downloaded.
+// A new version = one more key under its section here (max 3: VARIANTS), nothing else.
+import { lazy } from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import DealerStrip from "./DealerStrip";
 import HeroVideo from "./HeroVideo";
 import HotDeals from "./HotDeals";
 import Inventory from "./Inventory";
-import About from "./About";
-import Reviews from "./Reviews";
-import WhyUs from "./WhyUs";
-import Stats from "./Stats";
 import HowItWorks from "./HowItWorks";
-import Testimonials from "./Testimonials";
-import CalculatorCta from "./CalculatorCta";
 import Contact from "./Contact";
+
+const About = lazy(() => import("./About"));
+const Reviews = lazy(() => import("./Reviews"));
+const WhyUs = lazy(() => import("./WhyUs"));
+const Stats = lazy(() => import("./Stats"));
+const Testimonials = lazy(() => import("./Testimonials"));
+const CalculatorCta = lazy(() => import("./CalculatorCta"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
 
-export const STOREFRONT_SECTIONS = [
-  { id: "hero", Component: Hero },
-  { id: "strip", Component: DealerStrip },
-  { id: "video", Component: HeroVideo },
-  { id: "hot_deals", Component: HotDeals },
-  { id: "cars", Component: Inventory },
-  { id: "about", Component: About },
-  { id: "reviews", Component: Reviews },
-  { id: "why", Component: WhyUs },
-  { id: "stats", Component: Stats },
-  { id: "how", Component: HowItWorks },
-  { id: "testimonials", Component: Testimonials },
-  { id: "calculator", Component: CalculatorCta },
-  { id: "contact", Component: Contact },
-];
+export const SECTION_VERSIONS = {
+  hero: { a: Hero },
+  strip: { a: DealerStrip },
+  video: { a: HeroVideo },
+  hot_deals: { a: HotDeals },
+  cars: { a: Inventory },
+  about: { a: About },
+  reviews: { a: Reviews },
+  why: { a: WhyUs },
+  stats: { a: Stats },
+  how: { a: HowItWorks },
+  testimonials: { a: Testimonials },
+  calculator: { a: CalculatorCta },
+  contact: { a: Contact },
+};
+
+// What cleanLayout may keep, as plain data (the editor reads it without this file).
+export { AVAILABLE_VERSIONS } from "./versions";

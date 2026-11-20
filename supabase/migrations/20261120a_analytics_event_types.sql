@@ -85,9 +85,42 @@ revoke all on function public.get_marketplace_search(timestamptz, timestamptz, i
 grant execute on function public.get_marketplace_search(timestamptz, timestamptz, int) to authenticated, service_role;
 
 
+-- Storefront layout (STOREFRONT-2 stage 2, docs/STOREFRONT_PLAN.md): the dealer's choice of
+-- which sections of their site show, in what order, and which version of each. One small
+-- object, written only through Settings by the dealer (own profile row, existing RLS).
+-- storefront_layout_ok is the database's copy of src/utils/storefrontLayout.js: the section
+-- list must stay the same in both (npm run test:storefrontlayout reads this file). The page
+-- cleans whatever is saved anyway, so this check only keeps junk and size out of profiles.
+create or replace function public.storefront_layout_ok(p jsonb)
+returns boolean
+language sql
+immutable
+as $$
+  -- coalesce: a CHECK passes on NULL, so a missing key must read as false, never unknown
+  -- ({"v":1} with no sections slipped through before this, found by the local test).
+  select coalesce(p is null or (
+    jsonb_typeof(p) = 'object'
+    and p->>'v' = '1'
+    and jsonb_typeof(p->'sections') = 'array'
+    and jsonb_array_length(p->'sections') <= 20
+    and pg_column_size(p) <= 4096
+    and not exists (
+      select 1 from jsonb_array_elements(p->'sections') s
+      where jsonb_typeof(s) <> 'object'
+         or coalesce(s->>'id', '') not in ('hero', 'strip', 'video', 'hot_deals', 'cars', 'about', 'reviews',
+                                          'why', 'stats', 'how', 'testimonials', 'calculator', 'contact')
+         or jsonb_typeof(s->'on') is distinct from 'boolean'
+         or coalesce(s->>'variant', '') not in ('a', 'b', 'c')
+    )
+  ), false)
+$$;
+alter table public.profiles add column if not exists storefront_layout jsonb;
+alter table public.profiles add constraint profiles_storefront_layout_ok check (public.storefront_layout_ok(storefront_layout));
+
 -- Storefront hero video: Settings saves hero_video_* and HomePage reads it, but the
 -- storefront lookup never returned it, so no dealer's video ever showed (both live
--- storefronts have one saved). Adds the three columns to get_dealer_profile_by_subdomain.
+-- storefronts have one saved). Adds the three columns to get_dealer_profile_by_subdomain,
+-- plus storefront_layout (above).
 -- The return type changes, so CREATE OR REPLACE cannot do it: drop + create in this
 -- transaction, then re-assert the grants (this lookup is public by design: anon + authenticated).
 drop function public.get_dealer_profile_by_subdomain(text);
@@ -98,7 +131,7 @@ returns table(id uuid, dealership text, site_name text, subdomain text, avatar_u
   storefront_why jsonb, storefront_how jsonb, storefront_testimonials jsonb, storefront_cta jsonb,
   hero_title text, hero_subtitle text, hero_cta_text text, announcement_bar text, announcement_bar_enabled boolean,
   stat_years integer, stat_happy_customers integer, is_verified boolean, business_hours text,
-  hero_video_enabled boolean, hero_video_url text, hero_video_title text)
+  hero_video_enabled boolean, hero_video_url text, hero_video_title text, storefront_layout jsonb)
 language sql
 stable
 security definer
@@ -112,7 +145,7 @@ as $$
     p.hero_title, p.hero_subtitle, p.hero_cta_text,
     p.announcement_bar, p.announcement_bar_enabled,
     p.stat_years, p.stat_happy_customers, p.is_verified, p.business_hours,
-    p.hero_video_enabled, p.hero_video_url, p.hero_video_title
+    p.hero_video_enabled, p.hero_video_url, p.hero_video_title, p.storefront_layout
   from profiles p
   where p.subdomain = p_subdomain
     and p.role = any (array['dealer'::text, 'owner'::text, 'superadmin'::text])

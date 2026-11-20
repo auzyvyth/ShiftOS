@@ -48,7 +48,10 @@ export default function Stats({ tenant, soldCount, stock }) {
           className="stats-band-grid"
         >
           {statItems.map((s, i) => (
-            <FadeIn key={i} delay={i * 0.08}>
+            // Keyed by label, not position: the sold count arrives after the others, and a
+            // position key kept the old number in the moved card ("Cars Sold" showed the
+            // happy-customers figure; found 2026-11-20).
+            <FadeIn key={s.label} delay={i * 0.08}>
               <div
                 style={{
                   background: "#0C0C0E",
