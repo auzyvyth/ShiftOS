@@ -105,3 +105,20 @@ assert.ok(!("--sf-bg" in accOnly) && !("--sf-card" in accOnly), "Dark + accent =
 assert.equal(accOnly["--sf-accent"], "#15803D");
 assert.ok(!themeCss({ accent: "#15803D" }).includes("html body"), "Dark + accent = page ground untouched");
 console.log("storefrontTheme: all passed");
+
+// ── Dark bands on Light (phase A): the footer and About B keep today's dark look ──
+import { bandVars, BAND_RESET, BAND_TEXT } from "../src/utils/storefrontTheme.js";
+assert.equal(bandVars(null), null, "no theme = no band rule");
+assert.equal(bandVars({ accent: "#2563EB" }), null, "Dark theme = no band rule");
+assert.ok(!themeCss({ accent: "#2563EB" }).includes(".sf-band"), "Dark + accent writes no band rule");
+assert.ok(themeCss({ mode: "light" }, "#DC2626").includes(".sf-band{"), "Light writes the band rule");
+for (const acc of ["#DC2626", "#FACC15", "#1E3A8A", "#16A34A", "#000000", "#FFFFFF"]) {
+  const b = bandVars({ mode: "light", accent: acc === "#FFFFFF" ? undefined : acc }, "#DC2626");
+  for (const k of BAND_RESET) assert.equal(b[k], "initial", `${k} falls back to the old dark value inside a band`);
+  for (const sfc of ["#0C0C0E", "#0F0F11", "#111113", "#09090B"]) {
+    assert.ok(contrast(b["--sf-accent-text"], sfc) >= TEXT_MIN, `band accent word ${acc} reads on ${sfc}`);
+    assert.ok(contrast(BAND_TEXT, sfc) >= TEXT_MIN, "band text reads");
+  }
+}
+assert.ok(bandVars({ mode: "light" }), "Light with no accent and no fallback still works");
+console.log("storefrontTheme bands: all passed");

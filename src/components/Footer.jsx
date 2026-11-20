@@ -10,6 +10,8 @@ import { openConsentSettings } from "../utils/consent";
 /* global __APP_VERSION__ */
 const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
+// `sf-band`: on a dealer site with the Light theme the footer stays a dark band
+// (storefrontTheme.js bandVars); with no theme the class matches no rule.
 const FOOTER_CSS = `
 
   .ftr-root {
@@ -158,7 +160,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="ftr-root">
+    <footer className="ftr-root sf-band">
       <style>{FOOTER_CSS}</style>
 
       <div className="ftr-grid">

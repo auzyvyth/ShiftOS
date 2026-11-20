@@ -1,7 +1,8 @@
 // About, version B "Side by side" (STOREFRONT-2 stage 4): the heading and the dealer's town on
 // the left, their own About text on the right behind a line in their colour. Every word is the
 // dealer's (about_text, Settings) or a fact we hold (city / state). Hidden when they wrote none,
-// the same rule as version A.
+// the same rule as version A. On the Light theme it is a dark band (`sf-band`, storefrontTheme.js
+// bandVars), like the footer; on Dark it is the page as before.
 import { MapPin } from "lucide-react";
 import { FadeIn } from "./ui";
 import { wrap, secB, accentOf } from "./shared";
@@ -10,7 +11,7 @@ export default function AboutSplit({ tenant, siteName }) {
   if (!tenant?.about_text) return null;
   const place = [tenant.city, tenant.state].filter(Boolean).join(", ");
   return (
-    <section className="sec-pad" style={{ ...secB, "--sf-accent": accentOf(tenant) }}>
+    <section className="sec-pad sf-band" style={{ ...secB, "--sf-accent": accentOf(tenant) }}>
       <style>{`
         .abs { display: grid; gap: 24px; }
         @media (min-width: 900px) { .abs { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; } }

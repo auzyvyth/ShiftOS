@@ -152,11 +152,33 @@ export function themeVars(theme, fallbackAccent) {
   };
 }
 
+// Dark bands on the Light theme (phase A, owner's reference site: light page, dark About band and
+// footer). An element with the class `sf-band` (the footer, About version B) is drawn with
+// today's dark colours: the surface variables are reset to `initial` inside it, which makes every
+// `var(--sf-x, <old dark value>)` fall back to its old dark value, so the band looks exactly like
+// the Dark theme with no second palette to keep in step. The accent as a WORD is worked out
+// again for the dark surfaces (the Light one is too dark to read there); the fill stays the same.
+// Dark theme: no rule at all, a band is just the page. One place: this function.
+export const BAND_RESET = ["--sf-bg", "--sf-bg2", "--sf-card", "--sf-border", "--sf-text", "--sf-muted", "--sf-wa-text", "--sf-bad"];
+export const BAND_TEXT = "#F0F0F0";
+export function bandVars(theme, fallbackAccent) {
+  const t = cleanTheme(theme);
+  if (!t || t.mode !== "light") return null;
+  const dark = resolveTheme({ accent: t.accent || fallbackAccent || "#DC2626" });
+  return {
+    ...Object.fromEntries(BAND_RESET.map((k) => [k, "initial"])),
+    "--sf-accent-text": dark.accentText, "--sf-price": dark.accentText,
+  };
+}
+
 // ... and as one style sheet for the page: the variables on :root (so pop-ups portalled to
-// <body> read them too) and the page ground. "" = no theme = nothing written.
+// <body> read them too), the page ground and the dark bands. "" = no theme = nothing written.
 export function themeCss(theme, fallbackAccent) {
   const v = themeVars(theme, fallbackAccent);
   if (!v) return "";
   const vars = `:root{${Object.entries(v).map(([k, val]) => `${k}:${val}`).join(";")}}`;
-  return v["--sf-bg"] ? `${vars}html body{background:${v["--sf-bg"]} !important;color:${v["--sf-text"]}}` : vars;
+  if (!v["--sf-bg"]) return vars;
+  const band = bandVars(theme, fallbackAccent);
+  return `${vars}html body{background:${v["--sf-bg"]} !important;color:${v["--sf-text"]}}` +
+    `.sf-band{${Object.entries(band).map(([k, val]) => `${k}:${val}`).join(";")};color:${BAND_TEXT}}`;
 }
