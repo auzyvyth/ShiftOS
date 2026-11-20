@@ -374,6 +374,15 @@ still says "21 pages") — do not update it; it is pending removal.
   always ShowroomCard). Versions B/C are lazy, so only the picked one downloads. Banner/spotlight words are the
   dealer's own (hero_title / hero_subtitle) or facts from the car row (`heroParts.js`), never a claim. Saving keeps
   the picked version: `toSaved` / `isDefaultLayout` are called WITHOUT the version list on purpose (a test guards it).
+  **Stage 4, first slice (2026-11-20, local commits, not on staging):** versions B/C for About, Why us, By the numbers,
+  How it works, reviews (one lazy file each in `sections/`, named in `versions.js`); they use the `.sfv-*` classes
+  (`ui.jsx`, one type/spacing scale) and the dealer's colour via `accentOf` (`shared.js`, Drevo red when never chosen)
+  as a fill or line only, never as text. Numbers rule for all three Stats versions: `statsParts.js`. Heading fonts
+  (`FONTS`: Modern / Bold / Classic / Sharp; body stays Outfit), ready looks (`PRESETS`) and `shuffleLook` are pure
+  functions in `storefrontLayout.js`; the font is saved as `font` on the same jsonb (default not written, the live
+  `storefront_layout_ok` reads only `v` + `sections`, so no migration), and `--sf-head-*` CSS variables are set only
+  for a non-default font, so an untouched site is pixel-identical. Fonts show on the home page only. The same-town
+  check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were

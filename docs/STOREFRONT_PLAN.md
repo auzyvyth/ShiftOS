@@ -88,6 +88,32 @@ Already built: trade-in form, Check my loan, WhatsApp, chat, bookings. Add:
   warranty they really give). Never invents a claim ("verified", "best price", "lowest rate"); the
   dealer approves every word.
 
+## Same-town check: design only (stage 4, NOT built: it needs a database function)
+What the dealer sees: under "Your look" in Storefront > Layout, after any change to the top banner,
+cars or font: "Acme Motors in Shah Alam already uses this mix. Shuffle?" with the Shuffle button.
+It never blocks saving: a warning, not a rule.
+- **Fingerprint** = top banner version + cars version + font, e.g. `c|a|bold` (the three things a
+  buyer sees first). Order and lower sections are left out: two sites with the same first screen look
+  the same whatever is below.
+- **Why a DB function:** a dealer cannot read another dealer's `profiles` row (RLS), and the public
+  lookup `get_dealer_profile_by_subdomain` goes by subdomain, not by town. So: one
+  `security definer` function `storefront_look_taken(p_hero text, p_cars text, p_font text)`
+  returning at most ONE row `(site_name, city)`: another dealer (not the caller) in the caller's
+  `state`, with a subdomain and at least one available car, whose cleaned layout has the same
+  fingerprint (a NULL layout = `a|a|modern`). Granted to `authenticated` only; the caller must be a
+  dealer / owner. It returns only what that dealer's own site already shows publicly (name, town),
+  never their layout or any other field. The arguments are checked against the fixed lists
+  (`a`/`b`/`c`, the font ids); anything else returns nothing.
+- **Mirror rule:** the function's font list and the "NULL = default" rule must match
+  `storefrontLayout.js` (`FONT_IDS`, `DEFAULT_FONT`); `npm run test:storefrontlayout` should read the
+  SQL file and compare, the same way it checks `storefront_layout_ok` today.
+- **Editor:** call it 600 ms after the last look change (not on every tap), show the first match only.
+  The default look will match many dealers; say so plainly ("3 dealers in Selangor use the usual look").
+- **When:** the dealer dashboard has no live users yet (CLAUDE.md "check it will be used"), so the SQL
+  goes to `supabase/parked/` with a README row when built, and into a dated migration in the
+  after-midnight window only once dealers use the editor. One migration, no table, no index (a few
+  hundred dealers per state at most).
+
 ## Data
 - `profiles.storefront_layout` jsonb, one small object
   `{v:1, sections:[{id,variant,on}], font, color, skin, preset}`, checked by one DB function against
@@ -103,7 +129,7 @@ Already built: trade-in form, Check my loan, WhatsApp, chat, bookings. Add:
 | 1 | DONE 2026-11-20: HomePage split into `src/components/storefront/sections/` (13 sections, HomePage 2,021 -> 330 lines); filled and blank mock dealers pixel- and HTML-identical before/after on desktop + phone | no | 1-2 |
 | 2 | DONE 2026-11-20 (DB part queued in `20261120a`): `profiles.storefront_layout` + `storefront_layout_ok`, rules in `src/utils/storefrontLayout.js`, lazy sections, editor Storefront > Layout with a page map + "See it on my site" (unsaved preview via `?layout=`). A framed live preview inside the dashboard needs a frame-ancestors exception: left for stage 3 | editor | 2 |
 | 3 | DONE 2026-11-20 (needs no migration): top banner A Slides / B Split / C Showroom wall, cars A Grid / B Rail / C Spotlight; editor "Look" picker; only the picked version downloads | yes | 2 |
-| 4 | Remaining sections x3, fonts, presets, Shuffle, same-town check | yes | 3 |
+| 4 | FIRST SLICE DONE 2026-11-20 (local commits, not on staging; needs no migration): versions B/C for About (Side by side / Opening line), Why us (Side by side / Numbered), By the numbers (Big numbers / Colour band), How it works (Timeline / In a row), reviews (Side by side / Framed), one lazy file each; 4 heading fonts (Modern / Bold / Classic / Sharp, body stays Outfit), 4 ready looks (Original / Showroom / Boutique / Quick browse), Shuffle, all in `storefrontLayout.js` with tests. `font` is a top-level key the live `storefront_layout_ok` already allows. Default page pixel-identical before/after. STILL OPEN: B/C for strip, video, hot deals, testimonials, calculator, contact; brand colour picker in the Layout editor (it is in Settings today); the same-town check (designed below, needs a DB function); fonts on /cars and car pages | yes | 3 |
 | 5 | Google layer: dealer car pages, sitemap, town pages, canonical (needs decision) | crawler | 2-3 |
 | 6 | Monthly report | yes | 2 |
 | 7 | Own domain automation | setup | 2 |
