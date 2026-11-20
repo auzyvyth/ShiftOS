@@ -184,6 +184,12 @@ assert.notEqual(stuck.font, "modern", "even an unlucky draw changes the look");
 // Every section with versions has a name for each; the editor list and the page agree.
 for (const [id, v] of Object.entries(VERSION_INFO)) assert.deepEqual(AV[id], Object.keys(v), `${id} versions`);
 for (const id of ["about", "why", "stats", "how", "reviews"]) assert.deepEqual(AV[id], ["a", "b", "c"], `${id} has B and C`);
+assert.deepEqual(AV.calculator, ["a", "b"], "calculator has the Inline version");
+// The inline calculator uses the ONE loan formula (financing.js), EIR only, never a flat rate.
+const inline = readFileSync(new URL("../src/components/storefront/sections/CalculatorInline.jsx", import.meta.url), "utf8");
+assert.match(inline, /import \{[^}]*monthlyPayment[^}]*\} from "..\/..\/..\/utils\/financing"/, "inline calculator uses financing.js");
+assert.ok(!/flatToEir|Math\.pow/.test(inline), "no flat rate and no second formula in the inline calculator");
+assert.match(inline, /bank decides/i, "the fine print says the bank decides");
 
 // The database check lists exactly the same sections and versions (migration 20261120a).
 const sql = readFileSync(new URL("../supabase/migrations/20261120a_analytics_event_types.sql", import.meta.url), "utf8");

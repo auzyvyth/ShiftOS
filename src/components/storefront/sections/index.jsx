@@ -42,6 +42,7 @@ const HowTimeline = lazy(() => import("./HowTimeline"));
 const HowRow = lazy(() => import("./HowRow"));
 const ReviewsSplit = lazy(() => import("./ReviewsSplit"));
 const ReviewsFramed = lazy(() => import("./ReviewsFramed"));
+const CalculatorInline = lazy(() => import("./CalculatorInline"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
 // Banner C "Full screen" has two backgrounds (look option heroBg, storefrontLayout.js): a wall
@@ -61,7 +62,7 @@ export const SECTION_VERSIONS = {
   stats: { a: Stats, b: StatsBig, c: StatsBand },
   how: { a: HowItWorks, b: HowTimeline, c: HowRow },
   testimonials: { a: Testimonials },
-  calculator: { a: CalculatorCta },
+  calculator: { a: CalculatorCta, b: CalculatorInline },
   contact: { a: Contact },
 };
 

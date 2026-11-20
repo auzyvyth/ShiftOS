@@ -32,7 +32,7 @@ export const SECTIONS = [
   { id: "stats", label: "By the numbers", shows: "When at least one number is above zero" },
   { id: "how", label: "How it works", shows: "When you wrote at least one step in Settings" },
   { id: "testimonials", label: "Testimonials", shows: "When you typed a testimonial in Settings" },
-  { id: "calculator", label: "Loan calculator link", shows: "Always" },
+  { id: "calculator", label: "Loan calculator", shows: "Always" },
   { id: "contact", label: "Get in touch", pin: "last", locked: true, shows: "Always" },
 ];
 

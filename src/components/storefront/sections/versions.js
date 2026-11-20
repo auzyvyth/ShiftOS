@@ -35,6 +35,10 @@ export const VERSION_INFO = {
     b: { name: "Timeline", note: "Your steps down one line, numbered." },
     c: { name: "In a row", note: "Your steps side by side, numbered (stacked on phones)." },
   },
+  calculator: {
+    a: { name: "Link", note: "A card that sends buyers to the loan calculator page." },
+    b: { name: "Inline", note: "The calculator on your page: price, deposit, years and rate give a monthly estimate." },
+  },
   reviews: {
     a: { name: "Simple", note: "Buyer reviews in one column." },
     b: { name: "Side by side", note: "Heading on the left, buyer reviews on the right." },
@@ -50,7 +54,7 @@ export const VERSION_OPTIONS = {
       cars: "Your three newest cars as a wall under your name." } } },
 };
 
-const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "calculator", "contact"];
+const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "contact"];
 
 export const AVAILABLE_VERSIONS = {
   ...Object.fromEntries(ONLY_A.map((id) => [id, ["a"]])),
