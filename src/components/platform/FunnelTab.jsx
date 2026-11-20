@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
+import { humanLabel } from "../../utils/searchTracking";
 
 // Drevo Ops — platform-wide marketplace funnel.
 // Reads two superadmin-guarded RPCs (get_marketplace_funnel / get_marketplace_top)
@@ -20,25 +21,27 @@ function pctDelta(cur, prev) {
   return Math.round(((cur - prev) / prev) * 100);
 }
 
-function Delta({ cur, prev }) {
+function Delta({ cur, prev, bad }) {
   const d = pctDelta(cur, prev);
   if (d == null) return <span style={{ fontSize: 11, color: "#4b5563" }}>—</span>;
   const up = d >= 0;
+  // bad = a number where more is worse (searches that found nothing): flip the colours.
+  const good = bad ? !up : up;
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, color: up ? "#4ade80" : "#f87171" }}>
+    <span style={{ fontSize: 11, fontWeight: 700, color: good ? "#4ade80" : "#f87171" }}>
       {up ? "▲" : "▼"} {Math.abs(d)}%
     </span>
   );
 }
 
-function StatTile({ label, value, cur, prev, accent }) {
+function StatTile({ label, value, cur, prev, accent, bad }) {
   return (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px", minWidth: 0 }}>
       <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{label}</p>
       <p style={{ fontSize: 28, fontWeight: 700, color: accent || "#f0f0f0", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: "0.05em", lineHeight: 1, wordBreak: "break-word", overflowWrap: "anywhere" }}>
         {value}
       </p>
-      <div style={{ marginTop: 8 }}><Delta cur={cur} prev={prev} /> <span style={{ fontSize: 10, color: "#4b5563" }}>vs prev</span></div>
+      <div style={{ marginTop: 8 }}><Delta cur={cur} prev={prev} bad={bad} /> <span style={{ fontSize: 10, color: "#4b5563" }}>vs prev</span></div>
     </div>
   );
 }
@@ -54,6 +57,7 @@ export default function FunnelTab() {
   const [funnel, setFunnel] = useState(null);
   const [top, setTop] = useState(null);
   const [landing, setLanding] = useState(null);
+  const [search, setSearch] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,16 +66,19 @@ export default function FunnelTab() {
       setErr(null);
       const to = new Date();
       const from = new Date(Date.now() - Number(range) * 86400000);
-      const [f, t, l] = await Promise.all([
+      const [f, t, l, sr] = await Promise.all([
         supabase.rpc("get_marketplace_funnel", { p_from: from.toISOString(), p_to: to.toISOString() }),
         supabase.rpc("get_marketplace_top", { p_from: from.toISOString(), p_to: to.toISOString(), p_limit: 8 }),
         supabase.rpc("get_landing_page_visits", { p_from: from.toISOString(), p_to: to.toISOString() }),
+        // MET-1. Null until migration 20261120a is applied; the section then says so.
+        supabase.rpc("get_marketplace_search", { p_from: from.toISOString(), p_to: to.toISOString(), p_limit: 8 }),
       ]);
       if (cancelled) return;
       if (f.error) { setErr(f.error.message); setLoading(false); return; }
       setFunnel(f.data);
       setTop(t.data || {});
       setLanding(l.data || null);
+      setSearch(sr.error ? null : sr.data || null);
       setLoading(false);
     }
     load();
@@ -180,6 +187,41 @@ export default function FunnelTab() {
             <TopTable title="Top traffic sources" cols={["Source", "Events"]}
               rows={(top?.top_sources || []).map(s => [s.source, num(s.events)])}
               empty="No traffic in range" />
+          </div>
+
+          {/* MET-1: what buyers ask for, and where the sign-in wall loses them. */}
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>
+              Search and sign-in wall
+            </p>
+            {!search ? (
+              <p style={{ fontSize: 12, color: "#4b5563" }}>No search data yet (it starts once the analytics update is applied).</p>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 16 }}>
+                  <StatTile label="Searches" value={num(search.searches)} cur={search.searches} prev={search.prev?.searches} accent="#93c5fd" />
+                  <StatTile label="Found no car" value={search.searches > 0 ? `${Math.round((search.no_match / search.searches) * 100)}%` : "—"}
+                    cur={search.no_match} prev={search.prev?.no_match} accent="#f87171" bad />
+                  <StatTile label="Cars shown" value={num(search.impressions)} cur={search.impressions} prev={search.prev?.impressions} />
+                  <StatTile label="Card click rate" value={search.impressions > 0 ? `${((search.card_clicks / search.impressions) * 100).toFixed(1)}%` : "—"}
+                    cur={search.card_clicks} prev={search.prev?.card_clicks} accent="#c084fc" />
+                  <StatTile label="Sign-in finished" value={search.signin_prompts > 0 ? `${Math.round((search.signin_done / search.signin_prompts) * 100)}%` : "—"}
+                    cur={search.signin_done} prev={search.prev?.signin_done} accent="#4ade80" />
+                  <StatTile label="Cars saved" value={num(search.saves)} cur={search.saves} prev={search.prev?.saves} accent="#facc15" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16 }}>
+                  <TopTable title="Top searches" cols={["Search", "Times", "No car"]}
+                    rows={(search.top || []).map(r => [humanLabel(r.label), num(r.count), num(r.no_match)])}
+                    empty="No searches in range" />
+                  <TopTable title="Wanted, not found" cols={["Search", "Times"]}
+                    rows={(search.top_no_match || []).map(r => [humanLabel(r.label), num(r.count)])}
+                    empty="Every search found a car" />
+                </div>
+                <p style={{ marginTop: 10, fontSize: 11, color: "#4b5563" }}>
+                  Counts only visitors who accepted analytics. Sign-in finished = people who were asked to sign in (chat, save) and did.
+                </p>
+              </>
+            )}
           </div>
 
           {/* Marketing / signup landing pages — pre-signup traffic, kept

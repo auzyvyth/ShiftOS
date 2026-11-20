@@ -31,7 +31,9 @@ const FILTER_WORDS = {
   bodyType: 'body type', minPrice: 'min price', maxPrice: 'max price', yearFrom: 'year from', yearTo: 'year to',
   mileageMax: 'max mileage', hotDeals: 'hot deals', fuelType: 'fuel', sellerType: 'seller type', q: 'search',
 };
-const filterWord = (k) => FILTER_WORDS[k] || k;
+export const filterWord = (k) => FILTER_WORDS[k] || k;
+// A stored label may be raw filter names joined by ' + ' (no typed words): show them as words.
+export const humanLabel = (label) => String(label || '').split(' + ').map(filterWord).join(' + ');
 
 export function summariseSearches(events) {
   const rows = (events || []).filter((e) => e.event_type === 'search_run');
