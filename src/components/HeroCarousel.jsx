@@ -901,7 +901,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             margin: "0 0 28px",
           }}
         >
-          Browse verified vehicles with transparent pricing and no hidden fees.
+          Browse our cars with clear asking prices and no hidden fees.
         </p>
         <Link
           to={isSubdomain() ? "/cars" : "/showroom"}

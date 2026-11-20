@@ -84,4 +84,43 @@ $$;
 revoke all on function public.get_marketplace_search(timestamptz, timestamptz, int) from public, anon;
 grant execute on function public.get_marketplace_search(timestamptz, timestamptz, int) to authenticated, service_role;
 
+
+-- Storefront hero video: Settings saves hero_video_* and HomePage reads it, but the
+-- storefront lookup never returned it, so no dealer's video ever showed (both live
+-- storefronts have one saved). Adds the three columns to get_dealer_profile_by_subdomain.
+-- The return type changes, so CREATE OR REPLACE cannot do it: drop + create in this
+-- transaction, then re-assert the grants (this lookup is public by design: anon + authenticated).
+drop function public.get_dealer_profile_by_subdomain(text);
+create function public.get_dealer_profile_by_subdomain(p_subdomain text)
+returns table(id uuid, dealership text, site_name text, subdomain text, avatar_url text, site_logo_url text, logo_url text,
+  email text, phone text, whatsapp_number text, social_facebook text, social_instagram text, social_tiktok text,
+  location text, city text, state text, about_text text, brand_color text, custom_domain text, slug text,
+  storefront_why jsonb, storefront_how jsonb, storefront_testimonials jsonb, storefront_cta jsonb,
+  hero_title text, hero_subtitle text, hero_cta_text text, announcement_bar text, announcement_bar_enabled boolean,
+  stat_years integer, stat_happy_customers integer, is_verified boolean, business_hours text,
+  hero_video_enabled boolean, hero_video_url text, hero_video_title text)
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select
+    p.id, p.dealership, p.site_name, p.subdomain, p.avatar_url, p.site_logo_url, p.logo_url,
+    p.email, p.phone, p.whatsapp_number, p.social_facebook, p.social_instagram, p.social_tiktok,
+    p.location, p.city, p.state, p.about_text, p.brand_color, p.custom_domain, p.slug,
+    p.storefront_why, p.storefront_how, p.storefront_testimonials, p.storefront_cta,
+    p.hero_title, p.hero_subtitle, p.hero_cta_text,
+    p.announcement_bar, p.announcement_bar_enabled,
+    p.stat_years, p.stat_happy_customers, p.is_verified, p.business_hours,
+    p.hero_video_enabled, p.hero_video_url, p.hero_video_title
+  from profiles p
+  where p.subdomain = p_subdomain
+    and p.role = any (array['dealer'::text, 'owner'::text, 'superadmin'::text])
+    and p.payment_status is distinct from 'pending'
+    and p.is_active = true
+    and p.account_status is distinct from 'deleted'
+  limit 1;
+$$;
+grant execute on function public.get_dealer_profile_by_subdomain(text) to anon, authenticated, service_role;
+
 commit;
