@@ -30,6 +30,7 @@ import PostureTab from "../components/platform/PostureTab";
 import AlertsTab from "../components/platform/AlertsTab";
 import ReportsTab from "../components/platform/ReportsTab";
 import ProspectsTab from "../components/platform/ProspectsTab";
+import FeatureUseTab from "../components/platform/FeatureUseTab";
 import SensusDemosTab from "../components/platform/SensusDemosTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 import { purgeKycFiles } from "../utils/kycPurge";
@@ -263,7 +264,7 @@ function BillingTab({ dealers, salesmen, dealerStats }) {
 const TAB_SECTION = {
   home: "work", review: "work", social: "work", reports: "work",
   accounts: "people", waitlist: "people", prospects: "people", sensus: "people",
-  marketplace: "marketplace", funnel: "marketplace", engagement: "marketplace",
+  marketplace: "marketplace", funnel: "marketplace", engagement: "marketplace", featureuse: "marketplace",
   buyers: "marketplace", newcars: "marketplace", broadcast: "marketplace", platform: "marketplace",
   billing: "money",
   activity: "safety", sessions: "safety", posture: "safety", errors: "safety", alerts: "safety",
@@ -905,6 +906,8 @@ export default function AdminPage() {
       { id: "marketplace", label: "Settings" },
       { id: "funnel",      label: "Funnel" },
       { id: "engagement",  label: "Engagement" },
+      // Which seller features get used (USAGE-1): counts only, sellers who said yes.
+      { id: "featureuse",  label: "Feature use" },
       { id: "buyers",      label: "Buyers" },
       // Official new-car prices (NEWCAR-1): the one table every new-car
       // advisor's page and the public model pages read.
@@ -1850,6 +1853,8 @@ export default function AdminPage() {
             />
           ) : activeTab === "sensus" ? (
             <SensusDemosTab />
+          ) : activeTab === "featureuse" ? (
+            <FeatureUseTab />
           ) : activeTab === "prospects" ? (
             <ProspectsTab onOpenAccount={(id) => { setActiveTab("accounts"); setFocusAccount(id); }} />
 

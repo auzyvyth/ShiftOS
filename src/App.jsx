@@ -3,6 +3,7 @@ import { Route, Routes, BrowserRouter as Router, useLocation, Navigate } from "r
 import { Toaster } from "sonner";
 import SignInSheetHost from "./components/auth/SignInSheetHost";
 import SocialConsentHost from "./components/social/SocialConsentHost";
+import UsageConsentHost from "./components/usage/UsageConsentHost";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Sentry from "@sentry/react";
@@ -178,6 +179,8 @@ function App() {
       <SignInSheetHost />
       {/* One question after a seller submits a car: may Drevo feature it on its own pages? (SOCIAL-1) */}
       <SocialConsentHost />
+      {/* One question to a seller: may Drevo count which features you use? (USAGE-1) */}
+      <UsageConsentHost />
       <CompareBarGate />
       <ConsentBanner />
       <InstallPrompt />
