@@ -103,7 +103,7 @@ salesman resolver; every win runs through the same database trigger.
 flowchart TD
   subgraph In["Ways a buyer reaches a seller"]
     W["Taps WhatsApp<br/>api/whatsapp-lead.js"]
-    E["Sends enquiry form<br/>api/enquiry.js"]
+    E["Sends enquiry form or dealer-site trade-in<br/>api/enquiry.js"]
     BK["Books a viewing<br/>api/booking.js"]
     CH["Chats in the app<br/>start_chat_thread + chat_after_message"]
     FM["Find me post reply<br/>find_me_reply"]

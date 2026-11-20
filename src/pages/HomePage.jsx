@@ -24,6 +24,7 @@ import {
   Music2,
   Award,
   Car,
+  Repeat,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
@@ -43,6 +44,8 @@ import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { SITE_URL, ROOT_DOMAIN } from "../config/site";
 import { dealerSchema } from "../utils/dealerSchema";
+// Loads only when the buyer taps "Trade in my car" (STOREFRONT-1).
+const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 
 // Lazy — only the root domain (no dealer subdomain) ever needs this. Loaded
 // here instead of navigated to, so the public marketplace lives at "/"
@@ -260,6 +263,7 @@ const HomePage = () => {
   const { t } = useTranslation();
   const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant, loading: tenantLoading, error: tenantError } = useTenant();
+  const [tradeInOpen, setTradeInOpen] = useState(false);
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -862,6 +866,16 @@ const HomePage = () => {
 
       <Header />
       <GoogleOneTapSlot />
+      {tradeInOpen && (
+        <Suspense fallback={null}>
+          <TradeInSheet
+            subdomain={tenant?.subdomain}
+            siteName={tenant?.site_name || tenant?.dealership}
+            whatsappNumber={tenant?.whatsapp_number}
+            onClose={() => setTradeInOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* ══════════ HERO (carousel) — compact so the search below stays above the fold ══════════ */}
       <HeroCarousel compact siteName={siteName} />
@@ -1828,6 +1842,30 @@ const HomePage = () => {
                   >
                     {ctaPrimaryLabel} <ArrowRight size={14} />
                   </Link>
+                  {tenant?.subdomain && (
+                    <button
+                      type="button"
+                      onClick={() => setTradeInOpen(true)}
+                      className="ghost-outline"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        color: "#C0C0C6",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        padding: "13px 28px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontFamily: "'Outfit', sans-serif",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      <Repeat size={14} /> Trade in my car
+                    </button>
+                  )}
                 </div>
 
                 {contactItems.length > 0 && (
