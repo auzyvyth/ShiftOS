@@ -394,6 +394,19 @@ still says "21 pages") — do not update it; it is pending removal.
   No accent picked = the brand colour (`accentOf`, `var(--sf-theme-accent, brand)`). The top banner stays a dark photo band
   on Light. /cars and car pages are not themed yet. The same-town
   check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
+  **Stage 4 phase A (2026-11-20, local commits): the owner's reference site's ORGANISATION and colouring, never its words or
+  photos.** Look OPTIONS = small top-level keys on the same jsonb (`OPTIONS` in `storefrontLayout.js`: fixed values, default never
+  saved, cleaned, carried by the `?layout=` link as `opt.<key>.<value>`, tested; no migration). `heroBg`: banner C is now "Full
+  screen", background `cars` (default = the old Showroom wall, so a saved C is unchanged) or `photo` (`HeroPhoto.jsx`: first hero
+  slide via the ONE slide read `src/components/storefront/heroSlides.js`, shared with HeroCarousel, else the newest car; dark fade,
+  hero_subtitle or town, hero_title or name, WhatsApp + Browse cars). `header`: `classic` | `showroom` (`Header.jsx`: thin info bar
+  with address / hours / phone / socials, each only when filled, phone + hours on phones, folds away on scroll; an in-flow spacer
+  `.hdr-tb-space` keeps every page's content in place; Browse Cars is the one filled accent item; every dealer page reads it).
+  Light theme dark bands: class `sf-band` (footer, About B) + ONE rule from `bandVars` (`storefrontTheme.js`): surface vars reset to
+  `initial` so each `var(--sf-x, <old dark>)` falls back to today's dark look. Calculator B "Inline" (`CalculatorInline.jsx`,
+  financing.js `monthlyPayment` only, EIR, "the bank decides"). Presets may carry `options` + `mode`; 5th look "Showroom Light".
+  A preset without `mode` never touches Dark/Light. Phase B (brand strip, browse by type, recently sold) needs NEW section ids =
+  one migration to `storefront_layout_ok`; phase C (delivery gallery) needs buyer consent first.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were
