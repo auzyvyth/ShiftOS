@@ -1,5 +1,14 @@
 // Style constants shared by the dealer site sections (STOREFRONT-2 stage 1, moved out of
 // HomePage.jsx unchanged). Plain data, no React.
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../../utils/pageAccent";
+import { accentTheme } from "../../../utils/liveAccent";
+
+// The ONE accent of a section's versions B and C (STOREFRONT-2 stage 4): the dealer's brand
+// colour (Settings), or Drevo red when they never chose one (the database default gold
+// means "never chose", pageAccent.js). Darkened until white text on it reads (accentTheme),
+// so versions use it as a FILL or a line with white on top, never as text on the dark page
+// (a dark brand colour would vanish there). Set as --sf-accent on the section.
+export const accentOf = (tenant) => accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent;
 
 export const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
 export const secA = { background: "#0C0C0E" };

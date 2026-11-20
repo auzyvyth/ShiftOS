@@ -212,6 +212,21 @@ const CSS = `
           line-height: 1.1;
         }
 
+        /* Versions B and C of the lower sections (STOREFRONT-2 stage 4): one type and spacing
+           scale for all of them, and the dealer's colour (--sf-accent, shared.js accentOf) as
+           the only accent, used as a fill or a line, never as text on the dark page. */
+        .sfv-eyebrow { display:flex; align-items:center; gap:10px; margin:0 0 12px; font-size:11px; font-weight:700;
+          letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,0.55); }
+        .sfv-eyebrow::before { content:''; width:20px; height:2px; border-radius:2px; flex-shrink:0; background:var(--sf-accent, #DC2626); }
+        .sfv-head { margin-bottom:40px; }
+        .sfv-t { font-size:18px; font-weight:600; letter-spacing:-.01em; color:#F0F0F0; margin:0 0 6px; }
+        .sfv-d { font-size:15px; line-height:1.7; color:rgba(255,255,255,0.62); margin:0; }
+        .sfv-num { font-family:var(--sf-font-head, 'Outfit', sans-serif); font-weight:var(--sf-head-weight, 800);
+          letter-spacing:var(--sf-head-track, -0.03em); font-variant-numeric:tabular-nums; line-height:1; color:#F0F0F0; }
+        .sfv-dot { flex-shrink:0; width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+          background:var(--sf-accent, #DC2626); color:#fff; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+        @media(max-width:480px){ .sfv-head { margin-bottom:28px; } }
+
         /* How it works — alternating rows, icon on the outer edge, no center line */
         .how-list { display:flex; flex-direction:column; gap:18px; overflow-x:clip; }
         .how-step { display:flex; }

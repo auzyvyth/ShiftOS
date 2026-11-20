@@ -14,9 +14,35 @@ export const VERSION_INFO = {
     b: { name: "Rail", note: "One row buyers swipe through. Keeps the page short." },
     c: { name: "Spotlight", note: "Your newest car shown large, the rest in rows below." },
   },
+  // Stage 4: every word in these is the dealer's own (Settings) or a count we hold.
+  about: {
+    a: { name: "Centred", note: "Your About text in the middle of the page." },
+    b: { name: "Side by side", note: "Heading and your town on the left, your text on the right." },
+    c: { name: "Opening line", note: "The first thing you wrote, set large, the rest below." },
+  },
+  why: {
+    a: { name: "Cards", note: "Your reasons in cards, two across." },
+    b: { name: "Side by side", note: "Your heading on the left, your reasons as a ticked list." },
+    c: { name: "Numbered", note: "Your reasons in columns under large numbers." },
+  },
+  stats: {
+    a: { name: "Tiles", note: "Your numbers in tiles that count up." },
+    b: { name: "Big numbers", note: "Your numbers large in one row, no tiles." },
+    c: { name: "Colour band", note: "Your numbers in white on a band of your brand colour." },
+  },
+  how: {
+    a: { name: "Zigzag", note: "Your steps in cards, left and right." },
+    b: { name: "Timeline", note: "Your steps down one line, numbered." },
+    c: { name: "In a row", note: "Your steps side by side, numbered (stacked on phones)." },
+  },
+  reviews: {
+    a: { name: "Simple", note: "Buyer reviews in one column." },
+    b: { name: "Side by side", note: "Heading on the left, buyer reviews on the right." },
+    c: { name: "Framed", note: "Buyer reviews in one card under a centred heading." },
+  },
 };
 
-const ONLY_A = ["strip", "video", "hot_deals", "about", "reviews", "why", "stats", "how", "testimonials", "calculator", "contact"];
+const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "calculator", "contact"];
 
 export const AVAILABLE_VERSIONS = {
   ...Object.fromEntries(ONLY_A.map((id) => [id, ["a"]])),

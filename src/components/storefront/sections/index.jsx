@@ -28,6 +28,19 @@ const HeroSplit = lazy(() => import("./HeroSplit"));
 const HeroMosaic = lazy(() => import("./HeroMosaic"));
 const InventoryRail = lazy(() => import("./InventoryRail"));
 const InventorySpotlight = lazy(() => import("./InventorySpotlight"));
+const AboutSplit = lazy(() => import("./AboutSplit"));
+const AboutLead = lazy(() => import("./AboutLead"));
+const WhyUsSplit = lazy(() => import("./WhyUsSplit"));
+const WhyUsNumbered = lazy(() => import("./WhyUsNumbered"));
+const StatsBig = lazy(() => import("./StatsBig"));
+const StatsBand = lazy(() => import("./StatsBand"));
+// How it works B/C carry id="how-it-works" too. Lazy like the rest: the chunk is fetched as
+// the page draws (not on scroll), so a header-link tap finds it; only a cold load of
+// /#how-it-works can arrive a moment before it.
+const HowTimeline = lazy(() => import("./HowTimeline"));
+const HowRow = lazy(() => import("./HowRow"));
+const ReviewsSplit = lazy(() => import("./ReviewsSplit"));
+const ReviewsFramed = lazy(() => import("./ReviewsFramed"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
 
@@ -37,11 +50,11 @@ export const SECTION_VERSIONS = {
   video: { a: HeroVideo },
   hot_deals: { a: HotDeals },
   cars: { a: Inventory, b: InventoryRail, c: InventorySpotlight },
-  about: { a: About },
-  reviews: { a: Reviews },
-  why: { a: WhyUs },
-  stats: { a: Stats },
-  how: { a: HowItWorks },
+  about: { a: About, b: AboutSplit, c: AboutLead },
+  reviews: { a: Reviews, b: ReviewsSplit, c: ReviewsFramed },
+  why: { a: WhyUs, b: WhyUsSplit, c: WhyUsNumbered },
+  stats: { a: Stats, b: StatsBig, c: StatsBand },
+  how: { a: HowItWorks, b: HowTimeline, c: HowRow },
   testimonials: { a: Testimonials },
   calculator: { a: CalculatorCta },
   contact: { a: Contact },

@@ -1,15 +1,14 @@
 import { Award, CheckCircle, UserCheck, Car } from "lucide-react";
 import { FadeIn, CountUp } from "./ui";
 import { wrap, secLight } from "./shared";
+import { statList } from "./statsParts";
 
-// "By the Numbers": only numbers that are above zero; hidden when there are none.
+const ICONS = { years: Award, sold: CheckCircle, customers: UserCheck, stock: Car };
+
+// "By the Numbers": only numbers that are above zero; hidden when there are none
+// (statsParts.js, the same rule for versions B and C).
 export default function Stats({ tenant, soldCount, stock }) {
-  const statItems = [
-    tenant?.stat_years > 0 && { icon: Award, value: tenant.stat_years, label: "Years in Business" },
-    soldCount > 0 && { icon: CheckCircle, value: soldCount, label: "Cars Sold" },
-    tenant?.stat_happy_customers > 0 && { icon: UserCheck, value: tenant.stat_happy_customers, label: "Happy Customers" },
-    stock > 0 && { icon: Car, value: stock, label: "Cars in Stock" },
-  ].filter(Boolean);
+  const statItems = statList({ tenant, soldCount, stock }).map((s) => ({ ...s, icon: ICONS[s.key] }));
   if (statItems.length === 0) return null;
   return (
     <section style={{ ...secLight, position: "relative", overflow: "hidden" }} className="sec-pad">
