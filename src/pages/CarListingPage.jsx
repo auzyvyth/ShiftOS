@@ -741,7 +741,7 @@ export default function CarListingPage() {
           const loc = state ? ` in ${state}, Malaysia` : ' in Malaysia';
           return `Used ${carType}Cars for Sale${loc} | Drevo`;
         })()}</title>
-        <meta name="description" content={`Browse verified cars for sale${state?' in '+state:' in Malaysia'}. Filter by brand, price, body type and more on Drevo.`}/>
+        <meta name="description" content={`Browse cars for sale${state?' in '+state:' in Malaysia'}. Filter by brand, price, body type and more on Drevo.`}/>
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
         <link rel="canonical" href={canonicalUrl}/>
         <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -863,7 +863,7 @@ export default function CarListingPage() {
                     edge; inert on desktop where the controls box is content-width. */}
                 <button
                   onClick={()=>setDrawerOpen(true)}
-                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
+                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', minHeight:'44px', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
                 >
                   <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
                 </button>
@@ -916,6 +916,11 @@ export default function CarListingPage() {
             </div>
           )}
 
+          {/* The page's one heading, for screen readers + search engines (visually hidden: the results row is the visible title). */}
+          <h1 style={{ position:'absolute', width:1, height:1, margin:-1, padding:0, overflow:'hidden', clip:'rect(0 0 0 0)', whiteSpace:'nowrap', border:0 }}>
+            {hotDeals ? 'Hot deal cars in Malaysia' : `Used cars for sale${brand ? ' - ' + brand : ''}${model ? ' ' + model : ''}${state ? ' in ' + state : ' in Malaysia'}`}
+          </h1>
+
           {/* Results row */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
             <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
@@ -925,11 +930,11 @@ export default function CarListingPage() {
               {activeChips.map(chip=>(
                 <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:T.tagBg, border:`1px solid ${T.tagBorder}`, color:T.text, fontSize:'12px', fontWeight:'600', padding:'4px 7px 4px 9px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>
                   {chip.label}
-                  <button onClick={()=>removeChip(chip.key)} aria-label={`Remove ${chip.label} filter`} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:0, display:'flex', alignItems:'center', marginLeft:1 }}><X size={10}/></button>
+                  <button onClick={()=>removeChip(chip.key)} aria-label={`Remove ${chip.label} filter`} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:'8px', margin:'-8px -7px -8px -4px', display:'flex', alignItems:'center' }}><X size={12}/></button>
                 </span>
               ))}
               {hasFilters && (
-                <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:'12px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
+                <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color: dark ? '#9ca3af' : '#6b7280', fontSize:'12px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', minHeight:'32px', padding:'0 6px', fontFamily:"'Outfit',sans-serif" }}>
                   <RotateCcw size={11}/> Clear all
                 </button>
               )}
@@ -937,7 +942,7 @@ export default function CarListingPage() {
             <div role="group" aria-label="Show cards by" style={{ display:'inline-flex', padding:'2px', borderRadius:'8px', background:T.chipBg, border:`1px solid ${T.chipBorder}`, fontFamily:"'Outfit',sans-serif" }}>
               {[['monthly','Monthly'],['price','Price']].map(([v,label])=>(
                 <button key={v} type="button" aria-pressed={priceMode===v} onClick={()=>setPriceMode(v)}
-                  style={{ padding:'5px 12px', borderRadius:'6px', border:'none', background:priceMode===v?T.ink:'transparent', color:priceMode===v?T.inkText:T.chipText, fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out)', fontFamily:'inherit' }}>
+                  style={{ padding:'5px 12px', minHeight:'36px', borderRadius:'6px', border:'none', background:priceMode===v?T.ink:'transparent', color:priceMode===v?T.inkText:T.chipText, fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out)', fontFamily:'inherit' }}>
                   {label}
                 </button>
               ))}
