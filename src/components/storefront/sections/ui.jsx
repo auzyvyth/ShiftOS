@@ -202,12 +202,15 @@ const CSS = `
           background: #4ade80;
         }
 
+        /* Heading font: the dealer's pick (storefrontLayout.js FONTS). HomePage sets the --sf-head-*
+           values only for a pick other than Modern, so each fallback here IS the Modern look. */
         .sec-title {
-          font-family: 'Outfit', sans-serif;
+          font-family: var(--sf-font-head, 'Outfit', sans-serif);
           color: #F0F0F0;
-          font-size: clamp(1.5rem, 4vw, 2.4rem);
-          font-weight: 700;
-          letter-spacing: -0.025em;
+          font-size: calc(clamp(1.5rem, 4vw, 2.4rem) * var(--sf-head-scale, 1));
+          font-weight: var(--sf-head-weight, 700);
+          text-transform: var(--sf-head-case, none);
+          letter-spacing: var(--sf-head-track, -0.025em);
           margin: 0;
           line-height: 1.1;
         }

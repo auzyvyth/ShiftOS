@@ -33,7 +33,8 @@ export default function HeroMosaic({ tenant, siteName, carsBase, featured, loadi
         .hmo-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
         .hmo-place { display: inline-flex; align-items: center; gap: 6px; color: #C4A265; font-size: 11px; font-weight: 700;
           letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 12px; }
-        .hmo-title { color: #F0F0F0; font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.02; margin: 0; }
+        .hmo-title { color: #F0F0F0; font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
+          font-weight: var(--sf-head-weight, 800); text-transform: var(--sf-head-case, none); letter-spacing: var(--sf-head-track, -0.035em); line-height: 1.02; margin: 0; }
         .hmo-line { color: #9CA3AF; font-size: 15px; line-height: 1.7; margin: 12px 0 0; max-width: 520px; }
         .hmo-wall { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .hmo-wall.n1 { grid-template-columns: minmax(0, 1fr); }

@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import {
   SECTIONS, VARIANTS, defaultLayout, cleanLayout, toSaved, isDefaultLayout, sectionOn,
   moveSection, toggleSection, draftParam, fromDraftParam, setVariant,
+  DEFAULT_FONT, FONTS, FONT_IDS, cleanFont, fontCss, fontSheet, draftFont,
+  PRESETS, applyPreset, presetOf, shuffleLook,
 } from "../src/utils/storefrontLayout.js";
+import { AVAILABLE_VERSIONS, VERSION_INFO } from "../src/components/storefront/sections/versions.js";
 
 const ids = (l) => l.map((r) => r.id);
 const DEFAULT = ids(defaultLayout());
@@ -75,10 +78,83 @@ assert.ok(sectionOn(hacked, "cars") && sectionOn(hacked, "contact"), "a link can
 assert.equal(fromDraftParam("x".repeat(500)), null, "long junk ignored");
 assert.equal(fromDraftParam(""), null);
 
+// ── Stage 4: fonts ──
+assert.equal(FONT_IDS.length, 4, "four curated fonts");
+assert.equal(cleanFont(null), DEFAULT_FONT);
+assert.equal(cleanFont({ v: 1, sections: [], font: "classic" }), "classic");
+for (const bad of ["comic", "constructor", "__proto__", 5, null]) assert.equal(cleanFont({ v: 1, sections: [], font: bad }), DEFAULT_FONT, `junk font ${bad}`);
+assert.equal(cleanFont({ v: 2, font: "bold" }), DEFAULT_FONT, "old/other version ignored");
+assert.equal(fontCss(DEFAULT_FONT), "", "the default writes nothing: the page is exactly as before");
+assert.equal(fontCss("nope"), "");
+for (const id of FONT_IDS.filter((x) => x !== DEFAULT_FONT)) {
+  assert.match(fontCss(id), /^:root\{--sf-font-head:[^;{}<>]+;/, `${id} css`);
+  assert.ok(!/system-ui/.test(FONTS[id].head), "no hardcoded system-ui");
+}
+assert.equal(fontSheet("modern"), null, "Outfit already loads");
+assert.equal(fontSheet("bold"), null, "Bebas Neue already loads");
+assert.match(fontSheet("classic"), /^https:\/\/fonts\.googleapis\.com\/css2\?family=Playfair/);
+// Saved: the font rides along, the default is not written; extra key never breaks the cleaner.
+assert.equal(toSaved(defaultLayout(), { font: "bold" }).font, "bold");
+assert.ok(!("font" in toSaved(defaultLayout(), { font: DEFAULT_FONT })), "default font not saved");
+assert.ok(!("font" in toSaved(defaultLayout(), { font: "junk" })));
+assert.ok(!("font" in toSaved(defaultLayout())), "no look = as before");
+assert.ok(!isDefaultLayout(defaultLayout(), { font: "classic" }), "a font change is not the default");
+assert.ok(isDefaultLayout(defaultLayout(), { font: DEFAULT_FONT }));
+assert.deepEqual(cleanLayout(toSaved(defaultLayout(), { font: "bold" })), defaultLayout(), "sections unaffected by the font key");
+// Preview link carries the font; the old link format still reads.
+const fp = draftParam(defaultLayout(), { font: "sharp" });
+assert.equal(draftFont(fp), "sharp");
+assert.deepEqual(fromDraftParam(fp), defaultLayout(), "the font part is not a section");
+assert.equal(draftFont(draftParam(defaultLayout())), DEFAULT_FONT);
+assert.equal(draftFont("hero.a,font.evil"), DEFAULT_FONT);
+
+// ── Stage 4: presets ──
+const AV = AVAILABLE_VERSIONS;
+assert.equal(PRESETS.length, 4, "four named looks");
+for (const p of PRESETS) {
+  assert.ok(FONTS[p.font], `${p.id} font exists`);
+  for (const [id, v] of Object.entries(p.variants)) assert.ok(AV[id]?.includes(v), `${p.id}: ${id}.${v} is a version the page can draw`);
+  const { layout: pl, font: pf } = applyPreset(defaultLayout(), p.id, AV);
+  assert.equal(pf, p.font);
+  assert.equal(presetOf(pl, pf, AV), p.id, `${p.id} is recognised after picking it`);
+}
+assert.equal(presetOf(defaultLayout(), DEFAULT_FONT, AV), "original", "the usual page = Original");
+const mine = applyPreset(defaultLayout(), "showroom", AV);
+assert.equal(presetOf(setVariant(mine.layout, "about", "c", AV), mine.font, AV), null, "one change = your own mix");
+assert.equal(presetOf(mine.layout, "classic", AV), null, "a different font = your own mix");
+// A preset keeps the dealer's order and on/off.
+const custom = toggleSection(moveSection(defaultLayout(), "why", -1), "stats");
+const afterPreset = applyPreset(custom, "boutique", AV).layout;
+assert.deepEqual(afterPreset.map((r) => [r.id, r.on]), custom.map((r) => [r.id, r.on]), "order and on/off kept");
+assert.deepEqual(applyPreset(custom, "nope", AV).layout, custom, "unknown preset changes nothing");
+assert.equal(applyPreset(defaultLayout(), "showroom", { hero: ["a"] }).layout.find((r) => r.id === "hero").variant, "a", "a version the page cannot draw falls back");
+
+// ── Stage 4: Shuffle ──
+let seed = 7;
+const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+let look = { layout: custom, font: DEFAULT_FONT };
+for (let i = 0; i < 50; i++) {
+  const next = shuffleLook(look.layout, look.font, AV, rand);
+  assert.ok(next.font !== look.font || next.layout.some((r, k) => r.variant !== look.layout[k].variant), "Shuffle always changes something");
+  assert.deepEqual(next.layout.map((r) => [r.id, r.on]), custom.map((r) => [r.id, r.on]), "Shuffle keeps order and on/off");
+  for (const r of next.layout) assert.ok((AV[r.id] || ["a"]).includes(r.variant), `Shuffle picks only drawable versions (${r.id}.${r.variant})`);
+  assert.ok(FONTS[next.font]);
+  look = next;
+}
+const stuck = shuffleLook(defaultLayout(), "modern", AV, () => 0); // always the first choice = "a" + modern
+assert.notEqual(stuck.font, "modern", "even an unlucky draw changes the look");
+
+// Every section with versions has a name for each; the editor list and the page agree.
+for (const [id, v] of Object.entries(VERSION_INFO)) assert.deepEqual(AV[id], Object.keys(v), `${id} versions`);
+for (const id of ["about", "why", "stats", "how", "reviews"]) assert.deepEqual(AV[id], ["a", "b", "c"], `${id} has B and C`);
+
 // The database check lists exactly the same sections and versions (migration 20261120a).
 const sql = readFileSync(new URL("../supabase/migrations/20261120a_analytics_event_types.sql", import.meta.url), "utf8");
 const fn = sql.slice(sql.indexOf("function public.storefront_layout_ok"), sql.indexOf("alter table public.profiles add column if not exists storefront_layout"));
 const list = (after) => [...fn.slice(fn.indexOf(after) + after.length).split(")")[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 assert.deepEqual(list("s->>'id', '') not in (").sort(), SECTIONS.map((x) => x.id).sort(), "SQL section list = JS");
 assert.deepEqual(list("s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "SQL versions = JS");
+// The check reads only v + sections, so the stage-4 `font` key needs no migration. If someone
+// tightens the check to list allowed keys, `font` must be in it or every font save fails.
+assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes("'font'"), "DB check must allow the font key");
 console.log("storefrontLayout: all passed");

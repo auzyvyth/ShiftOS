@@ -23,7 +23,7 @@ import { getSlugFromURL, trackEvent } from "../utils/analytics";
 import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
 import { SECTION_VERSIONS, AVAILABLE_VERSIONS, SECTION_FALLBACK } from "../components/storefront/sections";
-import { cleanLayout, fromDraftParam } from "../utils/storefrontLayout";
+import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet } from "../utils/storefrontLayout";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
@@ -47,6 +47,7 @@ const HomePage = () => {
   // Read through the same cleaner as the saved one, so a link can only reorder or hide the
   // dealer's own sections (never the cars or contact), and buyers still get the saved one.
   const [draftLayout] = useState(() => fromDraftParam(new URLSearchParams(window.location.search).get("layout"), AVAILABLE_VERSIONS));
+  const [draftFontId] = useState(() => draftFont(new URLSearchParams(window.location.search).get("layout")));
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -203,6 +204,10 @@ const HomePage = () => {
   const dealerLd = tenant?.subdomain ? dealerSchema(tenant, `https://${tenant.subdomain}.${ROOT_DOMAIN}`) : null;
 
   const layout = draftLayout || cleanLayout(tenant?.storefront_layout, AVAILABLE_VERSIONS);
+  // The dealer's heading font (stage 4): CSS variables + its stylesheet, nothing for the default.
+  const font = draftLayout ? draftFontId : cleanFont(tenant?.storefront_layout);
+  const fontVars = fontCss(font);
+  const fontHref = fontSheet(font);
 
   // The same props for every section; each returns null when it has nothing to show.
   const ctx = {
@@ -215,6 +220,7 @@ const HomePage = () => {
   return (
     <>
       <StorefrontStyles />
+      {fontVars && <style>{fontVars}</style>}
 
       <Helmet>
         <link
@@ -252,6 +258,7 @@ const HomePage = () => {
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="canonical" href={profile?.subdomain ? `https://${profile.subdomain}.${ROOT_DOMAIN}` : SITE_URL} />
+        {fontHref && <link rel="stylesheet" href={fontHref} />}
         {dealerLd && <script type="application/ld+json">{JSON.stringify(dealerLd)}</script>}
         {!profile && (
           <script type="application/ld+json">

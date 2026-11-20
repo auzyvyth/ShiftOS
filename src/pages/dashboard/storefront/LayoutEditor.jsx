@@ -6,8 +6,9 @@
 // The preview is two things: a page map here (the order, and which sections will be empty on
 // the site today), and "See it on my site", which opens the real site with the unsaved layout
 // in the link (HomePage.jsx reads ?layout=, buyers keep the saved one).
+// Stage 4: "Your look" on top: four named looks (presets), Shuffle, and the heading font.
 import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, ChevronDown, ExternalLink, Lock } from "lucide-react";
+import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle } from "lucide-react";
 import { supabase } from "../../../supabaseClient";
 import { premiumLight as PL } from "../../../theme/tokens";
 import { getStorefrontUrl } from "../../../hooks/useTenant";
@@ -15,6 +16,7 @@ import { storefrontWhy, storefrontHow } from "../../../utils/storefrontCopy";
 import {
   sectionInfo, cleanLayout, defaultLayout, toSaved, isDefaultLayout,
   moveSection, toggleSection, draftParam, setVariant,
+  cleanFont, DEFAULT_FONT, FONTS, PRESETS, applyPreset, presetOf, shuffleLook,
 } from "../../../utils/storefrontLayout";
 import { AVAILABLE_VERSIONS, VERSION_INFO } from "../../../components/storefront/sections/versions";
 
@@ -66,6 +68,8 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   const [row, setRow] = useState(null);
   const [saved, setSaved] = useState(null);       // the cleaned layout as stored
   const [layout, setLayout] = useState(null);     // what is on screen
+  const [savedFont, setSavedFont] = useState(DEFAULT_FONT);
+  const [font, setFont] = useState(DEFAULT_FONT);
   const [columnMissing, setColumnMissing] = useState(false);
   const [status, setStatus] = useState({ kind: "", text: "" });
   const [saving, setSaving] = useState(false);
@@ -86,12 +90,14 @@ export default function LayoutEditor({ dealerId, canEdit }) {
       setRow(data || {});
       setSaved(clean);
       setLayout(clean);
+      setSavedFont(cleanFont(data?.storefront_layout));
+      setFont(cleanFont(data?.storefront_layout));
     })();
     return () => { live = false; };
   }, [dealerId]);
 
   const empty = useMemo(() => emptyNow(row), [row]);
-  const dirty = layout && saved && JSON.stringify(layout) !== JSON.stringify(saved);
+  const dirty = layout && saved && (font !== savedFont || JSON.stringify(layout) !== JSON.stringify(saved));
 
   if (!layout) {
     return (
@@ -104,11 +110,14 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   }
 
   const change = (next) => { setLayout(next); setStatus({ kind: "", text: "" }); };
+  const changeLook = ({ layout: l, font: f }) => { setLayout(l); setFont(f); setStatus({ kind: "", text: "" }); };
+  const preset = presetOf(layout, font, AVAILABLE_VERSIONS);
 
   const save = async () => {
     if (!canEdit || columnMissing || saving) return;
     setSaving(true);
-    const value = isDefaultLayout(layout) ? null : toSaved(layout);  // toSaved keeps the chosen versions
+    // Called without the version list on purpose: toSaved keeps the chosen versions.
+    const value = isDefaultLayout(layout, { font }) ? null : toSaved(layout, { font });
     const { data, error } = await supabase.from("profiles").update({ storefront_layout: value }).eq("id", dealerId).select("id");
     setSaving(false);
     if (error || !data?.length) {
@@ -116,11 +125,12 @@ export default function LayoutEditor({ dealerId, canEdit }) {
       return;
     }
     setSaved(layout);
+    setSavedFont(font);
     setStatus({ kind: "good", text: "Saved. Your site shows this layout now." });
   };
 
   const sub = row?.subdomain;
-  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout))}`) : null;
+  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font }))}`) : null;
   const shown = layout.filter((r) => r.on);
 
   return (
@@ -135,7 +145,47 @@ export default function LayoutEditor({ dealerId, canEdit }) {
         .sf-seg button { border: none; background: transparent; color: ${PL.textSec}; font-size: 13px; font-weight: 600;
           padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; }
         .sf-seg button[aria-pressed="true"] { background: #fff; color: ${PL.text}; box-shadow: 0 1px 2px rgba(17,24,39,0.12); }
+        .sf-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+        .sf-preset { text-align: left; border: 2px solid transparent; background: ${PL.raised}; border-radius: ${PL.radius.row}px;
+          padding: 10px 12px; cursor: pointer; font-family: inherit; }
+        .sf-preset[aria-pressed="true"] { border-color: ${PL.text}; background: #fff; }
       `}</style>
+
+      <div style={{ ...card, gridColumn: "1 / -1" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
+          <div style={{ minWidth: 0 }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: PL.text }}>Your look</h3>
+            <p style={{ margin: 0, fontSize: 13, color: PL.textMuted, lineHeight: 1.5 }}>
+              Pick a ready look, or Shuffle for a new mix. Your order and the sections you switched off stay as they are.
+            </p>
+          </div>
+          <button type="button" className="pl-btn-grey" onClick={() => changeLook(shuffleLook(layout, font, AVAILABLE_VERSIONS))}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 14, cursor: "pointer" }}>
+            <Shuffle size={15} /> Shuffle
+          </button>
+        </div>
+        <div className="sf-presets" role="group" aria-label="Ready looks">
+          {PRESETS.map((p) => (
+            <button key={p.id} type="button" className="sf-preset" aria-pressed={preset === p.id}
+              onClick={() => changeLook(applyPreset(layout, p.id, AVAILABLE_VERSIONS))}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: PL.text }}>{p.name}</span>
+              <span style={{ display: "block", fontSize: 12, color: PL.textMuted, lineHeight: 1.4, marginTop: 2 }}>{p.note}</span>
+            </button>
+          ))}
+        </div>
+        {!preset && <p style={{ margin: "10px 0 0", fontSize: 12, color: PL.textMuted }}>Your own mix.</p>}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Headings</span>
+          <div className="sf-seg" role="group" aria-label="Heading font">
+            {Object.entries(FONTS).map(([id, f]) => (
+              <button key={id} type="button" aria-pressed={font === id} onClick={() => { setFont(id); setStatus({ kind: "", text: "" }); }}>
+                {f.name}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{FONTS[font].note}</span>
+        </div>
+      </div>
 
       <div style={card}>
         <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: PL.text }}>Your site's sections</h3>
@@ -224,10 +274,10 @@ export default function LayoutEditor({ dealerId, canEdit }) {
               See it on my site <ExternalLink size={14} />
             </a>
           )}
-          {!isDefaultLayout(layout) && (
-            <button type="button" onClick={() => change(defaultLayout())}
+          {!isDefaultLayout(layout, { font }) && (
+            <button type="button" onClick={() => changeLook({ layout: defaultLayout(), font: DEFAULT_FONT })}
               style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "11px 4px" }}>
-              Back to the usual order
+              Back to the usual layout
             </button>
           )}
         </div>
@@ -235,7 +285,9 @@ export default function LayoutEditor({ dealerId, canEdit }) {
 
       <div style={card} aria-label="Page map">
         <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: PL.text }}>Page map</h3>
-        <p style={{ margin: "0 0 14px", fontSize: 12, color: PL.textMuted }}>Top to bottom, as a buyer scrolls.</p>
+        <p style={{ margin: "0 0 14px", fontSize: 12, color: PL.textMuted }}>
+          Top to bottom, as a buyer scrolls. Headings: {FONTS[font].name}.
+        </p>
         <div style={{ borderRadius: 16, background: "#0C0C0E", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {shown.map((r) => {
             const tall = r.id === "hero" || r.id === "cars";

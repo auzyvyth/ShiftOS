@@ -26,7 +26,8 @@ export default function HeroSplit({ tenant, siteName, carsBase, stock, featured,
         @media (min-width: 900px) { .hsp-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; } }
         .hsp-place { display: inline-flex; align-items: center; gap: 6px; color: #C4A265; font-size: 11px; font-weight: 700;
           letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 16px; }
-        .hsp-title { color: #F0F0F0; font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.02; margin: 0 0 16px; }
+        .hsp-title { color: #F0F0F0; font-family: var(--sf-font-head, 'Outfit', sans-serif); font-size: calc(clamp(2.2rem, 6vw, 4rem) * var(--sf-head-scale, 1));
+          font-weight: var(--sf-head-weight, 800); text-transform: var(--sf-head-case, none); letter-spacing: var(--sf-head-track, -0.035em); line-height: 1.02; margin: 0 0 16px; }
         .hsp-line { color: #9CA3AF; font-size: 15px; line-height: 1.7; margin: 0 0 28px; max-width: 460px; }
         .hsp-search { margin-bottom: 16px; max-width: 520px; }
         .hsp-car { position: relative; display: block; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; background: #141416; text-decoration: none; }
