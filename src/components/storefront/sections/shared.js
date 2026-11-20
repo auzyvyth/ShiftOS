@@ -1,0 +1,60 @@
+// Style constants shared by the dealer site sections (STOREFRONT-2 stage 1, moved out of
+// HomePage.jsx unchanged). Plain data, no React.
+
+export const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
+export const secA = { background: "#0C0C0E" };
+export const secB = { background: "#0F0F11" };
+export const secLight = {
+  background: "#0F0F11",
+  borderTop: "1px solid rgba(255,255,255,0.05)",
+  borderBottom: "1px solid rgba(255,255,255,0.05)",
+};
+
+export const primaryBtn = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  background: "#DC2626",
+  border: "1px solid #DC2626",
+  color: "white",
+  fontWeight: "600",
+  fontSize: "14px",
+  padding: "13px 28px",
+  borderRadius: "4px",
+  textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif",
+  letterSpacing: "0.02em",
+  transition: "all 0.2s ease",
+  position: "relative",
+  overflow: "hidden",
+};
+export const waBtn = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  background: "transparent",
+  border: "1px solid rgba(37,211,102,0.3)",
+  color: "#4ade80",
+  fontWeight: "600",
+  fontSize: "14px",
+  padding: "13px 28px",
+  borderRadius: "4px",
+  textDecoration: "none",
+  fontFamily: "'Outfit', sans-serif",
+  letterSpacing: "0.02em",
+  transition: "all 0.25s ease",
+};
+export const glassCard = {
+  background: "#111113",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: "6px",
+};
+
+// Dark-surface theme tokens for ReviewsSection on the dealer storefront.
+export const DARK_REVIEW_TH = {
+  text: "#e8edf5", textSec: "rgba(255,255,255,0.62)", textMuted: "rgba(255,255,255,0.42)",
+  border: "rgba(255,255,255,0.08)", borderSec: "rgba(255,255,255,0.05)",
+  card: "rgba(255,255,255,0.03)", inputBg: "rgba(255,255,255,0.05)",
+};
+
+export const BODY_TYPES = ["Sedan", "SUV", "Hatchback", "MPV", "Pickup", "Coupe"];

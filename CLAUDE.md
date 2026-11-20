@@ -355,6 +355,10 @@ still says "21 pages") — do not update it; it is pending removal.
   App.jsx RootRoute picks it synchronously by hostname.
 - src/pages/HomePage.jsx — the DEALER SUBDOMAIN storefront (`/` on <sub>.xdrive.my).
   It is not the marketplace; it uses Header/Footer, not MarketplaceHeader/Footer.
+  Since STOREFRONT-2 stage 1 (2026-11-20) it only loads the data; every section is its own
+  file in `src/components/storefront/sections/`, shown in `STOREFRONT_SECTIONS` order (index.jsx),
+  all taking the same `ctx` props. A new section goes in that list, never back into HomePage.
+  Plan for the rest: `docs/STOREFRONT_PLAN.md`.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were

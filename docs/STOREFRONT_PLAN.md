@@ -100,7 +100,7 @@ Already built: trade-in form, Check my loan, WhatsApp, chat, bookings. Add:
 ## Stages (one session is roughly one stage unless noted)
 | # | Stage | Visible? | Size |
 |---|-------|----------|------|
-| 1 | Split HomePage into section components, no visible change, screenshot diff proves it | no | 1-2 |
+| 1 | DONE 2026-11-20: HomePage split into `src/components/storefront/sections/` (13 sections, HomePage 2,021 -> 330 lines); filled and blank mock dealers pixel- and HTML-identical before/after on desktop + phone | no | 1-2 |
 | 2 | Layout JSON + checker + only the chosen versions load + editor with live preview | editor | 2 |
 | 3 | Hero x3 and cars x3, mock screenshots first | yes | 2 |
 | 4 | Remaining sections x3, fonts, presets, Shuffle, same-town check | yes | 3 |
