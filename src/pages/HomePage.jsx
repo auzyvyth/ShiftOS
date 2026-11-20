@@ -1532,35 +1532,6 @@ const HomePage = () => {
                   {t("home.budget.calcBtn")}
                 </Link>
               </div>
-              <div
-                style={{
-                  flex: "1",
-                  minWidth: "200px",
-                  minHeight: "180px",
-                  position: "relative",
-                }}
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&auto=format&fit=crop&q=60"
-                  alt=""
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    opacity: 0.15,
-                    minHeight: "180px",
-                  }}
-                  loading="lazy"
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(to right,#111113 0%,transparent 55%)",
-                  }}
-                />
-              </div>
             </div>
           </FadeIn>
         </div>
