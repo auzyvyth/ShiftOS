@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   SECTIONS, VARIANTS, defaultLayout, cleanLayout, toSaved, isDefaultLayout, sectionOn,
-  moveSection, toggleSection, draftParam, fromDraftParam,
+  moveSection, toggleSection, draftParam, fromDraftParam, setVariant,
 } from "../src/utils/storefrontLayout.js";
 
 const ids = (l) => l.map((r) => r.id);
@@ -33,7 +33,8 @@ assert.equal(flipped.at(-1).id, "contact");
 assert.ok(flipped[0].on && flipped.at(-1).on, "locked sections stay on");
 
 // Versions: only ones the page can draw; anything else falls back to "a".
-assert.equal(cleanLayout({ v: 1, sections: [{ id: "about", on: true, variant: "b" }] }).find((r) => r.id === "about").variant, "a");
+assert.equal(cleanLayout({ v: 1, sections: [{ id: "about", on: true, variant: "b" }] }, { about: ["a"] }).find((r) => r.id === "about").variant, "a");
+assert.equal(cleanLayout({ v: 1, sections: [{ id: "about", on: true, variant: "b" }] }).find((r) => r.id === "about").variant, "b", "no list = keep the chosen letter (saving)");
 assert.equal(cleanLayout({ v: 1, sections: [{ id: "about", on: true, variant: "b" }] }, { about: ["a", "b"] }).find((r) => r.id === "about").variant, "b");
 assert.equal(cleanLayout({ v: 1, sections: [{ id: "about", on: true, variant: "q" }] }, { about: ["a", "q"] }).find((r) => r.id === "about").variant, "a", "never past the 3-version cap");
 
@@ -47,6 +48,16 @@ assert.equal(ids(l).indexOf("about"), DEFAULT.indexOf("about") - 1);
 assert.deepEqual(toggleSection(defaultLayout(), "cars"), defaultLayout(), "cars cannot be toggled");
 assert.equal(sectionOn(toggleSection(defaultLayout(), "how"), "how"), false);
 assert.equal(sectionOn(null, "how"), true, "nothing saved = shown");
+
+// Versions: only one the page can draw is taken.
+const av = { hero: ["a", "b", "c"], cars: ["a", "b", "c"] };
+const withB = setVariant(defaultLayout(), "hero", "b", av);
+assert.equal(withB.find((r) => r.id === "hero").variant, "b");
+assert.deepEqual(setVariant(defaultLayout(), "about", "b", av), defaultLayout(), "about has no version b");
+assert.deepEqual(setVariant(defaultLayout(), "hero", "z", av), defaultLayout(), "unknown letter ignored");
+assert.equal(fromDraftParam(draftParam(withB), av).find((r) => r.id === "hero").variant, "b", "preview link carries the version");
+assert.equal(cleanLayout(toSaved(withB), av).find((r) => r.id === "hero").variant, "b", "saved version survives the cleaner");
+assert.ok(!isDefaultLayout(withB), "a version change is not the default layout");
 
 // Saved shape + default check.
 const s = toSaved(l);

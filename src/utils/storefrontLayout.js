@@ -38,7 +38,8 @@ export const sectionInfo = (id) => BY_ID[id] || null;
 export const defaultLayout = () => SECTIONS.map((s) => ({ id: s.id, on: true, variant: "a" }));
 
 // available: { [id]: ["a", ...] } = the versions the page can draw today. A saved
-// version that does not exist (yet, or any more) falls back to "a".
+// version that does not exist (yet, or any more) falls back to "a". Leave it out only
+// where nothing is drawn (saving, comparing): then every valid letter is kept as chosen.
 export function cleanLayout(saved, available) {
   const rows = saved && typeof saved === "object" && saved.v === LAYOUT_VERSION && Array.isArray(saved.sections)
     ? saved.sections
@@ -49,7 +50,9 @@ export function cleanLayout(saved, available) {
     const info = r && typeof r === "object" ? BY_ID[r.id] : null;
     if (!info || seen.has(info.id)) continue;
     seen.add(info.id);
-    const can = available?.[info.id] || ["a"];
+    // Without a list of what exists (saving, comparing), any valid letter is kept; the page
+    // passes its real list, so a version it cannot draw falls back to "a" there.
+    const can = available ? available[info.id] || ["a"] : VARIANTS;
     out.push({
       id: info.id,
       on: info.locked ? true : r.on !== false,
@@ -99,6 +102,13 @@ export function moveSection(layout, id, dir) {
 
 export const toggleSection = (layout, id) =>
   layout.map((r) => (r.id === id && !BY_ID[id]?.locked ? { ...r, on: !r.on } : r));
+
+// Pick a version for one section. Only a version the page can draw (available) is taken;
+// anything else leaves the layout as it was.
+export const setVariant = (layout, id, variant, available) =>
+  VARIANTS.includes(variant) && (available?.[id] || ["a"]).includes(variant)
+    ? layout.map((r) => (r.id === id ? { ...r, variant } : r))
+    : layout;
 
 // The "See it on my site" link carries an unsaved layout as one short, readable value:
 // "hero.a,strip.a,-video.a,..." (a leading "-" = off). Read back through cleanLayout, so a

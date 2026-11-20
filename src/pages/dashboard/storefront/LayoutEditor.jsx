@@ -14,9 +14,9 @@ import { getStorefrontUrl } from "../../../hooks/useTenant";
 import { storefrontWhy, storefrontHow } from "../../../utils/storefrontCopy";
 import {
   sectionInfo, cleanLayout, defaultLayout, toSaved, isDefaultLayout,
-  moveSection, toggleSection, draftParam,
+  moveSection, toggleSection, draftParam, setVariant,
 } from "../../../utils/storefrontLayout";
-import { AVAILABLE_VERSIONS } from "../../../components/storefront/sections/versions";
+import { AVAILABLE_VERSIONS, VERSION_INFO } from "../../../components/storefront/sections/versions";
 
 const COLS = "subdomain, site_name, dealership, about_text, storefront_why, storefront_how, storefront_testimonials, hero_video_enabled, hero_video_url";
 
@@ -108,7 +108,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   const save = async () => {
     if (!canEdit || columnMissing || saving) return;
     setSaving(true);
-    const value = isDefaultLayout(layout) ? null : toSaved(layout);
+    const value = isDefaultLayout(layout) ? null : toSaved(layout);  // toSaved keeps the chosen versions
     const { data, error } = await supabase.from("profiles").update({ storefront_layout: value }).eq("id", dealerId).select("id");
     setSaving(false);
     if (error || !data?.length) {
@@ -128,8 +128,13 @@ export default function LayoutEditor({ dealerId, canEdit }) {
       <style>{`
         .sf-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
         @media (min-width: 900px) { .sf-layout { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; } }
-        .sf-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: ${PL.radius.row}px; background: ${PL.raised}; }
+        .sf-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border-radius: ${PL.radius.row}px; background: ${PL.raised}; }
         .sf-row + .sf-row { margin-top: 8px; }
+        .sf-look { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 4px 0 2px; }
+        .sf-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: #e7e9ee; }
+        .sf-seg button { border: none; background: transparent; color: ${PL.textSec}; font-size: 13px; font-weight: 600;
+          padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+        .sf-seg button[aria-pressed="true"] { background: #fff; color: ${PL.text}; box-shadow: 0 1px 2px rgba(17,24,39,0.12); }
       `}</style>
 
       <div style={card}>
@@ -170,6 +175,22 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                 <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>
               ) : (
                 <Switch on={r.on} label={`Show ${info.label}`} onClick={() => change(toggleSection(layout, r.id))} />
+              )}
+              {VERSION_INFO[r.id] && r.on && (
+                <div className="sf-look">
+                  <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Look</span>
+                  <div className="sf-seg" role="group" aria-label={`${info.label} look`}>
+                    {Object.entries(VERSION_INFO[r.id]).map(([v, meta]) => (
+                      <button key={v} type="button" aria-pressed={r.variant === v}
+                        onClick={() => change(setVariant(layout, r.id, v, AVAILABLE_VERSIONS))}>
+                        {meta.name}
+                      </button>
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
+                    {VERSION_INFO[r.id][r.variant]?.note}
+                  </span>
+                </div>
               )}
             </div>
           );
@@ -227,7 +248,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                 border: isEmpty ? "1px dashed rgba(255,255,255,0.18)" : "none",
                 color: isEmpty ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.8)",
               }}>
-                {sectionInfo(r.id).label}{isEmpty ? " (empty)" : ""}
+                {sectionInfo(r.id).label}{VERSION_INFO[r.id] ? `: ${VERSION_INFO[r.id][r.variant]?.name}` : ""}{isEmpty ? " (empty)" : ""}
               </div>
             );
           })}

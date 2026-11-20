@@ -368,6 +368,11 @@ still says "21 pages") — do not update it; it is pending removal.
   `sections/versions.js` (data, the editor reads it) + `sections/index.jsx` (components). `?layout=` on the
   site = the editor's unsaved preview (noindex). Below-the-fold sections load lazily; `#how-it-works` and
   `#contact` stay eager so header links can scroll to them.
+  **Stage 3 (2026-11-20): versions.** Top banner A Slides (HeroCarousel) / B Split (`HeroSplit.jsx`) / C Showroom
+  wall (`HeroMosaic.jsx`); cars A Grid / B Rail / C Spotlight (`Inventory*.jsx`, all built from `carsParts.jsx`,
+  always ShowroomCard). Versions B/C are lazy, so only the picked one downloads. Banner/spotlight words are the
+  dealer's own (hero_title / hero_subtitle) or facts from the car row (`heroParts.js`), never a claim. Saving keeps
+  the picked version: `toSaved` / `isDefaultLayout` are called WITHOUT the version list on purpose (a test guards it).
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were

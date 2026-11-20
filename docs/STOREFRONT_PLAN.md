@@ -102,7 +102,7 @@ Already built: trade-in form, Check my loan, WhatsApp, chat, bookings. Add:
 |---|-------|----------|------|
 | 1 | DONE 2026-11-20: HomePage split into `src/components/storefront/sections/` (13 sections, HomePage 2,021 -> 330 lines); filled and blank mock dealers pixel- and HTML-identical before/after on desktop + phone | no | 1-2 |
 | 2 | DONE 2026-11-20 (DB part queued in `20261120a`): `profiles.storefront_layout` + `storefront_layout_ok`, rules in `src/utils/storefrontLayout.js`, lazy sections, editor Storefront > Layout with a page map + "See it on my site" (unsaved preview via `?layout=`). A framed live preview inside the dashboard needs a frame-ancestors exception: left for stage 3 | editor | 2 |
-| 3 | Hero x3 and cars x3, mock screenshots first | yes | 2 |
+| 3 | DONE 2026-11-20 (needs no migration): top banner A Slides / B Split / C Showroom wall, cars A Grid / B Rail / C Spotlight; editor "Look" picker; only the picked version downloads | yes | 2 |
 | 4 | Remaining sections x3, fonts, presets, Shuffle, same-town check | yes | 3 |
 | 5 | Google layer: dealer car pages, sitemap, town pages, canonical (needs decision) | crawler | 2-3 |
 | 6 | Monthly report | yes | 2 |

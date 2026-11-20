@@ -22,7 +22,7 @@ import { captureRef, getRef } from "../utils/refTracking";
 import { getSlugFromURL, trackEvent } from "../utils/analytics";
 import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
-import { SECTION_VERSIONS, AVAILABLE_VERSIONS } from "../components/storefront/sections";
+import { SECTION_VERSIONS, AVAILABLE_VERSIONS, SECTION_FALLBACK } from "../components/storefront/sections";
 import { cleanLayout, fromDraftParam } from "../utils/storefrontLayout";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
@@ -334,7 +334,7 @@ const HomePage = () => {
       {layout.filter((r) => r.on).map(({ id, variant }) => {
         const Section = SECTION_VERSIONS[id]?.[variant] || SECTION_VERSIONS[id]?.a;
         return Section ? (
-          <Suspense key={id} fallback={null}>
+          <Suspense key={id} fallback={SECTION_FALLBACK[id] || null}>
             <Section {...ctx} />
           </Suspense>
         ) : null;
