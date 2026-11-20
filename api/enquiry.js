@@ -13,6 +13,7 @@ import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
 import { normalizePhone, isValidMyPhone } from '../src/lib/phone.js';
 import { checkTradeIn, tradeInNote } from '../src/utils/tradeIn.js';
+import { checkLoanEnquiry, loanEnquiryNote, toLoanCar } from '../src/utils/loanEnquiry.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
@@ -22,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { carId, name, phone, state, refSlug, token, kind, subdomain, tradeIn } = req.body || {};
+  const { carId, name, phone, state, refSlug, token, kind, subdomain, tradeIn, loan } = req.body || {};
   // A trade-in from a dealer's own site has no car: the dealer comes from the
   // subdomain, the phone is required (the dealer must call back with an offer).
   const isTradeIn = kind === 'trade_in';
@@ -32,12 +33,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
   }
+  // "Check my loan" from a dealer's own site: the dealer comes from the subdomain,
+  // the car is optional (and must be that dealer's), the note is built here from
+  // the checked answers (src/utils/loanEnquiry.js), never from browser text.
+  const isLoan = kind === 'loan_check';
+  const loanCheck = isLoan ? checkLoanEnquiry(loan) : null;
+  if (isLoan) {
+    if (!subdomain || typeof subdomain !== 'string' || !name?.trim() || !phone || !loanCheck.ok) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+  }
+  const fromStorefront = isTradeIn || isLoan;
 
   // Phone is OPTIONAL (the car-detail modal labels it so). Name is the only hard
   // requirement — the buyer has already been sent to WhatsApp, where the seller
   // gets their number from the chat. Requiring phone here silently 400'd every
   // name-only enquiry, so those leads never reached the pipeline.
-  if (!isTradeIn && (!carId || !name?.trim())) {
+  if (!fromStorefront && (!carId || !name?.trim())) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -70,10 +82,21 @@ export default async function handler(req, res) {
   // no row -> a false 404 that silently dropped every enquiry after the base table
   // was locked down. api/booking.js already reads the view for the same reason.
   let listing = null;
-  if (isTradeIn) {
-    // Same lookup the storefront itself makes (HomePage.jsx), no car involved.
+  let loanCar = null;
+  if (fromStorefront) {
+    // Same lookup the storefront itself makes (HomePage.jsx).
     const { data: dealerId } = await supabase.rpc('get_dealer_id_by_subdomain', { p_subdomain: subdomain.toLowerCase().slice(0, 63) });
     if (dealerId) listing = { dealer_id: dealerId, assigned_to: null };
+    if (dealerId && isLoan && typeof carId === 'string' && carId) {
+      const { data: car } = await supabase
+        .from('public_car_listings')
+        .select('id, dealer_id, assigned_to, year, brand, model, variant, condition, selling_price, is_model_card')
+        .eq('id', carId)
+        .maybeSingle();
+      // Another dealer's car is ignored, never attached to this dealer's lead.
+      loanCar = car && car.dealer_id === dealerId ? toLoanCar(car) : null;
+      if (loanCar) listing.assigned_to = car.assigned_to || null;
+    }
   } else {
     ({ data: listing } = await supabase
       .from('public_car_listings')
@@ -83,7 +106,7 @@ export default async function handler(req, res) {
   }
 
   if (!listing) {
-    return res.status(404).json({ error: isTradeIn ? 'Dealer not found' : 'Listing not found' });
+    return res.status(404).json({ error: fromStorefront ? 'Dealer not found' : 'Listing not found' });
   }
 
   const [{ data: active }, { data: underCap }] = await Promise.all([
@@ -106,14 +129,16 @@ export default async function handler(req, res) {
   const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
     dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
-    listing_id: isTradeIn ? null : carId,
+    listing_id: isTradeIn ? null : isLoan ? loanCar?.id || null : carId,
     buyer_name: name.trim().substring(0, 100),
     buyer_phone: phoneClean || null,
     buyer_state: state || null,
     // The trigger enquiry_to_lead copies this onto the lead as its note.
-    buyer_message: isTradeIn ? tradeInNote(trade.car) : `Enquiry about listing`,
-    ref_slug: isTradeIn ? null : refSlug || null,
-    source: isTradeIn ? 'trade_in' : 'storefront',
+    buyer_message: isTradeIn ? tradeInNote(trade.car)
+      : isLoan ? loanEnquiryNote(loanCheck.answers, loanCar)
+      : `Enquiry about listing`,
+    ref_slug: fromStorefront ? null : refSlug || null,
+    source: isTradeIn ? 'trade_in' : isLoan ? 'loan_check' : 'storefront',
     status: 'new',
   });
 

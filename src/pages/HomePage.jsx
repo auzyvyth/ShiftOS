@@ -47,6 +47,7 @@ import { dealerSchema } from "../utils/dealerSchema";
 import { storefrontWhy, storefrontHow, storefrontCta } from "../utils/storefrontCopy";
 // Loads only when the buyer taps "Trade in my car" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
+const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
 
 // Lazy — only the root domain (no dealer subdomain) ever needs this. Loaded
 // here instead of navigated to, so the public marketplace lives at "/"
@@ -265,6 +266,7 @@ const HomePage = () => {
   const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant, loading: tenantLoading, error: tenantError } = useTenant();
   const [tradeInOpen, setTradeInOpen] = useState(false);
+  const [loanOpen, setLoanOpen] = useState(false);
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -879,6 +881,17 @@ const HomePage = () => {
             siteName={tenant?.site_name || tenant?.dealership}
             whatsappNumber={tenant?.whatsapp_number}
             onClose={() => setTradeInOpen(false)}
+          />
+        </Suspense>
+      )}
+      {loanOpen && (
+        <Suspense fallback={null}>
+          <LoanCheckSheet
+            subdomain={tenant?.subdomain}
+            dealerId={tenant?.id}
+            siteName={tenant?.site_name || tenant?.dealership}
+            whatsappNumber={tenant?.whatsapp_number}
+            onClose={() => setLoanOpen(false)}
           />
         </Suspense>
       )}
@@ -1874,6 +1887,30 @@ const HomePage = () => {
                       }}
                     >
                       <Repeat size={14} /> Trade in my car
+                    </button>
+                  )}
+                  {tenant?.subdomain && (
+                    <button
+                      type="button"
+                      onClick={() => setLoanOpen(true)}
+                      className="ghost-outline"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        color: "#C0C0C6",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        padding: "13px 28px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontFamily: "'Outfit', sans-serif",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      <Calculator size={14} /> Check my loan
                     </button>
                   )}
                 </div>
