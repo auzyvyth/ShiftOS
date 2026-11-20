@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, MessageCircle, Crown, User, ShieldCheck, ChevronRight } from "lucide-react";
+import { Menu, X, MessageCircle, Crown, User, ShieldCheck, ChevronRight, MapPin, Clock, Phone, Facebook, Instagram, Music2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
@@ -8,6 +8,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { hasHowItWorks } from "../utils/storefrontCopy";
+import { cleanOptions } from "../utils/storefrontLayout";
 
 // Same solid near-black bar as MarketplaceHeader (#0f1115; on a dealer site with a colour
 // theme, every colour here follows the theme's CSS variables, storefrontTheme.js) — that file is the
@@ -194,6 +195,43 @@ const HDR_CSS = `
     .hdr-nav { display: none !important; }
   }
 
+  /* ── Showroom header (dealer's look option header = "showroom", storefrontLayout.js):
+     a thin info bar on top (address, hours, phone, socials; each only when filled) and
+     Browse Cars as the one filled accent item. The bar sits inside the fixed header and
+     folds away once the page scrolls or the menu opens; a spacer of the same height in
+     the page flow (.hdr-tb-space) keeps every page's content where it was below it. ── */
+  .hdr-topbar {
+    height: var(--hdr-tb-h); overflow: hidden;
+    border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.08));
+    transition: height 0.2s ease, border-color 0.2s;
+  }
+  .hdr-root.scrolled .hdr-topbar, .hdr-root.menu-open .hdr-topbar { height: 0; border-bottom-color: transparent; }
+  .hdr-topbar-in {
+    max-width: 1280px; margin: 0 auto; height: 100%;
+    padding: 0 clamp(16px, 3.5vw, 32px);
+    display: flex; align-items: center; gap: 20px;
+    font-size: 12.5px; color: var(--sf-muted, rgba(255,255,255,0.72));
+  }
+  .hdr-tb-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: inherit; text-decoration: none; }
+  .hdr-tb-item span { overflow: hidden; text-overflow: ellipsis; }
+  a.hdr-tb-item:hover { color: var(--sf-text, #ffffff); }
+  .hdr-tb-addr { flex: 0 1 auto; min-width: 0; }
+  .hdr-tb-social { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+  .hdr-tb-social a {
+    width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center;
+    color: var(--sf-text, #ffffff); background: var(--sf-card, rgba(255,255,255,0.08));
+  }
+  .hdr-tb-space { height: var(--hdr-tb-h); }
+  .hdr-link.hdr-link-cta, .hdr-link.hdr-link-cta:hover, .hdr-link.hdr-link-cta.active {
+    background: var(--sf-accent, #DC2626); color: var(--sf-on-accent, #ffffff);
+  }
+  .hdr-link.hdr-link-cta:hover { background: var(--sf-accent-hover, #B91C1C); }
+  /* Phone: phone number + hours only (the address and socials are in Get in touch). */
+  @media (max-width: 640px) {
+    .hdr-tb-addr, .hdr-tb-social { display: none !important; }
+    .hdr-topbar-in { gap: 14px; font-size: 12px; justify-content: space-between; }
+  }
+
   /* ── Mobile sheet — full-width, same solid colour as the bar (not a floating
      translucent card), drops down directly below it. Matches MarketplaceHeader's
      .mh-mobile: a solid sheet is the one that can never let the page show
@@ -240,7 +278,25 @@ const HDR_CSS = `
   }
 `;
 
-export default function Header() {
+// The info bar's parts, each only when the dealer filled it in (Settings). The dealer's own
+// site may show their phone number (CDP-3's one exception, like Get in touch).
+function topBarParts(p) {
+  if (!p) return null;
+  const addr = [p.location, p.city, p.state].filter(Boolean).join(", ");
+  const tel = p.phone ? String(p.phone).replace(/[^\d+]/g, "") : "";
+  const socials = [
+    p.social_facebook && { icon: Facebook, href: p.social_facebook, label: "Facebook" },
+    p.social_instagram && { icon: Instagram, href: p.social_instagram, label: "Instagram" },
+    p.social_tiktok && { icon: Music2, href: p.social_tiktok, label: "TikTok" },
+  ].filter(Boolean);
+  if (!addr && !p.business_hours && !tel && !socials.length) return null;
+  return { addr, hours: p.business_hours || "", phone: p.phone || "", tel, socials,
+    // Nothing a phone shows (phone, hours): no bar on a phone at all.
+    phoneEmpty: !tel && !p.business_hours };
+}
+
+// look = the home page's look options (draft-aware); other dealer pages read the saved ones.
+export default function Header({ look } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
@@ -309,6 +365,12 @@ export default function Header() {
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
 
   const onSub = isSubdomain();
+  const showroom = onSub && (look || cleanOptions(tenantProfile?.storefront_layout)).header === "showroom";
+  const bar = showroom ? topBarParts(tenantProfile) : null;
+  // Bar height as a variable on the header and its spacer (0 on a phone with nothing to show).
+  const barCss = bar
+    ? `:root{--hdr-tb-h:34px}${bar.phoneEmpty ? "@media (max-width:640px){:root{--hdr-tb-h:0px}}" : ""}`
+    : "";
   // On a subdomain, /showroom redirects to "/" (it is the marketplace-wide
   // search). The tenant-scoped car list is /cars, so browse must target that.
   const navLinks = onSub
@@ -354,8 +416,32 @@ export default function Header() {
   return (
     <>
       <style>{HDR_CSS}</style>
+      {barCss && <style>{barCss}</style>}
+      {bar && <div className="hdr-tb-space" aria-hidden />}
 
-      <header className={`hdr-root${scrolled ? " scrolled" : ""}${headerVisible ? "" : " hidden"}`}>
+      <header className={`hdr-root${scrolled ? " scrolled" : ""}${headerVisible ? "" : " hidden"}${mobileOpen ? " menu-open" : ""}`}>
+        {bar && (
+          <div className="hdr-topbar">
+            <div className="hdr-topbar-in">
+              {bar.addr && (
+                <span className="hdr-tb-item hdr-tb-addr"><MapPin size={13} style={{ flexShrink: 0 }} /><span>{bar.addr}</span></span>
+              )}
+              {bar.hours && (
+                <span className="hdr-tb-item"><Clock size={13} style={{ flexShrink: 0 }} /><span>{bar.hours}</span></span>
+              )}
+              {bar.tel && (
+                <a className="hdr-tb-item" href={`tel:${bar.tel}`}><Phone size={13} style={{ flexShrink: 0 }} /><span>{bar.phone}</span></a>
+              )}
+              {bar.socials.length > 0 && (
+                <span className="hdr-tb-social">
+                  {bar.socials.map(({ icon: Icon, href, label }) => (
+                    <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}><Icon size={12} /></a>
+                  ))}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         <div className="hdr-inner">
 
           {/* Logo */}
@@ -397,7 +483,7 @@ export default function Header() {
                   key={link.key}
                   to={link.path}
                   onClick={() => handleNav(link.path)}
-                  className={`hdr-link${location.pathname === link.path ? " active" : ""}`}
+                  className={`hdr-link${showroom && link.key === "cars" ? " hdr-link-cta" : ""}${location.pathname === link.path ? " active" : ""}`}
                 >
                   {link.name}
                 </Link>
@@ -456,7 +542,7 @@ export default function Header() {
                   key={link.key}
                   to={link.path}
                   onClick={() => handleNav(link.path)}
-                  className={`hdr-mlink${link.isSpecial ? " special" : location.pathname === link.path ? " active" : ""}`}
+                  className={`hdr-mlink${link.isSpecial || (showroom && link.key === "cars") ? " special" : location.pathname === link.path ? " active" : ""}`}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {link.isSpecial && <Crown size={15} style={{ flexShrink: 0 }} />}

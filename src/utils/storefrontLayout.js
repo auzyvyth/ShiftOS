@@ -212,8 +212,12 @@ export const fontSheet = (id) => {
 // saving, comparing and the preview link follow by themselves.
 //   heroBg: what fills top banner C "Full screen": "cars" = a wall of the dealer's newest cars
 //           (the old "Showroom wall", so a saved C keeps its look), "photo" = one full-width photo.
+//   header: "classic" = the usual bar; "showroom" = a thin info bar on top (address, hours,
+//           phone, socials) and Browse Cars as the one filled accent item (Header.jsx). Every
+//           page of the dealer's site reads it, so the header is the same on /cars.
 export const OPTIONS = {
   heroBg: { values: ["cars", "photo"], def: "cars" },
+  header: { values: ["classic", "showroom"], def: "classic" },
 };
 export const OPTION_IDS = Object.keys(OPTIONS);
 const validOption = (k, v) => (OPTIONS[k].values.includes(v) ? v : OPTIONS[k].def);

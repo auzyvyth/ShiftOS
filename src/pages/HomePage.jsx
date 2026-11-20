@@ -324,7 +324,7 @@ const HomePage = () => {
         )}
       </Helmet>
 
-      <Header />
+      <Header look={look} />
       <GoogleOneTapSlot />
       {tradeInOpen && (
         <Suspense fallback={null}>

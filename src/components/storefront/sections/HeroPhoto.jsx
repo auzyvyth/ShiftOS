@@ -46,7 +46,7 @@ export default function HeroPhoto({ tenant, siteName, carsBase, ctaCtx, featured
         .hph-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
         .hph-fade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,10,0.72) 0%, rgba(8,8,10,0.55) 45%, rgba(8,8,10,0.85) 100%); }
         .hph-in { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; text-align: center;
-          padding: calc(112px + var(--sf-topbar-h, 0px)) 20px 88px; }
+          padding: 112px 20px 88px; }
         .hph-line { font-size: clamp(14px, 1.6vw, 18px); font-weight: 600; color: rgba(255,255,255,0.9); margin: 0 0 18px; letter-spacing: 0.01em; }
         .hph-title { font-family: var(--sf-font-head, 'Outfit', sans-serif); font-weight: 800; text-transform: uppercase;
           font-size: calc(clamp(2rem, 5.6vw, 4.2rem) * var(--sf-head-scale, 1)); letter-spacing: 0.01em; line-height: 1.08;
@@ -58,7 +58,7 @@ export default function HeroPhoto({ tenant, siteName, carsBase, ctaCtx, featured
         .hph-browse { background: rgba(255,255,255,0.06); color: #fff; border: 1.5px solid rgba(255,255,255,0.7); }
         @media (hover: hover) { .hph-btn:hover { transform: translateY(-1px); } .hph-browse:hover { background: rgba(255,255,255,0.14); } }
         @media (max-width: 480px) {
-          .hph-in { padding: calc(96px + var(--sf-topbar-h, 0px)) 18px 64px; }
+          .hph-in { padding: 96px 18px 64px; }
           .hph-title { margin-bottom: 28px; }
           .hph-btns { flex-direction: column; align-items: stretch; }
         }

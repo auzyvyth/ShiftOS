@@ -72,6 +72,11 @@ function Switch({ on, onClick, label }) {
 // The site's theme (owner, 2026-11-20): Dark or Light, nothing in between, plus one optional
 // accent (buttons and lines). Each theme is a fixed palette in storefrontTheme.js; the accent is
 // darkened there until white text on it reads, and the swatch shows the colour the site will use.
+// The header (look option `header`): every page of the site shows it, not only the home page.
+const HEADER_OPTIONS = [
+  { k: "classic", label: "Classic", note: "Your logo, the menu and WhatsApp." },
+  { k: "showroom", label: "Showroom", note: "Adds a thin bar on top with your address, hours, phone and social links (only what you filled in Settings; phone and hours on phones), and makes Browse Cars a coloured button." },
+];
 const MODE_OPTIONS = [
   { k: "dark", label: "Dark", swatch: ["#0C0C0E", "#111113"] },
   { k: "light", label: "Light", swatch: ["#F3F5F9", "#FFFFFF"] },
@@ -265,6 +270,20 @@ export default function LayoutEditor({ dealerId, canEdit }) {
             ))}
           </div>
           <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{FONTS[font].note}</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Header</span>
+          <div className="sf-seg" role="group" aria-label="Header">
+            {HEADER_OPTIONS.map((h) => (
+              <button key={h.k} type="button" aria-pressed={opts.header === h.k}
+                onClick={() => { setOpts((p) => ({ ...p, header: h.k })); setStatus({ kind: "", text: "" }); }}>
+                {h.label}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
+            {HEADER_OPTIONS.find((h) => h.k === opts.header)?.note}
+          </span>
         </div>
         <Colours theme={theme} look={look} brandAccent={brandAccent}
           onMode={(m) => { setTheme((t) => cleanTheme({ ...(t || {}), mode: m })); setStatus({ kind: "", text: "" }); }}
