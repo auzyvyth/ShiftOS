@@ -42,6 +42,7 @@ import { useSiteProfile } from "../hooks/useSiteProfile";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { SITE_URL, ROOT_DOMAIN } from "../config/site";
+import { dealerSchema } from "../utils/dealerSchema";
 
 // Lazy — only the root domain (no dealer subdomain) ever needs this. Loaded
 // here instead of navigated to, so the public marketplace lives at "/"
@@ -566,6 +567,9 @@ const HomePage = () => {
 
   if (tenant === undefined) return <SciFiLoader />;
 
+  // AutoDealer schema for the dealer's own site (STOREFRONT-1), same builder as api/og.js.
+  const dealerLd = tenant?.subdomain ? dealerSchema(tenant, `https://${tenant.subdomain}.${ROOT_DOMAIN}`) : null;
+
   return (
     <>
       <style>{`
@@ -806,6 +810,7 @@ const HomePage = () => {
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="canonical" href={profile?.subdomain ? `https://${profile.subdomain}.${ROOT_DOMAIN}` : SITE_URL} />
+        {dealerLd && <script type="application/ld+json">{JSON.stringify(dealerLd)}</script>}
         {!profile && (
           <script type="application/ld+json">
             {JSON.stringify({

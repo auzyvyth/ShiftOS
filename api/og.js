@@ -22,6 +22,7 @@ import { CALC_META } from "../src/config/calculatorCopy.js";
 import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
+import { dealerSchema } from "../src/utils/dealerSchema.js";
 
 export const config = { runtime: "edge" };
 
@@ -1123,6 +1124,8 @@ export default async function handler(req) {
         h1: `Used cars from ${name}`,
         intro: `Browse the latest used cars for sale from ${name}.`,
         cars, canonical: `${baseUrl}${pathname === "/" ? "" : pathname}`, baseUrl, carBase,
+        // STOREFRONT-1: the dealer home says who the dealer is (same builder as HomePage.jsx).
+        extraLd: pathname === "/" ? [dealerSchema(dealer, `https://${subdomain}.${ROOT_DOMAIN}`)].filter(Boolean) : [],
       }));
     }
     const META = {
