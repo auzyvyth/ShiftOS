@@ -4,13 +4,15 @@
 // the header/footer links and the database check (`storefront_layout_ok` in migration
 // 20261120a, `npm run test:storefrontlayout` checks both list the same sections).
 //
-// Saved on `profiles.storefront_layout` as { v: 1, sections: [{ id, on, variant }], font? }.
-// `font` (stage 4) is left out when it is the default. The DB check reads only v + sections,
+// Saved on `profiles.storefront_layout` as { v: 1, sections: [{ id, on, variant }], font?, theme? }.
+// `font` and `theme` (stage 4) are left out when they are the default (theme rules:
+// storefrontTheme.js). The DB check reads only v + sections,
 // so the extra key needed no migration (checked against the live function 2026-11-20).
 // Whatever is saved, `cleanLayout` turns it into a complete, valid layout, so a bad or old
 // saved value can never break the page: unknown ids are dropped, missing ones come back
 // in their usual place, the top banner stays first and Get in touch stays last.
-// Plain data, no imports.
+// Plain data; the only import is the theme cleaner.
+import { cleanTheme, themeParam } from "./storefrontTheme.js";
 
 export const LAYOUT_VERSION = 1;
 export const VARIANTS = ["a", "b", "c"]; // the plan's hard cap: 3 versions per section
@@ -78,7 +80,7 @@ export function cleanLayout(saved, available) {
 }
 
 // What gets saved. Always a full, cleaned list, so the database check sees one shape.
-// look = { font } (stage 4); a default or unknown font is not saved.
+// look = { font, theme } (stage 4); a default or unknown font, and an empty theme, are not saved.
 export const toSaved = (layout, look = {}) => {
   const out = {
     v: LAYOUT_VERSION,
@@ -86,11 +88,13 @@ export const toSaved = (layout, look = {}) => {
   };
   const font = validFont(look.font);
   if (font !== DEFAULT_FONT) out.font = font;
+  const theme = cleanTheme(look.theme);
+  if (theme) out.theme = theme;
   return out;
 };
 
 export const isDefaultLayout = (layout, look = {}) =>
-  validFont(look.font) === DEFAULT_FONT &&
+  validFont(look.font) === DEFAULT_FONT && !cleanTheme(look.theme) &&
   JSON.stringify(cleanLayout({ v: LAYOUT_VERSION, sections: layout })) === JSON.stringify(defaultLayout());
 
 export const sectionOn = (savedOrLayout, id) => {
@@ -124,11 +128,14 @@ export const setVariant = (layout, id, variant, available) =>
 // hand-made link can only reorder or hide the dealer's own sections, never add anything,
 // and never hide the cars or the contact section.
 // A picked font rides along as one more part, "font.<id>" (no section is called "font", so
-// cleanLayout drops it and draftFont reads it).
+// cleanLayout drops it and draftFont reads it). Colours the same way: "theme.<bg>.<card>.<accent>"
+// (storefrontTheme.js themeParam / draftTheme).
 export const draftParam = (layout, look = {}) => {
   const parts = layout.map((r) => `${r.on ? "" : "-"}${r.id}.${r.variant}`);
   const font = validFont(look.font);
   if (font !== DEFAULT_FONT) parts.push(`font.${font}`);
+  const theme = themeParam(look.theme);
+  if (theme) parts.push(theme);
   return parts.join(",");
 };
 
