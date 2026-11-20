@@ -194,8 +194,15 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   }
 
   const change = (next) => { setLayout(next); setStatus({ kind: "", text: "" }); };
-  const changeLook = ({ layout: l, font: f }) => { setLayout(l); setFont(f); setStatus({ kind: "", text: "" }); };
-  const preset = presetOf(layout, font, AVAILABLE_VERSIONS);
+  // A ready look may also set the look options and the theme mode (applyPreset); Shuffle only
+  // versions + font. The accent is never touched.
+  const changeLook = ({ layout: l, font: f, options, mode }) => {
+    setLayout(l); setFont(f);
+    if (options) setOpts(options);
+    if (mode) setTheme((t) => cleanTheme({ ...(t || {}), mode }));
+    setStatus({ kind: "", text: "" });
+  };
+  const preset = presetOf(layout, font, AVAILABLE_VERSIONS, { options: opts, mode: modeOf(theme) });
 
   const save = async () => {
     if (!canEdit || columnMissing || saving) return;

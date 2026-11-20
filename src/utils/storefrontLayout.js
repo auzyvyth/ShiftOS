@@ -241,10 +241,13 @@ export function draftOptions(param) {
 }
 
 // ── Presets and Shuffle (stage 4) ────────────────────────────────────────────
-// A preset is a named look: a fixed version for each section that has versions, plus a
-// font. Picking one changes only versions and font; the dealer's order and on/off stay.
-// Sections a preset does not name go back to "a". Not saved by name: the editor works out
-// which preset (if any) the current choice matches (presetOf), so it can never go stale.
+// A preset is a named look: a fixed version for each section that has versions, a font, the
+// look options (OPTIONS) and, optionally, a theme mode. Picking one changes only those; the
+// dealer's order, on/off and accent colour stay. Sections a preset does not name go back to
+// "a", options it does not name go back to their default. A preset WITHOUT a `mode` leaves the
+// dealer's Dark/Light pick alone (the four older looks work on either theme); one WITH a mode
+// sets it. Not saved by name: the editor works out which preset (if any) the current choice
+// matches (presetOf), so it can never go stale.
 export const PRESETS = [
   { id: "original", name: "Original", note: "The usual Drevo dealer site.", font: "modern",
     variants: {} },
@@ -254,30 +257,45 @@ export const PRESETS = [
     variants: { hero: "a", cars: "c", about: "c", reviews: "c", why: "b", stats: "b", how: "b" } },
   { id: "quick", name: "Quick browse", note: "Search first and a swipe row of cars: a short page.", font: "sharp",
     variants: { hero: "b", cars: "b", about: "c", reviews: "b", why: "c", stats: "c", how: "c" } },
+  // Phase A (owner's reference, 2026-11-20): light grey page, white cards, dark bands, a
+  // full-screen photo up top under the info-bar header.
+  { id: "showroom_light", name: "Showroom Light", note: "Light page, info bar on top, one big photo, the calculator on the page.",
+    font: "modern", mode: "light", options: { header: "showroom", heroBg: "photo" },
+    variants: { hero: "c", about: "b", reviews: "c", stats: "b", how: "c", calculator: "b" } },
 ];
 const PRESET_BY_ID = Object.fromEntries(PRESETS.map((p) => [p.id, p]));
 
 const canDraw = (available, id, v) => VARIANTS.includes(v) && (available?.[id] || ["a"]).includes(v);
 
-// -> { layout, font }. An unknown preset leaves both as they were.
+// -> { layout, font, options, mode }. mode = "dark" | "light", or null = leave the theme as is.
+// An unknown preset leaves layout and font as they were (options null, mode null).
 export function applyPreset(layout, presetId, available, font = DEFAULT_FONT) {
   const p = Object.hasOwn(PRESET_BY_ID, presetId) ? PRESET_BY_ID[presetId] : null;
-  if (!p) return { layout, font: validFont(font) };
+  if (!p) return { layout, font: validFont(font), options: null, mode: null };
+  const opts = defaultOptions();
+  for (const k of OPTION_IDS) opts[k] = validOption(k, p.options?.[k]);
   return {
     layout: layout.map((r) => {
       const want = p.variants[r.id] || "a";
       return { ...r, variant: canDraw(available, r.id, want) ? want : "a" };
     }),
     font: p.font,
+    options: opts,
+    mode: p.mode || null,
   };
 }
 
 // The preset the current choice matches exactly, or null (a mix of the dealer's own).
-export function presetOf(layout, font, available) {
+// look = { options, mode }: the current look options (default when left out) and theme mode
+// ("dark" when left out). A preset with no mode matches on either theme.
+export function presetOf(layout, font, available, look = {}) {
   const f = validFont(font);
+  const opts = { ...defaultOptions(), ...(look.options || {}) };
+  const mode = look.mode || "dark";
   for (const p of PRESETS) {
-    const { layout: l, font: pf } = applyPreset(layout, p.id, available);
-    if (pf === f && l.every((r, i) => r.variant === layout[i].variant)) return p.id;
+    const { layout: l, font: pf, options: po } = applyPreset(layout, p.id, available);
+    if (pf === f && l.every((r, i) => r.variant === layout[i].variant) &&
+      OPTION_IDS.every((k) => po[k] === validOption(k, opts[k])) && (!p.mode || p.mode === mode)) return p.id;
   }
   return null;
 }

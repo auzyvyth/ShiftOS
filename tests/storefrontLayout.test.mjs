@@ -147,14 +147,37 @@ for (const [id, byV] of Object.entries(VERSION_OPTIONS)) for (const [v, o] of Ob
 
 // ── Stage 4: presets ──
 const AV = AVAILABLE_VERSIONS;
-assert.equal(PRESETS.length, 4, "four named looks");
+assert.equal(PRESETS.length, 5, "five named looks");
 for (const p of PRESETS) {
   assert.ok(FONTS[p.font], `${p.id} font exists`);
   for (const [id, v] of Object.entries(p.variants)) assert.ok(AV[id]?.includes(v), `${p.id}: ${id}.${v} is a version the page can draw`);
-  const { layout: pl, font: pf } = applyPreset(defaultLayout(), p.id, AV);
+  const { layout: pl, font: pf, options: po, mode: pm } = applyPreset(defaultLayout(), p.id, AV);
   assert.equal(pf, p.font);
-  assert.equal(presetOf(pl, pf, AV), p.id, `${p.id} is recognised after picking it`);
+  for (const [k, v] of Object.entries(p.options || {})) assert.ok(OPTIONS[k]?.values.includes(v), `${p.id}: option ${k}=${v} exists`);
+  assert.ok(!p.mode || ["dark", "light"].includes(p.mode), `${p.id} mode`);
+  assert.equal(presetOf(pl, pf, AV, { options: po, mode: pm || "dark" }), p.id, `${p.id} is recognised after picking it`);
+  if (!p.mode) assert.equal(presetOf(pl, pf, AV, { options: po, mode: "light" }), p.id, `${p.id} matches on Light too`);
 }
+// Showroom Light: theme light, showroom header, full-screen photo banner, inline calculator.
+const sl = applyPreset(defaultLayout(), "showroom_light", AV);
+assert.equal(sl.mode, "light");
+assert.deepEqual(sl.options, { ...defaultOptions(), header: "showroom", heroBg: "photo" });
+assert.equal(sl.layout.find((r) => r.id === "hero").variant, "c");
+assert.equal(sl.layout.find((r) => r.id === "calculator").variant, "b");
+assert.equal(presetOf(sl.layout, sl.font, AV, { options: sl.options, mode: "dark" }), null, "Showroom Light on the Dark theme = your own mix");
+assert.equal(presetOf(sl.layout, sl.font, AV), null, "without its options it is not Showroom Light");
+// Picking an older look after Showroom Light puts the options back to default, theme untouched.
+const back = applyPreset(sl.layout, "original", AV);
+assert.deepEqual(back.options, defaultOptions());
+assert.equal(back.mode, null, "an older look leaves the theme alone");
+assert.equal(applyPreset(defaultLayout(), "nope", AV).options, null);
+// The saved shape of Showroom Light: theme + options as top-level keys, read back the same.
+const slSaved = toSaved(sl.layout, { font: sl.font, theme: { mode: sl.mode }, ...sl.options });
+assert.equal(slSaved.header, "showroom");
+assert.equal(slSaved.heroBg, "photo");
+assert.deepEqual(slSaved.theme, { mode: "light" });
+assert.deepEqual(cleanOptions(slSaved), sl.options);
+assert.deepEqual(draftOptions(draftParam(sl.layout, { font: sl.font, theme: { mode: "light" }, ...sl.options })), sl.options);
 assert.equal(presetOf(defaultLayout(), DEFAULT_FONT, AV), "original", "the usual page = Original");
 const mine = applyPreset(defaultLayout(), "showroom", AV);
 assert.equal(presetOf(setVariant(mine.layout, "about", "c", AV), mine.font, AV), null, "one change = your own mix");
