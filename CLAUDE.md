@@ -363,7 +363,8 @@ still says "21 pages") — do not update it; it is pending removal.
   (`src/pages/dashboard/storefront/LayoutEditor.jsx`), saved as `profiles.storefront_layout`. ONE rules
   file, `src/utils/storefrontLayout.js` (`npm run test:storefrontlayout`): banner pinned first, Get in touch
   last, cars + contact always on; `cleanLayout` turns ANY saved value into a valid full layout, so a bad
-  one never breaks the page. The DB check `storefront_layout_ok` (migration `20261120a`, QUEUED) lists the
+  one never breaks the page. The DB check `storefront_layout_ok` (migration `20261120a`, APPLIED 2026-11-20 ~19:30 MYT by the owner in
+  the SQL Editor, so it is NOT in `list_migrations`; check the column / `pg_constraint` instead) lists the
   same section ids: a new section = add it in both or saving fails. Versions per section:
   `sections/versions.js` (data, the editor reads it) + `sections/index.jsx` (components). `?layout=` on the
   site = the editor's unsaved preview (noindex). Below-the-fold sections load lazily; `#how-it-works` and
