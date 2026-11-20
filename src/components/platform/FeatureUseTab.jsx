@@ -51,15 +51,24 @@ export default function FeatureUseTab() {
           Only {said_yes} {said_yes === 1 ? "seller has" : "sellers have"} said yes, so these numbers say very little yet. Do not cut anything on this alone.
         </p>
       )}
+      <style>{`
+        .fu-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .fu-bar { grid-column: 1 / -1; }
+        @media (min-width: 700px) {
+          .fu-row { grid-template-columns: 210px minmax(40px, 1fr) 96px; }
+          .fu-bar { grid-column: auto; grid-row: 1; grid-area: auto; order: 2; }
+          .fu-n { order: 3; }
+        }
+      `}</style>
       <div style={{ ...card, padding: "4px 16px" }}>
         {features.map((f) => (
-          <div key={f.feature} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-            <span style={{ flex: "0 0 190px", minWidth: 0, fontSize: 13, color: f.sellers ? "#e5e7eb" : "#6b7280" }}>{f.feature}</span>
-            <span aria-hidden="true" style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden", minWidth: 40 }}>
-              <span style={{ display: "block", height: "100%", width: `${Math.round((f.sellers / max) * 100)}%`, background: "#9ca3af" }} />
-            </span>
-            <span style={{ flex: "0 0 92px", textAlign: "right", fontSize: 12.5, fontVariantNumeric: "tabular-nums", color: f.sellers ? "#e5e7eb" : "#6b7280" }}>
+          <div key={f.feature} className="fu-row">
+            <span style={{ minWidth: 0, fontSize: 13, color: f.sellers ? "#e5e7eb" : "#6b7280", overflowWrap: "anywhere" }}>{f.feature}</span>
+            <span className="fu-n" style={{ textAlign: "right", fontSize: 12.5, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: f.sellers ? "#e5e7eb" : "#6b7280" }}>
               {f.sellers ? `${f.sellers} ${f.sellers === 1 ? "seller" : "sellers"}` : "nobody"}
+            </span>
+            <span className="fu-bar" aria-hidden="true" style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+              <span style={{ display: "block", height: "100%", width: `${Math.round((f.sellers / max) * 100)}%`, background: "#9ca3af" }} />
             </span>
           </div>
         ))}
