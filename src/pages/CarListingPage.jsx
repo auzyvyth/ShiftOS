@@ -12,6 +12,7 @@ import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
 import { usePriceMode } from '../utils/priceMode';
 import { trackEvent } from '../utils/analytics';
+import { cleanSearchText, activeFilterKeys, searchKey } from '../utils/searchTracking';
 import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from '../hooks/useTenant';
@@ -56,6 +57,24 @@ const SEED_TTL = 30 * 60 * 1000;
    /showroom. Only the things that genuinely differ from the marketplace grid
    stay local: this page's own sort options, CAR_FIELDS (it selects
    market_avg_price) and the seller pills. */
+// MET-1: one search_run per distinct filtered search per visit (what was asked,
+// and how many cars it found: 0 = a search with no match), and one
+// listing_impressions per distinct list (how many cars were put on screen), so a
+// click rate has a bottom line. Page 2+ is the same search, not a new one.
+const seenBrowse = new Set();
+function trackBrowse({ surface, dealerId, filters, sort, page, count, shown }) {
+  if (page > 1) return;
+  const key = searchKey(surface, filters, sort);
+  if (seenBrowse.has(key)) return;
+  seenBrowse.add(key);
+  const keys = activeFilterKeys(filters);
+  const dealer = dealerId || null;
+  if (keys.length) {
+    trackEvent(supabase, 'search_run', { dealer_id: dealer, metadata: { surface, q: cleanSearchText(filters.q), filters: keys, results: count, sort } });
+  }
+  trackEvent(supabase, 'listing_impressions', { dealer_id: dealer, metadata: { surface, shown, results: count, filtered: keys.length > 0 } });
+}
+
 const SORT_OPTIONS = [
   { label:'Newest First',       short:'Newest',   value:'newest'      },
   { label:'Price: Low to High', short:'Price ↑',  value:'price_asc'   },
@@ -633,6 +652,12 @@ export default function CarListingPage() {
       if (err) throw err;
       if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
       setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      trackBrowse({
+        surface: isMarketplace ? 'marketplace' : 'storefront',
+        dealerId: !isMarketplace ? tenant?.id : null,
+        filters: { brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType },
+        sort, page, count: count || 0, shown: (data || []).length,
+      });
       // Keep the device's copy of the live grid fresh from here too, so a buyer
       // who only ever lands on /showroom still has something during an outage.
       if (isDefaultShowroom) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });

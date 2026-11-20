@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
+import { trackEvent } from '../../utils/analytics';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 import { canUseGoogleIdToken, loadGsi, makeNonce, GOOGLE_CLIENT_ID } from '../../lib/googleIdentity';
@@ -44,6 +45,7 @@ export default function SignInSheet({ reason = 'chat', returnUrl, onDone }) {
   const finish = (ok) => {
     if (doneRef.current) return;
     doneRef.current = true;
+    trackEvent(null, 'signin_done', { metadata: { reason, ok: !!ok } });
     onDone(ok);
   };
 

@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { readCache, writeCache } from '../utils/panelCache';
 import { isRealBuyer, requestBuyerSignIn } from '../lib/buyerAuth';
 import { isSubdomain } from './useTenant';
+import { trackEvent } from '../utils/analytics';
 
 const LS_KEY = 'xdrive_saved_cars';
 const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,seller_role,dealer_is_verified,seller_sold_count,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,is_model_card';
@@ -89,8 +90,10 @@ export function useSavedCars() {
         const ok = await requestBuyerSignIn({ reason: 'save' });
         // Signed in (or not): reload the list. A sign-in merges the parked id
         // into saved_cars; a closed sheet leaves it as a device-only save.
-        if (ok) queryClient.invalidateQueries({ queryKey: ['saved-car-ids'] });
-        else {
+        if (ok) {
+          queryClient.invalidateQueries({ queryKey: ['saved-car-ids'] });
+          trackEvent(null, 'car_saved', { car_id: listingId, metadata: { signed_in: true } });
+        } else {
           writeLocalIds(nextIds.filter((id) => id !== listingId));
           queryClient.setQueryData(['saved-car-ids'], (prev) => ({
             userId: prev?.userId ?? null,
@@ -105,9 +108,11 @@ export function useSavedCars() {
           await supabase.from('saved_cars').delete().eq('user_id', uid).eq('listing_id', listingId);
         } else {
           await supabase.from('saved_cars').insert({ user_id: uid, listing_id: listingId });
+          trackEvent(null, 'car_saved', { car_id: listingId, metadata: { signed_in: true } });
         }
       } else {
         writeLocalIds(nextIds);
+        if (!already) trackEvent(null, 'car_saved', { car_id: listingId, metadata: { signed_in: false } });
       }
     },
     [savedIds, userId, queryClient],

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { useCachedFetch } from '../hooks/useCachedFetch';
-import { Globe, TrendingUp, Eye, Share2 } from 'lucide-react';
+import { Globe, TrendingUp, Eye, Share2, Search } from 'lucide-react';
+import { summariseSearches } from '../utils/searchTracking';
 import { premiumLight as PL } from '../theme/tokens';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
@@ -113,13 +114,22 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     async () => {
       const since = new Date();
       since.setDate(since.getDate() - range);
-      const { data, error } = await supabase
-        .from('analytics_events')
-        .select('event_type, created_at, session_id, car_id, car_name, metadata')
-        .eq('dealer_id', dealerId)
-        .gte('created_at', since.toISOString());
-      if (error) throw error;
-      return data || [];
+      // The API returns at most 1000 rows a request, so a busy dealer's 30 days
+      // was silently cut short. Read it in pages (up to 5000 rows).
+      const all = [];
+      for (let from = 0; from < 5000; from += 1000) {
+        const { data, error } = await supabase
+          .from('analytics_events')
+          .select('event_type, created_at, session_id, car_id, car_name, metadata')
+          .eq('dealer_id', dealerId)
+          .gte('created_at', since.toISOString())
+          .order('created_at', { ascending: false })
+          .range(from, from + 999);
+        if (error) throw error;
+        all.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      return all;
     },
     { enabled: !!dealerId },
   );
@@ -148,7 +158,15 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     ).size;
     const carViews = trafficEvents.filter(e => e.event_type === 'car_view').length;
     const waClicks = trafficEvents.filter(e => e.event_type === 'whatsapp_click').length;
-    const conversion = visits > 0 ? ((waClicks / visits) * 100).toFixed(1) : '0.0';
+    const callClicks = trafficEvents.filter(e => e.event_type === 'call_click').length;
+    const bookingClicks = trafficEvents.filter(e => e.event_type === 'booking_click').length;
+    const contactTaps = waClicks + callClicks + bookingClicks;
+    // Conversion counts PEOPLE who reached out (one per visit), not taps, so
+    // three taps by one buyer cannot push it past 100%.
+    const contactSessions = new Set(
+      trafficEvents.filter(e => ['whatsapp_click', 'call_click', 'booking_click'].includes(e.event_type)).map(e => e.session_id)
+    ).size;
+    const conversion = visits > 0 ? ((Math.min(contactSessions, visits) / visits) * 100).toFixed(1) : '0.0';
 
     const viewMap = {};
     trafficEvents.filter(e => e.event_type === 'car_view' && e.car_name).forEach(e => {
@@ -171,7 +189,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
       .map(([channel, v]) => ({ channel, ...v }))
       .sort((a, b) => b.clicks - a.clicks);
 
-    return { visits, carViews, waClicks, conversion, topCars, byChannel };
+    return { visits, carViews, waClicks, callClicks, bookingClicks, contactTaps, conversion, topCars, byChannel, searches: summariseSearches(trafficEvents) };
   }, [trafficEvents]);
 
   const convColor = Number(traffic.conversion) >= 3 ? '#047857' : Number(traffic.conversion) >= 1 ? '#111827' : '#b91c1c';
@@ -257,7 +275,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         <PerfSectionHeader
           icon={Globe}
           label="Website & Traffic"
-          desc="Storefront visits, car page views, and WhatsApp conversion"
+          desc="Storefront visits, car page views, contact taps and what buyers searched"
           right={
             <div style={{ display: 'inline-flex', gap: 2, padding: 3, background: PL.hover, borderRadius: 999 }}>
               {[7, 30, 90].map(d => (
@@ -284,11 +302,11 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
               <KpiTile label="Store Visits" value={traffic.visits} sub={`last ${range} days`} />
               <KpiTile label="Car Views" value={traffic.carViews} sub="detail page views" />
-              <KpiTile label="WA Clicks" value={traffic.waClicks} sub="direct enquiries" valueColor="#111827" />
+              <KpiTile label="Contact taps" value={traffic.contactTaps} sub={`${traffic.waClicks} WhatsApp · ${traffic.callClicks} calls · ${traffic.bookingClicks} bookings`} valueColor="#111827" />
               <KpiTile
                 label="Conversion"
                 value={`${traffic.conversion}%`}
-                sub="visits → WA click"
+                sub="visits → reached out"
                 valueColor={convColor}
                 warn={Number(traffic.conversion) < 1}
               />
@@ -320,6 +338,27 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </div>
             ) : (
               <EmptyState icon={TrendingUp} text={`No traffic recorded in the last ${range} days.`} />
+            )}
+            {traffic.searches.total > 0 && (
+              <div style={{ marginTop: 18, borderTop: `1px solid ${PL.line}`, paddingTop: 14 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                  <Search size={11} style={{ display: 'inline', marginRight: 4 }} />
+                  What buyers searched on your site — Last {range}d
+                </p>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 10px' }}>
+                  {traffic.searches.total} search{traffic.searches.total !== 1 ? 'es' : ''}, {traffic.searches.noMatch} found no car.
+                  A search with no match is a car buyers want and you do not have.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {traffic.searches.top.map((r) => (
+                    <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: PL.raised, borderRadius: PL.radius.row }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                      {r.noMatch > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c' }}>{r.noMatch} found nothing</span>}
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{r.count}x</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
             {traffic.byChannel.length > 0 && (
               <div style={{ marginTop: 18, borderTop: `1px solid ${PL.line}`, paddingTop: 14 }}>
