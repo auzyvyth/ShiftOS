@@ -6,9 +6,10 @@
 // The preview is two things: a page map here (the order, and which sections will be empty on
 // the site today), and "See it on my site", which opens the real site with the unsaved layout
 // in the link (HomePage.jsx reads ?layout=, buyers keep the saved one).
-// Stage 4: "Your look" on top: four named looks (presets), Shuffle, and the heading font.
+// Stage 4: "Your look" on top: four named looks (presets), Shuffle, the heading font and the
+// site's colours (Background, Cards, Accent: free pickers, made readable by storefrontTheme.js).
 import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle } from "lucide-react";
+import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette } from "lucide-react";
 import { supabase } from "../../../supabaseClient";
 import { premiumLight as PL } from "../../../theme/tokens";
 import { getStorefrontUrl } from "../../../hooks/useTenant";
@@ -19,8 +20,11 @@ import {
   cleanFont, DEFAULT_FONT, FONTS, PRESETS, applyPreset, presetOf, shuffleLook,
 } from "../../../utils/storefrontLayout";
 import { AVAILABLE_VERSIONS, VERSION_INFO } from "../../../components/storefront/sections/versions";
+import { themeOf, cleanTheme, resolveTheme, DEFAULT_BG, DEFAULT_CARD } from "../../../utils/storefrontTheme";
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../../utils/pageAccent";
+import { accentTheme } from "../../../utils/liveAccent";
 
-const COLS = "subdomain, site_name, dealership, about_text, storefront_why, storefront_how, storefront_testimonials, hero_video_enabled, hero_video_url";
+const COLS = "subdomain, site_name, dealership, about_text, storefront_why, storefront_how, storefront_testimonials, hero_video_enabled, hero_video_url, brand_color";
 
 // Sections that will draw nothing today because the dealer has not written them yet.
 // Car-driven ones (hot deals, numbers) are not guessed here.
@@ -64,12 +68,69 @@ function Switch({ on, onClick, label }) {
   );
 }
 
+// The three free colour pickers (owner's choice, 2026-11-20). What a pick turns into on the site
+// is worked out by storefrontTheme.js (text is always chosen for the dealer, a card or accent
+// too close to unreadable is nudged); the swatch shows what the site will really use, and a
+// line says when a pick was changed.
+const COLOUR_KEYS = [
+  { k: "bg", label: "Background" },
+  { k: "card", label: "Cards" },
+  { k: "accent", label: "Accent" },
+];
+function Colours({ theme, look, brandAccent, onPick, onReset }) {
+  const used = { bg: look?.bg || DEFAULT_BG, card: look?.card || DEFAULT_CARD, accent: look?.accent || brandAccent };
+  const fixed = [look?.adjusted.card && "Cards", look?.adjusted.accent && "Accent"].filter(Boolean);
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px 14px" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Colours</span>
+        {COLOUR_KEYS.map(({ k, label }) => {
+          const picked = theme?.[k];
+          const value = (picked || used[k]).toLowerCase();
+          return (
+            <label key={k} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px 6px 6px",
+              borderRadius: PL.radius.row, background: PL.raised, cursor: "pointer", minWidth: 0 }}>
+              <span aria-hidden style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: used[k],
+                boxShadow: "inset 0 0 0 1px rgba(17,24,39,0.12)", display: "grid", placeItems: "center",
+                color: look ? (k === "accent" ? look.onAccent : look.text) : "#fff" }}>
+                {!picked && <Pipette size={13} />}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: PL.text }}>{label}</span>
+                <span style={{ display: "block", fontSize: 11, color: PL.textMuted }}>
+                  {picked ? used[k] : k === "accent" ? "Your brand colour" : "Usual"}
+                </span>
+              </span>
+              <input type="color" aria-label={`${label} colour`} value={value} onChange={(e) => onPick(k, e.target.value)}
+                style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }} />
+            </label>
+          );
+        })}
+        {theme && (
+          <button type="button" onClick={onReset}
+            style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "8px 4px" }}>
+            Reset colours
+          </button>
+        )}
+      </div>
+      <p style={{ margin: "8px 0 0", fontSize: 12, color: PL.textMuted, lineHeight: 1.5 }}>
+        {theme
+          ? `Text is set for you (${look?.dark ? "light" : "dark"} on this background) so it always reads.`
+          : "Your site uses the usual dark colours. Pick any colour; text is set for you so it always reads."}
+        {fixed.length > 0 && ` ${fixed.join(" and ")} ${fixed.length > 1 ? "were" : "was"} adjusted a little to stay readable and stand out from the background. The swatch shows the colour your site will use.`}
+      </p>
+    </div>
+  );
+}
+
 export default function LayoutEditor({ dealerId, canEdit }) {
   const [row, setRow] = useState(null);
   const [saved, setSaved] = useState(null);       // the cleaned layout as stored
   const [layout, setLayout] = useState(null);     // what is on screen
   const [savedFont, setSavedFont] = useState(DEFAULT_FONT);
   const [font, setFont] = useState(DEFAULT_FONT);
+  const [savedTheme, setSavedTheme] = useState(null);
+  const [theme, setTheme] = useState(null);       // { bg?, card?, accent? } or null
   const [columnMissing, setColumnMissing] = useState(false);
   const [status, setStatus] = useState({ kind: "", text: "" });
   const [saving, setSaving] = useState(false);
@@ -92,12 +153,18 @@ export default function LayoutEditor({ dealerId, canEdit }) {
       setLayout(clean);
       setSavedFont(cleanFont(data?.storefront_layout));
       setFont(cleanFont(data?.storefront_layout));
+      setSavedTheme(themeOf(data?.storefront_layout));
+      setTheme(themeOf(data?.storefront_layout));
     })();
     return () => { live = false; };
   }, [dealerId]);
 
   const empty = useMemo(() => emptyNow(row), [row]);
-  const dirty = layout && saved && (font !== savedFont || JSON.stringify(layout) !== JSON.stringify(saved));
+  const dirty = layout && saved && (font !== savedFont || JSON.stringify(theme) !== JSON.stringify(savedTheme) ||
+    JSON.stringify(layout) !== JSON.stringify(saved));
+  // With no accent picked the site uses the brand colour (shared.js accentOf), so does this preview.
+  const brandAccent = accentTheme(chosenPageColor(row) || PAGE_COLOR_DEFAULT).accent;
+  const look = resolveTheme(theme, brandAccent);
 
   if (!layout) {
     return (
@@ -117,7 +184,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
     if (!canEdit || columnMissing || saving) return;
     setSaving(true);
     // Called without the version list on purpose: toSaved keeps the chosen versions.
-    const value = isDefaultLayout(layout, { font }) ? null : toSaved(layout, { font });
+    const value = isDefaultLayout(layout, { font, theme }) ? null : toSaved(layout, { font, theme });
     const { data, error } = await supabase.from("profiles").update({ storefront_layout: value }).eq("id", dealerId).select("id");
     setSaving(false);
     if (error || !data?.length) {
@@ -126,11 +193,12 @@ export default function LayoutEditor({ dealerId, canEdit }) {
     }
     setSaved(layout);
     setSavedFont(font);
+    setSavedTheme(theme);
     setStatus({ kind: "good", text: "Saved. Your site shows this layout now." });
   };
 
   const sub = row?.subdomain;
-  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font }))}`) : null;
+  const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font, theme }))}`) : null;
   const shown = layout.filter((r) => r.on);
 
   return (
@@ -185,6 +253,9 @@ export default function LayoutEditor({ dealerId, canEdit }) {
           </div>
           <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{FONTS[font].note}</span>
         </div>
+        <Colours theme={theme} look={look} brandAccent={brandAccent}
+          onPick={(k, hex) => { setTheme((t) => cleanTheme({ ...(t || {}), [k]: hex })); setStatus({ kind: "", text: "" }); }}
+          onReset={() => { setTheme(null); setStatus({ kind: "", text: "" }); }} />
       </div>
 
       <div style={card}>
@@ -274,8 +345,8 @@ export default function LayoutEditor({ dealerId, canEdit }) {
               See it on my site <ExternalLink size={14} />
             </a>
           )}
-          {!isDefaultLayout(layout, { font }) && (
-            <button type="button" onClick={() => changeLook({ layout: defaultLayout(), font: DEFAULT_FONT })}
+          {!isDefaultLayout(layout, { font, theme }) && (
+            <button type="button" onClick={() => { changeLook({ layout: defaultLayout(), font: DEFAULT_FONT }); setTheme(null); }}
               style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "11px 4px" }}>
               Back to the usual layout
             </button>
@@ -288,7 +359,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
         <p style={{ margin: "0 0 14px", fontSize: 12, color: PL.textMuted }}>
           Top to bottom, as a buyer scrolls. Headings: {FONTS[font].name}.
         </p>
-        <div style={{ borderRadius: 16, background: "#0C0C0E", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ borderRadius: 16, background: look?.bg || "#0C0C0E", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {shown.map((r) => {
             const tall = r.id === "hero" || r.id === "cars";
             const isEmpty = empty[r.id];
@@ -296,9 +367,9 @@ export default function LayoutEditor({ dealerId, canEdit }) {
               <div key={r.id} style={{
                 height: tall ? 64 : 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.02em",
-                background: isEmpty ? "transparent" : "rgba(255,255,255,0.08)",
-                border: isEmpty ? "1px dashed rgba(255,255,255,0.18)" : "none",
-                color: isEmpty ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.8)",
+                background: isEmpty ? "transparent" : look?.card || "rgba(255,255,255,0.08)",
+                border: isEmpty ? `1px dashed ${look?.border || "rgba(255,255,255,0.18)"}` : "none",
+                color: isEmpty ? look?.muted || "rgba(255,255,255,0.35)" : look?.text || "rgba(255,255,255,0.8)",
               }}>
                 {sectionInfo(r.id).label}{VERSION_INFO[r.id] ? `: ${VERSION_INFO[r.id][r.variant]?.name}` : ""}{isEmpty ? " (empty)" : ""}
               </div>
