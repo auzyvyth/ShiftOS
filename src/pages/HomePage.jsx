@@ -44,6 +44,7 @@ import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { SITE_URL, ROOT_DOMAIN } from "../config/site";
 import { dealerSchema } from "../utils/dealerSchema";
+import { storefrontWhy, storefrontHow, storefrontCta } from "../utils/storefrontCopy";
 // Loads only when the buyer taps "Trade in my car" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 
@@ -500,31 +501,36 @@ const HomePage = () => {
     secondary_label: t("home.cta.whatsappBtn"),
   };
 
-  const whyData = tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
-  const howData = tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
+  // A dealer's own site shows only what the dealer wrote (src/utils/storefrontCopy.js):
+  // the default text below claimed checks nothing makes. null = section hidden.
+  const onStorefront = isSubdomain();
+  const whyData = onStorefront
+    ? storefrontWhy(tenant?.storefront_why, tenant?.site_name || tenant?.dealership)
+    : tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
+  const howData = onStorefront ? storefrontHow(tenant?.storefront_how) : tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
   // On a dealer storefront, never fabricate reviews — show real ones or nothing.
   // The main Drevo marketplace keeps its default set.
   const testimonialsData =
     tenant?.storefront_testimonials || (isSubdomain() ? [] : HARDCODED_DEFAULT_TESTIMONIALS);
-  const ctaData = tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
+  const ctaData = onStorefront ? storefrontCta(tenant?.storefront_cta) : tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
 
   const whyIcons = [TrendingDown, UserCheck, ShieldCheck, DollarSign];
   const howIcons = [MessageCircle, Search, Shield, CheckCircle];
   const howNums = ["01", "02", "03", "04"];
 
-  const benefits = (whyData.items || []).map((item, i) => ({
+  const benefits = (whyData?.items || []).map((item, i) => ({
     icon: whyIcons[i],
     title: item.title,
     desc: item.desc,
   }));
-  const whyTitle = whyData.title;
-  const steps = (howData.steps || []).map((step, i) => ({
+  const whyTitle = whyData?.title;
+  const steps = (howData?.steps || []).map((step, i) => ({
     n: howNums[i],
     icon: howIcons[i],
     t: step.title,
     d: step.desc,
   }));
-  const howTitle = howData.title;
+  const howTitle = howData?.title;
   const testimonials = (Array.isArray(testimonialsData) ? testimonialsData : []).map((item) => ({
     name: item.name,
     loc: item.location,
@@ -1182,7 +1188,8 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* ══════════ WHY ══════════ */}
+      {/* ══════════ WHY ══════════ (hidden when the dealer wrote nothing) */}
+      {benefits.length > 0 && (
       <section className="sec-pad" style={secA}>
         <div style={wrap}>
           <FadeIn>
@@ -1209,6 +1216,7 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ══════════ STATS BAND (animated count-up — dealer credibility) ══════════ */}
       {(() => {
@@ -1323,7 +1331,8 @@ const HomePage = () => {
         );
       })()}
 
-      {/* ══════════ HOW IT WORKS ══════════ */}
+      {/* ══════════ HOW IT WORKS ══════════ (hidden when the dealer wrote nothing) */}
+      {steps.length > 0 && (
       <section id="how-it-works" className="sec-pad" style={secB}>
         <div style={wrap}>
           <FadeIn>
@@ -1359,6 +1368,7 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* ══════════ TESTIMONIALS — hidden when there are none (no fake fallback on storefronts) ══════════ */}
       {testimonials.length > 0 && (

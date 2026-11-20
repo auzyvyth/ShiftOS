@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { isSubdomain } from "../hooks/useTenant";
+import { hasHowItWorks } from "../utils/storefrontCopy";
 import { openConsentSettings } from "../utils/consent";
 
 // App version — injected from package.json at build time (see vite.config.js).
@@ -147,11 +148,12 @@ const Footer = () => {
   const hasContact = email || phone || whatsapp;
   const hasSocials = facebook || instagram || tiktok;
 
+  // A dealer's own site: its own car list (/showroom sends a subdomain home), How It
+  // Works only when the dealer wrote it, and no Drevo "For Dealers" sales link.
   const quickLinks = [
-    { label: "Browse Cars",    to: "/showroom" },
+    { label: "Browse Cars",    to: "/cars" },
     { label: "Calculator",     to: "/calculator" },
-    { label: "How It Works",   to: "/#how-it-works" },
-    { label: "For Dealers",    to: "/for-dealers" },
+    ...(hasHowItWorks(tenantProfile) ? [{ label: "How It Works", to: "/#how-it-works" }] : []),
     { label: "Sign In",        to: "/login" },
   ];
 

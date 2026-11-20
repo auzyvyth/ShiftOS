@@ -7,6 +7,7 @@ import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
+import { hasHowItWorks } from "../utils/storefrontCopy";
 
 // Same solid near-black bar as MarketplaceHeader (#0f1115) — that file is the
 // one place this "modern" language was already designed and approved, so this
@@ -246,7 +247,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl } = useSiteProfile();
+  const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl, profile: tenantProfile } = useSiteProfile();
 
   // Same auto-hide pattern as MarketplaceHeader: pinned visible whenever the
   // mobile sheet (which lives inside this bar) is open, so it can't take its
@@ -314,7 +315,8 @@ export default function Header() {
         { name: t("nav.home"),       path: "/",              key: "home" },
         { name: t("nav.browseCars"), path: "/cars",          key: "cars" },
         { name: t("nav.calculator"), path: "/calculator",    key: "calculator" },
-        { name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" },
+        // Only when the dealer wrote that section, or the link scrolls to nothing.
+        ...(hasHowItWorks(tenantProfile) ? [{ name: t("nav.howItWorks"), path: "/#how-it-works", key: "howitworks" }] : []),
       ]
     : [
         { name: t("nav.home"),       path: "/",              key: "home" },
