@@ -548,8 +548,8 @@ def cmd_create(a):
         fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
         print(f"checking {label} ...", flush=True)
         meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
-        if not meta or meta.status_code != 200:
-            held.append((label, "cannot open the Drive folder: " + (why(meta) if meta else "no folder id in link " + r["drive"][:80]))); continue
+        if meta is None or meta.status_code != 200:
+            held.append((label, "cannot open the Drive folder: " + (why(meta) if meta is not None else "no folder id in link " + r["drive"][:80]))); continue
         mt = meta.json().get("mimeType", "")
         files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
         if err or len(files) < a.min_photos:
