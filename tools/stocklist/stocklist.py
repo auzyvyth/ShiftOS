@@ -526,9 +526,51 @@ def cmd_photos(a):
     return 0
 
 
+WARRANTY_MONTHS = 60       # owner: every listing in this account gets 60 months
+PAYMENT_TYPE = "loan"      # owner: financing shows "loan", not "cash only"
+
+
+def markup_for(base):
+    """Owner's rule: selling price = PDF price (the base) + RM3k..5k by price band. Edit markup.csv."""
+    p = Path(__file__).with_name("markup.csv")
+    tiers = sorted((int(r["price_from"]), int(r["markup"])) for r in csv.DictReader(open(p, encoding="utf-8")))
+    m = tiers[0][1]
+    for lo, mk in tiers:
+        if base >= lo: m = mk
+    return m
+
+
+def guess_fuel(r, c):
+    """Only what the PDF or the car itself tells us. Unsure -> blank (never a wrong fuel)."""
+    if c["fuel_type"]: return c["fuel_type"]
+    t = f"{r['model']} {r['spec']}".upper()
+    if re.search(r"DIESEL|\bEV\b|ELECTRIC|PHEV|HYBRID", t): return None
+    if c["brand"] in ("BYD", "Land Rover"): return None
+    return "Petrol" if re.search(r"\d\.\dL", r["spec"].upper()) else None
+
+
+def guess_transmission(c):
+    if c["brand"] == "Honda" and c["model"] == "Civic" and (c["variant"] or "").upper().startswith("TYPE R"): return "Manual"
+    return "Auto"
+
+
+def looks_like_auction_sheet(raw):
+    """Mostly white paper, almost no colour, scattered dark text. Used only to push such photos to the END."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(raw)); im.draft("RGB", (320, 320))
+        im = im.convert("RGB").resize((160, 160))
+        g = im.convert("L").histogram(); n = 160 * 160
+        white = sum(g[210:]) / n; dark = sum(g[:100]) / n
+        sat = sum(im.convert("HSV").split()[1].histogram()[i] * i for i in range(256)) / n
+        return white > 0.6 and sat < 30 and 0.04 < (1 - white) < 0.4
+    except Exception:
+        return False
+
+
 def _slug(r, c):
     base = re.sub(r"[^a-z0-9]+", "-", " ".join(str(x) for x in (r["year"], c["brand"], c["model"], c["variant"]) if x).lower()).strip("-")
-    return (base or "car") + "-" + hashlib.sha1(r["vin"].encode()).hexdigest()[:5]
+    return (base or "car") + "-" + hashlib.sha1((r["vin"] + str(time.time())).encode()).hexdigest()[:5]
 
 
 def cmd_create(a):
@@ -536,7 +578,10 @@ def cmd_create(a):
     import requests
     rows, _ = parse(a.pdf)
     sb, http = Supa(), requests.Session()
-    have = db_index(sb.my_listings())
+    have = db_index([l for l in sb.my_listings() if l.get("status") != "archived"])
+    prof = http.get(f"{SUPABASE_URL}/rest/v1/profiles", params={"select": "state,city", "id": f"eq.{sb.uid}"}, headers=sb.h()).json()
+    prof = prof[0] if prof else {}
+    print(f"location for every car (from your dealer profile): {prof.get('city')}, {prof.get('state')}")
     todo = [r for r in rows if not r["sold"] and r["drive"] and r["vin"] not in have]
     print(f"{len(todo)} cars are for sale, have a photo link and are not in the app yet. "
           f"Will create at most {a.limit}, status '{a.status}'" + (" (dry run)" if a.dry_run else ""))
@@ -555,12 +600,16 @@ def cmd_create(a):
         if err or len(files) < a.min_photos:
             held.append((label, err or f"{len(files)} photos, needs {a.min_photos}")); continue
         files = files[:MAX_PHOTOS]
+        base = int(r["price_rm"]); mk = markup_for(base)
         row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
-               "year": r["year"], "selling_price": r["price_rm"], "mileage": r["mileage_km"],
+               "year": r["year"], "selling_price": base + mk, "mileage": r["mileage_km"],
                "colour": r["colour"].title(), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
-               "fuel_type": c["fuel_type"] or None, "condition": "recon", "is_recon": True,
-               "import_country": COUNTRY.get(r["co"].upper()), "vin": r["vin"], "registration_date": reg_text(r),
-               "options": r["options"] or None, "dealer_id": sb.uid, "status": a.status}
+               "fuel_type": guess_fuel(r, c), "transmission": guess_transmission(c),
+               "condition": "recon", "is_recon": True, "import_country": COUNTRY.get(r["co"].upper()),
+               "vin": r["vin"], "vin_number": r["vin"], "registration_date": reg_text(r),
+               "options": r["options"] or None, "warranty_months": WARRANTY_MONTHS, "payment_type": PAYMENT_TYPE,
+               "state": prof.get("state"), "city": prof.get("city"), "dealer_id": sb.uid, "status": a.status}
+        print(f"    (PDF base RM{base:,} + markup RM{mk:,} = asking RM{base + mk:,})")
         print(f"\n--- {label}: {len(files)} photos in folder")
         for k, v in row.items(): print(f"    {k:15} {v}")
         if a.dry_run: made += 1; continue
@@ -569,11 +618,15 @@ def cmd_create(a):
             try:
                 d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
                              headers={"Authorization": f"Bearer {tok}"}, timeout=120)
-                if d.status_code == 200 and len(d.content) <= 40_000_000: shrunk.append(shrink(d.content))
+                if d.status_code == 200 and len(d.content) <= 40_000_000:
+                    shrunk.append((looks_like_auction_sheet(d.content), f["name"], shrink(d.content)))
             except Exception as e:
                 print(f"    skipped one file: {type(e).__name__}")
         if len(shrunk) < a.min_photos:
             held.append((label, f"only {len(shrunk)} photos could be read")); continue
+        sheets = [n for sh, n, _ in shrunk if sh]
+        shrunk = [d for sh, n, d in shrunk if not sh] + [d for sh, n, d in shrunk if sh]   # auction sheets go LAST
+        if sheets: print(f"    looks like an auction sheet, moved to the end: {', '.join(sheets)}")
         ins = http.post(f"{SUPABASE_URL}/rest/v1/car_listings", json=row, timeout=60,
                         headers=sb.h({"Prefer": "return=representation"}))
         if ins.status_code >= 300:
@@ -586,9 +639,11 @@ def cmd_create(a):
         except Exception as e:
             sb.patch(lid, {"status": "archived"})   # never leave a half-made car live
             held.append((label, f"photos failed ({e}); car archived")); continue
-        su = http.get(f"{SUPABASE_URL}/rest/v1/stock_units", params={"select": "id", "listing_id": f"eq.{lid}"}, headers=sb.h()).json()
+        sp = http.patch(f"{SUPABASE_URL}/rest/v1/stock_units", params={"listing_id": f"eq.{lid}", "dealer_id": f"eq.{sb.uid}"},
+                        json={"purchase_price": base}, headers=sb.h({"Prefer": "return=representation"}))
+        su = sp.json() if sp.status_code < 300 else []
         made += 1
-        print(f"    CREATED id {lid}: {len(urls)} photos, stock record {'yes' if su else 'NO (add it in the app)'}")
+        print(f"    CREATED id {lid}: {len(urls)} photos, base price saved on the stock record: {'yes' if su else 'NO (set it in the app)'}")
     print(f"\ndone: {made} cars {'shown' if a.dry_run else 'created'} | not taken: {len(held)}")
     for lab, reason in held: print("  -", lab, "-", reason)
     return 0
