@@ -126,7 +126,10 @@ export default async function handler(req, res) {
   // is SECURITY DEFINER and can read profiles.
   const salesmanId = listing.assigned_to || null;
 
-  const { error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
+  const enquiryNote = isTradeIn ? tradeInNote(trade.car)
+    : isLoan ? loanEnquiryNote(loanCheck.answers, loanCar)
+    : `Enquiry about listing`;
+  const { data: enqRow, error: enqErr } = await supabase.from('whatsapp_enquiries').insert({
     dealer_id: listing.dealer_id,
     salesman_id: salesmanId,
     listing_id: isTradeIn ? null : isLoan ? loanCar?.id || null : carId,
@@ -134,17 +137,37 @@ export default async function handler(req, res) {
     buyer_phone: phoneClean || null,
     buyer_state: state || null,
     // The trigger enquiry_to_lead copies this onto the lead as its note.
-    buyer_message: isTradeIn ? tradeInNote(trade.car)
-      : isLoan ? loanEnquiryNote(loanCheck.answers, loanCar)
-      : `Enquiry about listing`,
+    buyer_message: enquiryNote,
     ref_slug: fromStorefront ? null : refSlug || null,
     source: isTradeIn ? 'trade_in' : isLoan ? 'loan_check' : 'storefront',
     status: 'new',
-  });
+  }).select('id').single();
 
   if (enqErr) {
     console.error('[api/enquiry]', enqErr.message);
     return res.status(500).json({ error: 'Failed to record enquiry' });
+  }
+
+  // enquiry_to_lead attaches a repeat buyer (same phone) to their EXISTING lead and
+  // drops the new note, so a loan check or trade-in from someone already in the
+  // pipeline reached nobody (2026-11-21: it landed on a July lead marked won). Append
+  // the note to that lead, and bring a lost one back to New so it shows on the board.
+  // Best effort: the enquiry is already saved, so a failure here never fails the buyer.
+  if (fromStorefront && enqRow?.id) {
+    try {
+      const { data: enq } = await supabase.from('whatsapp_enquiries').select('lead_id').eq('id', enqRow.id).maybeSingle();
+      if (enq?.lead_id) {
+        const { data: lead } = await supabase.from('leads').select('id, notes, stage').eq('id', enq.lead_id).maybeSingle();
+        if (lead && !(lead.notes || '').includes(enquiryNote)) {
+          const stamp = new Date().toISOString().slice(0, 10);
+          const patch = { notes: `${lead.notes ? `${lead.notes}\n\n` : ''}[${stamp}] ${enquiryNote}`.slice(0, 4000) };
+          if (lead.stage === 'lost' || lead.stage === 'closed_lost') patch.stage = 'new';
+          await supabase.from('leads').update(patch).eq('id', lead.id);
+        }
+      }
+    } catch (e) {
+      console.error('[api/enquiry] note append failed:', e?.message);
+    }
   }
 
   // The lead is created DB-side by the enquiry_to_lead trigger on

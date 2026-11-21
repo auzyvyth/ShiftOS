@@ -5,7 +5,7 @@
 // Rules + every word that matters: src/utils/loanEnquiry.js. Never an approval.
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft } from "lucide-react";
+import { X, ChevronLeft, ChevronDown, Check } from "lucide-react";
 import PhoneInput from "../ui/PhoneInput";
 import Turnstile from "../Turnstile";
 import { useModalHistory } from "../../hooks/useModalHistory";
@@ -53,6 +53,7 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
   const [step, setStep] = useState("pay");
   const [a, setA] = useState({ dep: 10, years: 7 });
   const [carId, setCarId] = useState("");
+  const [pickOpen, setPickOpen] = useState(false);
   const [rows, setRows] = useState([]);
   const [contact, setContact] = useState({ name: "", phone: "" });
   const [token, setToken] = useState(null);
@@ -151,6 +152,16 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
   const outcomeText = result && (typeof OUTCOME_COPY[result.outcome] === "function"
     ? OUTCOME_COPY[result.outcome](result.fixCount) : OUTCOME_COPY[result.outcome]);
   const stepNo = STEPS.indexOf(step);
+  const pickedRow = rows.find((r) => r.id === carId);
+  // Name on its own line, variant and price under it, so a long trim wraps instead of being cut off.
+  const carText = (r) => (
+    <>
+      <span style={{ display: "block", fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{[r.year, r.brand, r.model].filter(Boolean).join(" ")}</span>
+      <span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 2, lineHeight: 1.35 }}>
+        {r.variant ? `${r.variant} · ` : ""}<b style={{ color: C.text, fontVariantNumeric: "tabular-nums" }}>{rm(r.selling_price)}</b>
+      </span>
+    </>
+  );
 
   return createPortal(
     <div className="lcs-overlay" role="dialog" aria-modal="true" aria-label="Check my loan"
@@ -182,9 +193,14 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
           </button>
         </div>
         {stepNo >= 0 && (
-          <p style={{ color: C.muted, fontSize: 13, margin: "0 0 18px" }}>
-            Step {stepNo + 1} of 3 · {["Your pay", "Your record", "The car"][stepNo]}. No IC or payslip needed.
-          </p>
+          <>
+            <div aria-hidden style={{ display: "flex", gap: 6, margin: "10px 0 10px" }}>
+              {STEPS.map((s, i) => <span key={s} style={{ flex: 1, height: 4, borderRadius: 99, background: i <= stepNo ? C.accent : C.line }} />)}
+            </div>
+            <p style={{ color: C.muted, fontSize: 13, margin: "0 0 18px" }}>
+              Step {stepNo + 1} of 3 · {["Your pay", "Your record", "The car"][stepNo]}. No IC or payslip needed.
+            </p>
+          </>
         )}
 
         {step === "pay" && (
@@ -211,15 +227,34 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
         {step === "car" && (
           <>
             <div style={{ marginBottom: 18 }}>
-              <label style={label} htmlFor="lcs-car">Which car?</label>
-              <select id="lcs-car" value={carId} onChange={(e) => setCarId(e.target.value)} style={{ ...field, cursor: "pointer" }}>
-                <option value="">Not sure yet, show me what fits</option>
-                {rows.map((r) => { const c = toLoanCar(r); return <option key={r.id} value={r.id}>{c.label} · {rm(c.price)}</option>; })}
-              </select>
+              <span style={label}>Which car?</span>
+              <button type="button" onClick={() => setPickOpen((o) => !o)} aria-expanded={pickOpen}
+                style={{ ...field, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {pickedRow ? carText(pickedRow) : <span style={{ fontWeight: 600 }}>Not sure yet, show me what fits</span>}
+                </span>
+                <ChevronDown size={18} color={C.muted} style={{ flexShrink: 0, transform: pickOpen ? "rotate(180deg)" : "none" }} />
+              </button>
+              {pickOpen && (
+                <div role="listbox" style={{ marginTop: 8, maxHeight: 260, overflowY: "auto", border: `1px solid ${C.line}`, borderRadius: 10, background: C.field }}>
+                  {[null, ...rows].map((r) => {
+                    const on = (r?.id || "") === carId;
+                    return (
+                      <button key={r?.id || "none"} type="button" role="option" aria-selected={on}
+                        onClick={() => { setCarId(r?.id || ""); setPickOpen(false); }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: on ? C.chip : "transparent",
+                          border: "none", borderTop: `1px solid ${C.line}`, color: C.text, cursor: "pointer", textAlign: "left", fontFamily: "var(--xd-font-body)" }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>{r ? carText(r) : <span style={{ fontWeight: 600, fontSize: 14 }}>Not sure yet, show me what fits</span>}</span>
+                        {on && <Check size={16} style={{ flexShrink: 0 }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div style={{ marginBottom: 18 }}>
               <span style={label}>Deposit</span>
-              <Chips options={LOAN_DEPOSITS.map((d) => [d, d ? `${d}%` : "None"])} value={a.dep} onPick={(v) => set("dep")(Number(v))} />
+              <Chips options={LOAN_DEPOSITS.map((d) => [d, d ? `${d}%${car ? ` · ${rm((car.price * d) / 100)}` : ""}` : "None"])} value={a.dep} onPick={(v) => set("dep")(Number(v))} />
             </div>
             <div style={{ marginBottom: 22 }}>
               <span style={label}>Loan term</span>
@@ -294,7 +329,7 @@ export default function LoanCheckSheet({ subdomain, dealerId, siteName, whatsapp
           <div>
             <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.6, margin: "8px 0 20px" }}>
               Thanks, {contact.name.trim().split(" ")[0]}. {siteName || "The dealer"} has your answers and will get back to you
-              {whatsappNumber ? " on WhatsApp." : " by phone."}
+              {whatsappNumber ? " on WhatsApp. Just press send on the message that opened, so the chat starts." : " by phone."}
             </p>
             <button type="button" onClick={onClose} style={{ ...field, cursor: "pointer", fontWeight: 700, textAlign: "center" }}>Done</button>
           </div>
