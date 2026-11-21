@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, MessageCircle, Crown, User, ShieldCheck, ChevronRight, MapPin, Clock, Phone, Facebook, Instagram, Music2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSiteProfile } from "../hooks/useSiteProfile";
+import { useSiteProfile, siteProfileFrom } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
@@ -296,7 +296,8 @@ function topBarParts(p) {
 }
 
 // look = the home page's look options (draft-aware); other dealer pages read the saved ones.
-export default function Header({ look } = {}) {
+// tenantOverride: the dashboard's header preview (a dealer row, drawn in a frame): no sign-in lookup, no hide on scroll.
+export default function Header({ look, tenantOverride = null } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
@@ -304,14 +305,16 @@ export default function Header({ look } = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl, profile: tenantProfile } = useSiteProfile();
+  const liveSite = useSiteProfile();
+  const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl, profile: tenantProfile } = tenantOverride ? siteProfileFrom(tenantOverride) : liveSite;
 
   // Same auto-hide pattern as MarketplaceHeader: pinned visible whenever the
   // mobile sheet (which lives inside this bar) is open, so it can't take its
   // own close button off-screen.
-  const headerVisible = useHideOnScroll({ offset: 80, locked: mobileOpen });
+  const headerVisible = useHideOnScroll({ offset: 80, locked: mobileOpen || !!tenantOverride });
 
   useEffect(() => {
+    if (tenantOverride) return undefined;
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -327,6 +330,7 @@ export default function Header({ look } = {}) {
   }, [mobileOpen]);
 
   useEffect(() => {
+    if (tenantOverride) return undefined;
     const fetchRole = async (uid) => {
       const { data } = await supabase
         .from("profiles")
@@ -364,7 +368,7 @@ export default function Header({ look } = {}) {
   const isEn = i18n.language.startsWith("en");
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
 
-  const onSub = isSubdomain();
+  const onSub = !!tenantOverride || isSubdomain();
   const showroom = onSub && (look || cleanOptions(tenantProfile?.storefront_layout)).header === "showroom";
   const bar = showroom ? topBarParts(tenantProfile) : null;
   // Bar height as a variable on the header and its spacer (0 on a phone with nothing to show).

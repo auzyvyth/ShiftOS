@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { publicClient } from "../../../supabaseClient";
 import { withTimeout } from "../../../config/marketplaceConfig";
 import { STOREFRONT_CAR_FIELDS } from "../../../utils/storefrontStock";
+import Header from "../../../components/Header";
 import { StorefrontStyles } from "../../../components/storefront/sections/ui";
 import { SECTION_VERSIONS, SECTION_FALLBACK } from "../../../components/storefront/sections";
 import { themeCss } from "../../../utils/storefrontTheme";
@@ -20,6 +21,7 @@ import { fontCss, fontSheet, sectionOn } from "../../../utils/storefrontLayout";
 
 // A real screen for each device. The frame is always this tall (so "full screen" banners and
 // vh-based sections draw as they do for a buyer); a shorter section crops to its own height.
+export const HEADER_PREVIEW_ID = "__header";
 export const PREVIEW_VIEW = { phone: { w: 375, h: 667 }, desktop: { w: 1200, h: 720 } };
 const MIN_SHOWN = 120;
 
@@ -136,7 +138,10 @@ export default function SectionPreview({ subdomain, id, variant, device, layout,
   const themeStr = themeCss(theme, brandAccent);
   const fontStr = fontCss(font);
   const fontHref = fontSheet(font);
-  const Section = SECTION_VERSIONS[id]?.[variant] || SECTION_VERSIONS[id]?.a;
+  // id "__header" = the site's header (Classic / Showroom), which is not a section: drawn on top of a
+  // plain page ground so the bar and its info strip show as they sit above the first section.
+  const isHeader = id === HEADER_PREVIEW_ID;
+  const Section = isHeader ? null : SECTION_VERSIONS[id]?.[variant] || SECTION_VERSIONS[id]?.a;
   const shownH = Math.min(Math.max(contentH, MIN_SHOWN), view.h);
 
   return (
@@ -148,19 +153,26 @@ export default function SectionPreview({ subdomain, id, variant, device, layout,
       ) : (
         <div style={{ width: view.w * scale, height: shownH * scale, overflow: "hidden", borderRadius: 12,
           boxShadow: "0 0 0 1px rgba(17,24,39,0.10)", background: "#0C0C0E" }}>
-          <iframe ref={frameRef} title={`Preview of this section on a ${device}`} srcDoc="<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>"
+          <iframe ref={frameRef} title={`Preview on a ${device}`} srcDoc="<!doctype html><html><head><meta charset='utf-8'></head><body></body></html>"
             onLoad={onLoad}
             style={{ width: view.w, height: view.h, border: 0, display: "block", transform: `scale(${scale})`, transformOrigin: "0 0" }} />
-          {doc && Section && createPortal(
+          {doc && (Section || isHeader) && createPortal(
             <>
               <StorefrontStyles />
               {fontStr && <style>{fontStr}</style>}
               {fontHref && <link rel="stylesheet" href={fontHref} />}
               {themeStr && <style>{themeStr}</style>}
               <div ref={rootRef} style={{ display: "flow-root" }}>
-                <Suspense fallback={SECTION_FALLBACK[id] || null}>
-                  <Section {...ctx} />
-                </Suspense>
+                {isHeader ? (
+                  <>
+                    <Header look={opts} tenantOverride={ctx.tenant} />
+                    <div style={{ minHeight: 150, padding: "96px 24px 24px", fontSize: 12, color: "var(--sf-muted, rgba(255,255,255,0.35))" }}>Your page starts here</div>
+                  </>
+                ) : (
+                  <Suspense fallback={SECTION_FALLBACK[id] || null}>
+                    <Section {...ctx} />
+                  </Suspense>
+                )}
               </div>
             </>,
             doc.body,

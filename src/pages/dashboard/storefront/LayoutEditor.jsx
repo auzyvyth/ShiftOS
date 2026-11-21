@@ -27,6 +27,7 @@ import { accentTheme } from "../../../utils/liveAccent";
 
 // The live section preview draws the real site sections: load it only when a dealer opens one.
 const SectionPreview = lazy(() => import("./SectionPreview"));
+const HEADER_PREVIEW_ID = "__header"; // same value as SectionPreview.jsx (kept here so the editor does not load that file up front)
 
 const COLS = "subdomain, site_name, dealership, about_text, storefront_why, storefront_how, storefront_testimonials, hero_video_enabled, hero_video_url, brand_color";
 
@@ -231,6 +232,28 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font, theme, ...opts }))}`) : null;
   const shown = layout.filter((r) => r.on);
 
+  // The live preview block (screen switch + the frame) for a section, or the header ("__header").
+  const previewPanel = (pid, variant) => (
+    <div style={{ flexBasis: "100%", minWidth: 0, paddingTop: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Live preview</span>
+        <div className="sf-seg" role="group" aria-label="Preview screen">
+          {[["phone", "Phone"], ["desktop", "Desktop"]].map(([k, name]) => (
+            <button key={k} type="button" aria-pressed={device === k} onClick={() => setDevice(k)}>{name}</button>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
+          Your real details and cars. Changes above show here at once; nothing is saved until you press Save.
+        </span>
+      </div>
+      <Suspense fallback={<p style={{ margin: 0, fontSize: 13, color: PL.textMuted }}>Loading your preview...</p>}>
+        <SectionPreview subdomain={sub} id={pid} variant={variant} device={device} layout={layout}
+          theme={theme} font={font} opts={opts} brandAccent={brandAccent} />
+      </Suspense>
+    </div>
+  );
+
+
   return (
     <div className="sf-layout">
       <style>{`
@@ -296,7 +319,18 @@ export default function LayoutEditor({ dealerId, canEdit }) {
           <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
             {HEADER_OPTIONS.find((h) => h.k === opts.header)?.note}
           </span>
+          {sub && (
+            <button type="button" aria-pressed={previewId === HEADER_PREVIEW_ID}
+              aria-label={`${previewId === HEADER_PREVIEW_ID ? "Close" : "Open"} the live preview of the header`}
+              onClick={() => setPreviewId(previewId === HEADER_PREVIEW_ID ? null : HEADER_PREVIEW_ID)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 10, border: "none", cursor: "pointer",
+                fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+                background: previewId === HEADER_PREVIEW_ID ? PL.text : PL.raised, color: previewId === HEADER_PREVIEW_ID ? "#fff" : PL.text }}>
+              <Eye size={15} /> Preview
+            </button>
+          )}
         </div>
+        {previewId === HEADER_PREVIEW_ID && sub && <div style={{ marginTop: 12 }}>{previewPanel(HEADER_PREVIEW_ID, "a")}</div>}
         <Colours theme={theme} look={look} brandAccent={brandAccent}
           onMode={(m) => { setTheme((t) => cleanTheme({ ...(t || {}), mode: m })); setStatus({ kind: "", text: "" }); }}
           onAccent={(hex) => { setTheme((t) => cleanTheme({ ...(t || {}), accent: hex })); setStatus({ kind: "", text: "" }); }}
@@ -384,25 +418,7 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                   </div>
                 );
               })()}
-              {r.on && previewId === r.id && sub && (
-                <div style={{ flexBasis: "100%", minWidth: 0, paddingTop: 6 }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Live preview</span>
-                    <div className="sf-seg" role="group" aria-label="Preview screen">
-                      {[["phone", "Phone"], ["desktop", "Desktop"]].map(([k, name]) => (
-                        <button key={k} type="button" aria-pressed={device === k} onClick={() => setDevice(k)}>{name}</button>
-                      ))}
-                    </div>
-                    <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
-                      Your real details and cars. Changes above show here at once; nothing is saved until you press Save.
-                    </span>
-                  </div>
-                  <Suspense fallback={<p style={{ margin: 0, fontSize: 13, color: PL.textMuted }}>Loading your preview...</p>}>
-                    <SectionPreview subdomain={sub} id={r.id} variant={r.variant} device={device} layout={layout}
-                      theme={theme} font={font} opts={opts} brandAccent={brandAccent} />
-                  </Suspense>
-                </div>
-              )}
+              {r.on && previewId === r.id && sub && previewPanel(r.id, r.variant)}
             </div>
           );
         })}
