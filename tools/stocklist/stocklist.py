@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""
+stocklist.py - weekly dealer stock-list PDF -> Drevo (listings stay with the app's importer).
+
+What it does (run on your own laptop; nothing is kept on disk except two small login files):
+  parse      read the PDF, check it, write a clean CSV of the cars still for sale
+  status     compare the PDF with the database (read only)
+  photos     for cars that exist but have no photos: download from the private Drive
+             folders with YOUR Google login, shrink, upload to Supabase, save the URLs
+  unpublish  cars the PDF marks SOLD but that are still live -> status 'unpublished'
+  login      one-time Supabase login (paste the session from your browser)
+  google     one-time Google login for Drive (read-only)
+
+Cars are matched on the CHASSIS number (the PDF has no plates), stored in car_listings.vin.
+Photos are processed ONE AT A TIME in memory: no image is ever saved to disk.
+No service-role key is used: everything goes through your own dealer login, so the database
+rules apply exactly as in the app. Setup + steps: tools/stocklist/README.md
+"""
+import argparse, csv, hashlib, io, json, os, re, sys, time
+from pathlib import Path
+
+CFG_DIR = Path(os.environ.get("DREVO_STOCK_DIR", Path.home() / ".drevo_stock"))
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lemdkdizdlcirhbzqlos.supabase.co")
+BUCKET = "car-images"
+MIN_PHOTOS = 5          # same minimum as the listing form (src/utils/listingRules.js)
+MAX_PHOTOS = 10
+LONG_SIDE = 1600
+WEBP_QUALITY = 78
+SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+REDIRECT = "http://localhost:1/"   # never loads; you copy the address bar (see README)
+DRIVE = "https://www.googleapis.com/drive/v3"
+
+# Left edge of each column on the PDF page (points). The generator uses one layout; parse()
+# fails loudly if a row stops looking right, so a layout change is never imported silently.
+COLS = [("brand", 20), ("model", 60), ("spec", 133), ("year", 198), ("reg", 222), ("ap", 250),
+        ("chassis", 267), ("co", 340), ("colour", 358), ("mileage", 395), ("options", 440),
+        ("arr", 660), ("remarks", 680), ("base", 760), ("price", 790)]
+BRANDS = {"BMW": "BMW", "MINI": "MINI", "LAND ROVER": "Land Rover", "BYD": "BYD"}
+COUNTRY = {"JP": "Japan", "UK": "UK", "MY": "Malaysia"}
+
+
+# ---------------------------------------------------------------- PDF
+def parse(pdf_path):
+    import pdfplumber
+    rows, problems = [], []
+    with pdfplumber.open(pdf_path) as pdf:
+        for pno, page in enumerate(pdf.pages, 1):
+            tables = page.find_tables()
+            if not tables:
+                continue
+            words = page.extract_words()
+            for trow in tables[0].rows:
+                x0, top, x1, bot = trow.bbox
+                inside = [w for w in words if top <= (w["top"] + w["bottom"]) / 2 <= bot]
+                if not inside or any(w["text"] == "BRAND" for w in inside):
+                    continue
+                cells = {k: [] for k, _ in COLS}
+                for w in sorted(inside, key=lambda w: (round(w["top"]), w["x0"])):
+                    col = [k for k, left in COLS if left - 2 <= w["x0"]][-1]
+                    cells[col].append(w["text"])
+                r = {k: " ".join(v).strip() for k, v in cells.items()}
+                links = [h["uri"] for h in page.hyperlinks
+                         if top <= (h["top"] + h["bottom"]) / 2 <= bot and h.get("uri")]
+                r["drive"] = links[0] if links else ""
+                r["page"] = pno
+                why = _check(r)
+                if why:
+                    problems.append(f"page {pno}: {why}: {r['brand']} {r['model']} {r['chassis']}")
+                    continue
+                rem = r["remarks"].upper()
+                r["sold"] = rem.startswith("SOLD")
+                r["arrived"] = r["arr"].upper() == "Y"
+                r["eta"] = "ETA" in rem
+                r["vin"] = re.sub(r"\s+", "", r["chassis"]).upper()
+                r["price_rm"] = int(round(float(r["price"].replace(",", "")) * 1000))
+                r["mileage_km"] = int(r["mileage"].replace(",", "")) if r["mileage"] else None
+                rows.append(r)
+    return rows, problems
+
+
+def _check(r):
+    if not re.fullmatch(r"20\d\d|19\d\d", r["year"]): return "year not a year"
+    if not re.fullmatch(r"[A-Z0-9][A-Z0-9-]{5,}", r["chassis"].replace(" ", "")): return "chassis looks wrong"
+    if not re.fullmatch(r"\d+(\.\d)?", r["price"].replace(",", "")): return "price not a number"
+    if r["mileage"] and not re.fullmatch(r"[\d,]+", r["mileage"]): return "mileage not a number"
+    return ""
+
+
+def brand_name(b):
+    return BRANDS.get(b.upper(), b.title())
+
+
+def write_csv(rows, path):
+    cols = ["brand", "model", "variant", "year", "price", "mileage", "colour", "vin",
+            "import_country", "condition", "registration_date", "features", "arrival"]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        for r in rows:
+            w.writerow({"brand": brand_name(r["brand"]), "model": r["model"], "variant": r["spec"],
+                        "year": r["year"], "price": r["price_rm"], "mileage": r["mileage_km"] or "",
+                        "colour": r["colour"].title(), "vin": r["vin"],
+                        "import_country": COUNTRY.get(r["co"].upper(), ""), "condition": "Recon",
+                        "registration_date": f"{r['reg']} {r['year']}".strip(),
+                        "features": r["options"],
+                        "arrival": "arrived" if r["arrived"] else ("coming " + r["remarks"] if r["eta"] else "not arrived")})
+
+
+def summary(rows, problems):
+    sold = [r for r in rows if r["sold"]]
+    live = [r for r in rows if not r["sold"]]
+    vins = [r["vin"] for r in rows]
+    dup = sorted({v for v in vins if vins.count(v) > 1})
+    print(f"{len(rows)} cars read | {len(live)} for sale | {len(sold)} sold | "
+          f"{sum(1 for r in live if not r['arrived'])} for sale but not arrived yet")
+    print(f"photo links: {sum(1 for r in rows if r['drive'])} of {len(rows)} cars")
+    if dup: print("DUPLICATE chassis numbers:", ", ".join(dup))
+    if problems:
+        print(f"{len(problems)} rows did not look right and were skipped:")
+        for p in problems[:15]: print("  ", p)
+    return not problems and not dup
+
+
+# ---------------------------------------------------------------- Supabase (plain REST)
+def _cfg(name):
+    p = CFG_DIR / name
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def _save(name, data):
+    CFG_DIR.mkdir(parents=True, exist_ok=True)
+    p = CFG_DIR / name
+    p.write_text(json.dumps(data))
+    os.chmod(p, 0o600)
+
+
+def anon_key():
+    k = os.environ.get("SUPABASE_ANON_KEY")
+    if not k:
+        sys.exit("Set SUPABASE_ANON_KEY (the public anon key, same as VITE_SUPABASE_ANON_KEY in Vercel).")
+    return k
+
+
+class Supa:
+    def __init__(self):
+        import requests
+        self.http = requests.Session()
+        s = _cfg("supabase.json")
+        if not s: sys.exit("Not logged in. Run: python stocklist.py login")
+        self._refresh(s["refresh_token"])
+
+    def _refresh(self, refresh_token):
+        r = self.http.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+                           headers={"apikey": anon_key()}, json={"refresh_token": refresh_token}, timeout=30)
+        if r.status_code != 200:
+            sys.exit("Login expired. Log in on the website, then run: python stocklist.py login")
+        d = r.json()
+        _save("supabase.json", {"refresh_token": d["refresh_token"]})
+        self.token, self.uid, self.born = d["access_token"], d["user"]["id"], time.time()
+
+    def h(self, extra=None):
+        if time.time() - self.born > 2700:   # tokens last an hour; renew at 45 min
+            self._refresh(_cfg("supabase.json")["refresh_token"])
+        return {"apikey": anon_key(), "Authorization": f"Bearer {self.token}", **(extra or {})}
+
+    def my_listings(self):
+        out, start = [], 0
+        while True:
+            r = self.http.get(f"{SUPABASE_URL}/rest/v1/car_listings", timeout=60,
+                              params={"select": "id,vin,vin_number,status,images,brand,model,year",
+                                      "dealer_id": f"eq.{self.uid}", "order": "id"},
+                              headers=self.h({"Range": f"{start}-{start + 999}"}))
+            r.raise_for_status()
+            page = r.json()
+            out += page
+            if len(page) < 1000: return out
+            start += 1000
+
+    def patch(self, listing_id, body, only_status=None):
+        params = {"id": f"eq.{listing_id}", "dealer_id": f"eq.{self.uid}"}
+        if only_status: params["status"] = f"eq.{only_status}"
+        r = self.http.patch(f"{SUPABASE_URL}/rest/v1/car_listings", params=params, json=body, timeout=60,
+                            headers=self.h({"Prefer": "return=representation"}))
+        r.raise_for_status()
+        return len(r.json()) == 1   # RLS refuses with 0 rows and no error: always check
+
+    def upload(self, path, data):
+        r = self.http.post(f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}", data=data, timeout=120,
+                           headers=self.h({"Content-Type": "image/webp", "x-upsert": "true"}))
+        r.raise_for_status()
+        return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{path}"
+
+
+def db_index(listings):
+    idx = {}
+    for l in listings:
+        for v in (l.get("vin"), l.get("vin_number")):
+            if v: idx[re.sub(r"\s+", "", v).upper()] = l
+    return idx
+
+
+# ---------------------------------------------------------------- Google Drive (read only)
+def google_token():
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    d = _cfg("google.json")
+    if not d: sys.exit("No Google login. Run: python stocklist.py google")
+    creds = Credentials.from_authorized_user_info(d, SCOPES)
+    if not creds.valid:
+        creds.refresh(Request())
+        _save("google.json", json.loads(creds.to_json()))
+    return creds.token
+
+
+def drive_id(url):
+    m = re.search(r"/folders/([\w-]+)", url) or re.search(r"[?&]id=([\w-]+)", url) or re.search(r"/file/d/([\w-]+)", url)
+    return m.group(1) if m else None
+
+
+def drive_get(http, tok, path, **params):
+    for attempt in range(4):
+        r = http.get(f"{DRIVE}/{path}", params={"supportsAllDrives": "true", **params},
+                     headers={"Authorization": f"Bearer {tok}"}, timeout=60)
+        if r.status_code in (429, 500, 503): time.sleep(2 ** attempt); continue
+        return r
+    return r
+
+
+def folder_images(http, tok, fid, depth=1):
+    """Image files in a folder (and one level of sub-folders), sorted by name. HEIC is counted, skipped."""
+    out, skipped, token = [], 0, None
+    while True:
+        r = drive_get(http, tok, "files", q=f"'{fid}' in parents and trashed=false", orderBy="name",
+                      pageSize=100, pageToken=token, includeItemsFromAllDrives="true",
+                      fields="nextPageToken,files(id,name,mimeType,size)")
+        if r.status_code != 200: return out, skipped, f"drive {r.status_code}"
+        d = r.json()
+        for f in d.get("files", []):
+            mt = f.get("mimeType", "")
+            if mt in ("image/jpeg", "image/png", "image/webp"): out.append(f)
+            elif mt.startswith("image/"): skipped += 1
+            elif mt == "application/vnd.google-apps.folder" and depth > 0:
+                o, s, _ = folder_images(http, tok, f["id"], depth - 1)
+                out += o; skipped += s
+        token = d.get("nextPageToken")
+        if not token: return out, skipped, ""
+
+
+def shrink(raw):
+    """bytes -> WebP bytes, longest side 1600. One image in memory at a time."""
+    from PIL import Image, ImageOps
+    im = Image.open(io.BytesIO(raw))
+    if im.format == "JPEG": im.draft("RGB", (LONG_SIDE, LONG_SIDE))   # decode small: far less RAM
+    im = ImageOps.exif_transpose(im).convert("RGB")
+    im.thumbnail((LONG_SIDE, LONG_SIDE))
+    out = io.BytesIO()
+    im.save(out, "WEBP", quality=WEBP_QUALITY, method=4)
+    return out.getvalue()
+
+
+# ---------------------------------------------------------------- commands
+def cmd_parse(a):
+    rows, problems = parse(a.pdf)
+    ok = summary(rows, problems)
+    live = [r for r in rows if not r["sold"]]
+    out = a.out or f"stock_{time.strftime('%Y%m%d')}.csv"
+    write_csv(live, out)
+    print(f"wrote {out} ({len(live)} cars, sold ones left out). Names after SOLD and the BASE column are never exported.")
+    return 0 if ok else 1
+
+
+def cmd_status(a):
+    rows, problems = parse(a.pdf)
+    summary(rows, problems)
+    idx = db_index(Supa().my_listings())
+    live = [r for r in rows if not r["sold"]]
+    new = [r for r in live if r["vin"] not in idx]
+    nophoto = [r for r in live if r["vin"] in idx and len(idx[r["vin"]].get("images") or []) < MIN_PHOTOS]
+    sold_live = [r for r in rows if r["sold"] and r["vin"] in idx and idx[r["vin"]]["status"] == "available"]
+    print(f"in the app already: {len(live) - len(new)} | not in the app yet: {len(new)} | "
+          f"have under {MIN_PHOTOS} photos: {len(nophoto)} | SOLD in the PDF but still live: {len(sold_live)}")
+    return 0
+
+
+def cmd_unpublish(a):
+    rows, _ = parse(a.pdf)
+    sb = Supa()
+    idx = db_index(sb.my_listings())
+    todo = [(r, idx[r["vin"]]) for r in rows if r["sold"] and r["vin"] in idx and idx[r["vin"]]["status"] == "available"]
+    for r, l in todo: print(f"  {brand_name(r['brand'])} {r['model']} {r['year']}  {r['vin']}")
+    print(f"{len(todo)} live cars are marked SOLD in the PDF.")
+    if not todo or not (a.yes or input("Unpublish them? type yes: ").strip() == "yes"): return 0
+    done = sum(sb.patch(l["id"], {"status": "unpublished"}, only_status="available") for _, l in todo)
+    print(f"unpublished {done} of {len(todo)}")
+    return 0
+
+
+def cmd_photos(a):
+    import requests
+    rows, _ = parse(a.pdf)
+    sb, http = Supa(), requests.Session()
+    idx = db_index(sb.my_listings())
+    todo = [(r, idx[r["vin"]]) for r in rows if not r["sold"] and r["drive"] and r["vin"] in idx
+            and len(idx[r["vin"]].get("images") or []) < MIN_PHOTOS]
+    if a.limit: todo = todo[:a.limit]
+    print(f"{len(todo)} cars need photos" + (" (dry run: nothing is downloaded or written)" if a.dry_run else ""))
+    if a.dry_run: return 0
+    tok, held, failed, uploaded = google_token(), [], [], 0
+    for n, (r, l) in enumerate(todo, 1):
+        label = f"{brand_name(r['brand'])} {r['model']} {r['vin']}"
+        fid = drive_id(r["drive"])
+        if not fid: failed.append((label, "bad link")); continue
+        meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType")
+        if meta.status_code != 200:
+            failed.append((label, f"no access ({meta.status_code}): folder not shared with this Google account")); continue
+        mt = meta.json().get("mimeType", "")
+        files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
+        if err: failed.append((label, err)); continue
+        files = files[:a.max_photos]
+        if len(files) < MIN_PHOTOS and not a.allow_few:
+            held.append((label, f"{len(files)} usable photos" + (f" ({skipped} HEIC skipped)" if skipped else ""))); continue
+        urls = []
+        for i, f in enumerate(files, 1):
+            try:
+                d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
+                             headers={"Authorization": f"Bearer {tok}"}, timeout=120)
+                if d.status_code != 200 or len(d.content) > 40_000_000: continue
+                data = shrink(d.content)
+                name = f"{i:02d}-{hashlib.sha1(data).hexdigest()[:8]}.webp"   # new name per change: no stale CDN copy
+                urls.append(sb.upload(f"{sb.uid}/{l['id']}/{name}", data))
+            except Exception as e:
+                print(f"    skipped one file: {type(e).__name__}")
+        if len(urls) >= MIN_PHOTOS or (a.allow_few and urls):
+            ok = sb.patch(l["id"], {"images": urls})
+            uploaded += len(urls) if ok else 0
+            print(f"[{n}/{len(todo)}] {label}: {len(urls)} photos" + ("" if ok else "  DATABASE REFUSED THE UPDATE"))
+            if not ok: failed.append((label, "database refused the update"))
+        else:
+            failed.append((label, f"only {len(urls)} photos uploaded")); print(f"[{n}/{len(todo)}] {label}: FAILED")
+        time.sleep(0.3)
+    print(f"\ndone: {uploaded} photos saved | held back (under {MIN_PHOTOS}): {len(held)} | failed: {len(failed)}")
+    for lab, why in held + failed: print("  -", lab, "-", why)
+    return 0
+
+
+def cmd_login(a):
+    print("1. Sign in at https://drevo.my/login with the dealer account.\n"
+          "2. Press F12, Application tab, Local Storage, drevo.my. Copy the VALUE of the key that starts with sb- and ends with -auth-token.\n"
+          "3. Paste it here and press Enter.")
+    raw = input("> ").strip()
+    try: tok = json.loads(raw)["refresh_token"]
+    except Exception: sys.exit("That is not the session JSON (it should contain refresh_token).")
+    _save("supabase.json", {"refresh_token": tok})
+    Supa()
+    print("Logged in. Do not use that browser tab again for now: the script now owns that session.")
+    return 0
+
+
+def cmd_google(a):
+    from google_auth_oauthlib.flow import Flow
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+    secret = Path(a.client_secret or CFG_DIR / "client_secret.json")
+    if not secret.exists(): sys.exit(f"Put the Google OAuth file at {secret} (README step 2).")
+    flow = Flow.from_client_secrets_file(str(secret), scopes=SCOPES, redirect_uri=REDIRECT)
+    url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+    print("Open this in your browser, allow read-only Drive access:\n\n" + url +
+          "\n\nThe next page will fail to load (that is expected). Copy the full address from the address bar and paste it here.")
+    flow.fetch_token(authorization_response=input("> ").strip())
+    _save("google.json", json.loads(flow.credentials.to_json()))
+    print("Google login saved.")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    for name, fn in (("parse", cmd_parse), ("status", cmd_status), ("photos", cmd_photos), ("unpublish", cmd_unpublish)):
+        p = sub.add_parser(name); p.add_argument("pdf"); p.set_defaults(fn=fn)
+        if name == "parse": p.add_argument("--out")
+        if name == "photos":
+            p.add_argument("--limit", type=int); p.add_argument("--dry-run", action="store_true")
+            p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--allow-few", action="store_true")
+        if name == "unpublish": p.add_argument("--yes", action="store_true")
+    sub.add_parser("login").set_defaults(fn=cmd_login)
+    g = sub.add_parser("google"); g.add_argument("--client-secret"); g.set_defaults(fn=cmd_google)
+    a = ap.parse_args()
+    sys.exit(a.fn(a))
+
+
+if __name__ == "__main__":
+    main()
