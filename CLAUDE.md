@@ -405,7 +405,7 @@ still says "21 pages") — do not update it; it is pending removal.
   Light theme dark bands: class `sf-band` (footer, About B) + ONE rule from `bandVars` (`storefrontTheme.js`): surface vars reset to
   `initial` so each `var(--sf-x, <old dark>)` falls back to today's dark look. Calculator B "Inline" (`CalculatorInline.jsx`,
   financing.js `monthlyPayment` only, EIR, "the bank decides"). Presets may carry `options` + `mode`; 5th look "Showroom Light".
-  A preset without `mode` never touches Dark/Light. Phase C (delivery gallery) needs buyer consent first.
+  A preset without `mode` never touches Dark/Light.
   **Stage 4 phase B (2026-11-21, local commits): built, SWITCHED OFF until migration `20261121a_storefront_phase_b.sql` (QUEUED,
   not applied) runs.** New section ids `brands` (Brands in stock, `Brands.jsx`), `browse` (Browse bar, `Browse.jsx`) and `sold`
   (Recently sold, `RecentlySold.jsx`). The live `storefront_layout_ok` REFUSES unknown ids, so they sit behind ONE constant,
@@ -417,6 +417,15 @@ still says "21 pages") — do not update it; it is pending removal.
   the ONE map `src/config/brandLogos.js` (5 checked logos, the rest a wordmark). Recently sold = `get_dealer_recent_sales(subdomain)`
   (SECURITY DEFINER, public storefronts only, last 12 in 12 months): car + month + photo, never a price or a buyer. With Browse on,
   the cars section drops its own body-type chips (`CarsToolbar browseOn`): one row, not two.
+  **Stage 4 phase C (2026-11-21, local commits): "Happy customers" handover photos, SWITCHED OFF until migration
+  `20261121b_storefront_delivery_gallery.sql` (QUEUED, after `20261121a`) runs.** Gate `DB_PHASE_C` (storefrontLayout.js) opens only
+  with `DB_PHASE_B`; flip both the night both are applied. Section `deliveries` (`sections/Deliveries.jsx`, `get_dealer_deliveries`)
+  and dashboard Storefront > Delivery photos (`dashboard/storefront/DeliveryPhotos.jsx`, `DELIVERIES_OPEN`). A buyer's photo is
+  personal data (PDPA s.6 consent, s.38 withdrawal): every row needs the consent tick, the DB stamps who/when/how
+  (`storefront_delivery_stamp`), there is no UPDATE path, delete is one tap, and the table has NO buyer name / phone / IC / plate
+  column. Words = car + month + a 60-char caption with no 7+ digit run: ONE rules file `src/utils/deliveryCaption.js`
+  (`npm run test:deliverycaption`, mirrors the SQL CHECKs). Managers/admins only with the Storefront switch (`_storefront_editor`),
+  never salesmen. Never add a buyer-identifying field to it.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were
