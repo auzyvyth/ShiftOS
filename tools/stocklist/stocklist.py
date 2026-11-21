@@ -558,6 +558,8 @@ def markup_for(base):
 def guess_fuel(r, c):
     """Only what the PDF or the car itself tells us. Unsure -> blank (never a wrong fuel)."""
     if c["fuel_type"]: return c["fuel_type"]
+    # Chassis codes that are always hybrid (the "2.5L" in the spec made the Crown Sport read as Petrol)
+    if re.match(r"(TZSH35|AZSH35|AZSH36|AAHH)", (r.get("vin") or "").upper()): return "Hybrid"
     t = f"{r['model']} {r['spec']}".upper()
     if re.search(r"DIESEL|\bEV\b|ELECTRIC|PHEV|HYBRID", t): return None
     if c["brand"] in ("BYD", "Land Rover"): return None
