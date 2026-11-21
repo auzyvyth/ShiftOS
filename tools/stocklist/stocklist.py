@@ -7,6 +7,7 @@ What it does (run on your own laptop; nothing is kept on disk except two small l
   parse      read the PDF, check it, write a clean CSV of the cars still for sale
   tidy       re-split model / variant / engine / body on cars already in the app (dry run unless --yes)
   status     compare the PDF with the database (read only)
+  create     TEST: make REAL listings + photos for the first 5 qualifying cars (--limit N, --dry-run, --status available)
   photos     for cars that exist but have no photos: download from the private Drive
              folders with YOUR Google login, shrink, upload to Supabase, save the URLs
   unpublish  cars the PDF marks SOLD but that are still live -> status 'unpublished'
@@ -511,6 +512,73 @@ def cmd_photos(a):
     return 0
 
 
+def _slug(r, c):
+    base = re.sub(r"[^a-z0-9]+", "-", " ".join(str(x) for x in (r["year"], c["brand"], c["model"], c["variant"]) if x).lower()).strip("-")
+    return (base or "car") + "-" + hashlib.sha1(r["vin"].encode()).hexdigest()[:5]
+
+
+def cmd_create(a):
+    """TEST RUN: create REAL listings (with photos) for the first --limit cars that qualify. Photos are checked BEFORE a row is made."""
+    import requests
+    rows, _ = parse(a.pdf)
+    sb, http = Supa(), requests.Session()
+    have = db_index(sb.my_listings())
+    todo = [r for r in rows if not r["sold"] and r["drive"] and r["vin"] not in have]
+    print(f"{len(todo)} cars are for sale, have a photo link and are not in the app yet. "
+          f"Will create at most {a.limit}, status '{a.status}'" + (" (dry run)" if a.dry_run else ""))
+    tok, made, held = google_token(), 0, []
+    for r in todo:
+        if made >= a.limit: break
+        c = clean_car(r)
+        label = f"{brand_name(r['brand'])} {r['model']} {r['year']} {r['vin']}"
+        fid = drive_id(r["drive"])
+        meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
+        if not meta or meta.status_code != 200:
+            held.append((label, "cannot open the Drive folder")); continue
+        mt = meta.json().get("mimeType", "")
+        files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
+        if err or len(files) < a.min_photos:
+            held.append((label, err or f"{len(files)} photos, needs {a.min_photos}")); continue
+        files = files[:MAX_PHOTOS]
+        row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
+               "year": r["year"], "selling_price": r["price_rm"], "mileage": r["mileage_km"],
+               "colour": r["colour"].title(), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
+               "fuel_type": c["fuel_type"] or None, "condition": "recon", "is_recon": True,
+               "import_country": COUNTRY.get(r["co"].upper()), "vin": r["vin"], "registration_date": reg_text(r),
+               "options": r["options"] or None, "dealer_id": sb.uid, "status": a.status}
+        print(f"\n--- {label}: {len(files)} photos in folder")
+        for k, v in row.items(): print(f"    {k:15} {v}")
+        if a.dry_run: made += 1; continue
+        shrunk = []
+        for f in files:
+            try:
+                d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
+                             headers={"Authorization": f"Bearer {tok}"}, timeout=120)
+                if d.status_code == 200 and len(d.content) <= 40_000_000: shrunk.append(shrink(d.content))
+            except Exception as e:
+                print(f"    skipped one file: {type(e).__name__}")
+        if len(shrunk) < a.min_photos:
+            held.append((label, f"only {len(shrunk)} photos could be read")); continue
+        ins = http.post(f"{SUPABASE_URL}/rest/v1/car_listings", json=row, timeout=60,
+                        headers=sb.h({"Prefer": "return=representation"}))
+        if ins.status_code >= 300:
+            held.append((label, f"database refused: {ins.text[:200]}")); continue
+        lid = ins.json()[0]["id"]
+        try:
+            urls = [sb.upload(f"{sb.uid}/{lid}/{i:02d}-{hashlib.sha1(d).hexdigest()[:8]}.webp", d) for i, d in enumerate(shrunk, 1)]
+            ok = sb.patch(lid, {"images": urls})
+            if not ok: raise RuntimeError("database refused the photo update")
+        except Exception as e:
+            sb.patch(lid, {"status": "archived"})   # never leave a half-made car live
+            held.append((label, f"photos failed ({e}); car archived")); continue
+        su = http.get(f"{SUPABASE_URL}/rest/v1/stock_units", params={"select": "id", "listing_id": f"eq.{lid}"}, headers=sb.h()).json()
+        made += 1
+        print(f"    CREATED id {lid}: {len(urls)} photos, stock record {'yes' if su else 'NO (add it in the app)'}")
+    print(f"\ndone: {made} cars {'shown' if a.dry_run else 'created'} | not taken: {len(held)}")
+    for lab, why in held: print("  -", lab, "-", why)
+    return 0
+
+
 def cmd_login(a):
     print("1. Sign in at https://drevo.my/login with the dealer account.\n"
           "2. Press F12, Application tab, Local Storage, drevo.my. Copy the VALUE of the key that starts with sb- and ends with -auth-token.\n"
@@ -543,12 +611,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name, fn in (("parse", cmd_parse), ("explain", cmd_explain), ("status", cmd_status), ("tidy", cmd_tidy),
-                     ("photos", cmd_photos), ("unpublish", cmd_unpublish)):
+                     ("photos", cmd_photos), ("create", cmd_create), ("unpublish", cmd_unpublish)):
         p = sub.add_parser(name); p.add_argument("pdf"); p.set_defaults(fn=fn)
         if name == "parse": p.add_argument("--out")
         if name == "photos":
             p.add_argument("--limit", type=int); p.add_argument("--dry-run", action="store_true")
             p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
+        if name == "create":
+            p.add_argument("--limit", type=int, default=5); p.add_argument("--dry-run", action="store_true")
+            p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
+            p.add_argument("--status", default="unpublished", choices=["unpublished", "available"])
         if name in ("unpublish", "tidy"): p.add_argument("--yes", action="store_true")
     sub.add_parser("login").set_defaults(fn=cmd_login)
     g = sub.add_parser("google"); g.add_argument("--client-secret"); g.set_defaults(fn=cmd_google)
