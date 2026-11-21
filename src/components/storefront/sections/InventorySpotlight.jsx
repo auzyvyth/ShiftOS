@@ -16,7 +16,7 @@ const specs = (car) => [
   car.body_type,
 ].filter(Boolean);
 
-export default function InventorySpotlight({ featured, loading, carsBase, ctaCtx, compare }) {
+export default function InventorySpotlight({ browseOn, featured, loading, carsBase, ctaCtx, compare }) {
   const lead = featured.find((c) => carPhoto(c));
   // Four under the spotlight: fills whole rows at 4 across (desktop) and 2 across (phone).
   const rest = featured.filter((c) => c !== lead).slice(0, 4);
@@ -41,7 +41,7 @@ export default function InventorySpotlight({ featured, loading, carsBase, ctaCtx
       `}</style>
       <div style={wrap}>
         <CarsHeading carsBase={carsBase} />
-        <CarsToolbar carsBase={carsBase} />
+        <CarsToolbar carsBase={carsBase} browseOn={browseOn} />
         {loading ? (
           <div className="sc-grid" style={{ marginBottom: "36px" }}>
             {[...Array(3)].map((_, i) => <ShowroomCardSkeleton key={i} dark />)}

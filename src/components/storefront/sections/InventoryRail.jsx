@@ -7,7 +7,7 @@ import { ShowroomCardSkeleton } from "@/components/ShowroomCard";
 import { CarsHeading, CarsToolbar, CarCard, ViewAllButton } from "./carsParts";
 import { wrap, secA } from "./shared";
 
-export default function InventoryRail({ featured, loading, carsBase, ctaCtx, compare }) {
+export default function InventoryRail({ browseOn, featured, loading, carsBase, ctaCtx, compare }) {
   const rail = useRef(null);
   const step = (dir) => {
     const el = rail.current;
@@ -38,7 +38,7 @@ export default function InventoryRail({ featured, loading, carsBase, ctaCtx, com
       `}</style>
       <div style={wrap}>
         <CarsHeading carsBase={carsBase} />
-        <CarsToolbar carsBase={carsBase} />
+        <CarsToolbar carsBase={carsBase} browseOn={browseOn} />
         {featured.length > 2 && <div className="irl-arrows">{arrow(-1, "Previous cars")}{arrow(1, "Next cars")}</div>}
         <div className="irl" ref={rail}>
           {loading

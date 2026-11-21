@@ -46,7 +46,9 @@ const chip = (active) => ({
   color: active ? "var(--sf-accent-text, #f87171)" : "var(--sf-muted, rgba(255,255,255,0.78))",
 });
 
-export function CarsToolbar({ carsBase }) {
+// browseOn = the Browse bar section is on (phase B): it already shows the body types the dealer
+// has, so this row of chips steps aside and the page carries one set, not two.
+export function CarsToolbar({ carsBase, browseOn = false }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   return (
@@ -66,12 +68,14 @@ export function CarsToolbar({ carsBase }) {
           />
         </div>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "28px" }}>
-        <Link to={carsBase} style={chip(true)}>All cars</Link>
-        {BODY_TYPES.map((bt) => (
-          <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
-        ))}
-      </div>
+      {!browseOn && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "28px" }}>
+          <Link to={carsBase} style={chip(true)}>All cars</Link>
+          {BODY_TYPES.map((bt) => (
+            <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
+          ))}
+        </div>
+      )}
     </>
   );
 }

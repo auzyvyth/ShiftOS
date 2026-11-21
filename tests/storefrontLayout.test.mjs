@@ -29,7 +29,8 @@ assert.deepEqual(ids(c).filter((id) => ["hero", "cars", "strip", "contact"].incl
 assert.equal(ids(c).indexOf("about"), ids(c).indexOf("cars") + 1, "a missing section returns after its nearest default neighbour that is present");
 assert.equal(c.find((r) => r.id === "strip").on, false, "off kept");
 assert.equal(c.find((r) => r.id === "cars").on, true, "cars can never be switched off");
-assert.equal(ids(c).indexOf("video"), ids(c).indexOf("strip") + 1, "a missing section returns after its default neighbour");
+const beforeVideo = SECTIONS[SECTIONS.findIndex((x) => x.id === "video") - 1].id; // strip, or brands once phase B is on
+assert.equal(ids(c).indexOf("video"), ids(c).indexOf(beforeVideo) + 1, "a missing section returns after its default neighbour");
 
 // Pins: the banner first and Get in touch last, whatever was saved.
 const flipped = cleanLayout({ v: 1, sections: [{ id: "contact", on: false }, { id: "about", on: true }, { id: "hero", on: false }] });
@@ -247,7 +248,7 @@ assert.ok(bIds.length <= 20, "the DB caps a layout at 20 sections");
 assert.equal(bIds.indexOf("brands"), bIds.indexOf("strip") + 1, "brands right under the strip");
 assert.equal(bIds.indexOf("browse"), bIds.indexOf("cars") - 1, "browse bar just above the cars");
 assert.equal(bIds.indexOf("sold"), bIds.indexOf("reviews") + 1, "recently sold after the reviews");
-assert.deepEqual(bIds.filter((id) => !PHASE_B_IDS.includes(id)), SECTIONS.map((x) => x.id), "the old sections keep their order");
+assert.deepEqual(bIds.filter((id) => !PHASE_B_IDS.includes(id)), SECTIONS.map((x) => x.id).filter((id) => !PHASE_B_IDS.includes(id)), "the old sections keep their order");
 // A layout saved before the flip (13 sections) gets the three new ones, switched on, in place.
 const oldSaved = toSaved(moveSection(toggleSection(defaultLayout(), "why"), "about", -1));
 const opened = B.cleanLayout(oldSaved);
@@ -261,8 +262,10 @@ assert.equal(B.sectionOn(bOff, "sold"), false);
 assert.deepEqual(B.fromDraftParam(B.draftParam(bOff)), bOff, "preview link carries the new sections");
 const bSaved = B.toSaved(bOff);
 assert.equal(bSaved.sections.length, bIds.length);
-assert.equal(cleanLayout(bSaved).length, SECTIONS.length, "closed gate: a saved phase-B id is dropped, never drawn");
-assert.ok(!draftParam(cleanLayout(bSaved)).match(/brands|browse|sold/), "closed gate: the preview link never carries them");
+if (!DB_PHASE_B) {
+  assert.equal(cleanLayout(bSaved).length, SECTIONS.length, "closed gate: a saved phase-B id is dropped, never drawn");
+  assert.ok(!draftParam(cleanLayout(bSaved)).match(/brands|browse|sold/), "closed gate: the preview link never carries them");
+}
 assert.ok(B.isDefaultLayout(B.defaultLayout()));
 // The check reads only v + sections, so the stage-4 `font` key needs no migration. If someone
 // tightens the check to list allowed keys, `font` must be in it or every font save fails.

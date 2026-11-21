@@ -43,6 +43,11 @@ const HowRow = lazy(() => import("./HowRow"));
 const ReviewsSplit = lazy(() => import("./ReviewsSplit"));
 const ReviewsFramed = lazy(() => import("./ReviewsFramed"));
 const CalculatorInline = lazy(() => import("./CalculatorInline"));
+// Phase B (behind DB_PHASE_B, storefrontLayout.js): listed here always, drawn only once the
+// layout has them, so with the gate closed none of these files is ever downloaded.
+const Brands = lazy(() => import("./Brands"));
+const Browse = lazy(() => import("./Browse"));
+const RecentlySold = lazy(() => import("./RecentlySold"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
 // Banner C "Full screen" has two backgrounds (look option heroBg, storefrontLayout.js): a wall
@@ -53,11 +58,14 @@ const HeroFull = (props) => (props.look?.heroBg === "photo" ? <HeroPhoto {...pro
 export const SECTION_VERSIONS = {
   hero: { a: Hero, b: HeroSplit, c: HeroFull },
   strip: { a: DealerStrip },
+  brands: { a: Brands },
   video: { a: HeroVideo },
   hot_deals: { a: HotDeals },
+  browse: { a: Browse },
   cars: { a: Inventory, b: InventoryRail, c: InventorySpotlight },
   about: { a: About, b: AboutSplit, c: AboutLead },
   reviews: { a: Reviews, b: ReviewsSplit, c: ReviewsFramed },
+  sold: { a: RecentlySold },
   why: { a: WhyUs, b: WhyUsSplit, c: WhyUsNumbered },
   stats: { a: Stats, b: StatsBig, c: StatsBand },
   how: { a: HowItWorks, b: HowTimeline, c: HowRow },

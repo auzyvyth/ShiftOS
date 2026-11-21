@@ -54,7 +54,7 @@ export const VERSION_OPTIONS = {
       cars: "Your three newest cars as a wall under your name." } } },
 };
 
-const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "contact"];
+const ONLY_A = ["strip", "video", "hot_deals", "testimonials", "contact", "brands", "browse", "sold"];
 
 export const AVAILABLE_VERSIONS = {
   ...Object.fromEntries(ONLY_A.map((id) => [id, ["a"]])),

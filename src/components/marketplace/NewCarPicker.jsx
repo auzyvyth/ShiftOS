@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cdnImg } from '../../utils/img';
 import { MY_STATES } from '../../utils/locations';
 import { newModelPath, readBuyerState } from '../../utils/newCars';
+import { LOGOS } from '../../config/brandLogos';
 
 // The marketplace hero's "New" mode (owner, 2026-10-22): brand -> model -> the
 // model page (/new-cars/:brand/:model), which lists the advisors and asks where
@@ -14,13 +15,8 @@ import { newModelPath, readBuyerState } from '../../utils/newCars';
 // `brands` comes from liveNewCarBrands() (src/utils/newCars.js): only brands and
 // models with a live advisor card, so no tap lands on an empty page.
 
-// Logo files in /public/brands. A brand is listed here only once its CURRENT
-// logo is in that folder; the rest render as a wordmark. (The old proton.svg was
-// the ProtonMail logo; proton.png + byd.png came from the owner, 2026-10-22.)
-export const LOGOS = {
-  Proton: '/brands/proton.png', Perodua: '/brands/perodua.png', Toyota: '/brands/toyota.svg',
-  BYD: '/brands/byd.png', Honda: '/brands/honda.svg',
-};
+// Logo files: the one map lives in src/config/brandLogos.js (the dealer site's brand strip reads it too).
+export { LOGOS };
 
 const rmFrom = (n) => (n ? `From RM ${Number(n).toLocaleString('en-MY')}` : 'See prices');
 // A brand tile's price is its cheapest live model: the one number a buyer

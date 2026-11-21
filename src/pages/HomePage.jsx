@@ -23,7 +23,7 @@ import { getSlugFromURL, trackEvent } from "../utils/analytics";
 import { StorefrontError } from "../components/ErrorScreen";
 import { StorefrontStyles } from "../components/storefront/sections/ui";
 import { SECTION_VERSIONS, AVAILABLE_VERSIONS, SECTION_FALLBACK } from "../components/storefront/sections";
-import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet, cleanOptions, draftOptions } from "../utils/storefrontLayout";
+import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet, cleanOptions, draftOptions, sectionOn } from "../utils/storefrontLayout";
 import { themeOf, draftTheme, themeCss } from "../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
 import { accentTheme } from "../utils/liveAccent";
@@ -225,6 +225,8 @@ const HomePage = () => {
   // The same props for every section; each returns null when it has nothing to show.
   const ctx = {
     look,
+    // The Browse bar (phase B) is on: the cars section drops its own body-type chips.
+    browseOn: sectionOn(layout, "browse"),
     tenant, siteName, carsBase, ctaCtx, stock, soldCount, soldDisplay, featured, hotDeals, loading,
     compare: { compareIds, addToCompare, removeFromCompare, isInCompare },
     onTradeIn: () => setTradeInOpen(true),
