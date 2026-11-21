@@ -9,7 +9,7 @@
 // Stage 4: "Your look" on top: four named looks (presets), Shuffle, the heading font and the
 // site's theme (Dark or Light) and accent colour (storefrontTheme.js).
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette, Eye } from "lucide-react";
+import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette } from "lucide-react";
 import { supabase } from "../../../supabaseClient";
 import { premiumLight as PL } from "../../../theme/tokens";
 import { getStorefrontUrl } from "../../../hooks/useTenant";
@@ -238,20 +238,20 @@ export default function LayoutEditor({ dealerId, canEdit }) {
 
   const sub = row?.subdomain;
   const previewUrl = sub ? getStorefrontUrl(sub, `/?layout=${encodeURIComponent(draftParam(layout, { font, theme, ...opts }))}`) : null;
-  const shown = layout.filter((r) => r.on);
+  const toggle = (id) => setPreviewId(previewId === id ? null : id);
 
-  // The live preview block (screen switch + the frame) for a section, or the header ("__header").
+  // The live preview of the open row (screen switch + the frame).
   const previewPanel = (pid, variant) => (
-    <div style={{ flexBasis: "100%", minWidth: 0, paddingTop: 6 }}>
+    <div style={{ minWidth: 0, marginTop: 14 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Live preview</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Preview</span>
         <div className="sf-seg" role="group" aria-label="Preview screen">
           {[["phone", "Phone"], ["desktop", "Desktop"]].map(([k, name]) => (
             <button key={k} type="button" aria-pressed={device === k} onClick={() => setDevice(k)}>{name}</button>
           ))}
         </div>
         <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
-          Your real details and cars. Changes above show here at once; nothing is saved until you press Save.
+          Your real details and cars. It changes as you pick; nothing is saved until you press Save.
         </span>
       </div>
       <Suspense fallback={<p style={{ margin: 0, fontSize: 13, color: PL.textMuted }}>Loading your preview...</p>}>
@@ -261,16 +261,126 @@ export default function LayoutEditor({ dealerId, canEdit }) {
     </div>
   );
 
+  // One labelled switch of choices with the note for the one picked.
+  const choice = (label, ariaLabel, items, current, onPick) => (
+    <div className="sf-look">
+      <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>{label}</span>
+      <div className="sf-seg" role="group" aria-label={ariaLabel}>
+        {items.map(({ k, name }) => (
+          <button key={k} type="button" aria-pressed={current === k} onClick={() => onPick(k)}>{name}</button>
+        ))}
+      </div>
+      <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0, flexBasis: "100%" }}>
+        {items.find((x) => x.k === current)?.note}
+      </span>
+    </div>
+  );
+  const setOpt = (k) => (v) => { setOpts((p) => ({ ...p, [k]: v })); setStatus({ kind: "", text: "" }); };
+
+  // One row of the page. `lead` = the move arrows or a lock label; `right` = the switch or "Always on".
+  const item = ({ id, name, line, hint, lead, right, off, body }) => {
+    const open = previewId === id && !off;
+    return (
+      <div key={id} className={`sf-item${open ? " open" : ""}`} style={{ opacity: off ? 0.6 : 1 }}>
+        <div className="sf-item-top">
+          {lead}
+          <div className="sf-item-name" style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: PL.text }}>{name}</div>
+            <div style={{ fontSize: 12, color: hint ? PL.accentText : PL.textMuted, lineHeight: 1.4 }}>{hint || line}</div>
+          </div>
+          {right}
+          {!off && (
+            <button type="button" className="sf-edit" aria-expanded={open} onClick={() => toggle(id)}>
+              {open ? "Close" : "Edit"} {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+          )}
+        </div>
+        {open && (
+          <div className="sf-item-body">
+            {body}
+            {sub ? previewPanel(id, layout.find((r) => r.id === id)?.variant || "a")
+              : <p style={{ margin: "12px 0 0", fontSize: 12, color: PL.textMuted }}>The preview needs your site address (Settings).</p>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const pageRows = [
+    item({
+      id: HEADER_PREVIEW_ID, name: "Header",
+      line: `${HEADER_OPTIONS.find((h) => h.k === opts.header)?.label}: the bar on top of every page`,
+      lead: <span className="sf-lead"><Lock size={13} /> Top</span>,
+      right: <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>,
+      body: choice("Look", "Header", HEADER_OPTIONS.map((h) => ({ k: h.k, name: h.label, note: h.note })), opts.header, setOpt("header")),
+    }),
+    ...layout.map((r, i) => {
+      const info = sectionInfo(r.id);
+      const pinned = !!info.pin;
+      const canUp = !pinned && i > 0 && !sectionInfo(layout[i - 1].id).pin;
+      const canDown = !pinned && i < layout.length - 1 && !sectionInfo(layout[i + 1].id).pin;
+      const isEmpty = r.on && empty[r.id];
+      const versionName = VERSION_INFO[r.id]?.[r.variant]?.name;
+      const o = r.on && VERSION_OPTIONS[r.id]?.[r.variant];
+      return item({
+        id: r.id, name: info.label, off: !r.on,
+        line: !r.on ? "Switched off" : `${versionName ? `${versionName} · ` : ""}Shows: ${info.shows.charAt(0).toLowerCase()}${info.shows.slice(1)}`,
+        hint: isEmpty ? EMPTY_HINT[r.id] || "Empty on your site now" : "",
+        lead: pinned ? (
+          <span className="sf-lead"><Lock size={13} /> {info.pin === "first" ? "First" : "Last"}</span>
+        ) : (
+          <span style={{ display: "inline-flex", gap: 6, flexShrink: 0 }}>
+            <button type="button" aria-label={`Move ${info.label} up`} disabled={!canUp} onClick={() => change(moveSection(layout, r.id, -1))} style={iconBtn(!canUp)}><ChevronUp size={16} /></button>
+            <button type="button" aria-label={`Move ${info.label} down`} disabled={!canDown} onClick={() => change(moveSection(layout, r.id, 1))} style={iconBtn(!canDown)}><ChevronDown size={16} /></button>
+          </span>
+        ),
+        right: info.locked
+          ? <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>
+          : <Switch on={r.on} label={`Show ${info.label}`} onClick={() => change(toggleSection(layout, r.id))} />,
+        body: (
+          <>
+            {VERSION_INFO[r.id] && choice("Look", `${info.label} look`,
+              Object.entries(VERSION_INFO[r.id]).map(([v, meta]) => ({ k: v, name: meta.name, note: meta.note })),
+              r.variant, (v) => change(setVariant(layout, r.id, v, AVAILABLE_VERSIONS)))}
+            {o && choice(o.label, `${info.label} ${o.label.toLowerCase()}`,
+              Object.entries(o.values).map(([v, name]) => ({ k: v, name, note: o.notes?.[v] })), opts[o.option], setOpt(o.option))}
+            {!VERSION_INFO[r.id] && <p style={{ margin: 0, fontSize: 12, color: PL.textMuted, lineHeight: 1.5 }}>This section has one look. Switch it on or off, or move it, from the row above.</p>}
+          </>
+        ),
+      });
+    }),
+    item({
+      id: FOOTER_PREVIEW_ID, name: "Footer",
+      line: `${FOOTER_OPTIONS.find((f) => f.k === opts.footer)?.label}: the bottom of every page`,
+      lead: <span className="sf-lead"><Lock size={13} /> Bottom</span>,
+      right: <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>,
+      body: choice("Look", "Footer", FOOTER_OPTIONS.map((f) => ({ k: f.k, name: f.label, note: f.note })), opts.footer, setOpt("footer")),
+    }),
+  ];
 
   return (
     <div className="sf-layout">
       <style>{`
-        .sf-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-        @media (min-width: 900px) { .sf-layout { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; } }
-        .sf-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border-radius: ${PL.radius.row}px; background: ${PL.raised}; }
-        .sf-row + .sf-row { margin-top: 8px; }
-        .sf-look { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 4px 0 2px; }
-        .sf-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: #e7e9ee; }
+        .sf-layout { display: flex; flex-direction: column; gap: 16px; max-width: 900px; }
+        .sf-step { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: ${PL.text}; color: #fff; font-size: 12px; font-weight: 700; margin-right: 8px; vertical-align: 1px; }
+        .sf-item { border-radius: ${PL.radius.row}px; background: ${PL.raised}; }
+        .sf-item + .sf-item { margin-top: 8px; }
+        .sf-item-top { display: flex; align-items: center; gap: 10px; padding: 10px 12px; flex-wrap: wrap; }
+        .sf-item.open { background: #fff; box-shadow: ${PL.shadow}; }
+        .sf-item-body { padding: 2px 14px 16px; }
+        .sf-lead { width: 76px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: ${PL.textMuted}; flex-shrink: 0; }
+        .sf-edit { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 12px; border-radius: 10px; border: none; cursor: pointer;
+          font-size: 13px; font-weight: 600; font-family: inherit; background: #fff; color: ${PL.text}; box-shadow: ${PL.shadow}; flex-shrink: 0; }
+        .sf-item.open .sf-edit { background: ${PL.raised}; box-shadow: none; }
+        /* Phone: the name gets its own full-width line, the arrows, switch and Edit sit under it. */
+        @media (max-width: 600px) {
+          .sf-item-name { order: -1; flex: 1 1 100% !important; }
+          .sf-lead { width: auto; }
+          .sf-edit { margin-left: auto; }
+          .sf-item-body { padding: 2px 12px 14px; }
+        }
+        .sf-look { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 6px 0 2px; }
+        .sf-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: #e7e9ee; }
         .sf-seg button { border: none; background: transparent; color: ${PL.textSec}; font-size: 13px; font-weight: 600;
           padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; }
         .sf-seg button[aria-pressed="true"] { background: #fff; color: ${PL.text}; box-shadow: 0 1px 2px rgba(17,24,39,0.12); }
@@ -278,19 +388,34 @@ export default function LayoutEditor({ dealerId, canEdit }) {
         .sf-preset { text-align: left; border: 2px solid transparent; background: ${PL.raised}; border-radius: ${PL.radius.row}px;
           padding: 10px 12px; cursor: pointer; font-family: inherit; }
         .sf-preset[aria-pressed="true"] { border-color: ${PL.text}; background: #fff; }
+        .sf-savebar { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+          padding: 12px 16px; border-radius: ${PL.radius.card}px; background: #fff; box-shadow: 0 8px 30px rgba(17,24,39,0.16); }
+        .sf-group { font-size: 12px; font-weight: 600; color: ${PL.textMuted}; margin: 0 0 8px; }
       `}</style>
 
-      <div style={{ ...card, gridColumn: "1 / -1" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
-          <div style={{ minWidth: 0 }}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: PL.text }}>Your look</h3>
-            <p style={{ margin: 0, fontSize: 13, color: PL.textMuted, lineHeight: 1.5 }}>
-              Pick a ready look, or Shuffle for a new mix. Your order and the sections you switched off stay as they are.
-            </p>
-          </div>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: PL.text }}>Design your site</h3>
+          <p style={{ margin: 0, fontSize: 13, color: PL.textMuted, lineHeight: 1.5 }}>
+            Two steps: pick the style, then go down the page and pick what each part looks like. Nothing changes for buyers until you press Save.
+          </p>
+        </div>
+        {previewUrl && (
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="pl-btn-grey"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 14, textDecoration: "none" }}>
+            See the whole page <ExternalLink size={14} />
+          </a>
+        )}
+      </div>
+
+      <div style={card}>
+        <h3 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 700, color: PL.text }}><span className="sf-step">1</span>Style</h3>
+
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+          <p className="sf-group" style={{ margin: 0 }}>Start from a ready-made look</p>
           <button type="button" className="pl-btn-grey" onClick={() => changeLook(shuffleLook(layout, font, AVAILABLE_VERSIONS))}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 14, cursor: "pointer" }}>
-            <Shuffle size={15} /> Shuffle
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}>
+            <Shuffle size={14} /> Shuffle
           </button>
         </div>
         <div className="sf-presets" role="group" aria-label="Ready looks">
@@ -302,220 +427,70 @@ export default function LayoutEditor({ dealerId, canEdit }) {
             </button>
           ))}
         </div>
-        {!preset && <p style={{ margin: "10px 0 0", fontSize: 12, color: PL.textMuted }}>Your own mix.</p>}
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: PL.textMuted }}>
+          {preset ? "A ready-made look keeps your order, your on and off switches and your accent colour." : "Your own mix. A ready-made look changes the versions, heading font and options, not your order."}
+        </p>
+
+        <div style={{ borderTop: "1px solid rgba(17,24,39,0.06)", margin: "18px 0 0", paddingTop: 4 }}>
+          <Colours theme={theme} look={look} brandAccent={brandAccent}
+            onMode={(m) => { setTheme((t) => cleanTheme({ ...(t || {}), mode: m })); setStatus({ kind: "", text: "" }); }}
+            onAccent={(hex) => { setTheme((t) => cleanTheme({ ...(t || {}), accent: hex })); setStatus({ kind: "", text: "" }); }}
+            onResetAccent={() => { setTheme((t) => cleanTheme({ ...(t || {}), accent: null })); setStatus({ kind: "", text: "" }); }} />
+        </div>
+
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Headings</span>
           <div className="sf-seg" role="group" aria-label="Heading font">
             {Object.entries(FONTS).map(([id, f]) => (
-              <button key={id} type="button" aria-pressed={font === id} onClick={() => { setFont(id); setStatus({ kind: "", text: "" }); }}>
-                {f.name}
-              </button>
+              <button key={id} type="button" aria-pressed={font === id} onClick={() => { setFont(id); setStatus({ kind: "", text: "" }); }}>{f.name}</button>
             ))}
           </div>
           <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{FONTS[font].note}</span>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Header</span>
-          <div className="sf-seg" role="group" aria-label="Header">
-            {HEADER_OPTIONS.map((h) => (
-              <button key={h.k} type="button" aria-pressed={opts.header === h.k}
-                onClick={() => { setOpts((p) => ({ ...p, header: h.k })); setStatus({ kind: "", text: "" }); }}>
-                {h.label}
-              </button>
-            ))}
-          </div>
-          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
-            {HEADER_OPTIONS.find((h) => h.k === opts.header)?.note}
-          </span>
-          {sub && (
-            <button type="button" aria-pressed={previewId === HEADER_PREVIEW_ID}
-              aria-label={`${previewId === HEADER_PREVIEW_ID ? "Close" : "Open"} the live preview of the header`}
-              onClick={() => setPreviewId(previewId === HEADER_PREVIEW_ID ? null : HEADER_PREVIEW_ID)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 10, border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: 600, fontFamily: "inherit",
-                background: previewId === HEADER_PREVIEW_ID ? PL.text : PL.raised, color: previewId === HEADER_PREVIEW_ID ? "#fff" : PL.text }}>
-              <Eye size={15} /> Preview
-            </button>
-          )}
-        </div>
-        {previewId === HEADER_PREVIEW_ID && sub && <div style={{ marginTop: 12 }}>{previewPanel(HEADER_PREVIEW_ID, "a")}</div>}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Footer</span>
-          <div className="sf-seg" role="group" aria-label="Footer">
-            {FOOTER_OPTIONS.map((f) => (
-              <button key={f.k} type="button" aria-pressed={opts.footer === f.k}
-                onClick={() => { setOpts((p) => ({ ...p, footer: f.k })); setStatus({ kind: "", text: "" }); }}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
-            {FOOTER_OPTIONS.find((f) => f.k === opts.footer)?.note}
-          </span>
-          {sub && (
-            <button type="button" aria-pressed={previewId === FOOTER_PREVIEW_ID}
-              aria-label={`${previewId === FOOTER_PREVIEW_ID ? "Close" : "Open"} the live preview of the footer`}
-              onClick={() => setPreviewId(previewId === FOOTER_PREVIEW_ID ? null : FOOTER_PREVIEW_ID)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 10, border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: 600, fontFamily: "inherit",
-                background: previewId === FOOTER_PREVIEW_ID ? PL.text : PL.raised, color: previewId === FOOTER_PREVIEW_ID ? "#fff" : PL.text }}>
-              <Eye size={15} /> Preview
-            </button>
-          )}
-        </div>
-        {previewId === FOOTER_PREVIEW_ID && sub && <div style={{ marginTop: 12 }}>{previewPanel(FOOTER_PREVIEW_ID, "a")}</div>}
-        <Colours theme={theme} look={look} brandAccent={brandAccent}
-          onMode={(m) => { setTheme((t) => cleanTheme({ ...(t || {}), mode: m })); setStatus({ kind: "", text: "" }); }}
-          onAccent={(hex) => { setTheme((t) => cleanTheme({ ...(t || {}), accent: hex })); setStatus({ kind: "", text: "" }); }}
-          onResetAccent={() => { setTheme((t) => cleanTheme({ ...(t || {}), accent: null })); setStatus({ kind: "", text: "" }); }} />
       </div>
 
       <div style={card}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: PL.text }}>Your site's sections</h3>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: PL.text }}><span className="sf-step">2</span>Your page, top to bottom</h3>
         <p style={{ margin: "0 0 16px", fontSize: 13, color: PL.textMuted, lineHeight: 1.5 }}>
-          Turn sections on or off and move them up or down. Your cars and Get in touch always show.
+          This list is your page in order. Tap Edit on a part to pick its look and see it right there. Use the arrows to move a part and the switch to hide it.
         </p>
-
-        {layout.map((r, i) => {
-          const info = sectionInfo(r.id);
-          const pinned = !!info.pin;
-          const canUp = !pinned && i > 0 && !sectionInfo(layout[i - 1].id).pin;
-          const canDown = !pinned && i < layout.length - 1 && !sectionInfo(layout[i + 1].id).pin;
-          const isEmpty = r.on && empty[r.id];
-          return (
-            <div key={r.id} className="sf-row" style={{ opacity: r.on ? 1 : 0.55 }}>
-              {pinned ? (
-                <span style={{ width: 76, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>
-                  <Lock size={13} /> {info.pin === "first" ? "Stays first" : "Stays last"}
-                </span>
-              ) : (
-                <span style={{ display: "inline-flex", gap: 6, flexShrink: 0 }}>
-                  <button type="button" aria-label={`Move ${info.label} up`} disabled={!canUp} onClick={() => change(moveSection(layout, r.id, -1))} style={iconBtn(!canUp)}>
-                    <ChevronUp size={16} />
-                  </button>
-                  <button type="button" aria-label={`Move ${info.label} down`} disabled={!canDown} onClick={() => change(moveSection(layout, r.id, 1))} style={iconBtn(!canDown)}>
-                    <ChevronDown size={16} />
-                  </button>
-                </span>
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: PL.text }}>{info.label}</div>
-                <div style={{ fontSize: 12, color: isEmpty ? PL.accentText : PL.textMuted, lineHeight: 1.4 }}>
-                  {isEmpty ? EMPTY_HINT[r.id] || "Empty on your site now" : `Shows: ${info.shows.charAt(0).toLowerCase()}${info.shows.slice(1)}`}
-                </div>
-              </div>
-              {r.on && sub && (
-                <button type="button" aria-pressed={previewId === r.id} aria-label={`${previewId === r.id ? "Close" : "Open"} the live preview of ${info.label}`}
-                  onClick={() => setPreviewId(previewId === r.id ? null : r.id)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 10, border: "none", cursor: "pointer",
-                    fontSize: 13, fontWeight: 600, flexShrink: 0, fontFamily: "inherit",
-                    background: previewId === r.id ? PL.text : "#fff", color: previewId === r.id ? "#fff" : PL.text, boxShadow: previewId === r.id ? "none" : PL.shadow }}>
-                  <Eye size={15} /> Preview
-                </button>
-              )}
-              {info.locked ? (
-                <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>
-              ) : (
-                <Switch on={r.on} label={`Show ${info.label}`} onClick={() => change(toggleSection(layout, r.id))} />
-              )}
-              {VERSION_INFO[r.id] && r.on && (
-                <div className="sf-look">
-                  <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Look</span>
-                  <div className="sf-seg" role="group" aria-label={`${info.label} look`}>
-                    {Object.entries(VERSION_INFO[r.id]).map(([v, meta]) => (
-                      <button key={v} type="button" aria-pressed={r.variant === v}
-                        onClick={() => change(setVariant(layout, r.id, v, AVAILABLE_VERSIONS))}>
-                        {meta.name}
-                      </button>
-                    ))}
-                  </div>
-                  <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
-                    {VERSION_INFO[r.id][r.variant]?.note}
-                  </span>
-                </div>
-              )}
-              {r.on && VERSION_OPTIONS[r.id]?.[r.variant] && (() => {
-                const o = VERSION_OPTIONS[r.id][r.variant];
-                return (
-                  <div className="sf-look">
-                    <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>{o.label}</span>
-                    <div className="sf-seg" role="group" aria-label={`${info.label} ${o.label.toLowerCase()}`}>
-                      {Object.entries(o.values).map(([v, name]) => (
-                        <button key={v} type="button" aria-pressed={opts[o.option] === v}
-                          onClick={() => { setOpts((p) => ({ ...p, [o.option]: v })); setStatus({ kind: "", text: "" }); }}>
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                    <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>{o.notes?.[opts[o.option]]}</span>
-                  </div>
-                );
-              })()}
-              {r.on && previewId === r.id && sub && previewPanel(r.id, r.variant)}
-            </div>
-          );
-        })}
-
-        {status.text && (
-          <p role="status" style={{ margin: "14px 0 0", fontSize: 13, color: status.kind === "bad" ? PL.accentText : status.kind === "good" ? PL.up : PL.textMuted }}>
-            {status.text}
-          </p>
+        {pageRows}
+        {!isDefaultLayout(layout, { font, theme, ...opts }) && (
+          <button type="button" onClick={() => { changeLook({ layout: defaultLayout(), font: DEFAULT_FONT }); setTheme(null); setOpts(defaultOptions()); }}
+            style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "14px 0 0" }}>
+            Back to the usual layout
+          </button>
         )}
         {columnMissing && (
           <p className="pl-note" style={{ margin: "14px 0 0", padding: "10px 12px", fontSize: 13, lineHeight: 1.5 }}>
-            Saving a layout switches on after tonight's update. You can try it now with See it on my site.
+            Saving a layout switches on after tonight's update. You can try it now with See the whole page.
           </p>
         )}
         {!canEdit && (
-          <p className="pl-note" style={{ margin: "14px 0 0", padding: "10px 12px", fontSize: 13 }}>
-            Only the owner can change the site layout.
-          </p>
+          <p className="pl-note" style={{ margin: "14px 0 0", padding: "10px 12px", fontSize: 13 }}>Only the owner can change the site layout.</p>
         )}
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
-          <button type="button" onClick={save} disabled={!dirty || !canEdit || columnMissing || saving}
-            style={{ background: PL.accent, color: PL.onAccent, border: "none", borderRadius: 10, padding: "11px 20px", fontSize: 14, fontWeight: 700,
-              cursor: dirty && canEdit && !columnMissing ? "pointer" : "default", opacity: dirty && canEdit && !columnMissing ? 1 : 0.45 }}>
-            {saving ? "Saving..." : "Save layout"}
-          </button>
-          {previewUrl && (
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="pl-btn-grey"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "11px 16px", fontSize: 14, textDecoration: "none" }}>
-              See it on my site <ExternalLink size={14} />
-            </a>
-          )}
-          {!isDefaultLayout(layout, { font, theme, ...opts }) && (
-            <button type="button" onClick={() => { changeLook({ layout: defaultLayout(), font: DEFAULT_FONT }); setTheme(null); setOpts(defaultOptions()); }}
-              style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "11px 4px" }}>
-              Back to the usual layout
-            </button>
-          )}
-        </div>
       </div>
 
-      <div style={card} aria-label="Page map">
-        <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: PL.text }}>Page map</h3>
-        <p style={{ margin: "0 0 14px", fontSize: 12, color: PL.textMuted }}>
-          Top to bottom, as a buyer scrolls. Headings: {FONTS[font].name}.
-        </p>
-        <div style={{ borderRadius: 16, background: look?.bg || "#0C0C0E", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-          {shown.map((r) => {
-            const tall = r.id === "hero" || r.id === "cars";
-            const isEmpty = empty[r.id];
-            return (
-              <div key={r.id} style={{
-                height: tall ? 64 : 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 600, letterSpacing: "0.02em",
-                background: isEmpty ? "transparent" : look?.card || "rgba(255,255,255,0.08)",
-                border: isEmpty ? `1px dashed ${look?.border || "rgba(255,255,255,0.18)"}` : look?.border ? `1px solid ${look.border}` : "none",
-                color: isEmpty ? look?.muted || "rgba(255,255,255,0.35)" : look?.text || "rgba(255,255,255,0.8)",
-              }}>
-                {sectionInfo(r.id).label}{VERSION_INFO[r.id] ? `: ${VERSION_INFO[r.id][r.variant]?.name}` : ""}{isEmpty ? " (empty)" : ""}
-              </div>
-            );
-          })}
+      {(dirty || status.text) && (
+        <div className="sf-savebar" role="status">
+          <span style={{ flex: 1, minWidth: 160, fontSize: 13, fontWeight: 600, color: status.kind === "bad" ? PL.accentText : status.kind === "good" ? PL.up : PL.text }}>
+            {status.text || "You have changes that are not saved yet."}
+          </span>
+          {dirty && (
+            <>
+              <button type="button" onClick={() => { setLayout(saved); setFont(savedFont); setTheme(savedTheme); setOpts(savedOpts); setStatus({ kind: "", text: "" }); }}
+                style={{ background: "none", border: "none", color: PL.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "10px 4px" }}>
+                Undo changes
+              </button>
+              <button type="button" onClick={save} disabled={!canEdit || columnMissing || saving}
+                style={{ background: PL.accent, color: PL.onAccent, border: "none", borderRadius: 10, padding: "11px 22px", fontSize: 14, fontWeight: 700,
+                  cursor: canEdit && !columnMissing ? "pointer" : "default", opacity: canEdit && !columnMissing ? 1 : 0.45 }}>
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

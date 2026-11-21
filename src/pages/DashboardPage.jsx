@@ -1249,7 +1249,7 @@ export default function DashboardPage() {
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
-    storefront: { title: "Storefront", sub: "Your site's layout, hero and add-on product catalogue" },
+    storefront: { title: "Storefront", sub: "Design your site, its banner slides and your add-on products" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
@@ -2450,8 +2450,8 @@ export default function DashboardPage() {
                 active={storefrontSub}
                 onChange={setStorefrontSub}
                 tabs={[
-                  { id: "layout",   label: "Layout" },
-                  { id: "hero",     label: "Hero Carousel" },
+                  { id: "layout",   label: "Design" },
+                  { id: "hero",     label: "Banner slides" },
                   ...(DELIVERIES_OPEN ? [{ id: "deliveries", label: "Delivery photos" }] : []),
                   { id: "services", label: "Services & Add-ons" },
                 ]}
