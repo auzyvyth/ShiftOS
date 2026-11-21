@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useSiteProfile } from "../hooks/useSiteProfile";
+import { useSiteProfile, siteProfileFrom } from "../hooks/useSiteProfile";
 import { isSubdomain } from "../hooks/useTenant";
 import { hasHowItWorks } from "../utils/storefrontCopy";
 import { openConsentSettings } from "../utils/consent";
@@ -105,12 +105,14 @@ const FOOTER_CSS = `
   }
 `;
 
-const Footer = () => {
+// tenantOverride: the dashboard's footer preview (a dealer row, drawn in a frame).
+const Footer = ({ tenantOverride = null } = {}) => {
   const currentYear = new Date().getFullYear();
-  const { siteName, siteInitial, profile: tenantProfile } = useSiteProfile();
+  const liveSite = useSiteProfile();
+  const { siteName, siteInitial, profile: tenantProfile } = tenantOverride ? siteProfileFrom(tenantOverride) : liveSite;
 
   // Hard-stop on main domain — subdomain dealer footer must never render on drevo.my
-  if (!isSubdomain()) return null;
+  if (!tenantOverride && !isSubdomain()) return null;
 
   // This footer is subdomain-only, so the tenant IS the profile. It used to fall
   // back to one hardcoded id when the tenant was null, described as the "main
