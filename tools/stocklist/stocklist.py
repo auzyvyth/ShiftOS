@@ -3,7 +3,9 @@
 stocklist.py - weekly dealer stock-list PDF -> Drevo (listings stay with the app's importer).
 
 What it does (run on your own laptop; nothing is kept on disk except two small login files):
+  explain    show what it takes from the PDF and where each thing goes (run this first, read-only)
   parse      read the PDF, check it, write a clean CSV of the cars still for sale
+  tidy       re-split model / variant / engine / body on cars already in the app (dry run unless --yes)
   status     compare the PDF with the database (read only)
   photos     for cars that exist but have no photos: download from the private Drive
              folders with YOUR Google login, shrink, upload to Supabase, save the URLs
@@ -23,7 +25,7 @@ CFG_DIR = Path(os.environ.get("DREVO_STOCK_DIR", Path.home() / ".drevo_stock"))
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lemdkdizdlcirhbzqlos.supabase.co")
 BUCKET = "car-images"
 MIN_PHOTOS = 10         # owner rule (2026-11-21): a folder with fewer usable photos is NOT imported
-MAX_PHOTOS = 10         # at most this many are kept per car (the old script's cap, storage)
+MAX_PHOTOS = 60         # ALL photos in the folder are taken; 60 is only a safety ceiling against a runaway folder
 LONG_SIDE = 1600
 WEBP_QUALITY = 78
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
@@ -90,20 +92,119 @@ def brand_name(b):
     return BRANDS.get(b.upper(), b.title())
 
 
+# ---------------------------------------------------------------- one clean field per fact
+# The PDF writes model, engine, body and trim in a different mix on every row ("CIVIC 2.0L(T) HATCHBACK" +
+# "TYPE R", "NX250 2.5L" + "VERSION L"). Each fact gets its OWN field, so cars can be searched and ranked:
+#   model (Civic) | variant = trim only (Type R) | year | engine_cc (2000) | body_type (Hatchback) | fuel_type
+# Lexus keeps its model number at the front of the variant ("250 Version L"): NX 250 and NX 350 are different cars.
+# Anything the rules get wrong is fixed once in model_map.csv (next to this file), not in the code.
+BODY_WORDS = {"HATCHBACK": "Hatchback", "SEDAN": "Sedan", "COUPE": "Coupe", "MPV": "MPV", "PICKUP": "Pickup"}
+# Only models where the body type is not in doubt. Values must be in BODY_TYPES (src/config/marketplaceConfig.js).
+MODEL_BODY = {"ALPHARD": "MPV", "VELLFIRE": "MPV", "STEPWAGON": "MPV", "HARRIER": "SUV", "NX": "SUV", "RX": "SUV",
+              "GX": "SUV", "LAND CRUISER": "SUV", "GR YARIS": "Hatchback", "CAYENNE": "SUV", "MACAN": "SUV", "JIMNY": "SUV", "DEFENDER": "SUV", "COUNTRYMAN": "SUV"}
+TWO_WORD_MODELS = ("MOVE CANBUS", "LAND CRUISER", "FAIRLADY Z", "GR YARIS")
+UPPER_OK = {"JCW", "AMG", "GT", "RS", "GR", "SUV", "MPV", "III", "II", "IV"}
+CASE_FIX = {"SDRIVE": "sDrive", "XDRIVE": "xDrive", "20I": "20i"}
+LEXUS_RE = re.compile(r"^(IS|ES|GS|LS|UX|NX|RX|GX|LX|RC|LC)\s*(\d{3}h?)$", re.I)
+ENGINE_RE = re.compile(r"(\d\.\d)\s*L?\s*(\(T\)|TURBO)?", re.I)
+
+
+def _title(s):
+    out = []
+    for t in re.split(r"[\s\-()]+", s.strip()):
+        if not t: continue
+        u = t.upper()
+        if u in CASE_FIX: out.append(CASE_FIX[u])
+        elif len(t) <= 2 or u in UPPER_OK: out.append(u)
+        elif re.search(r"\d", t): out.append(t)
+        else: out.append(t.capitalize())
+    return " ".join(out)
+
+
+def _take(text):
+    """Pull engine size, turbo, hybrid and body words out of a text. Returns (rest, litres, turbo, hybrid, body)."""
+    litres = turbo = hybrid = body = None
+    m = ENGINE_RE.search(text)
+    if m:
+        litres, turbo = float(m.group(1)), bool(m.group(2))
+        text = text[:m.start()] + " " + text[m.end():]
+    if re.search(r"\bHYBRID\b", text, re.I):
+        hybrid = True
+        text = re.sub(r"\bHYBRID\b", " ", text, flags=re.I)
+    for word, label in BODY_WORDS.items():
+        if re.search(rf"\b{word}\b", text, re.I):
+            body = label
+            text = re.sub(rf"\b{word}\b", " ", text, flags=re.I)
+    return " ".join(text.split()), litres, turbo, hybrid, body
+
+
+def load_overrides():
+    p = Path(__file__).with_name("model_map.csv")
+    if not p.exists(): return {}
+    with open(p, newline="", encoding="utf-8") as f:
+        return {(x["brand"].strip().upper(), x["raw_model"].strip().upper(), x["raw_spec"].strip().upper()): x
+                for x in csv.DictReader(f) if x.get("brand")}
+
+
+OVERRIDES = load_overrides()
+
+
+def clean_car(r):
+    brand = brand_name(r["brand"])
+    m_rest, l1, t1, h1, b1 = _take(r["model"])
+    s_rest, l2, t2, h2, b2 = _take(r["spec"])
+    litres, turbo, hybrid, body = l1 or l2, t1 or t2, h1 or h2, b1 or b2
+    toks, front = m_rest.split(), []
+    if brand == "Lexus" and toks and LEXUS_RE.match(toks[0]):
+        g = LEXUS_RE.match(toks[0])
+        model, front, toks = g.group(1).upper(), [g.group(2)], toks[1:]
+    else:
+        two = next((w for w in TWO_WORD_MODELS if m_rest.upper().startswith(w)), None)
+        if two:
+            model, toks = _title(two), m_rest[len(two):].split()
+        else:
+            model, toks = (_title(toks[0]) if toks else ""), toks[1:]
+    variant = _title(" ".join(front + toks + s_rest.split()))
+    out = {"brand": brand, "model": model, "variant": variant, "body_type": body or MODEL_BODY.get(model.upper(), ""),
+           "engine_cc": int(round(litres * 1000)) if litres else "", "fuel_type": "Hybrid" if hybrid else "",
+           "turbo": bool(turbo), "source": "rules"}
+    ov = OVERRIDES.get((brand.upper(), r["model"].strip().upper(), r["spec"].strip().upper()))
+    if ov:
+        for k in ("model", "variant", "body_type"):
+            if ov.get(k, "").strip(): out[k] = ov[k].strip()
+        out["source"] = "model_map.csv"
+    return out
+
+
+def arrival_text(r):
+    return "arrived" if r["arrived"] else ("coming " + r["remarks"] if r["eta"] else "not arrived")
+
+
+def reg_text(r):
+    m = re.fullmatch(r"([A-Za-z]{3})(?:\s+(\d{1,2}))?", r["reg"].strip())
+    if not m: return f"{r['reg']} {r['year']}".strip()
+    return (f"{m.group(2)} " if m.group(2) else "") + f"{m.group(1).title()} {r['year']}"
+
+
+CSV_COLS = ["brand", "model", "variant", "year", "engine_cc", "body_type", "fuel_type", "price", "mileage", "colour",
+            "vin", "import_country", "condition", "registration_date", "options", "arrival"]
+
+
+def csv_row(r):
+    c = clean_car(r)
+    return {"brand": c["brand"], "model": c["model"], "variant": c["variant"], "year": r["year"],
+            "engine_cc": c["engine_cc"], "body_type": c["body_type"], "fuel_type": c["fuel_type"],
+            "price": r["price_rm"], "mileage": r["mileage_km"] if r["mileage_km"] is not None else "",
+            "colour": r["colour"].title(), "vin": r["vin"], "import_country": COUNTRY.get(r["co"].upper(), ""),
+            "condition": "recon", "registration_date": reg_text(r), "options": r["options"],
+            "arrival": arrival_text(r)}
+
+
 def write_csv(rows, path):
-    cols = ["brand", "model", "variant", "year", "price", "mileage", "colour", "vin",
-            "import_country", "condition", "registration_date", "features", "arrival"]
     with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=cols)
+        w = csv.DictWriter(f, fieldnames=CSV_COLS)
         w.writeheader()
-        for r in rows:
-            w.writerow({"brand": brand_name(r["brand"]), "model": r["model"], "variant": r["spec"],
-                        "year": r["year"], "price": r["price_rm"], "mileage": r["mileage_km"] or "",
-                        "colour": r["colour"].title(), "vin": r["vin"],
-                        "import_country": COUNTRY.get(r["co"].upper(), ""), "condition": "Recon",
-                        "registration_date": f"{r['reg']} {r['year']}".strip(),
-                        "features": r["options"],
-                        "arrival": "arrived" if r["arrived"] else ("coming " + r["remarks"] if r["eta"] else "not arrived")})
+        for r in rows: w.writerow(csv_row(r))
 
 
 def summary(rows, problems):
@@ -167,7 +268,7 @@ class Supa:
         out, start = [], 0
         while True:
             r = self.http.get(f"{SUPABASE_URL}/rest/v1/car_listings", timeout=60,
-                              params={"select": "id,vin,vin_number,status,images,brand,model,year",
+                              params={"select": "id,vin,vin_number,status,images,brand,model,variant,year,engine_cc,body_type,fuel_type",
                                       "dealer_id": f"eq.{self.uid}", "order": "id"},
                               headers=self.h({"Range": f"{start}-{start + 999}"}))
             r.raise_for_status()
@@ -282,6 +383,69 @@ def cmd_status(a):
     return 0
 
 
+def cmd_explain(a):
+    rows, problems = parse(a.pdf)
+    print("WHAT IT TAKES FROM THE PDF -> WHAT IT PUTS WHERE")
+    print("  PDF column            -> CSV / listing column     rule")
+    for l in ("BRAND            -> brand                       as written, tidy case (BMW, MINI, Land Rover kept)",
+              "MODEL            -> model                       the base model only (Civic, Alphard, NX); engine and body words removed",
+              "MODEL + SPEC     -> variant                     the trim only (Type R, SC, F Sport); Lexus keeps its number first (250 Version L)",
+              "engine in MODEL  -> engine_cc                   2.5L -> 2500 (nominal, the PDF gives litres, not exact cc)",
+              "HATCHBACK etc.   -> body_type                   only when the PDF says it, or the model is certain (Alphard = MPV)",
+              "HYBRID           -> fuel_type                   Hybrid only; otherwise left blank (the PDF never says Petrol or Diesel)",
+              "YEAR / REG       -> year, registration_date     year as a number; REG as '27 Jul 2023' or 'Jul 2023'",
+              "CHASSIS          -> vin                         exactly as written, spaces removed; this is the match key",
+              "C.O. (JP)        -> import_country              JP -> Japan",
+              "COLOUR, MILEAGE  -> colour, mileage",
+              "OPTIONS          -> options                     the dealer's text, unchanged",
+              "ADS PRICE        -> price                       RM'000 x 1000 (219 -> 219000)",
+              "ARR / ETA        -> arrival                     arrived / coming <ETA> / not arrived (info only, decide how to show it)",
+              "(none)           -> condition                   always 'recon' (imported cars)"):
+        print("  " + l)
+    print("\nNEVER TAKEN: the name after SOLD, BASE, AP (permit code), the clickable photo link is used for photos only.")
+    print(f"PHOTOS: the car's Drive folder -> every JPEG/PNG/WebP inside (one sub-folder level too), sorted by name, up to {MAX_PHOTOS}; "
+          f"fewer than {MIN_PHOTOS} = car NOT taken.\n  Each is shrunk to {LONG_SIDE}px WebP and stored at {BUCKET}/<your id>/<listing id>/NN-hash.webp; "
+          "the URLs are saved in car_listings.images, in order (the first is the cover).")
+    print("\nHOW EVERY KIND OF CAR IS CLEANED (check these; fix a wrong one in model_map.csv):")
+    seen = {}
+    for r in rows:
+        c = clean_car(r)
+        k = (r["brand"], r["model"], r["spec"])
+        seen.setdefault(k, [c, 0])[1] += 1
+    for (b, m, s), (c, n) in sorted(seen.items()):
+        flag = "  [model_map.csv]" if c["source"] != "rules" else ""
+        print(f"  {n:3}x {b} | {m} | {s}\n        -> model={c['model']} | variant={c['variant']} | body={c['body_type'] or '-'} | "
+              f"cc={c['engine_cc'] or '-'} | fuel={c['fuel_type'] or '-'}{' | turbo (no column yet)' if c['turbo'] else ''}{flag}")
+    print(f"\n{len(seen)} kinds of car in {len(rows)} rows.")
+    return 0
+
+
+def cmd_tidy(a):
+    """Re-split model / variant / engine / body on cars ALREADY in the app (matched by chassis). Dry run unless --yes."""
+    rows, _ = parse(a.pdf)
+    sb = Supa()
+    idx = db_index(sb.my_listings())
+    changes = []
+    for r in rows:
+        l = idx.get(r["vin"])
+        if not l: continue
+        c = clean_car(r)
+        want = {"model": c["model"], "variant": c["variant"]}
+        if c["engine_cc"]: want["engine_cc"] = c["engine_cc"]
+        if c["body_type"]: want["body_type"] = c["body_type"]
+        if c["fuel_type"]: want["fuel_type"] = c["fuel_type"]
+        diff = {k: (l.get(k), v) for k, v in want.items() if v and (l.get(k) or "") != v}
+        if diff: changes.append((l, r, diff))
+    for l, r, diff in changes[:60]:
+        print(f"{r['vin']}  " + "; ".join(f"{k}: {o!r} -> {n!r}" for k, (o, n) in diff.items()))
+    if len(changes) > 60: print(f"... and {len(changes) - 60} more")
+    print(f"{len(changes)} cars already in the app would change (only model, variant, engine_cc, body_type, fuel_type).")
+    if not changes or not a.yes: print("Dry run. Add --yes to apply."); return 0
+    done = sum(sb.patch(l["id"], {k: n for k, (o, n) in d.items()}) for l, r, d in changes)
+    print(f"changed {done} of {len(changes)}")
+    return 0
+
+
 def cmd_unpublish(a):
     rows, _ = parse(a.pdf)
     sb = Supa()
@@ -378,13 +542,14 @@ def cmd_google(a):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name, fn in (("parse", cmd_parse), ("status", cmd_status), ("photos", cmd_photos), ("unpublish", cmd_unpublish)):
+    for name, fn in (("parse", cmd_parse), ("explain", cmd_explain), ("status", cmd_status), ("tidy", cmd_tidy),
+                     ("photos", cmd_photos), ("unpublish", cmd_unpublish)):
         p = sub.add_parser(name); p.add_argument("pdf"); p.set_defaults(fn=fn)
         if name == "parse": p.add_argument("--out")
         if name == "photos":
             p.add_argument("--limit", type=int); p.add_argument("--dry-run", action="store_true")
             p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
-        if name == "unpublish": p.add_argument("--yes", action="store_true")
+        if name in ("unpublish", "tidy"): p.add_argument("--yes", action="store_true")
     sub.add_parser("login").set_defaults(fn=cmd_login)
     g = sub.add_parser("google"); g.add_argument("--client-secret"); g.set_defaults(fn=cmd_google)
     a = ap.parse_args()

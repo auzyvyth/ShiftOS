@@ -17,6 +17,9 @@ No Supabase service-role key is used: it signs in as your dealer account, so the
 5. `~/stockenv/bin/python stocklist.py login` (follow the prompts)
 
 ## Every week
+0. `python stocklist.py explain STOCK.pdf` (read only, needs no login): shows what is taken from the PDF, where each
+   thing goes, and how every kind of car is split into model / variant / engine / body. A wrong split is fixed
+   once in `model_map.csv` (next to the script), never in the code.
 1. `python stocklist.py parse STOCK.pdf` : checks the PDF, writes a clean CSV of cars still for sale.
    If it prints rows that "did not look right", fix them by hand first (e.g. a typo in a chassis number).
 2. Import the CSV with the app's own importer (Dashboard > Import stock). New cars get their listing and
@@ -24,12 +27,14 @@ No Supabase service-role key is used: it signs in as your dealer account, so the
 3. `python stocklist.py status STOCK.pdf` : what is new, what lacks photos, what is SOLD but still live.
 4. `python stocklist.py photos STOCK.pdf --dry-run`, then `--limit 5` (check them on screen), then
    without `--limit`. A folder with fewer than 10 usable photos is NOT taken (nothing downloaded) and is listed at the end. Only cars with no photos yet are touched.
-5. `python stocklist.py unpublish STOCK.pdf` : cars the PDF marks SOLD and that are still live -> unpublished.
+5. `python stocklist.py tidy STOCK.pdf` : cars ALREADY in the app get the same clean model / variant / engine / body
+   (dry run shows before -> after; `--yes` applies). Only those five fields, only cars found in the PDF by chassis.
+6. `python stocklist.py unpublish STOCK.pdf` : cars the PDF marks SOLD and that are still live -> unpublished.
 
 ## Rules it follows
 - Match key is the chassis number (`car_listings.vin`); the PDF has no plates.
 - Names after "SOLD" and the BASE column are never read out of the PDF.
-- Photos: one at a time in memory, longest side 1600 px, WebP, exactly 10 per car (the folder must have at least 10 usable, the first 10 by name are kept). Never written to disk.
+- Photos: one at a time in memory, longest side 1600 px, WebP, ALL photos in the folder (up to 60), and the folder must have at least 10 usable ones. Never written to disk.
   HEIC files are skipped (counted in the report); browsers cannot show them.
 - Every database write checks that a row really changed (the database refuses silently otherwise).
 - Cars with no ARR "Y" (not arrived) are exported with an `arrival` column: decide how to label them
