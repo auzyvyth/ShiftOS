@@ -31,6 +31,8 @@ export default function SearchAutocomplete({
   // rect rather than this component's own wrap div, so it lines up flush with
   // the full bar instead of stopping short at the input's own edge.
   anchorRef,
+  // Focus the field when it mounts (the showroom's phone search opens from an icon).
+  autoFocus = false,
 }) {
   // dark = a dealer site: follows the dealer's colour theme when one is set (storefrontTheme.js).
   const bg      = dark ? 'var(--sf-card, rgba(255,255,255,0.06))' : '#ffffff';
@@ -111,6 +113,7 @@ export default function SearchAutocomplete({
         <input
           type="text"
           autoComplete="off"
+          autoFocus={autoFocus}
           value={value}
           onChange={e => onChange?.(e.target.value)}
           onFocus={() => setFocused(true)}
