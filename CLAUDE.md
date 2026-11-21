@@ -392,7 +392,7 @@ still says "21 pages") — do not update it; it is pending removal.
   follow) ONLY when a theme is saved: no theme = pixel-identical. Dark + accent sets only the accent variables. A new colour
   on a dealer site must use a `--sf-*` variable with its old value as fallback, never a white alpha (it vanishes on Light).
   No accent picked = the brand colour (`accentOf`, `var(--sf-theme-accent, brand)`). The top banner stays a dark photo band
-  on Light. /cars and car pages are not themed yet. The same-town
+  on Light. /cars is themed too (2026-11-21, `CarListingPage.jsx` writes the same `themeCss`; its top block, chips and filter panel use `sv()`); car pages are not yet. The same-town
   check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
   **Stage 4 phase A (2026-11-20, local commits): the owner's reference site's ORGANISATION and colouring, never its words or
   photos.** Look OPTIONS = small top-level keys on the same jsonb (`OPTIONS` in `storefrontLayout.js`: fixed values, default never
