@@ -21,16 +21,21 @@ export async function saveStanding(userId, value) {
   return !error;
 }
 
-// Writes the answer on each car through the database function. Returns how many failed.
-// A missing function (migration not applied) reports 'missing' so the caller closes quietly.
-export async function setConsentFor(ids, yes) {
-  let failed = 0;
-  for (const id of ids) {
-    const { error } = await supabase.rpc('set_listing_social_consent', { p_listing: id, p_consent: yes });
-    if (error) {
+// Writes the answer on each car through the database function, 10 at a time (one by one took over a
+// minute for 218 cars and looked stuck, owner 2026-11-22). onProgress(done, total) after each batch.
+// Returns how many failed. A missing function (migration not applied) reports 'missing'.
+export async function setConsentFor(ids, yes, onProgress) {
+  let failed = 0, done = 0;
+  for (let i = 0; i < ids.length; i += 10) {
+    const res = await Promise.all(ids.slice(i, i + 10).map((id) =>
+      supabase.rpc('set_listing_social_consent', { p_listing: id, p_consent: yes })));
+    for (const { error } of res) {
+      if (!error) continue;
       if (error.code === 'PGRST202' || error.code === '42883') return 'missing';
       failed++;
     }
+    done = Math.min(ids.length, i + 10);
+    onProgress?.(done, ids.length);
   }
   return failed;
 }

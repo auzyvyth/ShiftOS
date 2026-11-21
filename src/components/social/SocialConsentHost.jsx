@@ -23,6 +23,7 @@ function Sheet({ ask, onClose }) {
   }, []);
   const [state, setState] = useState('ask'); // ask | saving | thanks
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState(null); // [done, total]
 
   const answer = async (yes) => {
     setState('saving'); setError('');
@@ -30,16 +31,19 @@ function Sheet({ ask, onClose }) {
     // on this car(s) and on every other car never asked about.
     const { data: u } = await supabase.auth.getUser();
     const uid = u?.user?.id;
-    const ids = Array.from(new Set([...(ask.ids?.length ? ask.ids : [ask.id]), ...(uid ? await unansweredCarIds(uid) : [])]));
-    const failed = await setConsentFor(ids, yes);
-    if (failed === 'missing') { onClose(); return; }
-    if (failed) {
-      setError(`Could not save the answer for ${failed} of ${ids.length} cars. Please try again.`);
+    // The standing answer is saved FIRST: if the tab closes half way through the cars, the answer still
+    // counts and the next publish carries it on.
+    if (uid && !(await saveStanding(uid, yes ? 'yes' : 'no'))) {
+      setError('Could not save your answer. Please try again.');
       setState('ask');
       return;
     }
-    if (uid && !(await saveStanding(uid, yes ? 'yes' : 'no'))) {
-      setError('Could not save your answer. Please try again.');
+    const ids = Array.from(new Set([...(ask.ids?.length ? ask.ids : [ask.id]), ...(uid ? await unansweredCarIds(uid) : [])]));
+    setProgress([0, ids.length]);
+    const failed = await setConsentFor(ids, yes, (d, n) => setProgress([d, n]));
+    if (failed === 'missing') { onClose(); return; }
+    if (failed) {
+      setError(`Could not save the answer for ${failed} of ${ids.length} cars. Please try again.`);
       setState('ask');
       return;
     }
@@ -79,7 +83,7 @@ function Sheet({ ask, onClose }) {
                 style={{ flex: 1, height: 48, borderRadius: 999, border: '1px solid #e5e7eb', background: '#fff', color: '#111827', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>No thanks</button>
               <button onClick={() => answer(true)} disabled={state === 'saving'}
                 style={{ flex: 2, height: 48, borderRadius: 999, border: 'none', background: '#dc2626', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font, opacity: state === 'saving' ? 0.7 : 1 }}>
-                {state === 'saving' ? 'Saving...' : 'Yes, feature all my cars'}
+                {state === 'saving' ? (progress && progress[1] > 10 ? `Saving ${progress[0]} of ${progress[1]} cars...` : 'Saving...') : 'Yes, feature all my cars'}
               </button>
             </div>
           </>
@@ -99,7 +103,12 @@ export default function SocialConsentHost() {
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
       const standing = uid ? await readStanding(uid) : null;
-      if (standing === 'yes') { setConsentFor(e.detail.ids?.length ? e.detail.ids : [e.detail.id], true); return; }
+      if (standing === 'yes') {
+        // Also sweeps any car a closed tab left unanswered, so "covers all your cars" stays true.
+        const ids = Array.from(new Set([...(e.detail.ids?.length ? e.detail.ids : [e.detail.id]), ...(await unansweredCarIds(uid))]));
+        setConsentFor(ids, true);
+        return;
+      }
       if (standing === 'no') return;
       setAsk(e.detail);
     };
