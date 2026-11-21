@@ -29,7 +29,11 @@ export const COLOURS = [
   { label: "Green",  hex: "#166534" },
   { label: "Orange", hex: "#ea580c" },
   { label: "Yellow", hex: "#facc15" },
+  { label: "Maroon", hex: "#7f1d1d" },
 ];
+// ONE colour list (2026-11-22): this is what the form offers AND what the showroom's colour filter and the
+// colour pages use (marketplaceConfig imports it). Keep it to plain words buyers search ("white Alphard"):
+// "Pearl White" is White, "Gun Metal" is Grey. A new colour is added here, nowhere else.
 
 export const CONDITION_COPY = {
   used:  { label: "Used",  hint: "Registered and driven in Malaysia" },

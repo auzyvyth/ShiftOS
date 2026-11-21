@@ -589,7 +589,10 @@ FORM_BODY = ["Sedan", "SUV", "MPV", "Hatchback", "Coupe", "Pickup"]
 FORM_FUEL = ["Petrol", "Diesel", "Hybrid", "Electric"]
 FORM_TRANS = ["Auto", "Manual"]
 FORM_COUNTRY = ["Japan", "UK", "Australia", "Other"]
-FORM_COLOUR = ["White", "Black", "Silver", "Grey", "Red", "Blue", "Brown", "Beige", "Gold", "Green", "Orange", "Yellow"]
+FORM_COLOUR = ["White", "Black", "Silver", "Grey", "Red", "Blue", "Brown", "Beige", "Gold", "Green", "Orange", "Yellow", "Maroon"]
+# Words the PDF uses that mean one of the plain colours (kept simple for search + the showroom filter)
+COLOUR_WORDS = {"Pearl": "White", "Quartz": "Silver", "Gun Metal": "Grey", "Gunmetal": "Grey", "Gun Metalic": "Grey",
+                "Bronze": "Brown", "Burgundy": "Maroon", "Wine": "Maroon", "Champagne": "Gold", "Cream": "Beige"}
 
 
 def form_colour(text):
@@ -597,6 +600,8 @@ def form_colour(text):
     t = text.strip().title()
     for w in FORM_COLOUR + ["Gray"]:
         if re.search(rf"\b{w}\b", t, re.I): return "Grey" if w == "Gray" else w
+    for k, v in COLOUR_WORDS.items():
+        if re.search(rf"\b{k}\b", t, re.I): return v
     return t
 
 
