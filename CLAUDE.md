@@ -405,8 +405,18 @@ still says "21 pages") — do not update it; it is pending removal.
   Light theme dark bands: class `sf-band` (footer, About B) + ONE rule from `bandVars` (`storefrontTheme.js`): surface vars reset to
   `initial` so each `var(--sf-x, <old dark>)` falls back to today's dark look. Calculator B "Inline" (`CalculatorInline.jsx`,
   financing.js `monthlyPayment` only, EIR, "the bank decides"). Presets may carry `options` + `mode`; 5th look "Showroom Light".
-  A preset without `mode` never touches Dark/Light. Phase B (brand strip, browse by type, recently sold) needs NEW section ids =
-  one migration to `storefront_layout_ok`; phase C (delivery gallery) needs buyer consent first.
+  A preset without `mode` never touches Dark/Light. Phase C (delivery gallery) needs buyer consent first.
+  **Stage 4 phase B (2026-11-21, local commits): built, SWITCHED OFF until migration `20261121a_storefront_phase_b.sql` (QUEUED,
+  not applied) runs.** New section ids `brands` (Brands in stock, `Brands.jsx`), `browse` (Browse bar, `Browse.jsx`) and `sold`
+  (Recently sold, `RecentlySold.jsx`). The live `storefront_layout_ok` REFUSES unknown ids, so they sit behind ONE constant,
+  `DB_PHASE_B = false` in `storefrontLayout.js`: while false they are not in `SECTIONS`, the editor, saving or the page, and nothing
+  calls `get_dealer_recent_sales`. **Flip it to true the night `20261121a` is applied, in the same release** (the test compares the
+  closed gate with `20261120a` and the open gate with `20261121a`). Brands + Browse fill themselves from the dealer's live cars (ONE
+  read, `sections/stockParts.js`, publicClient) and offer only values /cars accepts (`src/utils/storefrontStock.js`,
+  `npm run test:storefrontstock`: marketplaceConfig whitelists, `PRICE_STEPS`, `canonicalModel`); brands hide under 2; logos from
+  the ONE map `src/config/brandLogos.js` (5 checked logos, the rest a wordmark). Recently sold = `get_dealer_recent_sales(subdomain)`
+  (SECURITY DEFINER, public storefronts only, last 12 in 12 months): car + month + photo, never a price or a buyer. With Browse on,
+  the cars section drops its own body-type chips (`CarsToolbar browseOn`): one row, not two.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were
