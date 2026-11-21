@@ -5,7 +5,7 @@
 // break the site, only hide a version. Max 3 per section (VARIANTS, storefrontLayout.js).
 export const VERSION_INFO = {
   hero: {
-    a: { name: "Slides", note: "Your hero slides from Storefront > Hero Carousel." },
+    a: { name: "Slides", note: "Your hero slides from Storefront > Banner slides." },
     b: { name: "Split", note: "Your name and a search box beside your newest car's photo." },
     c: { name: "Full screen", note: "Your name large over the whole first screen: one photo, or a wall of your newest cars." },
   },

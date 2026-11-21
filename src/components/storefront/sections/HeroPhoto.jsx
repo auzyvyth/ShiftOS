@@ -1,7 +1,7 @@
 // Top banner, version C "Full screen", background Photo (STOREFRONT-2 stage 4): one photo
 // across the whole first screen under a dark fade, a small line, the dealer's name (or their
 // own banner title) large and centred, and two buttons: WhatsApp and Browse cars.
-// The photo is the dealer's own: their first hero slide (Storefront > Hero Carousel, the same
+// The photo is the dealer's own: their first hero slide (Storefront > Banner slides, the same
 // read as HeroCarousel, storefront/heroSlides.js), else their newest car's photo. Every word is
 // the dealer's (hero_title / hero_subtitle) or a fact we hold (their town). No claim.
 // The band stays dark on the Light theme (a photo band, like banner A), so its words are white.
