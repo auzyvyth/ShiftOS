@@ -25,8 +25,8 @@ from pathlib import Path
 CFG_DIR = Path(os.environ.get("DREVO_STOCK_DIR", Path.home() / ".drevo_stock"))
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lemdkdizdlcirhbzqlos.supabase.co")
 BUCKET = "car-images"
-MIN_PHOTOS = 10         # owner rule (2026-11-21): a folder with fewer usable photos is NOT imported
-MAX_PHOTOS = 60         # ALL photos in the folder are taken; 60 is only a safety ceiling against a runaway folder
+MIN_PHOTOS = 8          # owner rule (2026-11-22, was 10): a folder with fewer usable photos is NOT imported
+MAX_PHOTOS = 10         # owner rule (2026-11-22): at most 10 per car; auction-sheet-looking photos are dropped first
 LONG_SIDE = 1600
 WEBP_QUALITY = 78
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
@@ -653,7 +653,6 @@ def cmd_create(a):
             files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
             if err or len(files) < a.min_photos:
                 held.append((label, err or f"{len(files)} photos, needs {a.min_photos}")); continue
-            files = files[:MAX_PHOTOS]
             base = int(r["price_rm"]); mk = markup_for(base)
             row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
                    "year": r["year"], "selling_price": base + mk, "mileage": r["mileage_km"],
@@ -681,6 +680,7 @@ def cmd_create(a):
                 held.append((label, f"only {len(shrunk)} photos could be read")); continue
             sheets = [n for sh, n, _ in shrunk if sh]
             shrunk = [d for sh, n, d in shrunk if not sh] + [d for sh, n, d in shrunk if sh]   # auction sheets go LAST
+            shrunk = shrunk[:MAX_PHOTOS]   # then cap at 10: the sheets are what gets cut
             if sheets: print(f"    looks like an auction sheet, moved to the end: {', '.join(sheets)}")
             ins = http.post(f"{SUPABASE_URL}/rest/v1/car_listings", json=row, timeout=60,
                             headers=sb.h({"Prefer": "return=representation"}))
