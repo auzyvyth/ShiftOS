@@ -1,0 +1,7 @@
+brand,model,chassis,years,horsepower_ps,cylinders,seats,doors,fuel_km_per_l_wltc,applied,source
+Toyota,Alphard,AGH40 (2WD petrol 2.5 Z),2023-2025,182,4,7,5,10.6,2026-11-22,Toyota Japan spec sheet Sep 2025 https://toyota.jp/pages/contents/alphard/004_p_001/pdf/alphard_spec_202509.pdf (2AR-FE 134 kW (182 PS)/6000; 235 N.m; WLTC 10.6; 7 seats). The Nov 2026 sheet shows a later 170 PS revision: NOT used.
+Toyota,Alphard,AGH45 (4WD petrol 2.5 Z),2024-2025,182,4,7,5,10.3,2026-11-22,same sheet; 4WD WLTC 10.3 in brackets
+Toyota,Alphard,AGH30/AGH35 (petrol 2.5 SC),2021-2023,182,4,7,5,10.6,2026-11-22,Toyota Japan spec sheets Apr 2021 and Apr 2022 https://toyota.jp/pages/contents/alphard/003_p_009/4.0/pdf/spec/alphard_spec_202204.pdf (2AR-FE 134 kW (182 PS)/6000; 235 N.m; WLTC 10.6 for the 2.5 S grades; read as the S C package)
+Toyota,Alphard,AAHH40 (hybrid 2.5 Executive Lounge),2024,190,4,7,5,17.5,2026-11-22,Toyota Japan spec sheet Sep 2025; A25A-FXS ENGINE output 140 kW (190 PS)/6000 (Toyota prints no combined system output); WLTC 17.5 (2WD)
+Toyota,Vellfire,TAHA40 (2WD 2.4 turbo Z Premier),2023-2025,279,4,7,5,10.3,2026-11-22,Toyota Japan spec sheet Sep 2025 https://toyota.jp/pages/contents/vellfire/003_p_001/pdf/vellfire_spec_202509.pdf (T24A-FTS 205 kW (279 PS)/6000; 430 N.m; WLTC 10.3)
+Toyota,Vellfire,TAHA45 (4WD 2.4 turbo Z Premier),2023-2025,279,4,7,5,10.2,2026-11-22,same sheet; 4WD WLTC 10.2
