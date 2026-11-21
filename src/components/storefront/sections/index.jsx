@@ -48,6 +48,8 @@ const CalculatorInline = lazy(() => import("./CalculatorInline"));
 const Brands = lazy(() => import("./Brands"));
 const Browse = lazy(() => import("./Browse"));
 const RecentlySold = lazy(() => import("./RecentlySold"));
+// Phase C (behind DB_PHASE_C): the dealer's handover photos, "Happy customers".
+const Deliveries = lazy(() => import("./Deliveries"));
 
 const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
 // Banner C "Full screen" has two backgrounds (look option heroBg, storefrontLayout.js): a wall
@@ -66,6 +68,7 @@ export const SECTION_VERSIONS = {
   about: { a: About, b: AboutSplit, c: AboutLead },
   reviews: { a: Reviews, b: ReviewsSplit, c: ReviewsFramed },
   sold: { a: RecentlySold },
+  deliveries: { a: Deliveries },
   why: { a: WhyUs, b: WhyUsSplit, c: WhyUsNumbered },
   stats: { a: Stats, b: StatsBig, c: StatsBand },
   how: { a: HowItWorks, b: HowTimeline, c: HowRow },

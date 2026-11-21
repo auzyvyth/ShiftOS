@@ -53,6 +53,8 @@ import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
 const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
 const LayoutEditor     = React.lazy(() => import("./dashboard/storefront/LayoutEditor"));
+// Storefront > Delivery photos: only once migration 20261121b is applied (DB_PHASE_C).
+const DeliveryPhotos   = React.lazy(() => import("./dashboard/storefront/DeliveryPhotos"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
@@ -130,6 +132,7 @@ import {
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
 import TeamBrokersSwitch from "../components/brokers/DealerBrokers";
+import { DELIVERIES_OPEN } from "../utils/storefrontLayout";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -2449,11 +2452,15 @@ export default function DashboardPage() {
                 tabs={[
                   { id: "layout",   label: "Layout" },
                   { id: "hero",     label: "Hero Carousel" },
+                  ...(DELIVERIES_OPEN ? [{ id: "deliveries", label: "Delivery photos" }] : []),
                   { id: "services", label: "Services & Add-ons" },
                 ]}
               />
               {storefrontSub === "layout" && (
                 <LayoutEditor dealerId={getDealerIdFromProfile(profile)} canEdit={getDealerIdFromProfile(profile) === profile?.id} />
+              )}
+              {DELIVERIES_OPEN && storefrontSub === "deliveries" && (
+                <DeliveryPhotos dealerId={getDealerIdFromProfile(profile)} />
               )}
               {storefrontSub === "hero" && (
                 <HeroSlidesPage userId={userId} profile={profile} />
