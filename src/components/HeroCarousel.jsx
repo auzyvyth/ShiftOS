@@ -668,8 +668,10 @@ function formatPrice(val) {
   return `RM ${num.toLocaleString("en-MY")}`;
 }
 
-export default function HeroCarousel({ siteName, waNumber, compact = false }) {
-  const { tenant } = useTenant();
+export default function HeroCarousel({ siteName, waNumber, compact = false, tenantOverride = null }) {
+  // tenantOverride: the dashboard's section preview (not on a dealer subdomain, so useTenant has nothing).
+  const { tenant: hookTenant } = useTenant();
+  const tenant = tenantOverride || hookTenant;
   const navigate = useNavigate();
   const [heroQuery, setHeroQuery] = useState("");
   // Same nav-only pattern as MarketplacePage's hero search (runHeroSearch):
@@ -695,6 +697,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   // useTenant's auth-session setup + full profile RPC before fetching slides.
   const [fastDealerId, setFastDealerId] = useState(undefined);
   useEffect(() => {
+    if (tenantOverride?.id) { setFastDealerId(tenantOverride.id); return; }
     const sub = getSubdomain();
     if (!sub) { setFastDealerId(null); return; }
     supabase.rpc("get_dealer_id_by_subdomain", { p_subdomain: sub })

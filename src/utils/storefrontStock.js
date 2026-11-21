@@ -8,6 +8,10 @@
 import { sanitizeBrand, sanitizeBodyType } from "../config/marketplaceConfig.js";
 import { canonicalModel } from "./modelKey.js";
 
+// The columns the dealer site reads for its cars (HomePage.jsx and the editor's section preview).
+export const STOREFRONT_CAR_FIELDS =
+  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type,is_model_card";
+
 export const MIN_BRANDS = 2; // a strip of one logo says nothing the cars do not
 
 const live = (rows) => (Array.isArray(rows) ? rows : []).filter((r) => r && typeof r === "object");

@@ -3,6 +3,11 @@
 // (docs/STOREFRONT_PLAN.md): split out of HomePage.jsx with no visible change.
 import { useState, useEffect, useRef } from "react";
 
+// The IntersectionObserver of the window an element lives in. On the site that is just the page's
+// own; in the dashboard's section preview (SectionPreview.jsx) the element lives in a frame, whose
+// observer the preview replaces so a preview below the fold is not left blank.
+export const ownerIO = (el) => el?.ownerDocument?.defaultView?.IntersectionObserver || IntersectionObserver;
+
 // ── FadeIn ────────────────────────────────────────────────────────────────────
 export function FadeIn({ children, delay = 0, from = "up", className, style = {} }) {
   const ref = useRef(null);
@@ -10,7 +15,7 @@ export function FadeIn({ children, delay = 0, from = "up", className, style = {}
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
+    const obs = new (ownerIO(el))(
       ([e]) => {
         if (e.isIntersecting) {
           setV(true);
@@ -55,7 +60,7 @@ export function CountUp({ end = 0, duration = 1500, style }) {
     if (started.current) { setVal(end); return; }
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
+    const obs = new (ownerIO(el))(
       ([e]) => {
         if (e.isIntersecting && !started.current) {
           started.current = true;

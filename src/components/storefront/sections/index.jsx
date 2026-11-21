@@ -51,7 +51,7 @@ const RecentlySold = lazy(() => import("./RecentlySold"));
 // Phase C (behind DB_PHASE_C): the dealer's handover photos, "Happy customers".
 const Deliveries = lazy(() => import("./Deliveries"));
 
-const Hero = ({ siteName }) => <HeroCarousel compact siteName={siteName} />;
+const Hero = ({ siteName, preview, tenant }) => <HeroCarousel compact siteName={siteName} tenantOverride={preview ? tenant : null} />;
 // Banner C "Full screen" has two backgrounds (look option heroBg, storefrontLayout.js): a wall
 // of the dealer's cars (the old "Showroom wall", the default, so a saved C looks the same) or
 // one photo. Each is its own lazy file: only the picked one downloads.

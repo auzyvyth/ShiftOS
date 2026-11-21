@@ -27,12 +27,12 @@ import { cleanLayout, fromDraftParam, cleanFont, draftFont, fontCss, fontSheet, 
 import { themeOf, draftTheme, themeCss } from "../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
 import { accentTheme } from "../utils/liveAccent";
+import { STOREFRONT_CAR_FIELDS } from "../utils/storefrontStock";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
 
-const CAR_FIELDS =
-  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type,is_model_card";
+const CAR_FIELDS = STOREFRONT_CAR_FIELDS;
 
 const isHotDeal = (c) => {
   const op = c.original_price,

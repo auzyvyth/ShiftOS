@@ -8,8 +8,8 @@
 // in the link (HomePage.jsx reads ?layout=, buyers keep the saved one).
 // Stage 4: "Your look" on top: four named looks (presets), Shuffle, the heading font and the
 // site's theme (Dark or Light) and accent colour (storefrontTheme.js).
-import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { ChevronUp, ChevronDown, ExternalLink, Lock, Shuffle, Pipette, Eye } from "lucide-react";
 import { supabase } from "../../../supabaseClient";
 import { premiumLight as PL } from "../../../theme/tokens";
 import { getStorefrontUrl } from "../../../hooks/useTenant";
@@ -24,6 +24,9 @@ import { AVAILABLE_VERSIONS, VERSION_INFO, VERSION_OPTIONS } from "../../../comp
 import { themeOf, cleanTheme, resolveTheme, modeOf } from "../../../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../../utils/pageAccent";
 import { accentTheme } from "../../../utils/liveAccent";
+
+// The live section preview draws the real site sections: load it only when a dealer opens one.
+const SectionPreview = lazy(() => import("./SectionPreview"));
 
 const COLS = "subdomain, site_name, dealership, about_text, storefront_why, storefront_how, storefront_testimonials, hero_video_enabled, hero_video_url, brand_color";
 
@@ -148,6 +151,8 @@ export default function LayoutEditor({ dealerId, canEdit }) {
   const [columnMissing, setColumnMissing] = useState(false);
   const [status, setStatus] = useState({ kind: "", text: "" });
   const [saving, setSaving] = useState(false);
+  const [previewId, setPreviewId] = useState(null);   // the one section whose live preview is open
+  const [device, setDevice] = useState("phone");
 
   useEffect(() => {
     if (!dealerId) return;
@@ -332,6 +337,15 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                   {isEmpty ? EMPTY_HINT[r.id] || "Empty on your site now" : `Shows: ${info.shows.charAt(0).toLowerCase()}${info.shows.slice(1)}`}
                 </div>
               </div>
+              {r.on && sub && (
+                <button type="button" aria-pressed={previewId === r.id} aria-label={`${previewId === r.id ? "Close" : "Open"} the live preview of ${info.label}`}
+                  onClick={() => setPreviewId(previewId === r.id ? null : r.id)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 10, border: "none", cursor: "pointer",
+                    fontSize: 13, fontWeight: 600, flexShrink: 0, fontFamily: "inherit",
+                    background: previewId === r.id ? PL.text : "#fff", color: previewId === r.id ? "#fff" : PL.text, boxShadow: previewId === r.id ? "none" : PL.shadow }}>
+                  <Eye size={15} /> Preview
+                </button>
+              )}
               {info.locked ? (
                 <span style={{ fontSize: 12, color: PL.textMuted, flexShrink: 0 }}>Always on</span>
               ) : (
@@ -370,6 +384,25 @@ export default function LayoutEditor({ dealerId, canEdit }) {
                   </div>
                 );
               })()}
+              {r.on && previewId === r.id && sub && (
+                <div style={{ flexBasis: "100%", minWidth: 0, paddingTop: 6 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Live preview</span>
+                    <div className="sf-seg" role="group" aria-label="Preview screen">
+                      {[["phone", "Phone"], ["desktop", "Desktop"]].map(([k, name]) => (
+                        <button key={k} type="button" aria-pressed={device === k} onClick={() => setDevice(k)}>{name}</button>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
+                      Your real details and cars. Changes above show here at once; nothing is saved until you press Save.
+                    </span>
+                  </div>
+                  <Suspense fallback={<p style={{ margin: 0, fontSize: 13, color: PL.textMuted }}>Loading your preview...</p>}>
+                    <SectionPreview subdomain={sub} id={r.id} variant={r.variant} device={device} layout={layout}
+                      theme={theme} font={font} opts={opts} brandAccent={brandAccent} />
+                  </Suspense>
+                </div>
+              )}
             </div>
           );
         })}
