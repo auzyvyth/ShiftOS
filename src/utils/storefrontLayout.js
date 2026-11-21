@@ -24,7 +24,7 @@ export const VARIANTS = ["a", "b", "c"]; // the plan's hard cap: 3 versions per 
 // While this is false those three sections do not exist anywhere: not in SECTIONS, not in the
 // editor, not saved, not drawn, and the page never calls get_dealer_recent_sales.
 // FLIP TO true the night 20261121a is applied (after midnight, nobody live), in the same release.
-export const DB_PHASE_B = false;
+export const DB_PHASE_B = true;
 // Unit tests load a second copy of this file with the gate open (globalThis.__SF_PHASE_B_TEST);
 // the app never sets it.
 const PHASE_B_OPEN = DB_PHASE_B || globalThis.__SF_PHASE_B_TEST === true;
@@ -38,8 +38,9 @@ export const PHASE_B_IDS = ["brands", "browse", "sold"];
 // While closed: no section, nothing saved, no get_dealer_deliveries call, and the dashboard's
 // Storefront > Delivery photos pill does not exist.
 // FLIP TO true the night 20261121b is applied (with DB_PHASE_B), in the same release.
-export const DB_PHASE_C = false;
-const PHASE_C_OPEN = (DB_PHASE_C && PHASE_B_OPEN) || globalThis.__SF_PHASE_C_TEST === true;
+export const DB_PHASE_C = true;
+// __SF_PHASE_C_TEST: tests only (true = force open, false = force closed, so a "phase B only" copy can be built once both real gates are open).
+const PHASE_C_OPEN = globalThis.__SF_PHASE_C_TEST === false ? false : (DB_PHASE_C && PHASE_B_OPEN) || globalThis.__SF_PHASE_C_TEST === true;
 export const PHASE_C_IDS = ["deliveries"];
 // The dashboard asks this before showing the upload panel (same gate, one place).
 export const DELIVERIES_OPEN = PHASE_C_OPEN;

@@ -248,8 +248,10 @@ if (!DB_PHASE_C) {
 
 // ── Stage 4 phase B, gate OPEN: a second copy of the rules, as they will be after 20261121a ──
 globalThis.__SF_PHASE_B_TEST = true;
+globalThis.__SF_PHASE_C_TEST = false; // phase B only, even when the real gate C is open
 const B = await import("../src/utils/storefrontLayout.js?phaseB");
 delete globalThis.__SF_PHASE_B_TEST;
+delete globalThis.__SF_PHASE_C_TEST;
 const bIds = B.SECTIONS.map((x) => x.id);
 assert.deepEqual(listIn(fnB, "s->>'id', '') not in (").sort(), [...bIds].sort(), "20261121a lists every section the open gate has");
 assert.deepEqual(listIn(fnB, "s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "20261121a versions = JS");
@@ -259,7 +261,7 @@ assert.ok(bIds.length <= 20, "the DB caps a layout at 20 sections");
 assert.equal(bIds.indexOf("brands"), bIds.indexOf("strip") + 1, "brands right under the strip");
 assert.equal(bIds.indexOf("browse"), bIds.indexOf("cars") - 1, "browse bar just above the cars");
 assert.equal(bIds.indexOf("sold"), bIds.indexOf("reviews") + 1, "recently sold after the reviews");
-assert.deepEqual(bIds.filter((id) => !PHASE_B_IDS.includes(id)), SECTIONS.map((x) => x.id).filter((id) => !PHASE_B_IDS.includes(id)), "the old sections keep their order");
+assert.deepEqual(bIds.filter((id) => !PHASE_B_IDS.includes(id)), SECTIONS.map((x) => x.id).filter((id) => !PHASE_B_IDS.includes(id) && !PHASE_C_IDS.includes(id)), "the old sections keep their order");
 // A layout saved before the flip (13 sections) gets the three new ones, switched on, in place.
 const oldSaved = toSaved(moveSection(toggleSection(defaultLayout(), "why"), "about", -1));
 const opened = B.cleanLayout(oldSaved);
