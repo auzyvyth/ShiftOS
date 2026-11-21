@@ -66,7 +66,9 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const barRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
+  // /showroom has its own search in its top block: one search icon per screen, not two.
+  const pageHasSearch = /^\/showroom\/?$/.test(pathname);
   const isHotDeals = new URLSearchParams(search).get('hot_deals') === 'true';
 
   const partnerWa = `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / DrevoOS for my dealership. Can we discuss?")}`;
@@ -457,9 +459,11 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
           {/* RIGHT — search, saved, auth */}
           <div className="mh-right">
-            <button className="mh-icon-btn" aria-label="Search" onClick={() => setSearchOpen(o => !o)}>
-              {searchOpen ? <X size={19} /> : <Search size={19} />}
-            </button>
+            {!pageHasSearch && (
+              <button className="mh-icon-btn" aria-label="Search" onClick={() => setSearchOpen(o => !o)}>
+                {searchOpen ? <X size={19} /> : <Search size={19} />}
+              </button>
+            )}
             <button className="mh-icon-btn" aria-label="Saved cars" onClick={() => setSavedOpen(true)}>
               <Heart size={19} fill={savedIds.size > 0 ? '#dc2626' : 'none'} stroke={savedIds.size > 0 ? '#dc2626' : 'currentColor'} strokeWidth={2} />
               {savedIds.size > 0 && <span className="mh-badge">{savedIds.size}</span>}
