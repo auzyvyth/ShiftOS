@@ -23,13 +23,13 @@ No Supabase service-role key is used: it signs in as your dealer account, so the
    stock record there, the same as always. It has no photos yet.
 3. `python stocklist.py status STOCK.pdf` : what is new, what lacks photos, what is SOLD but still live.
 4. `python stocklist.py photos STOCK.pdf --dry-run`, then `--limit 5` (check them on screen), then
-   without `--limit`. A folder with under 5 usable photos is held back and listed at the end.
+   without `--limit`. A folder with fewer than 10 usable photos is NOT taken (nothing downloaded) and is listed at the end. Only cars with no photos yet are touched.
 5. `python stocklist.py unpublish STOCK.pdf` : cars the PDF marks SOLD and that are still live -> unpublished.
 
 ## Rules it follows
 - Match key is the chassis number (`car_listings.vin`); the PDF has no plates.
 - Names after "SOLD" and the BASE column are never read out of the PDF.
-- Photos: one at a time in memory, longest side 1600 px, WebP, at most 10 per car. Never written to disk.
+- Photos: one at a time in memory, longest side 1600 px, WebP, exactly 10 per car (the folder must have at least 10 usable, the first 10 by name are kept). Never written to disk.
   HEIC files are skipped (counted in the report); browsers cannot show them.
 - Every database write checks that a row really changed (the database refuses silently otherwise).
 - Cars with no ARR "Y" (not arrived) are exported with an `arrival` column: decide how to label them

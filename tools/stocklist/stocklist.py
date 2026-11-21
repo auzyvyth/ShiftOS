@@ -22,8 +22,8 @@ from pathlib import Path
 CFG_DIR = Path(os.environ.get("DREVO_STOCK_DIR", Path.home() / ".drevo_stock"))
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lemdkdizdlcirhbzqlos.supabase.co")
 BUCKET = "car-images"
-MIN_PHOTOS = 5          # same minimum as the listing form (src/utils/listingRules.js)
-MAX_PHOTOS = 10
+MIN_PHOTOS = 10         # owner rule (2026-11-21): a folder with fewer usable photos is NOT imported
+MAX_PHOTOS = 10         # at most this many are kept per car (the old script's cap, storage)
 LONG_SIDE = 1600
 WEBP_QUALITY = 78
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
@@ -275,10 +275,10 @@ def cmd_status(a):
     idx = db_index(Supa().my_listings())
     live = [r for r in rows if not r["sold"]]
     new = [r for r in live if r["vin"] not in idx]
-    nophoto = [r for r in live if r["vin"] in idx and len(idx[r["vin"]].get("images") or []) < MIN_PHOTOS]
+    nophoto = [r for r in live if r["vin"] in idx and not (idx[r["vin"]].get("images") or [])]
     sold_live = [r for r in rows if r["sold"] and r["vin"] in idx and idx[r["vin"]]["status"] == "available"]
     print(f"in the app already: {len(live) - len(new)} | not in the app yet: {len(new)} | "
-          f"have under {MIN_PHOTOS} photos: {len(nophoto)} | SOLD in the PDF but still live: {len(sold_live)}")
+          f"in the app with no photos: {len(nophoto)} | SOLD in the PDF but still live: {len(sold_live)}")
     return 0
 
 
@@ -300,9 +300,11 @@ def cmd_photos(a):
     rows, _ = parse(a.pdf)
     sb, http = Supa(), requests.Session()
     idx = db_index(sb.my_listings())
+    # only cars with NO photos yet: a car that already has photos is never touched or overwritten
     todo = [(r, idx[r["vin"]]) for r in rows if not r["sold"] and r["drive"] and r["vin"] in idx
-            and len(idx[r["vin"]].get("images") or []) < MIN_PHOTOS]
+            and not (idx[r["vin"]].get("images") or [])]
     if a.limit: todo = todo[:a.limit]
+    if a.min_photos > a.max_photos: sys.exit("--min-photos cannot be bigger than --max-photos")
     print(f"{len(todo)} cars need photos" + (" (dry run: nothing is downloaded or written)" if a.dry_run else ""))
     if a.dry_run: return 0
     tok, held, failed, uploaded = google_token(), [], [], 0
@@ -316,29 +318,31 @@ def cmd_photos(a):
         mt = meta.json().get("mimeType", "")
         files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
         if err: failed.append((label, err)); continue
-        files = files[:a.max_photos]
-        if len(files) < MIN_PHOTOS and not a.allow_few:
+        # the rule: fewer than --min-photos (10) images in the folder = the car is not taken, nothing downloaded
+        if len(files) < a.min_photos:
             held.append((label, f"{len(files)} usable photos" + (f" ({skipped} HEIC skipped)" if skipped else ""))); continue
-        urls = []
-        for i, f in enumerate(files, 1):
+        files = files[:a.max_photos]
+        shrunk = []   # all shrunk photos of ONE car (about 10 x 300 KB) are held in memory, so a car is all or nothing
+        for f in files:
             try:
                 d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
                              headers={"Authorization": f"Bearer {tok}"}, timeout=120)
                 if d.status_code != 200 or len(d.content) > 40_000_000: continue
-                data = shrink(d.content)
-                name = f"{i:02d}-{hashlib.sha1(data).hexdigest()[:8]}.webp"   # new name per change: no stale CDN copy
-                urls.append(sb.upload(f"{sb.uid}/{l['id']}/{name}", data))
+                shrunk.append(shrink(d.content))
             except Exception as e:
                 print(f"    skipped one file: {type(e).__name__}")
-        if len(urls) >= MIN_PHOTOS or (a.allow_few and urls):
-            ok = sb.patch(l["id"], {"images": urls})
-            uploaded += len(urls) if ok else 0
-            print(f"[{n}/{len(todo)}] {label}: {len(urls)} photos" + ("" if ok else "  DATABASE REFUSED THE UPDATE"))
-            if not ok: failed.append((label, "database refused the update"))
-        else:
-            failed.append((label, f"only {len(urls)} photos uploaded")); print(f"[{n}/{len(todo)}] {label}: FAILED")
+        if len(shrunk) < a.min_photos:   # some files failed: do not upload a half set
+            held.append((label, f"only {len(shrunk)} of {len(files)} photos could be read")); continue
+        urls = []
+        for i, data in enumerate(shrunk, 1):
+            name = f"{i:02d}-{hashlib.sha1(data).hexdigest()[:8]}.webp"   # new name per change: no stale CDN copy
+            urls.append(sb.upload(f"{sb.uid}/{l['id']}/{name}", data))
+        ok = sb.patch(l["id"], {"images": urls})
+        uploaded += len(urls) if ok else 0
+        print(f"[{n}/{len(todo)}] {label}: {len(urls)} photos" + ("" if ok else "  DATABASE REFUSED THE UPDATE"))
+        if not ok: failed.append((label, "database refused the update"))
         time.sleep(0.3)
-    print(f"\ndone: {uploaded} photos saved | held back (under {MIN_PHOTOS}): {len(held)} | failed: {len(failed)}")
+    print(f"\ndone: {uploaded} photos saved | NOT taken (under {a.min_photos} photos): {len(held)} | failed: {len(failed)}")
     for lab, why in held + failed: print("  -", lab, "-", why)
     return 0
 
@@ -379,7 +383,7 @@ def main():
         if name == "parse": p.add_argument("--out")
         if name == "photos":
             p.add_argument("--limit", type=int); p.add_argument("--dry-run", action="store_true")
-            p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--allow-few", action="store_true")
+            p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
         if name == "unpublish": p.add_argument("--yes", action="store_true")
     sub.add_parser("login").set_defaults(fn=cmd_login)
     g = sub.add_parser("google"); g.add_argument("--client-secret"); g.set_defaults(fn=cmd_google)
