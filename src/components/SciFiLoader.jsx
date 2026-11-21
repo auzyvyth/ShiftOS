@@ -249,7 +249,7 @@ export default function SciFiLoader() {
         </div>
 
         <div className="sfl-text-block">
-          <div className="sfl-title">ShiftOS · Initializing</div>
+          <div className="sfl-title">DrevoOS · Initializing</div>
           <div className="sfl-eq" ref={eqRef} />
         </div>
 

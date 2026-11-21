@@ -70,7 +70,9 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     if (priority) { setInView(true); return; }
     const el = cardRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') { setInView(true); return; }
-    const obs = new IntersectionObserver(
+    // The observer of the window the card lives in (the dashboard's section preview draws it in a frame).
+    const IO = el.ownerDocument?.defaultView?.IntersectionObserver || IntersectionObserver;
+    const obs = new IO(
       ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
       { rootMargin: '200px' },
     );

@@ -19,7 +19,6 @@ function readTenantCache(subdomain) {
 }
 
 export const MARKETPLACE_DOMAIN = ROOT_DOMAIN;
-export const DASHBOARD_DOMAIN = "shiftos.com";
 
 // The ?tenant= override is a dev/preview convenience only. Allowing it in
 // production would let anyone spoof a competitor's storefront under the

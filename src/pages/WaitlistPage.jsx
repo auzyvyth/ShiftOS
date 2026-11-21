@@ -154,7 +154,7 @@ export default function WaitlistPage() {
   return (
     <div style={s.page}>
       <Helmet>
-        <title>Join the Waitlist — ShiftOS for Malaysian Car Sellers</title>
+        <title>Join the Waitlist — DrevoOS for Malaysian Car Sellers</title>
         <meta name="description" content="Free listings, your own profile, lead tracking. Built for Malaysian car salespeople. Join now." />
       </Helmet>
 

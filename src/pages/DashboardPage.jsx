@@ -52,6 +52,9 @@ const AddCarForm       = React.lazy(() => import("../components/AddCarForm"));
 import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 const CRMPanel         = React.lazy(() => import("./CRMPanel"));
 const HeroSlidesPage   = React.lazy(() => import("./xdrive/HeroSlidesPage"));
+const LayoutEditor     = React.lazy(() => import("./dashboard/storefront/LayoutEditor"));
+// Storefront > Delivery photos: only once migration 20261121b is applied (DB_PHASE_C).
+const DeliveryPhotos   = React.lazy(() => import("./dashboard/storefront/DeliveryPhotos"));
 const RevOpsPage       = React.lazy(() => import("./RevOpsPage"));
 const TikTokStudioV3   = React.lazy(() => import("../components/TikTokStudioV3"));
 const ServicesPage     = React.lazy(() => import("./ServicesPage"));
@@ -129,6 +132,7 @@ import {
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
 import TeamBrokersSwitch from "../components/brokers/DealerBrokers";
+import { DELIVERIES_OPEN } from "../utils/storefrontLayout";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -188,7 +192,7 @@ export default function DashboardPage() {
   // The AI Sales Manager card on Overview. Closed on every visit: opening it runs the briefing.
   const [aiOpen, setAiOpen] = useState(false);
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
-  const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
+  const [storefrontSub, setStorefrontSub] = useState("layout"); // layout | hero | services
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
   const [reactivating, setReactivating] = useState(false);
@@ -673,6 +677,7 @@ export default function DashboardPage() {
       marketplace: { tab: "analytics",    sub: ["analytics", "performance"] },
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
+      layout:      { tab: "storefront", sub: ["storefront", "layout"] },
       // AI Manager is a card on Overview now (2026-11-16): old links open Overview with it open.
       ai_manager:  { tab: "overview",   sub: [], openAi: true },
       // Adding a car is a pop-up now (2026-11-16): an old /dashboard/add link opens Inventory with
@@ -1244,7 +1249,7 @@ export default function DashboardPage() {
     })[analyticsSub] || { title: "Analytics", sub: "Listings, revenue & marketplace traffic" },
     settings: { title: "Settings", sub: "Dealership, front page & account" },
     crm: { title: "CRM", sub: "Pipeline, enquiries, bookings & leads" },
-    storefront: { title: "Storefront", sub: "Homepage hero & add-on product catalogue" },
+    storefront: { title: "Storefront", sub: "Design your site, its banner slides and your add-on products" },
     stock: { title: "Stock", sub: "Vehicle stock units & cost tracking" },
     documents: { title: "Documents", sub: "Sales agreements & receipts" },
     customers:  { title: "Customers",        sub: "Buyer history, expiry tracking & remarketing" },
@@ -1446,7 +1451,7 @@ export default function DashboardPage() {
         <span style={{ fontSize: 13, color: trialDaysLeft <= 3 ? '#b91c1c' : '#374151', fontWeight: 600 }}>
           Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left. Your data is safe either way.
         </span>
-        <a href="https://wa.me/601111521742?text=Hi%2C%20I%20want%20to%20activate%20my%20ShiftOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
+        <a href="https://wa.me/601111521742?text=Hi%2C%20I%20want%20to%20activate%20my%20DrevoOS%20subscription" target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#dc2626', padding: '4px 12px', borderRadius: 6, textDecoration: 'none' }}>
           Activate now
         </a>
       </div>
@@ -2445,10 +2450,18 @@ export default function DashboardPage() {
                 active={storefrontSub}
                 onChange={setStorefrontSub}
                 tabs={[
-                  { id: "hero",     label: "Hero Carousel" },
+                  { id: "layout",   label: "Design" },
+                  { id: "hero",     label: "Banner slides" },
+                  ...(DELIVERIES_OPEN ? [{ id: "deliveries", label: "Delivery photos" }] : []),
                   { id: "services", label: "Services & Add-ons" },
                 ]}
               />
+              {storefrontSub === "layout" && (
+                <LayoutEditor dealerId={getDealerIdFromProfile(profile)} canEdit={getDealerIdFromProfile(profile) === profile?.id} />
+              )}
+              {DELIVERIES_OPEN && storefrontSub === "deliveries" && (
+                <DeliveryPhotos dealerId={getDealerIdFromProfile(profile)} />
+              )}
               {storefrontSub === "hero" && (
                 <HeroSlidesPage userId={userId} profile={profile} />
               )}
@@ -2538,7 +2551,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ShiftOS Studio — full-screen editor, mounted at page level so the
+      {/* DrevoOS Studio — full-screen editor, mounted at page level so the
           drawer's stacking context can't clip it (overlay rule #1) */}
       {studioListing && (
         <React.Suspense fallback={null}>

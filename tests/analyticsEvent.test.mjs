@@ -1,6 +1,6 @@
 // ANALYTICS-SPOOF: the /api/track shape check. Run: npm run test:analytics
 import assert from 'node:assert/strict';
-import { cleanEvent } from '../lib/analyticsEvent.js';
+import { cleanEvent, slugAllowed } from '../lib/analyticsEvent.js';
 
 const SID = '0b8e6f2a-3c1d-4e5f-8a9b-0c1d2e3f4a5b';
 const CAR = '11111111-2222-4333-8444-555555555555';
@@ -40,5 +40,15 @@ t('oversized metadata is dropped, small metadata kept', () => {
 t('no extra columns pass through', () => {
   const r = cleanEvent({ event_type: 'page_view', session_id: SID, id: CAR, created_at: '2000-01-01' });
   assert.equal('id' in r, false); assert.equal('created_at' in r, false);
+});
+
+t('a seller is credited only when real and under this dealer (or standalone)', () => {
+  const D1 = '11111111-1111-4111-8111-111111111111', D2 = '22222222-2222-4222-8222-222222222222';
+  assert.equal(slugAllowed(null, D1), false);                                  // made-up name
+  assert.equal(slugAllowed({ role: 'dealer', dealer_id: null }, D1), false);   // not a seller
+  assert.equal(slugAllowed({ role: 'salesman', dealer_id: D1 }, D1), true);    // their own dealer
+  assert.equal(slugAllowed({ role: 'salesman', dealer_id: D1 }, D2), false);   // another dealer's car
+  assert.equal(slugAllowed({ role: 'salesman', dealer_id: D1 }, null), false); // no dealer on the event
+  assert.equal(slugAllowed({ role: 'salesman', dealer_id: null }, D2), true);  // standalone / broker
 });
 console.log(`\n${n} passed`);

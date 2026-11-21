@@ -1,20 +1,25 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useSiteProfile } from "../hooks/useSiteProfile";
+import { useSiteProfile, siteProfileFrom } from "../hooks/useSiteProfile";
 import { isSubdomain } from "../hooks/useTenant";
+import { hasHowItWorks } from "../utils/storefrontCopy";
 import { openConsentSettings } from "../utils/consent";
+import { cleanOptions } from "../utils/storefrontLayout";
+import { Facebook, Instagram, Music2, MapPin, Clock, Phone, MessageCircle } from "lucide-react";
 
 // App version — injected from package.json at build time (see vite.config.js).
 // Falls back to "dev" when running outside a Vite build (e.g. tests).
 /* global __APP_VERSION__ */
 const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
+// `sf-band`: on a dealer site with the Light theme the footer stays a dark band
+// (storefrontTheme.js bandVars); with no theme the class matches no rule.
 const FOOTER_CSS = `
 
   .ftr-root {
     font-family: 'Outfit', sans-serif;
-    background: #09090B;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    background: var(--sf-bg, #09090B);
+    border-top: 1px solid var(--sf-border, rgba(255,255,255,0.06));
   }
   .ftr-grid {
     max-width: 1280px; margin: 0 auto;
@@ -26,58 +31,58 @@ const FOOTER_CSS = `
   .ftr-col-head {
     font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.18em;
-    color: #C4A265; margin-bottom: 18px;
+    color: var(--sf-accent-text, #C4A265); margin-bottom: 18px;
     display: flex; align-items: center; gap: 8px;
   }
   .ftr-col-head::after {
     content: ''; flex: 1; height: 1px;
-    background: rgba(196,162,101,0.15);
+    background: rgba(var(--sf-accent-rgb, 196,162,101),0.15);
   }
   .ftr-link {
-    display: block; color: #52525A;
+    display: block; color: var(--sf-muted, #52525A);
     font-size: 13px; font-weight: 400;
     text-decoration: none; line-height: 1;
     padding: 6px 0;
     transition: color 0.18s;
     letter-spacing: 0.01em;
   }
-  .ftr-link:hover { color: #F0F0F0; }
+  .ftr-link:hover { color: var(--sf-text, #F0F0F0); }
   .ftr-contact-item {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 6px 0;
   }
   .ftr-contact-icon {
     width: 14px; height: 14px; flex-shrink: 0;
-    margin-top: 1px; color: #3A3A42;
+    margin-top: 1px; color: var(--sf-muted, #3A3A42);
   }
   .ftr-contact-text {
-    color: #52525A; font-size: 13px;
+    color: var(--sf-muted, #52525A); font-size: 13px;
     text-decoration: none; transition: color 0.18s;
     line-height: 1.5; word-break: break-word;
   }
-  .ftr-contact-text:hover { color: #F0F0F0; }
+  .ftr-contact-text:hover { color: var(--sf-text, #F0F0F0); }
   .ftr-social-row {
     display: flex; align-items: center; gap: 8px;
     padding: 5px 0;
   }
   .ftr-social-icon {
     width: 30px; height: 30px; border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid var(--sf-border, rgba(255,255,255,0.07));
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: all 0.18s;
-    background: rgba(255,255,255,0.02);
+    background: var(--sf-card, rgba(255,255,255,0.02)); color: var(--sf-muted, #52525A);
   }
   .ftr-social-icon:hover {
-    border-color: rgba(196,162,101,0.3);
-    background: rgba(196,162,101,0.05);
+    border-color: rgba(var(--sf-accent-rgb, 196,162,101),0.3);
+    background: rgba(var(--sf-accent-rgb, 196,162,101),0.05);
   }
   .ftr-social-label {
-    color: #52525A; font-size: 13px;
+    color: var(--sf-muted, #52525A); font-size: 13px;
     text-decoration: none; transition: color 0.18s;
   }
-  .ftr-social-label:hover { color: #F0F0F0; }
+  .ftr-social-label:hover { color: var(--sf-text, #F0F0F0); }
   .ftr-bottom {
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid var(--sf-border, rgba(255,255,255,0.05));
     padding: 16px 20px;
     max-width: 1280px; margin: 0 auto;
     display: flex; align-items: center;
@@ -85,12 +90,42 @@ const FOOTER_CSS = `
     flex-wrap: wrap;
   }
   .ftr-bottom-text {
-    font-size: 11px; color: #2A2A30;
+    font-size: 11px; color: var(--sf-muted, #2A2A30);
     letter-spacing: 0.04em;
   }
   .ftr-bottom-brand {
-    font-size: 11px; color: #2A2A30; letter-spacing: 0.04em;
+    font-size: 11px; color: var(--sf-muted, #2A2A30); letter-spacing: 0.04em;
     display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Compact + contact versions (look option footer). */
+  .ftr-slim {
+    max-width: 1280px; margin: 0 auto; padding: 32px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap;
+  }
+  .ftr-slim-links { display: flex; align-items: center; flex-wrap: wrap; gap: 0 22px; min-width: 0; }
+  /* #A1A1AA, not the classic #52525A: that grey is under 3:1 on this ground, too faint for links. */
+  .ftr-slim-links .ftr-link { display: inline-block; color: var(--sf-muted, #A1A1AA); }
+  .ftr-slim-links .ftr-link:hover { color: var(--sf-text, #F0F0F0); }
+  .ftr-slim-icons .ftr-social-icon { color: var(--sf-muted, #A1A1AA); }
+  .ftr-slim-icons { display: flex; gap: 8px; }
+  .ftr-cta { background: var(--sf-card, #111113); border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.06)); }
+  .ftr-cta-in {
+    max-width: 1280px; margin: 0 auto; padding: 48px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap;
+  }
+  .ftr-cta-line { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 14px; color: var(--sf-muted, #A1A1AA); line-height: 1.5; }
+  .ftr-cta-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ftr-cta-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none;
+    color: var(--sf-text, #F0F0F0); border: 1px solid var(--sf-border, rgba(255,255,255,0.18)); background: transparent;
+  }
+  .ftr-cta-btn.primary { background: var(--sf-accent, #DC2626); border-color: var(--sf-accent, #DC2626); color: var(--sf-on-accent, #fff); }
+  @media (max-width: 540px) {
+    .ftr-cta-in { padding: 36px 20px; }
+    .ftr-cta-btns { width: 100%; }
+    .ftr-cta-btn { flex: 1 1 100%; }
   }
 
   @media (max-width: 900px) {
@@ -102,12 +137,15 @@ const FOOTER_CSS = `
   }
 `;
 
-const Footer = () => {
+// tenantOverride: the dashboard's footer preview (a dealer row, drawn in a frame).
+// look = the home page's look options (draft-aware); other dealer pages read the saved ones (as Header).
+const Footer = ({ tenantOverride = null, look } = {}) => {
   const currentYear = new Date().getFullYear();
-  const { siteName, siteInitial, profile: tenantProfile } = useSiteProfile();
+  const liveSite = useSiteProfile();
+  const { siteName, siteInitial, profile: tenantProfile } = tenantOverride ? siteProfileFrom(tenantOverride) : liveSite;
 
   // Hard-stop on main domain — subdomain dealer footer must never render on drevo.my
-  if (!isSubdomain()) return null;
+  if (!tenantOverride && !isSubdomain()) return null;
 
   // This footer is subdomain-only, so the tenant IS the profile. It used to fall
   // back to one hardcoded id when the tenant was null, described as the "main
@@ -147,16 +185,122 @@ const Footer = () => {
   const hasContact = email || phone || whatsapp;
   const hasSocials = facebook || instagram || tiktok;
 
+  // A dealer's own site: its own car list (/showroom sends a subdomain home), How It
+  // Works only when the dealer wrote it, and no Drevo "For Dealers" sales link.
   const quickLinks = [
-    { label: "Browse Cars",    to: "/showroom" },
+    { label: "Browse Cars",    to: "/cars" },
     { label: "Calculator",     to: "/calculator" },
-    { label: "How It Works",   to: "/#how-it-works" },
-    { label: "For Dealers",    to: "/for-dealers" },
+    ...(hasHowItWorks(tenantProfile) ? [{ label: "How It Works", to: "/#how-it-works" }] : []),
     { label: "Sign In",        to: "/login" },
   ];
 
+  // The small print, the same under every version.
+  const bottom = (
+    <>
+      <div style={{ borderTop: "1px solid var(--sf-border, rgba(255,255,255,0.04))" }}>
+        <div className="ftr-bottom">
+          <span className="ftr-bottom-text">
+            © {currentYear} {dealershipName}. All rights reserved.
+            <span style={{ color: "var(--sf-muted, #3F3F46)", marginLeft: "8px" }}>v{APP_VERSION}</span>
+          </span>
+          <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            {/* #A1A1AA, not #71717A: the darker grey was 4.0:1 on this footer,
+                under the 4.5:1 small text needs. */}
+            <Link to="/terms" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
+            <Link to="/privacy" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
+            {/* The consent banner runs on storefronts too, so the way back into
+                it has to be here as well as in the marketplace footer. */}
+            <button type="button" onClick={openConsentSettings} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", fontFamily: "inherit" }}>Cookie settings</button>
+          </span>
+          <span className="ftr-bottom-brand">
+            Powered by
+            <span style={{ color: "var(--sf-accent-text, #DC2626)", fontWeight: "600" }}>DrevoOS</span>
+          </span>
+        </div>
+      </div>
+    </>
+  );
+
+  const version = (look || cleanOptions(tenantProfile?.storefront_layout)).footer;
+  if (version === "compact" || version === "contact") {
+    const socials = [
+      facebook && { Icon: Facebook, href: fbHref, label: "Facebook" },
+      instagram && { Icon: Instagram, href: igHref, label: "Instagram" },
+      tiktok && { Icon: Music2, href: ttHref, label: "TikTok" },
+    ].filter(Boolean);
+    const hours = profile?.business_hours || "";
+    const showBand = version === "contact" && (locationStr || hours || waHref || phone);
+    const head = { fontFamily: "var(--sf-font-head, 'Outfit', sans-serif)", fontWeight: "var(--sf-head-weight, 700)", textTransform: "var(--sf-head-case, none)", letterSpacing: "var(--sf-head-track, -0.02em)" };
+    return (
+      <footer className="ftr-root sf-band">
+        <style>{FOOTER_CSS}</style>
+        {showBand && (
+          <div className="ftr-cta">
+            <div className="ftr-cta-in">
+              <div style={{ minWidth: 0 }}>
+                <p className="ftr-col-head" style={{ marginBottom: 12 }}>Visit us</p>
+                <p style={{ ...head, color: "var(--sf-text, #F0F0F0)", fontSize: "clamp(22px, 3vw, 30px)", lineHeight: 1.2, margin: "0 0 12px" }}>{dealershipName}</p>
+                {locationStr && (
+                  <p className="ftr-cta-line"><MapPin size={14} style={{ flexShrink: 0 }} /> {locationStr}</p>
+                )}
+                {hours && (
+                  <p className="ftr-cta-line"><Clock size={14} style={{ flexShrink: 0 }} /> {hours}</p>
+                )}
+              </div>
+              {(waHref || phone) && (
+                <div className="ftr-cta-btns">
+                  {waHref && (
+                    <a href={waHref} target="_blank" rel="noopener noreferrer" className="ftr-cta-btn primary">
+                      <MessageCircle size={16} style={{ flexShrink: 0 }} /> WhatsApp us
+                    </a>
+                  )}
+                  {phone && (
+                    <a href={`tel:${phone}`} className="ftr-cta-btn">
+                      <Phone size={16} style={{ flexShrink: 0 }} /> {phone}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="ftr-slim">
+          {!showBand && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt={dealershipName} style={{ height: 30, objectFit: "contain" }} />
+              ) : (
+                <>
+                  <div style={{ width: 30, height: 30, borderRadius: 5, background: "var(--sf-accent, #DC2626)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ color: "var(--sf-on-accent, white)", fontWeight: 800, fontSize: 14 }}>{siteInitial}</span>
+                  </div>
+                  <span style={{ color: "var(--sf-text, #F0F0F0)", fontWeight: 700, fontSize: 16, letterSpacing: "-0.02em" }}>{dealershipName}</span>
+                </>
+              )}
+            </div>
+          )}
+          <nav className="ftr-slim-links" aria-label="Footer">
+            {quickLinks.map((l) => (
+              <Link key={l.to} to={l.to} className="ftr-link">{l.label}</Link>
+            ))}
+            {version === "compact" && email && <a href={`mailto:${email}`} className="ftr-link">{email}</a>}
+            {version === "compact" && phone && <a href={`tel:${phone}`} className="ftr-link">{phone}</a>}
+          </nav>
+          {socials.length > 0 && (
+            <div className="ftr-slim-icons">
+              {socials.map(({ Icon, href, label }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="ftr-social-icon"><Icon size={14} /></a>
+              ))}
+            </div>
+          )}
+        </div>
+        {bottom}
+      </footer>
+    );
+  }
+
   return (
-    <footer className="ftr-root">
+    <footer className="ftr-root sf-band">
       <style>{FOOTER_CSS}</style>
 
       <div className="ftr-grid">
@@ -169,19 +313,19 @@ const Footer = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
               <div style={{
                 width: "30px", height: "30px", borderRadius: "5px",
-                background: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                background: "var(--sf-accent, #DC2626)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               }}>
-                <span style={{ color: "white", fontWeight: "800", fontSize: "14px", fontFamily: "'Outfit', sans-serif" }}>
+                <span style={{ color: "var(--sf-on-accent, white)", fontWeight: "800", fontSize: "14px", fontFamily: "'Outfit', sans-serif" }}>
                   {siteInitial}
                 </span>
               </div>
-              <span style={{ color: "#F0F0F0", fontWeight: "700", fontSize: "16px", letterSpacing: "-0.02em" }}>
+              <span style={{ color: "var(--sf-text, #F0F0F0)", fontWeight: "700", fontSize: "16px", letterSpacing: "-0.02em" }}>
                 {dealershipName}
               </span>
             </div>
           )}
           {locationStr && (
-            <p style={{ color: "#3A3A42", fontSize: "12px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "5px" }}>
+            <p style={{ color: "var(--sf-muted, #3A3A42)", fontSize: "12px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "5px" }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
@@ -189,7 +333,7 @@ const Footer = () => {
             </p>
           )}
           {aboutSnippet && (
-            <p style={{ color: "#3A3A42", fontSize: "12.5px", lineHeight: "1.75", margin: 0 }}>
+            <p style={{ color: "var(--sf-muted, #3A3A42)", fontSize: "12.5px", lineHeight: "1.75", margin: 0 }}>
               {aboutSnippet}
             </p>
           )}
@@ -209,7 +353,7 @@ const Footer = () => {
         <div>
           <p className="ftr-col-head">Contact</p>
           {!hasContact && (
-            <p style={{ color: "#2A2A30", fontSize: "12px" }}>—</p>
+            <p style={{ color: "var(--sf-muted, #2A2A30)", fontSize: "12px" }}>—</p>
           )}
           {email && (
             <div className="ftr-contact-item">
@@ -230,7 +374,7 @@ const Footer = () => {
           )}
           {whatsapp && (
             <div className="ftr-contact-item">
-              <svg className="ftr-contact-icon" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#3A3A42" }}>
+              <svg className="ftr-contact-icon" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--sf-muted, #3A3A42)" }}>
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
               </svg>
               <a href={waHref} target="_blank" rel="noopener noreferrer" className="ftr-contact-text">WhatsApp Us</a>
@@ -242,13 +386,13 @@ const Footer = () => {
         <div>
           <p className="ftr-col-head">Follow Us</p>
           {!hasSocials && (
-            <p style={{ color: "#2A2A30", fontSize: "12px" }}>—</p>
+            <p style={{ color: "var(--sf-muted, #2A2A30)", fontSize: "12px" }}>—</p>
           )}
           {facebook && (
             <a href={fbHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               <div className="ftr-social-row">
                 <div className="ftr-social-icon">
-                  <svg width="14" height="14" fill="#52525A" viewBox="0 0 24 24">
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22 12a10 10 0 1 0-11.56 9.87v-6.99H8.08V12h2.36v-2.05c0-2.33 1.39-3.62 3.51-3.62.7 0 1.43.06 2.13.18v2.34h-1.2c-1.18 0-1.55.73-1.55 1.49V12h2.63l-.42 2.88h-2.21v6.99A10 10 0 0 0 22 12Z"/>
                   </svg>
                 </div>
@@ -260,10 +404,10 @@ const Footer = () => {
             <a href={igHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               <div className="ftr-social-row">
                 <div className="ftr-social-icon">
-                  <svg width="14" height="14" fill="none" stroke="#52525A" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                     <rect x="2" y="2" width="20" height="20" rx="5"/>
                     <circle cx="12" cy="12" r="4"/>
-                    <circle cx="17.5" cy="6.5" r="1" fill="#52525A" stroke="none"/>
+                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
                   </svg>
                 </div>
                 <span className="ftr-social-label">Instagram</span>
@@ -274,7 +418,7 @@ const Footer = () => {
             <a href={ttHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               <div className="ftr-social-row">
                 <div className="ftr-social-icon">
-                  <svg width="14" height="14" fill="#52525A" viewBox="0 0 24 24">
+                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07Z"/>
                   </svg>
                 </div>
@@ -285,28 +429,7 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-        <div className="ftr-bottom">
-          <span className="ftr-bottom-text">
-            © {currentYear} {dealershipName}. All rights reserved.
-            <span style={{ color: "#3F3F46", marginLeft: "8px" }}>v{APP_VERSION}</span>
-          </span>
-          <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-            {/* #A1A1AA, not #71717A: the darker grey was 4.0:1 on this footer,
-                under the 4.5:1 small text needs. */}
-            <Link to="/terms" style={{ color: "#A1A1AA", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
-            <Link to="/privacy" style={{ color: "#A1A1AA", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
-            {/* The consent banner runs on storefronts too, so the way back into
-                it has to be here as well as in the marketplace footer. */}
-            <button type="button" onClick={openConsentSettings} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#A1A1AA", fontSize: "12px", fontFamily: "inherit" }}>Cookie settings</button>
-          </span>
-          <span className="ftr-bottom-brand">
-            Powered by
-            <span style={{ color: "#DC2626", fontWeight: "600" }}>ShiftOS</span>
-          </span>
-        </div>
-      </div>
+      {bottom}
     </footer>
   );
 };

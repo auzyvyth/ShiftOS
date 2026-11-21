@@ -51,8 +51,10 @@ Full plan and status: `TODO.md` BRAND-1.
   `ROOT_DOMAIN` is `drevo.my`, xdrive.my stays in `OWN_DOMAINS` and every xdrive.my
   host 301s to the same path on drevo.my (`vercel.json` `redirects`). Never remove
   those redirects while xdrive.my is renewed.
-- "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
-  becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+- **The seller/dealer software is "DrevoOS" (owner, 2026-11-20).** App copy, dashboards, the /shiftos page,
+  i18n, the PWA name and push titles were renamed. NOT yet renamed (owner call pending): legal docs (the
+  operator name in Terms/Privacy/DPA), articles, `api/og.js` legal lines, `public/llms.txt`, edge-function emails,
+  social handles in the /shiftos schema. Never add new "ShiftOS" text.
   The photo/poster editor is "Drevo Studio" (owner, 2026-11-16); its buttons say so.
 - **Logo = the red italic "Drevo" wordmark with the bar over it (owner, 2026-11-08), replacing
   the temporary "Split D" lockup.** One red wordmark for Drevo AND the seller software, the same
@@ -353,6 +355,77 @@ still says "21 pages") — do not update it; it is pending removal.
   App.jsx RootRoute picks it synchronously by hostname.
 - src/pages/HomePage.jsx — the DEALER SUBDOMAIN storefront (`/` on <sub>.xdrive.my).
   It is not the marketplace; it uses Header/Footer, not MarketplaceHeader/Footer.
+  Since STOREFRONT-2 stage 1 (2026-11-20) it only loads the data; every section is its own
+  file in `src/components/storefront/sections/`, shown in `STOREFRONT_SECTIONS` order (index.jsx),
+  all taking the same `ctx` props. A new section goes in that list, never back into HomePage.
+  Plan for the rest: `docs/STOREFRONT_PLAN.md`.
+  **Stage 2 (2026-11-20): the dealer picks the order and on/off** in dashboard Storefront > Layout
+  (`src/pages/dashboard/storefront/LayoutEditor.jsx`), saved as `profiles.storefront_layout`. ONE rules
+  file, `src/utils/storefrontLayout.js` (`npm run test:storefrontlayout`): banner pinned first, Get in touch
+  last, cars + contact always on; `cleanLayout` turns ANY saved value into a valid full layout, so a bad
+  one never breaks the page. The DB check `storefront_layout_ok` (migration `20261120a`, APPLIED 2026-11-20 ~19:30 MYT by the owner in
+  the SQL Editor, so it is NOT in `list_migrations`; check the column / `pg_constraint` instead) lists the
+  same section ids: a new section = add it in both or saving fails. Versions per section:
+  `sections/versions.js` (data, the editor reads it) + `sections/index.jsx` (components). `?layout=` on the
+  site = the editor's unsaved preview (noindex). Below-the-fold sections load lazily; `#how-it-works` and
+  `#contact` stay eager so header links can scroll to them.
+  **Stage 3 (2026-11-20): versions.** Top banner A Slides (HeroCarousel) / B Split (`HeroSplit.jsx`) / C Showroom
+  wall (`HeroMosaic.jsx`); cars A Grid / B Rail / C Spotlight (`Inventory*.jsx`, all built from `carsParts.jsx`,
+  always ShowroomCard). Versions B/C are lazy, so only the picked one downloads. Banner/spotlight words are the
+  dealer's own (hero_title / hero_subtitle) or facts from the car row (`heroParts.js`), never a claim. Saving keeps
+  the picked version: `toSaved` / `isDefaultLayout` are called WITHOUT the version list on purpose (a test guards it).
+  **Stage 4, first slice (2026-11-20, local commits, not on staging):** versions B/C for About, Why us, By the numbers,
+  How it works, reviews (one lazy file each in `sections/`, named in `versions.js`); they use the `.sfv-*` classes
+  (`ui.jsx`, one type/spacing scale) and the dealer's colour via `accentOf` (`shared.js`, Drevo red when never chosen)
+  as a fill or line only, never as text. Numbers rule for all three Stats versions: `statsParts.js`. Heading fonts
+  (`FONTS`: Modern / Bold / Classic / Sharp; body stays Outfit), ready looks (`PRESETS`) and `shuffleLook` are pure
+  functions in `storefrontLayout.js`; the font is saved as `font` on the same jsonb (default not written, the live
+  `storefront_layout_ok` reads only `v` + `sections`, so no migration), and `--sf-head-*` CSS variables are set only
+  for a non-default font, so an untouched site is pixel-identical. Fonts show on the home page only.
+  **Stage 4, colours (2026-11-20, on staging):** TWO themes, Dark or Light (owner: "they won't know how to mix and
+  match"; free Background/Cards pickers were tried the same day and dropped: a red or blue page came out as one solid
+  slab with no card edges), plus ONE optional accent. Saved as `theme: {mode?: "light", accent?}` on the same jsonb (Dark
+  = default, not written; no migration). ONE rules file, `src/utils/storefrontTheme.js` (`npm run test:storefronttheme`):
+  Light is a FIXED palette (`LIGHT`: grey page, white cards, a SOLID border, dark text), tested >= 4.5:1 for every word and
+  a visible card edge; the accent is darkened until white text on it reads. Every colour on a dealer site is written
+  `var(--sf-x, <the old value>)` (`sv()` in `shared.js`), and HomePage writes the variables on `:root` (so portalled pop-ups
+  follow) ONLY when a theme is saved: no theme = pixel-identical. Dark + accent sets only the accent variables. A new colour
+  on a dealer site must use a `--sf-*` variable with its old value as fallback, never a white alpha (it vanishes on Light).
+  No accent picked = the brand colour (`accentOf`, `var(--sf-theme-accent, brand)`). The top banner stays a dark photo band
+  on Light. /cars and car pages are not themed yet. The same-town
+  check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
+  **Stage 4 phase A (2026-11-20, local commits): the owner's reference site's ORGANISATION and colouring, never its words or
+  photos.** Look OPTIONS = small top-level keys on the same jsonb (`OPTIONS` in `storefrontLayout.js`: fixed values, default never
+  saved, cleaned, carried by the `?layout=` link as `opt.<key>.<value>`, tested; no migration). `heroBg`: banner C is now "Full
+  screen", background `cars` (default = the old Showroom wall, so a saved C is unchanged) or `photo` (`HeroPhoto.jsx`: first hero
+  slide via the ONE slide read `src/components/storefront/heroSlides.js`, shared with HeroCarousel, else the newest car; dark fade,
+  hero_subtitle or town, hero_title or name, WhatsApp + Browse cars). `header`: `classic` | `showroom` (`Header.jsx`: thin info bar
+  with address / hours / phone / socials, each only when filled, phone + hours on phones, folds away on scroll; an in-flow spacer
+  `.hdr-tb-space` keeps every page's content in place; Browse Cars is the one filled accent item; every dealer page reads it).
+  Light theme dark bands: class `sf-band` (footer, About B) + ONE rule from `bandVars` (`storefrontTheme.js`): surface vars reset to
+  `initial` so each `var(--sf-x, <old dark>)` falls back to today's dark look. Calculator B "Inline" (`CalculatorInline.jsx`,
+  financing.js `monthlyPayment` only, EIR, "the bank decides"). Presets may carry `options` + `mode`; 5th look "Showroom Light".
+  A preset without `mode` never touches Dark/Light.
+  **Stage 4 phase B (2026-11-21, local commits): built, SWITCHED OFF until migration `20261121a_storefront_phase_b.sql` (QUEUED,
+  not applied) runs.** New section ids `brands` (Brands in stock, `Brands.jsx`), `browse` (Browse bar, `Browse.jsx`) and `sold`
+  (Recently sold, `RecentlySold.jsx`). The live `storefront_layout_ok` REFUSES unknown ids, so they sit behind ONE constant,
+  `DB_PHASE_B = false` in `storefrontLayout.js`: while false they are not in `SECTIONS`, the editor, saving or the page, and nothing
+  calls `get_dealer_recent_sales`. **Flip it to true the night `20261121a` is applied, in the same release** (the test compares the
+  closed gate with `20261120a` and the open gate with `20261121a`). Brands + Browse fill themselves from the dealer's live cars (ONE
+  read, `sections/stockParts.js`, publicClient) and offer only values /cars accepts (`src/utils/storefrontStock.js`,
+  `npm run test:storefrontstock`: marketplaceConfig whitelists, `PRICE_STEPS`, `canonicalModel`); brands hide under 2; logos from
+  the ONE map `src/config/brandLogos.js` (5 checked logos, the rest a wordmark). Recently sold = `get_dealer_recent_sales(subdomain)`
+  (SECURITY DEFINER, public storefronts only, last 12 in 12 months): car + month + photo, never a price or a buyer. With Browse on,
+  the cars section drops its own body-type chips (`CarsToolbar browseOn`): one row, not two.
+  **Stage 4 phase C (2026-11-21, local commits): "Happy customers" handover photos, SWITCHED OFF until migration
+  `20261121b_storefront_delivery_gallery.sql` (QUEUED, after `20261121a`) runs.** Gate `DB_PHASE_C` (storefrontLayout.js) opens only
+  with `DB_PHASE_B`; flip both the night both are applied. Section `deliveries` (`sections/Deliveries.jsx`, `get_dealer_deliveries`)
+  and dashboard Storefront > Delivery photos (`dashboard/storefront/DeliveryPhotos.jsx`, `DELIVERIES_OPEN`). A buyer's photo is
+  personal data (PDPA s.6 consent, s.38 withdrawal): every row needs the consent tick, the DB stamps who/when/how
+  (`storefront_delivery_stamp`), there is no UPDATE path, delete is one tap, and the table has NO buyer name / phone / IC / plate
+  column. Words = car + month + a 60-char caption with no 7+ digit run: ONE rules file `src/utils/deliveryCaption.js`
+  (`npm run test:deliverycaption`, mirrors the SQL CHECKs). Managers/admins only with the Storefront switch (`_storefront_editor`),
+  never salesmen. Never add a buyer-identifying field to it.
 - src/pages/CarListingPage.jsx — the browse grid: `/showroom` (marketplace) and
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were

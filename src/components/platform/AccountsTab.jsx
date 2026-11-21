@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 import CreateSellerModal from "./CreateSellerModal";
+import AccountNotes from "./AccountNotes";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles } from "../../utils/kycPurge";
 import { routeForProfile } from "../../hooks/useRoleRedirect";
@@ -229,6 +230,25 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const [result, setResult] = useState(null);
   const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState(null);
+  // NOTES-1: the owner's private notes, one small read for the whole list.
+  // null = the table is not there yet (migration 20261120b queued): the notes
+  // UI stays hidden rather than showing a box that can never save.
+  const [notes, setNotes] = useState(null);
+  useEffect(() => {
+    let live = true;
+    supabase.from("platform_account_notes").select("user_id, note, tags, updated_at").then(({ data, error }) => {
+      if (!live || error) return;
+      const m = {};
+      (data || []).forEach((r) => { m[r.user_id] = r; });
+      setNotes(m);
+    });
+    return () => { live = false; };
+  }, []);
+  const onNoteSaved = (id, row) => setNotes((cur) => {
+    const m = { ...(cur || {}) };
+    if (row) m[id] = row; else delete m[id];
+    return m;
+  });
   // A9: billing state used to write straight through on the change event, so a
   // misclick moved a dealer between trial/active/expired silently and there was
   // no way back. The previous value is kept for a moment so it can be put back.
@@ -274,7 +294,8 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (!matchesStatusFilter(a, statusFilter)) return false;
         if (!matchesReachFilter(stats[a.id], reachFilter)) return false;
         if (!q) return true;
-        return [a.full_name, a.email, a.dealership, a.subdomain, a.slug, a.phone, a.whatsapp_number]
+        const n = notes?.[a.id];
+        return [a.full_name, a.email, a.dealership, a.subdomain, a.slug, a.phone, a.whatsapp_number, n?.note, n?.tags?.join(" ")]
           .some(v => v && String(v).toLowerCase().includes(q));
       })
       .sort((a, b) => {
@@ -283,7 +304,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (sortBy === "name") return (a.dealership || a.full_name || "").localeCompare(b.dealership || b.full_name || "");
         return new Date(b.created_at) - new Date(a.created_at);
       });
-  }, [accounts, stats, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf, group]);
+  }, [accounts, stats, notes, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf, group]);
 
   const open = openId ? byId[openId] : null;
   // Overlay rule 5: Back closes the top pop-up, never the console under it.
@@ -653,6 +674,18 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                         {saved === a.id && <span style={{ fontSize: 10, color: "#4ade80" }}>✓</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>{a.email}</div>
+                      {s.brands?.length > 0 && (
+                        <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }} title="Brands of the cars on their page now">
+                          {s.brands.slice(0, 3).map(b => <Pill key={b} color="#cbd5e1" bg="rgba(255,255,255,0.06)">{b}</Pill>)}
+                          {s.brands.length > 3 && <Pill>+{s.brands.length - 3}</Pill>}
+                        </div>
+                      )}
+                      {notes?.[a.id] && (
+                        <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: 320 }}>
+                          {notes[a.id].tags.slice(0, 2).map(t => <Pill key={t}>{t}</Pill>)}
+                          {notes[a.id].note && <span style={{ fontSize: 11, color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{notes[a.id].note}</span>}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "10px 14px", color: "#9ca3af", whiteSpace: "nowrap" }}>{kindLabel(a)}</td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
@@ -667,6 +700,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                     <td style={{ padding: "10px 14px", color: dormant ? "#374151" : "#e5e7eb", fontVariantNumeric: "tabular-nums" }}>
                       {s.listings ?? 0}
                       {s.sold ? <span style={{ color: "#4ade80", fontSize: 11 }}> · {s.sold} sold</span> : null}
+                      {s.archived ? <span style={{ color: "#6b7280", fontSize: 11 }} title="Cars the seller removed from their page"> · {s.archived} removed</span> : null}
                     </td>
                     <td style={{ padding: "10px 14px", color: dormant ? "#374151" : "#e5e7eb", fontVariantNumeric: "tabular-nums" }}>{s.leads ?? 0}</td>
                     <td style={{ padding: "10px 14px", color: dormant ? "#4b5563" : "#9ca3af", whiteSpace: "nowrap" }}>{sinceLabel(s.last_active_at)}</td>
@@ -728,6 +762,13 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               </p>
             )}
 
+            {notes && open.role !== "superadmin" && (
+              <>
+                <SectionTitle>Your notes</SectionTitle>
+                <AccountNotes key={open.id} userId={open.id} row={notes[open.id]} onSaved={onNoteSaved} />
+              </>
+            )}
+
             <SectionTitle>Actions</SectionTitle>
             {open.role === "superadmin" ? (
               // The console lists every account including the platform's own.
@@ -774,7 +815,8 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               const s = stats[open.id] || {};
               return (
                 <>
-                  <Field label="Listings" value={`${s.listings ?? 0} total · ${s.available ?? 0} live · ${s.sold ?? 0} sold${s.pending ? ` · ${s.pending} pending review` : ""}`} />
+                  <Field label="Listings" value={`${s.listings ?? 0} total · ${s.available ?? 0} live · ${s.sold ?? 0} sold${s.pending ? ` · ${s.pending} pending review` : ""}${s.archived ? ` · ${s.archived} removed by seller` : ""}`} />
+                  <Field label="Brands on their page" value={s.brands?.length ? s.brands.join(", ") : null} />
                   <Field label="Leads" value={s.leads ?? 0} />
                   <Field label="Enquiries" value={s.enquiries ?? 0} />
                   <Field label="Last activity" value={`${sinceLabel(s.last_active_at)}${s.last_active_at ? ` (${fmtDate(s.last_active_at)})` : ""}`} />

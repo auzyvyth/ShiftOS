@@ -24,6 +24,9 @@ export default function LeadGridCard({ lead, onOpen }) {
   const isReserved = canonicalStage(lead.stage) === 'deposit_taken' && !!car;
   // SOLD-1: another seller sold this lead's car; the drawer offers another car.
   const carSoldToOther = car?.status === 'sold' && isOpenLead(lead);
+  // Loan check from the dealer's own site: its answers are the first lines of the note
+  // (api/enquiry.js, loanEnquiryNote). The lead source stays "enquiry", so the note is the only marker.
+  const fromLoanCheck = /(^|\n)(\[\d{4}-\d{2}-\d{2}\] )?Loan check:/.test(lead.notes || '');
   const created    = lead.created_at
     ? new Date(lead.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: '2-digit' })
     : null;
@@ -117,6 +120,15 @@ export default function LeadGridCard({ lead, onOpen }) {
           borderRadius: 6, padding: '2px 7px', marginBottom: 8,
         }}>
           Car sold by another seller
+        </div>
+      )}
+
+      {fromLoanCheck && (
+        <div title="This buyer used Check my loan on your site. Their answers are in Notes." style={{
+          display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 700, color: '#374151',
+          background: '#fff', border: 'none', borderRadius: 6, padding: '2px 7px', marginBottom: 8, marginRight: 6,
+        }}>
+          Loan check
         </div>
       )}
 

@@ -15,7 +15,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { applyCors } from '../lib/cors.js';
-import { cleanEvent } from '../lib/analyticsEvent.js';
+import { cleanEvent, slugAllowed } from '../lib/analyticsEvent.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
@@ -50,6 +50,14 @@ export default async function handler(req, res) {
       const { data: acct } = await db.from('profiles')
         .select('id').eq('id', row.dealer_id).maybeSingle();
       if (!acct) row.dealer_id = null;
+    }
+
+    // The seller named on the event must be real and belong to this event's dealer
+    // (lib/analyticsEvent.js slugAllowed); otherwise the event counts without them.
+    if (row.salesman_slug) {
+      const { data: seller } = await db.from('profiles')
+        .select('role, dealer_id').eq('slug', row.salesman_slug).maybeSingle();
+      if (!slugAllowed(seller, row.dealer_id)) row.salesman_slug = null;
     }
 
     const { error } = await db.from('analytics_events').insert(row);

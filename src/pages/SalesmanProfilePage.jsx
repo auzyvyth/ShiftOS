@@ -528,7 +528,7 @@ export default function SalesmanProfilePage() {
   // The number is never in this page (CDP-3): /api/wa resolves it on tap.
   const hasWa = hasWhatsApp(profile) && !!profile?.slug;
   const firstName = (profile?.full_name || 'Agent').split(' ')[0];
-  const waMessage = `Hi ${firstName}, I came across your listings on ShiftOS and would like to know more.`;
+  const waMessage = `Hi ${firstName}, I came across your listings on DrevoOS and would like to know more.`;
   const waHref = hasWa ? sellerWaUrl({ slug: profile.slug, text: waMessage }) : null;
   const isVerified = !!(profile?.is_verified);
 

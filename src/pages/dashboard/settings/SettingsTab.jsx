@@ -732,7 +732,7 @@ export default function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenSe
         body: {
           dealer_id: dealerId,
           channel_id: tgChannel.trim(),
-          message: "ShiftOS Telegram connected! Auto-posting is active.",
+          message: "DrevoOS Telegram connected! Auto-posting is active.",
         },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
@@ -839,7 +839,7 @@ export default function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenSe
   // ── SEC-4: log out everywhere ──
   const [logoutBusy, setLogoutBusy] = useState(false);
   const logoutAllDevices = async () => {
-    if (!window.confirm("Sign out of ShiftOS on all devices? You'll need to log in again.")) return;
+    if (!window.confirm("Sign out of DrevoOS on all devices? You'll need to log in again.")) return;
     setLogoutBusy(true);
     const { error } = await supabase.auth.signOut({ scope: "global" });
     if (error) { toast.error(error.message); setLogoutBusy(false); return; }

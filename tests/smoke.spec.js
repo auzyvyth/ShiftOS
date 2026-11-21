@@ -10,9 +10,10 @@ test('homepage renders with Drevo title', async ({ page }) => {
   await expect(page).toHaveTitle(/Drevo/i, { timeout: 15_000 });
 });
 
-test('ShiftOS landing page renders with its own title', async ({ page }) => {
+test('DrevoOS landing page renders with its own title', async ({ page }) => {
   await page.goto('/shiftos');
-  await expect(page).toHaveTitle(/ShiftOS/i, { timeout: 15_000 });
+  // The seller software was renamed DrevoOS (owner, 2026-11-20); the route stays /shiftos.
+  await expect(page).toHaveTitle(/DrevoOS/i, { timeout: 15_000 });
 });
 
 test('Compare page renders with its own title', async ({ page }) => {

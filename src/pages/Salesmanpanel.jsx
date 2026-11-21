@@ -140,7 +140,7 @@ const LEAD_SOURCE_LABEL = {
 // chat_after_message writes this prefix ahead of the buyer's first message.
 const chatOpener = (notes) => (notes || "").replace(/^Started an in-app chat:\s*/i, "").trim();
 
-// ShiftOS Studio — full-screen marketing-content editor (camera overlay +
+// DrevoOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
@@ -561,7 +561,7 @@ export default function SalesmanPanel() {
 
  // Car detail popup
  const [selectedCar, setSelectedCar] = useState(null);
- const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
+ const [studioCar, setStudioCar] = useState(null); // DrevoOS Studio target listing
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
  const [carDetailTab, setCarDetailTab] = useState("specs");
@@ -648,7 +648,7 @@ export default function SalesmanPanel() {
  // page title
  useEffect(() => {
  document.title = t("salesman.meta.title", {
- defaultValue: "ShiftOS · My Panel",
+ defaultValue: "DrevoOS · My Panel",
  });
  }, [t]);
 
@@ -1396,7 +1396,7 @@ Rules:
    body: {
     dealer_id: getDealerIdFromProfile(profile),
     channel_id: chatId,
-    message: `Telegram connected! You'll get appointment + handover reminders here. — ${profile.full_name || "ShiftOS"}`,
+    message: `Telegram connected! You'll get appointment + handover reminders here. — ${profile.full_name || "DrevoOS"}`,
    },
    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
   });
@@ -8472,7 +8472,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  {renderCarDetailPopup()}
 
- {/* ShiftOS Studio — full-screen editor, mounted at page level so no
+ {/* DrevoOS Studio — full-screen editor, mounted at page level so no
      parent stacking context can clip it (overlay rule #1). */}
  {studioCar && (
  <React.Suspense fallback={null}>

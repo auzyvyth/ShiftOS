@@ -10,7 +10,7 @@ import { setLogoutNotice, pathNeedsSession } from '../utils/authNotice';
 // back after three days, tapped a shared /compare link and got a login page.
 //
 // 30 days is NIST SP 800-63B's reauthentication reference for AAL1, which is
-// exactly what ShiftOS is: password or Google sign-in, no MFA, no money moving
+// exactly what DrevoOS is: password or Google sign-in, no MFA, no money moving
 // through the app. Consumer apps at this tier (Google, Meta, Spotify) do not
 // time-box sessions at all — but they can afford that because you can SEE your
 // signed-in devices, kill them from anywhere, and get told when a new one
@@ -78,7 +78,7 @@ export function useIdleLogout() {
       // inherited whatever clock was already sitting there. Sign out, come back
       // five weeks later, sign in — check() ran on page load before any pointer
       // event could refresh the stamp, read a 33-day-old value and signed the
-      // user straight back out with "you hadn't used ShiftOS for 33 days". The
+      // user straight back out with "you hadn't used DrevoOS for 33 days". The
       // login worked; it just could not survive its first second. Same for a
       // second account signing in on a browser where someone else's stamp was
       // stale.

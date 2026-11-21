@@ -15,6 +15,7 @@ import { cdnImg, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
 import { trackEvent } from "../utils/analytics";
 import ContactGate from "./ContactGate";
+import { loadHeroSlides } from "./storefront/heroSlides";
 
 const HC_CSS = `
 
@@ -28,7 +29,7 @@ const HC_CSS = `
 
   .hc-wrap {
     position: relative;
-    background: #0C0C0E;
+    background: var(--sf-bg, #0C0C0E);
     overflow: hidden;
     min-height: 100vh;
   }
@@ -226,16 +227,16 @@ const HC_CSS = `
 
   .hc-enquire {
     display:inline-flex; align-items:center; gap:8px;
-    background:rgba(220,38,38,0.18);
+    background:rgba(var(--sf-accent-rgb, 220,38,38),0.18);
     backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-    border:1px solid rgba(220,38,38,0.45);
+    border:1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.45);
     color:white; font-weight:600; font-size:13px;
     padding:11px 24px; border-radius:40px; text-decoration:none;
     transition:all 0.25s ease;
-    box-shadow:0 6px 20px rgba(220,38,38,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+    box-shadow:0 6px 20px rgba(var(--sf-accent-rgb, 220,38,38),0.15), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   .hc-enquire:hover {
-    background:rgba(220,38,38,0.3); border-color:rgba(220,38,38,0.65);
+    background:rgba(var(--sf-accent-rgb, 220,38,38),0.3); border-color:rgba(var(--sf-accent-rgb, 220,38,38),0.65);
     transform:translateY(-2px); gap:12px;
   }
 
@@ -308,7 +309,7 @@ const HC_CSS = `
   /* ── Progress bar (CSS-animated, no per-frame JS) ── */
   .hc-progress {
     position:absolute; bottom:0; left:0; height:2px; width:0;
-    background:rgba(220,38,38,0.65); z-index:5;
+    background:rgba(var(--sf-accent-rgb, 220,38,38),0.65); z-index:5;
     animation-name:hc-progress-fill; animation-timing-function:linear; animation-fill-mode:forwards;
   }
   @keyframes hc-progress-fill { from{width:0} to{width:100%} }
@@ -486,15 +487,15 @@ const HC_CSS = `
     transform: translateY(-50%);
     width: 38px; height: 38px;
     border-radius: 10px;
-    background: #dc2626;
+    background: var(--sf-accent, #dc2626);
     border: none;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.2s, transform 0.15s;
     flex-shrink: 0;
-    box-shadow: 0 2px 12px rgba(220,38,38,0.4);
+    box-shadow: 0 2px 12px rgba(var(--sf-accent-rgb, 220,38,38),0.4);
   }
-  .hc-search-btn:hover { background: #b91c1c; transform: translateY(-50%) scale(1.06); }
+  .hc-search-btn:hover { background: var(--sf-accent-hover, #b91c1c); transform: translateY(-50%) scale(1.06); }
   .hc-search-btn svg { color: white; width: 15px; height: 15px; }
 
   /* ════════════════
@@ -667,8 +668,10 @@ function formatPrice(val) {
   return `RM ${num.toLocaleString("en-MY")}`;
 }
 
-export default function HeroCarousel({ siteName, waNumber, compact = false }) {
-  const { tenant } = useTenant();
+export default function HeroCarousel({ siteName, waNumber, compact = false, tenantOverride = null }) {
+  // tenantOverride: the dashboard's section preview (not on a dealer subdomain, so useTenant has nothing).
+  const { tenant: hookTenant } = useTenant();
+  const tenant = tenantOverride || hookTenant;
   const navigate = useNavigate();
   const [heroQuery, setHeroQuery] = useState("");
   // Same nav-only pattern as MarketplacePage's hero search (runHeroSearch):
@@ -694,6 +697,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   // useTenant's auth-session setup + full profile RPC before fetching slides.
   const [fastDealerId, setFastDealerId] = useState(undefined);
   useEffect(() => {
+    if (tenantOverride?.id) { setFastDealerId(tenantOverride.id); return; }
     const sub = getSubdomain();
     if (!sub) { setFastDealerId(null); return; }
     supabase.rpc("get_dealer_id_by_subdomain", { p_subdomain: sub })
@@ -710,29 +714,8 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           setSlides([]);
           return;
         }
-        const { data, error } = await supabase
-          .from("hero_carousel_slides")
-          .select("*")
-          .eq("active", true)
-          .eq("dealer_id", dealerId)
-          .order("sort_order", { ascending: true });
-        let rows = !error && data ? data : [];
-        // Enrich linked listings via the anon-safe public view. The base
-        // car_listings table is NOT readable by anon (it holds dealer
-        // financials), so embedding car_listings(...) here 403s the whole
-        // request for logged-out visitors and the hero renders empty. The
-        // public_car_listings view exposes slug/status publicly.
-        const carIds = [...new Set(rows.map(r => r.car_listing_id).filter(Boolean))];
-        if (carIds.length) {
-          const { data: cars } = await supabase
-            .from("public_car_listings")
-            .select("id, slug, status")
-            .in("id", carIds);
-          const byId = {};
-          (cars || []).forEach(c => { byId[c.id] = c; });
-          rows = rows.map(r => (r.car_listing_id ? { ...r, car_listings: byId[r.car_listing_id] || null } : r));
-        }
-        const live = rows.filter(s => !s.car_listing_id || s.car_listings?.status !== 'sold');
+        // The one read of the dealer's slides (storefront/heroSlides.js), shared with banner C.
+        const live = await loadHeroSlides(dealerId);
         setSlides(live);
       } catch {
         setSlides([]);
@@ -828,7 +811,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
         style={{
           width: "100%",
           height: "100vh",
-          background: "#0C0C0E",
+          background: "var(--sf-bg, #0C0C0E)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -839,8 +822,8 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           style={{
             width: "34px",
             height: "34px",
-            border: "2px solid rgba(255,255,255,0.07)",
-            borderTop: "2px solid rgba(220,38,38,0.6)",
+            border: "2px solid var(--sf-border, rgba(255,255,255,0.07))",
+            borderTop: "2px solid rgba(var(--sf-accent-rgb, 220,38,38),0.6)",
             borderRadius: "50%",
             animation: "spin 0.7s linear infinite",
           }}
@@ -853,7 +836,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       <section
         style={{
           minHeight: "70vh",
-          background: "linear-gradient(160deg,#0C0C0E 0%,#111113 100%)",
+          background: "linear-gradient(160deg,var(--sf-bg, #0C0C0E) 0%,var(--sf-card, #111113) 100%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -868,8 +851,8 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             width: "52px",
             height: "52px",
             borderRadius: "14px",
-            background: "rgba(220,38,38,0.1)",
-            border: "1px solid rgba(220,38,38,0.2)",
+            background: "rgba(var(--sf-accent-rgb, 220,38,38),0.1)",
+            border: "1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -877,7 +860,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           }}
         >
           <Sparkles
-            style={{ color: "#f87171", width: "22px", height: "22px" }}
+            style={{ color: "var(--sf-accent-text, #f87171)", width: "22px", height: "22px" }}
           />
         </div>
         <h1
@@ -885,31 +868,31 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           style={{
             fontSize: "clamp(1.8rem,5vw,3rem)",
             fontWeight: "800",
-            color: "white",
+            color: "var(--sf-text, white)",
             margin: "0 0 12px",
             letterSpacing: "-0.02em",
           }}
         >
-          Find Your Perfect <span style={{ color: "#C4A265" }}>Drive</span>
+          Find Your Perfect <span style={{ color: "var(--sf-accent-text, #C4A265)" }}>Drive</span>
         </h1>
         <p
           style={{
-            color: "#52525A",
+            color: "var(--sf-muted, #52525A)",
             fontSize: "clamp(0.875rem,3vw,1rem)",
             maxWidth: "460px",
             lineHeight: 1.7,
             margin: "0 0 28px",
           }}
         >
-          Browse verified vehicles with transparent pricing and no hidden fees.
+          Browse our cars with clear asking prices and no hidden fees.
         </p>
         <Link
           to={isSubdomain() ? "/cars" : "/showroom"}
           style={{
-            background: "rgba(220,38,38,0.15)",
+            background: "rgba(var(--sf-accent-rgb, 220,38,38),0.15)",
             backdropFilter: "blur(16px)",
-            border: "1px solid rgba(220,38,38,0.4)",
-            color: "white",
+            border: "1px solid rgba(var(--sf-accent-rgb, 220,38,38),0.4)",
+            color: "var(--sf-text, white)",
             fontWeight: "600",
             fontSize: "14px",
             padding: "12px 26px",

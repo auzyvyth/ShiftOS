@@ -425,7 +425,7 @@ const EN = {
     litePrice: "Salesman Lite: RM0, free forever",
     faq: "FAQ",
     browse: "Browse cars on Drevo",
-    dealers: "ShiftOS for dealers",
+    dealers: "DrevoOS for dealers",
   },
 };
 
@@ -749,7 +749,7 @@ const MS = {
     litePrice: "Salesman Lite: RM0, percuma selamanya",
     faq: "Soalan lazim",
     browse: "Tengok kereta di Drevo",
-    dealers: "ShiftOS untuk dealer",
+    dealers: "DrevoOS untuk dealer",
   },
 };
 

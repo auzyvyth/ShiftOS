@@ -17,9 +17,9 @@ export const FEATURES = {
     titleLead: "Every unit, real cost, real profit —",
     titleAccent: "before you price it",
     sub: "Track each car from purchase to sale with its true landed cost, ageing and per-unit P&L. Stop pricing off the asking figure and guessing your margin.",
-    seo: "ShiftOS Smart Inventory — used car stock management for Malaysian dealers. Track purchase cost, recon, days-in-stock, holding cost and true per-unit profit.",
+    seo: "DrevoOS Smart Inventory — used car stock management for Malaysian dealers. Track purchase cost, recon, days-in-stock, holding cost and true per-unit profit.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "Stock lives in a WhatsApp group and three Excel sheets that never quite agree.",
       "You price off gut feel — recon, road tax and floor-plan interest are never in the number.",
@@ -49,9 +49,9 @@ export const FEATURES = {
     titleLead: "Every enquiry, every channel,",
     titleAccent: "one pipeline",
     sub: "Capture leads from WhatsApp, walk-ins and the marketplace, then move them through a visual pipeline until they're won — with follow-ups and test drives that never slip.",
-    seo: "ShiftOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the Drevo marketplace in one visual sales pipeline built for Malaysian dealers.",
+    seo: "DrevoOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the Drevo marketplace in one visual sales pipeline built for Malaysian dealers.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "Enquiries scatter across WhatsApp, Instagram DMs, Mudah chat and sticky notes.",
       "No follow-up system — hot buyers go cold because nobody circled back.",
@@ -93,9 +93,9 @@ export const FEATURES = {
     titleLead: "Your real profit —",
     titleAccent: "front and back, per unit",
     sub: "Not asking price. Not revenue. The actual gross you made this month — per car, per salesman, per source — computed from cost, recon, commission, holding and F&I add-ons.",
-    seo: "ShiftOS Revenue Analytics — see true gross profit per unit, per salesman and month-over-month, with automatic commission and F&I back-end revenue.",
+    seo: "DrevoOS Revenue Analytics — see true gross profit per unit, per salesman and month-over-month, with automatic commission and F&I back-end revenue.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "You know revenue, not profit — margin is a monthly guess.",
       "Commission is worked out by hand and argued over.",
@@ -125,9 +125,9 @@ export const FEATURES = {
     titleLead: "Back-end profit and paperwork,",
     titleAccent: "done properly",
     sub: "Sell warranty, insurance, tint and coating as tracked products, run HP financing, and issue the sales agreement and receipts — all recorded against the deal.",
-    seo: "ShiftOS F&I & Documents — sell and track F&I add-ons, manage HP financing, and generate sales agreements and receipts for Malaysian used-car deals.",
+    seo: "DrevoOS F&I & Documents — sell and track F&I add-ons, manage HP financing, and generate sales agreements and receipts for Malaysian used-car deals.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "Add-ons sold on the side, never recorded, never counted as profit.",
       "Loan applications tracked on a whiteboard; LOUs expire unnoticed.",
@@ -157,9 +157,9 @@ export const FEATURES = {
     titleLead: "Who is selling, who is stalling —",
     titleAccent: "and where deals die",
     sub: "See every salesman's conversion, reply speed and gross on one table, worked out from the pipeline itself rather than from memory. Independent agents on Salesman Premium also get a page that shows them where they lose deals.",
-    seo: "ShiftOS Salesman Performance — pantau prestasi salesman kereta: conversion rate, response time, gross per deal and link traffic per rep, plus a personal funnel and close-rate trend on Salesman Premium.",
+    seo: "DrevoOS Salesman Performance — pantau prestasi salesman kereta: conversion rate, response time, gross per deal and link traffic per rep, plus a personal funnel and close-rate trend on Salesman Premium.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "You know who sold the most units, not who converts or who answers fast.",
       "A slow reply loses the buyer, and nobody sees it happened.",
@@ -189,9 +189,9 @@ export const FEATURES = {
     titleLead: "After “sold” comes the hard part —",
     titleAccent: "we run the checklist",
     sub: "The Malaysian ownership transfer — loan settlement, Puspakom, JPJ pindah milik, road tax, geran — as an automated 8-step checklist seeded the moment a deal is won.",
-    seo: "ShiftOS Post-Sale Handover — automate the Malaysian car ownership transfer: loan settlement, Puspakom B5/B7, JPJ pindah milik, road tax and geran, as a per-sale checklist.",
+    seo: "DrevoOS Post-Sale Handover — automate the Malaysian car ownership transfer: loan settlement, Puspakom B5/B7, JPJ pindah milik, road tax and geran, as a per-sale checklist.",
     painTitle: "The old way",
-    solutionTitle: "With ShiftOS",
+    solutionTitle: "With DrevoOS",
     pains: [
       "“Sold” is where the real admin starts — and it lives on paper and WhatsApp.",
       "Puspakom B5/B7, JPJ pindah milik, road tax, geran — miss one and the buyer waits.",
@@ -237,4 +237,4 @@ export const featureTitle = (f) => `${f.titleLead} ${f.titleAccent}`;
 
 // Search-result <title>: the words people actually search (BM + EN), not the
 // slogan. The slogan stays the on-page heading.
-export const featureMetaTitle = (f) => `${f.metaTitle || featureTitle(f)} | ShiftOS`;
+export const featureMetaTitle = (f) => `${f.metaTitle || featureTitle(f)} | DrevoOS`;

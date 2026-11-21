@@ -23,7 +23,7 @@ flowchart TB
   subgraph Screens["Screens (one React app, src/)"]
     MK["XDrive marketplace<br/>xdrive.my /, /showroom, /cars/:slug,<br/>/used-cars, /new-cars, /find-me"]
     MP["Seller mini page<br/>/s/:slug"]
-    SF["Dealer storefront<br/>sub.xdrive.my"]
+    SF["Dealer storefront<br/>sub.xdrive.my<br/>(section order: dashboard Storefront, Layout;<br/>handover photos: Storefront, Delivery photos)"]
     LITE["Salesman Lite<br/>/salesman-lite"]
     PREM["Salesman Premium<br/>/salesman-premium"]
     DASH["Dealer dashboard<br/>/dashboard (owner, manager, admin) + /accountant /fi"]
@@ -44,7 +44,7 @@ flowchart TB
     DB[(Postgres<br/>tables + RLS + triggers)]
     EF[Edge functions<br/>supabase/functions/]
     CRON[pg_cron<br/>scheduled jobs]
-    ST[Storage<br/>car photos]
+    ST[Storage<br/>car photos, dealer handover photos]
   end
 
   subgraph Outside["Outside services"]
@@ -103,7 +103,7 @@ salesman resolver; every win runs through the same database trigger.
 flowchart TD
   subgraph In["Ways a buyer reaches a seller"]
     W["Taps WhatsApp<br/>api/whatsapp-lead.js"]
-    E["Sends enquiry form<br/>api/enquiry.js"]
+    E["Sends enquiry form, dealer-site trade-in<br/>or loan check<br/>api/enquiry.js"]
     BK["Books a viewing<br/>api/booking.js"]
     CH["Chats in the app<br/>start_chat_thread + chat_after_message"]
     FM["Find me post reply<br/>find_me_reply"]

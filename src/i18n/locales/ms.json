@@ -229,7 +229,7 @@
     "badge": "Senarai Menunggu Kini Dibuka — Tempat Awal Terhad",
     "headline": "Dibina Untuk Jurujual Kereta Malaysia",
     "subheadline": "Percuma. Berkuasa. Milik Anda.",
-    "heroBody": "Berhenti bayar yuran senarai. Berhenti hilang bakal pembeli dalam peti masuk. ShiftOS memberikan jurujual bebas alatan yang sama seperti syarikat kereta besar — secara percuma.",
+    "heroBody": "Berhenti bayar yuran senarai. Berhenti hilang bakal pembeli dalam peti masuk. DrevoOS memberikan jurujual bebas alatan yang sama seperti syarikat kereta besar — secara percuma.",
     "proof1Stat": "100%",
     "proof1Label": "Percuma selamanya untuk ejen bebas",
     "proof2Stat": "< 2 minit",
@@ -249,7 +249,7 @@
     "placeholderName": "Ahmad Razif",
     "labelPhone": "Nombor WhatsApp",
     "placeholderPhone": "0123456789",
-    "consentLabel": "Saya bersetuju untuk disertakan dalam saluran siaran WhatsApp ShiftOS bagi menerima kemas kini pelancaran, ciri terbaru dan tawaran eksklusif untuk ahli awal.",
+    "consentLabel": "Saya bersetuju untuk disertakan dalam saluran siaran WhatsApp DrevoOS bagi menerima kemas kini pelancaran, ciri terbaru dan tawaran eksklusif untuk ahli awal.",
     "cta": "Sertai Senarai Menunggu →",
     "ctaLoading": "Sedang mendaftar tempat anda…",
     "noSpam": "Tiada spam. Anda akan dimaklumkan apabila kami melancarkan.",
@@ -270,7 +270,7 @@
     "painSectionBody": "Setiap hari menggunakan cara lama bermakna anda melepaskan peluang. Ini perbandingannya.",
     "pain1Platform": "Mudah / Carlist / Facebook",
     "pain1": "Bayar RM 30–200 setiap senarai hanya untuk kekal kelihatan. Senarai tamat tempoh. Anda pasang semula. Anda bayar lagi. Setiap bulan.",
-    "gain1": "ShiftOS Lite 100% percuma — senarai sebanyak yang anda mahu, selama-lamanya.",
+    "gain1": "DrevoOS Lite 100% percuma — senarai sebanyak yang anda mahu, selama-lamanya.",
     "pain2Platform": "Kekacauan WhatsApp",
     "pain2": "Prospek datang dari 5 tempat berbeza. Tiada penjejakan. Anda terlupa tindak lanjut. Pembeli beli dari orang lain.",
     "gain2": "Setiap pertanyaan automatik dijadikan prospek yang dijejaki. Tetapkan peringatan. Jangan biarkan pembeli tertinggal.",
@@ -284,12 +284,12 @@
     "pain5": "Pengedar mahukan anda guna sistem mereka. Anda mahukan sistem sendiri. Tiada jalan tengah.",
     "gain5": "Mulakan percuma sebagai ejen bebas. Satu kod jemputan dan anda bergabung dengan pengedar — rekod prestasi anda kekal.",
     "oldWay": "❌ Cara Lama",
-    "newWay": "✅ Dengan ShiftOS",
+    "newWay": "✅ Dengan DrevoOS",
     "ctaBottomHeadline1": "Berhenti bayar untuk diabaikan.",
     "ctaBottomHeadline2": "Mula jual dengan lebih bijak.",
-    "ctaBottomBody": "Sertai jurujual kereta Malaysia yang sudah penat dengan yuran senarai, prospek hilang, dan keterlihatan sifar. ShiftOS dibina untuk anda — dan ia percuma.",
+    "ctaBottomBody": "Sertai jurujual kereta Malaysia yang sudah penat dengan yuran senarai, prospek hilang, dan keterlihatan sifar. DrevoOS dibina untuk anda — dan ia percuma.",
     "ctaBottomFormTitle": "Sertai Senarai Menunggu",
-    "footerText": "© {year} ShiftOS · drevo.my · Dibina untuk jurujual kereta Malaysia"
+    "footerText": "© {year} DrevoOS · drevo.my · Dibina untuk jurujual kereta Malaysia"
   },
   "salesmanLite": {
     "tabs": {
@@ -428,7 +428,7 @@
       "done": "Faham",
       "steps": {
         "welcome": {
-          "title": "Selamat Datang ke ShiftOS Lite",
+          "title": "Selamat Datang ke DrevoOS Lite",
           "body": "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata."
         },
         "dashboard": {
@@ -457,7 +457,7 @@
         },
         "chat": {
           "title": "Chat",
-          "body": "Pembeli boleh mesej anda terus dari iklan, di dalam ShiftOS sendiri. Setiap perbualan masuk dalam satu senarai — di bawah statistik papan pemuka anda."
+          "body": "Pembeli boleh mesej anda terus dari iklan, di dalam DrevoOS sendiri. Setiap perbualan masuk dalam satu senarai — di bawah statistik papan pemuka anda."
         },
         "services": {
           "title": "Tambahan",
@@ -776,13 +776,13 @@
     },
     "merge": {
       "title": "Sertai Pengedar",
-      "subtitle": "Ada kod jemputan dari pengedar anda? Masukkan di bawah untuk gabungkan akaun anda ke dalam sistem ShiftOS mereka.",
+      "subtitle": "Ada kod jemputan dari pengedar anda? Masukkan di bawah untuk gabungkan akaun anda ke dalam sistem DrevoOS mereka.",
       "placeholder": "Masukkan kod jemputan cth. DEALER-XXXX",
       "submitBtn": "Minta Gabung",
       "verifying": "Mengesahkan...",
       "merged": "Berjaya Digabung!",
       "submitting": "Menghantar...",
-      "noCodeHelp": "Tiada kod? Minta pengedar anda jana satu dari panel Tetapan ShiftOS mereka."
+      "noCodeHelp": "Tiada kod? Minta pengedar anda jana satu dari panel Tetapan DrevoOS mereka."
     },
     "drawer": {
       "phoneLooksWrong": "Semak nombor ini",
@@ -961,7 +961,7 @@
       "telegramTestSent": "Mesej ujian dihantar — semak Telegram anda",
       "telegramNeedChatId": "Masukkan Telegram Chat ID anda dahulu",
       "telegramNotStarted": "Buka {{bot}} dalam Telegram dan tekan Start, kemudian cuba lagi",
-      "telegramTheBot": "bot ShiftOS",
+      "telegramTheBot": "bot DrevoOS",
       "telegramNoToken": "Tiada bot Telegram disambungkan lagi — hubungi sokongan",
       "telegramTestFailed": "Tak dapat hantar — semak Chat ID",
       "telegramNetworkError": "Ralat rangkaian semasa hantar mesej ujian",
@@ -1447,12 +1447,12 @@
     "merge": {
       "invalid": "Kod jemputan tak sah atau dah tamat.",
       "success": "Dah bergabung! Membawa anda ke dashboard penuh...",
-      "intro": "Ada kod jemputan dari dealer anda? Masukkan di bawah untuk gabungkan akaun anda ke sistem ShiftOS mereka.",
+      "intro": "Ada kod jemputan dari dealer anda? Masukkan di bawah untuk gabungkan akaun anda ke sistem DrevoOS mereka.",
       "codePh": "Masukkan kod jemputan cth. DEALER-XXXX",
       "verifying": "Sedang semak...",
       "merged": "Dah bergabung!",
       "request": "Mohon Gabung",
-      "noCode": "Takde kod? Minta dealer anda buat satu dari panel Tetapan ShiftOS mereka."
+      "noCode": "Takde kod? Minta dealer anda buat satu dari panel Tetapan DrevoOS mereka."
     },
     "score": {
       "morePhotos_one": "{{count}} lagi foto",
@@ -1662,7 +1662,7 @@
       "done": "Faham",
       "next": "Seterusnya",
       "welcome": {
-        "title": "Selamat datang ke ShiftOS Premium",
+        "title": "Selamat datang ke DrevoOS Premium",
         "body": "Jom tengok menu sekejap — semua yang plan anda buka, satu demi satu."
       },
       "dashboard": {
@@ -2247,14 +2247,14 @@
     "pain": {
       "eyebrow": "Masalah sebenar, diselesaikan",
       "title": "Setiap Pengedar Hadap Tembok Yang Sama",
-      "subtitle": "ShiftOS dibina berdasarkan masalah yang sebenarnya merugikan pengedar Malaysia.",
+      "subtitle": "DrevoOS dibina berdasarkan masalah yang sebenarnya merugikan pengedar Malaysia.",
       "label": "Masalahnya",
       "items": {
         "p1": {
           "tag": "P&L Langsung",
           "quote": "Berapa untung sebenar setiap unit? Lepas tolak recon, komisen, kos transfer - tak pernah tahu betul-betul.",
           "title": "Untung kasar sebenar setiap unit, secara automatik",
-          "desc": "ShiftOS kira untung depan (jualan - belian - recon - servis - komisen - kos serah) DAN untung belakang (tambahan F&I) untuk setiap unit. Buka modal P&L dan lihat tepat berapa setiap kereta untung - tanpa spreadsheet, tanpa agak-agak."
+          "desc": "DrevoOS kira untung depan (jualan - belian - recon - servis - komisen - kos serah) DAN untung belakang (tambahan F&I) untuk setiap unit. Buka modal P&L dan lihat tepat berapa setiap kereta untung - tanpa spreadsheet, tanpa agak-agak."
         },
         "p2": {
           "tag": "Serah Auto",
@@ -2266,7 +2266,7 @@
           "tag": "Akauntabiliti",
           "quote": "Salesman report sendiri. Susah nak tahu siapa betul-betul produktif dan siapa yang lambat reply lead.",
           "title": "Setiap lead, pertanyaan dan test drive - dilog & diberi kredit automatik",
-          "desc": "Tak perlu lagi percaya screenshot WhatsApp yang tak disahkan. ShiftOS jejak masa respons, kadar penukaran, kadar tutup, dan untung setiap salesman, kemudian susun seluruh pasukan pada kad skor kualiti yang owner boleh percaya."
+          "desc": "Tak perlu lagi percaya screenshot WhatsApp yang tak disahkan. DrevoOS jejak masa respons, kadar penukaran, kadar tutup, dan untung setiap salesman, kemudian susun seluruh pasukan pada kad skor kualiti yang owner boleh percaya."
         },
         "p4": {
           "tag": "Enjin F&I",
@@ -2446,7 +2446,7 @@
       "features": "Ciri",
       "pricing": "Harga",
       "login": "Log masuk",
-      "copyright": "ShiftOS. Dibina untuk pengedar Malaysia.",
+      "copyright": "DrevoOS. Dibina untuk pengedar Malaysia.",
       "poweredBy": "Dikuasakan oleh"
     },
     "journey": {
@@ -2471,7 +2471,7 @@
     "notConfigured": "Push belum siap disediakan — hubungi sokongan.",
     "denied": "Anda telah sekat notifikasi untuk laman ini. Hidupkan semula dalam tetapan pelayar, kemudian cuba lagi.",
     "dismissed": "Kebenaran tidak diberikan.",
-    "iosNeedsInstall": "Di iPhone dan iPad, tambah ShiftOS ke Home Screen dahulu — Safari tak boleh hantar notifikasi dari tab biasa.",
+    "iosNeedsInstall": "Di iPhone dan iPad, tambah DrevoOS ke Home Screen dahulu — Safari tak boleh hantar notifikasi dari tab biasa.",
     "saveFailed": "Tak dapat simpan peranti ini. Cuba lagi.",
     "noDevices": "Tiada peranti didaftarkan lagi.",
     "sendFailed": "Tak dapat hantar notifikasi ujian.",

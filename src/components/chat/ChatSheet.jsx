@@ -129,7 +129,7 @@ export default function ChatSheet({
           {state === 'loading' && message('Opening the conversation…', 'One moment.')}
           {state === 'none' && message(
             'No in-app conversation',
-            'This buyer has not messaged you inside ShiftOS. Reach them on WhatsApp or by phone instead.',
+            'This buyer has not messaged you inside DrevoOS. Reach them on WhatsApp or by phone instead.',
           )}
           {state === 'error' && message(
             'Could not open the conversation',

@@ -4889,7 +4889,7 @@ export default function SalesmanLite() {
           body: {
             dealer_id: getDealerIdFromProfile(profile),
             channel_id: chatId,
-            message: t("salesmanLite.toast.telegramTestBody", { name: profile?.full_name || "ShiftOS" }),
+            message: t("salesmanLite.toast.telegramTestBody", { name: profile?.full_name || "DrevoOS" }),
           },
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
         });

@@ -67,7 +67,7 @@ function Dashboard() {
         <div style={{ width: 172, flexShrink: 0, borderRight: `1px solid ${LINE}`, padding: "16px 12px", background: "#fcfcfd" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, paddingLeft: 4 }}>
             <span style={{ width: 22, height: 22, borderRadius: 6, background: RED, color: "#fff", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(6deg)" }}>S</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: INK, letterSpacing: ".02em" }}>ShiftOS</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: INK, letterSpacing: ".02em" }}>DrevoOS</span>
           </div>
           {NAV.map(([group, items]) => (
             <div key={group} style={{ marginBottom: 12 }}>

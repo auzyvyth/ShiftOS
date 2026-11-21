@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { trackEvent } from '../utils/analytics';
 
 // Buyer vs seller is stored as profiles.role. A buyer gets a lightweight profiles
 // row with role='buyer'; sellers have a business role (dealer/salesman/…). These
@@ -184,6 +185,9 @@ export function hasPostAuthReturn() {
 // No host on the page -> the old full-page sign-in.
 export function requestBuyerSignIn({ reason = 'chat', returnUrl = window.location.href } = {}) {
   return new Promise((resolve) => {
+    // MET-1: the wall is shown (signin_done is the other end). Both are no-ops
+    // without analytics consent.
+    trackEvent(null, 'signin_prompt', { metadata: { reason } });
     const detail = { reason, returnUrl, resolve, handled: false };
     window.dispatchEvent(new CustomEvent('xdrive:request-signin', { detail }));
     if (!detail.handled) { sendBuyerToSignIn(returnUrl); resolve(false); }
