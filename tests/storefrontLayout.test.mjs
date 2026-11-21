@@ -116,6 +116,10 @@ assert.deepEqual(cleanOptions(null), defaultOptions(), "nothing saved = defaults
 assert.equal(defaultOptions().heroBg, "cars", "banner C defaults to the cars wall, so a saved C keeps its look");
 assert.equal(defaultOptions().header, "classic", "the usual header unless picked");
 assert.equal(cleanOptions({ v: 1, sections: [], header: "showroom" }).header, "showroom");
+assert.equal(cleanOptions({ v: 1, sections: [], header: "centred" }).header, "centred", "the centred header is saved");
+assert.equal(defaultOptions().footer, "classic", "the usual footer unless picked");
+assert.equal(cleanOptions({ v: 1, sections: [], footer: "contact" }).footer, "contact");
+assert.equal(cleanOptions({ v: 1, sections: [], footer: "huge" }).footer, "classic", "an unknown footer goes back to the usual one");
 assert.equal(cleanOptions({ v: 1, sections: [], heroBg: "photo" }).heroBg, "photo");
 for (const bad of ["video", "__proto__", 5, null, { x: 1 }]) assert.equal(cleanOptions({ v: 1, sections: [], heroBg: bad }).heroBg, "cars", `junk heroBg ${bad}`);
 assert.equal(cleanOptions({ v: 2, heroBg: "photo" }).heroBg, "cars", "other version ignored");

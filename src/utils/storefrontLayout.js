@@ -250,9 +250,16 @@ export const fontSheet = (id) => {
 //   header: "classic" = the usual bar; "showroom" = a thin info bar on top (address, hours,
 //           phone, socials) and Browse Cars as the one filled accent item (Header.jsx). Every
 //           page of the dealer's site reads it, so the header is the same on /cars.
+//           "centred" = the logo in the middle, the page links on its left, the actions on its
+//           right (desktop only; a phone keeps the classic bar), the same 64px height.
+//   footer: "classic" = four columns (about, links, contact, social); "compact" = one slim
+//           row (name, links, icons) with the small print under it; "contact" = a call-to-action
+//           band first (address, hours, WhatsApp and Call buttons), then the slim row.
+//           All three show only what the dealer filled in (Footer.jsx).
 export const OPTIONS = {
   heroBg: { values: ["cars", "photo"], def: "cars" },
-  header: { values: ["classic", "showroom"], def: "classic" },
+  header: { values: ["classic", "showroom", "centred"], def: "classic" },
+  footer: { values: ["classic", "compact", "contact"], def: "classic" },
 };
 export const OPTION_IDS = Object.keys(OPTIONS);
 const validOption = (k, v) => (OPTIONS[k].values.includes(v) ? v : OPTIONS[k].def);

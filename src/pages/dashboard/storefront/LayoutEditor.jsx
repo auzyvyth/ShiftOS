@@ -81,6 +81,13 @@ function Switch({ on, onClick, label }) {
 const HEADER_OPTIONS = [
   { k: "classic", label: "Classic", note: "Your logo, the menu and WhatsApp." },
   { k: "showroom", label: "Showroom", note: "Adds a thin bar on top with your address, hours, phone and social links (only what you filled in Settings; phone and hours on phones), and makes Browse Cars a coloured button." },
+  { k: "centred", label: "Centred", note: "Your logo in the middle, the page links on its left and WhatsApp on its right (on a phone it is the usual bar)." },
+];
+// The footer (look option footer): every version shows only what you filled in Settings.
+const FOOTER_OPTIONS = [
+  { k: "classic", label: "Classic", note: "Four columns: about, page links, contact and social links." },
+  { k: "compact", label: "Compact", note: "One slim row with your name, the page links and social icons. Short." },
+  { k: "contact", label: "Visit us", note: "A band first with your address, hours and WhatsApp and Call buttons, then a slim row of links." },
 ];
 const MODE_OPTIONS = [
   { k: "dark", label: "Dark", swatch: ["#0C0C0E", "#111113"] },
@@ -334,8 +341,16 @@ export default function LayoutEditor({ dealerId, canEdit }) {
         {previewId === HEADER_PREVIEW_ID && sub && <div style={{ marginTop: 12 }}>{previewPanel(HEADER_PREVIEW_ID, "a")}</div>}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", marginTop: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: PL.textMuted }}>Footer</span>
-          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0, flex: "1 1 220px" }}>
-            Always on. Built from your Settings: about, contact, social links and the page links. It stays a dark band on the Light theme.
+          <div className="sf-seg" role="group" aria-label="Footer">
+            {FOOTER_OPTIONS.map((f) => (
+              <button key={f.k} type="button" aria-pressed={opts.footer === f.k}
+                onClick={() => { setOpts((p) => ({ ...p, footer: f.k })); setStatus({ kind: "", text: "" }); }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: 12, color: PL.textMuted, lineHeight: 1.4, minWidth: 0 }}>
+            {FOOTER_OPTIONS.find((f) => f.k === opts.footer)?.note}
           </span>
           {sub && (
             <button type="button" aria-pressed={previewId === FOOTER_PREVIEW_ID}

@@ -4,6 +4,8 @@ import { useSiteProfile, siteProfileFrom } from "../hooks/useSiteProfile";
 import { isSubdomain } from "../hooks/useTenant";
 import { hasHowItWorks } from "../utils/storefrontCopy";
 import { openConsentSettings } from "../utils/consent";
+import { cleanOptions } from "../utils/storefrontLayout";
+import { Facebook, Instagram, Music2, MapPin, Clock, Phone, MessageCircle } from "lucide-react";
 
 // App version — injected from package.json at build time (see vite.config.js).
 // Falls back to "dev" when running outside a Vite build (e.g. tests).
@@ -96,6 +98,36 @@ const FOOTER_CSS = `
     display: flex; align-items: center; gap: 6px;
   }
 
+  /* Compact + contact versions (look option footer). */
+  .ftr-slim {
+    max-width: 1280px; margin: 0 auto; padding: 32px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap;
+  }
+  .ftr-slim-links { display: flex; align-items: center; flex-wrap: wrap; gap: 0 22px; min-width: 0; }
+  /* #A1A1AA, not the classic #52525A: that grey is under 3:1 on this ground, too faint for links. */
+  .ftr-slim-links .ftr-link { display: inline-block; color: var(--sf-muted, #A1A1AA); }
+  .ftr-slim-links .ftr-link:hover { color: var(--sf-text, #F0F0F0); }
+  .ftr-slim-icons .ftr-social-icon { color: var(--sf-muted, #A1A1AA); }
+  .ftr-slim-icons { display: flex; gap: 8px; }
+  .ftr-cta { background: var(--sf-card, #111113); border-bottom: 1px solid var(--sf-border, rgba(255,255,255,0.06)); }
+  .ftr-cta-in {
+    max-width: 1280px; margin: 0 auto; padding: 48px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap;
+  }
+  .ftr-cta-line { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 14px; color: var(--sf-muted, #A1A1AA); line-height: 1.5; }
+  .ftr-cta-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ftr-cta-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none;
+    color: var(--sf-text, #F0F0F0); border: 1px solid var(--sf-border, rgba(255,255,255,0.18)); background: transparent;
+  }
+  .ftr-cta-btn.primary { background: var(--sf-accent, #DC2626); border-color: var(--sf-accent, #DC2626); color: var(--sf-on-accent, #fff); }
+  @media (max-width: 540px) {
+    .ftr-cta-in { padding: 36px 20px; }
+    .ftr-cta-btns { width: 100%; }
+    .ftr-cta-btn { flex: 1 1 100%; }
+  }
+
   @media (max-width: 900px) {
     .ftr-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
   }
@@ -106,7 +138,8 @@ const FOOTER_CSS = `
 `;
 
 // tenantOverride: the dashboard's footer preview (a dealer row, drawn in a frame).
-const Footer = ({ tenantOverride = null } = {}) => {
+// look = the home page's look options (draft-aware); other dealer pages read the saved ones (as Header).
+const Footer = ({ tenantOverride = null, look } = {}) => {
   const currentYear = new Date().getFullYear();
   const liveSite = useSiteProfile();
   const { siteName, siteInitial, profile: tenantProfile } = tenantOverride ? siteProfileFrom(tenantOverride) : liveSite;
@@ -160,6 +193,111 @@ const Footer = ({ tenantOverride = null } = {}) => {
     ...(hasHowItWorks(tenantProfile) ? [{ label: "How It Works", to: "/#how-it-works" }] : []),
     { label: "Sign In",        to: "/login" },
   ];
+
+  // The small print, the same under every version.
+  const bottom = (
+    <>
+      <div style={{ borderTop: "1px solid var(--sf-border, rgba(255,255,255,0.04))" }}>
+        <div className="ftr-bottom">
+          <span className="ftr-bottom-text">
+            © {currentYear} {dealershipName}. All rights reserved.
+            <span style={{ color: "var(--sf-muted, #3F3F46)", marginLeft: "8px" }}>v{APP_VERSION}</span>
+          </span>
+          <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            {/* #A1A1AA, not #71717A: the darker grey was 4.0:1 on this footer,
+                under the 4.5:1 small text needs. */}
+            <Link to="/terms" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
+            <Link to="/privacy" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
+            {/* The consent banner runs on storefronts too, so the way back into
+                it has to be here as well as in the marketplace footer. */}
+            <button type="button" onClick={openConsentSettings} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", fontFamily: "inherit" }}>Cookie settings</button>
+          </span>
+          <span className="ftr-bottom-brand">
+            Powered by
+            <span style={{ color: "var(--sf-accent-text, #DC2626)", fontWeight: "600" }}>DrevoOS</span>
+          </span>
+        </div>
+      </div>
+    </>
+  );
+
+  const version = (look || cleanOptions(tenantProfile?.storefront_layout)).footer;
+  if (version === "compact" || version === "contact") {
+    const socials = [
+      facebook && { Icon: Facebook, href: fbHref, label: "Facebook" },
+      instagram && { Icon: Instagram, href: igHref, label: "Instagram" },
+      tiktok && { Icon: Music2, href: ttHref, label: "TikTok" },
+    ].filter(Boolean);
+    const hours = profile?.business_hours || "";
+    const showBand = version === "contact" && (locationStr || hours || waHref || phone);
+    const head = { fontFamily: "var(--sf-font-head, 'Outfit', sans-serif)", fontWeight: "var(--sf-head-weight, 700)", textTransform: "var(--sf-head-case, none)", letterSpacing: "var(--sf-head-track, -0.02em)" };
+    return (
+      <footer className="ftr-root sf-band">
+        <style>{FOOTER_CSS}</style>
+        {showBand && (
+          <div className="ftr-cta">
+            <div className="ftr-cta-in">
+              <div style={{ minWidth: 0 }}>
+                <p className="ftr-col-head" style={{ marginBottom: 12 }}>Visit us</p>
+                <p style={{ ...head, color: "var(--sf-text, #F0F0F0)", fontSize: "clamp(22px, 3vw, 30px)", lineHeight: 1.2, margin: "0 0 12px" }}>{dealershipName}</p>
+                {locationStr && (
+                  <p className="ftr-cta-line"><MapPin size={14} style={{ flexShrink: 0 }} /> {locationStr}</p>
+                )}
+                {hours && (
+                  <p className="ftr-cta-line"><Clock size={14} style={{ flexShrink: 0 }} /> {hours}</p>
+                )}
+              </div>
+              {(waHref || phone) && (
+                <div className="ftr-cta-btns">
+                  {waHref && (
+                    <a href={waHref} target="_blank" rel="noopener noreferrer" className="ftr-cta-btn primary">
+                      <MessageCircle size={16} style={{ flexShrink: 0 }} /> WhatsApp us
+                    </a>
+                  )}
+                  {phone && (
+                    <a href={`tel:${phone}`} className="ftr-cta-btn">
+                      <Phone size={16} style={{ flexShrink: 0 }} /> {phone}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="ftr-slim">
+          {!showBand && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt={dealershipName} style={{ height: 30, objectFit: "contain" }} />
+              ) : (
+                <>
+                  <div style={{ width: 30, height: 30, borderRadius: 5, background: "var(--sf-accent, #DC2626)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ color: "var(--sf-on-accent, white)", fontWeight: 800, fontSize: 14 }}>{siteInitial}</span>
+                  </div>
+                  <span style={{ color: "var(--sf-text, #F0F0F0)", fontWeight: 700, fontSize: 16, letterSpacing: "-0.02em" }}>{dealershipName}</span>
+                </>
+              )}
+            </div>
+          )}
+          <nav className="ftr-slim-links" aria-label="Footer">
+            {quickLinks.map((l) => (
+              <Link key={l.to} to={l.to} className="ftr-link">{l.label}</Link>
+            ))}
+            {version === "compact" && email && <a href={`mailto:${email}`} className="ftr-link">{email}</a>}
+            {version === "compact" && phone && <a href={`tel:${phone}`} className="ftr-link">{phone}</a>}
+          </nav>
+          {socials.length > 0 && (
+            <div className="ftr-slim-icons">
+              {socials.map(({ Icon, href, label }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="ftr-social-icon"><Icon size={14} /></a>
+              ))}
+            </div>
+          )}
+        </div>
+        {bottom}
+      </footer>
+    );
+  }
 
   return (
     <footer className="ftr-root sf-band">
@@ -291,28 +429,7 @@ const Footer = ({ tenantOverride = null } = {}) => {
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div style={{ borderTop: "1px solid var(--sf-border, rgba(255,255,255,0.04))" }}>
-        <div className="ftr-bottom">
-          <span className="ftr-bottom-text">
-            © {currentYear} {dealershipName}. All rights reserved.
-            <span style={{ color: "var(--sf-muted, #3F3F46)", marginLeft: "8px" }}>v{APP_VERSION}</span>
-          </span>
-          <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-            {/* #A1A1AA, not #71717A: the darker grey was 4.0:1 on this footer,
-                under the 4.5:1 small text needs. */}
-            <Link to="/terms" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
-            <Link to="/privacy" style={{ color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
-            {/* The consent banner runs on storefronts too, so the way back into
-                it has to be here as well as in the marketplace footer. */}
-            <button type="button" onClick={openConsentSettings} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--sf-muted, #A1A1AA)", fontSize: "12px", fontFamily: "inherit" }}>Cookie settings</button>
-          </span>
-          <span className="ftr-bottom-brand">
-            Powered by
-            <span style={{ color: "var(--sf-accent-text, #DC2626)", fontWeight: "600" }}>DrevoOS</span>
-          </span>
-        </div>
-      </div>
+      {bottom}
     </footer>
   );
 };

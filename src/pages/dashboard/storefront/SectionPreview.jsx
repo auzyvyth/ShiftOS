@@ -169,7 +169,7 @@ export default function SectionPreview({ subdomain, id, variant, device, layout,
                 {isFooter ? (
                   <>
                     <div style={{ padding: "36px 24px", fontSize: 12, color: "var(--sf-muted, rgba(255,255,255,0.35))" }}>The end of your page</div>
-                    <Footer tenantOverride={ctx.tenant} />
+                    <Footer look={opts} tenantOverride={ctx.tenant} />
                   </>
                 ) : isHeader ? (
                   <>

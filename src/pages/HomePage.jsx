@@ -364,7 +364,7 @@ const HomePage = () => {
         ) : null;
       })}
 
-      <Footer />
+      <Footer look={look} />
       <StickyWhatsAppButton />
     </>
   );

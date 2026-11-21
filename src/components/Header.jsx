@@ -226,6 +226,15 @@ const HDR_CSS = `
     background: var(--sf-accent, #DC2626); color: var(--sf-on-accent, #ffffff);
   }
   .hdr-link.hdr-link-cta:hover { background: var(--sf-accent-hover, #B91C1C); }
+  /* Centred header (look option header = "centred"): logo in the middle, page links left,
+     actions right. Desktop only: under 1025px the nav and actions are hidden anyway and the
+     phone bar stays the classic one. Same 64px height, so nothing below moves. */
+  @media (min-width: 1025px) {
+    .hdr-centred .hdr-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+    .hdr-centred .hdr-logo { grid-column: 2; grid-row: 1; justify-self: center; }
+    .hdr-centred .hdr-nav { grid-column: 1; grid-row: 1; justify-self: start; }
+    .hdr-centred .hdr-actions { grid-column: 3; grid-row: 1; justify-self: end; }
+  }
   /* Phone: phone number + hours only (the address and socials are in Get in touch). */
   @media (max-width: 640px) {
     .hdr-tb-addr, .hdr-tb-social { display: none !important; }
@@ -369,7 +378,9 @@ export default function Header({ look, tenantOverride = null } = {}) {
   const waHref = waUrl ? waUrl(`Hi ${siteName}, I need help finding a car`) : "#";
 
   const onSub = !!tenantOverride || isSubdomain();
-  const showroom = onSub && (look || cleanOptions(tenantProfile?.storefront_layout)).header === "showroom";
+  const headerOpt = (look || cleanOptions(tenantProfile?.storefront_layout)).header;
+  const showroom = onSub && headerOpt === "showroom";
+  const centred = onSub && headerOpt === "centred";
   const bar = showroom ? topBarParts(tenantProfile) : null;
   // Bar height as a variable on the header and its spacer (0 on a phone with nothing to show).
   const barCss = bar
@@ -423,7 +434,7 @@ export default function Header({ look, tenantOverride = null } = {}) {
       {barCss && <style>{barCss}</style>}
       {bar && <div className="hdr-tb-space" aria-hidden />}
 
-      <header className={`hdr-root${scrolled ? " scrolled" : ""}${headerVisible ? "" : " hidden"}${mobileOpen ? " menu-open" : ""}`}>
+      <header className={`hdr-root${centred ? " hdr-centred" : ""}${scrolled ? " scrolled" : ""}${headerVisible ? "" : " hidden"}${mobileOpen ? " menu-open" : ""}`}>
         {bar && (
           <div className="hdr-topbar">
             <div className="hdr-topbar-in">
