@@ -140,6 +140,8 @@ import { DELIVERIES_OPEN } from "../utils/storefrontLayout";
 // dealer resolve to the same dealer_id and would otherwise share one cache entry
 // on a shared device. A few KB duplicated is the right trade for that.
 const PANEL_CACHE_KEY = "dash";
+// Listings shows this many cars, then a See more button adds this many again.
+const LIST_PAGE = 30;
 
 // Which sidebar group owns each tab. Module scope on purpose: this was three
 // identical copies in three scopes, so a new tab had to be added to all three
@@ -242,8 +244,7 @@ export default function DashboardPage() {
   const [filterCondition, setFilterCondition] = useState('');
   const [filterTransmission, setFilterTransmission] = useState('');
   const [filterState, setFilterState] = useState('');
-  const [visibleCount, setVisibleCount] = useState(30);
-  const sentinelRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(seed.uid);
   const [salesmen,         setSalesmen]         = useState(() => seed.uid ? (readCache(`dash_salesmen_${seed.uid}`) || []) : []);
@@ -839,17 +840,22 @@ export default function DashboardPage() {
     setBulkBusy(true);
     let ok = 0, failed = 0, capHit = false;
     const updated = {};
-    for (const l of targets) {
-      const { data, error } = await supabase.from('car_listings').update({ status })
-        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select();
-      if (error || !data?.length) {
-        failed++;
-        if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
-        continue;
-      }
-      ok++;
-      updated[l.id] = data[0];
-      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+    // 10 cars at a time: one by one, publishing 175 cars took minutes.
+    for (let i = 0; i < targets.length; i += 10) {
+      const chunk = targets.slice(i, i + 10);
+      const results = await Promise.all(chunk.map(l => supabase.from('car_listings').update({ status })
+        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select()));
+      results.forEach(({ data, error }, j) => {
+        const l = chunk[j];
+        if (error || !data?.length) {
+          failed++;
+          if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
+          return;
+        }
+        ok++;
+        updated[l.id] = data[0];
+        logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+      });
     }
     setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
     setBulkBusy(false);
@@ -1030,7 +1036,11 @@ export default function DashboardPage() {
       setListings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
       if (detailListing?.id === updated.id) setDetailListing(updated);
       toast.success(`${l.brand} ${l.model} ${l.year} is now live on your marketplace.`);
-      setStatusFilter("available");
+      // Same once-only social ask as bulk publish (SOCIAL-1): a standing yes files it for Console > Social silently.
+      if (!profile?.dealer_id && updated.social_consent == null && !updated.new_car_model_id) {
+        askSocialConsent({ id: updated.id, title: `${l.year || ''} ${l.brand || ''} ${l.model || ''}`.trim() });
+      }
+      // Stay on Unpublished while there are more to go, so the next one is one tap away.
     } catch (e) {
       console.error('[handlePublishListing]', e);
     }
@@ -1065,19 +1075,7 @@ export default function DashboardPage() {
   }, [listings, searchQuery, statusFilter, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   // Reset visible window whenever the filtered set changes
-  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
-
-  // Infinite scroll — expand visible window when sentinel enters viewport
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + 20); },
-      { rootMargin: '300px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [activeTab]);
+  useEffect(() => { setVisibleCount(LIST_PAGE); }, [statusFilter, searchQuery, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -2046,6 +2044,7 @@ export default function DashboardPage() {
                     onSelectAll={() => setSelectedIds(new Set(filteredListings.map(l => l.id)))}
                     onClear={exitSelect}
                     onStatus={bulkStatus}
+                    onPublish={statusFilter === 'unpublished' ? () => bulkStatus('available') : null}
                     onPrice={() => setBulkPriceOpen(true)}
                   />
                   <BulkPriceSheet
@@ -2318,8 +2317,18 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+                    {/* See more (owner, 2026-11-21): 30 at a time. The infinite-scroll watcher
+                        it replaces stopped after the first page (its effect ran once, before the
+                        list existed, so it watched nothing). */}
                     {visibleCount < filteredListings.length && (
-                      <div ref={sentinelRef} style={{ height: 1 }} />
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 16px 20px' }}>
+                        <button
+                          onClick={() => setVisibleCount(c => c + LIST_PAGE)}
+                          style={{ ...INV_GHOST_BTN, padding: '10px 18px', fontSize: 13 }}
+                        >
+                          See more ({Math.min(LIST_PAGE, filteredListings.length - visibleCount)} of {filteredListings.length - visibleCount} left)
+                        </button>
+                      </div>
                     )}
                     {selectedIds.size > 0 && <div style={{ height: 96 }} />}
                   </>

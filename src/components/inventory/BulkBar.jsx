@@ -16,7 +16,9 @@ export const BULK_STATUSES = [
 
 const btn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 12px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: PL.radius.row, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' };
 
-export function BulkBar({ count, total, busy, onSelectAll, onClear, onStatus, onPrice }) {
+// onPublish: given on the Unpublished pill only. One red button that puts the picked cars live,
+// so publishing 150 cars is Select > Select all > Publish, not three menus deep.
+export function BulkBar({ count, total, busy, onSelectAll, onClear, onStatus, onPrice, onPublish }) {
   const [menu, setMenu] = useState(false);
   if (!count) return null;
   return createPortal(
@@ -28,6 +30,11 @@ export function BulkBar({ count, total, busy, onSelectAll, onClear, onStatus, on
             ? <button onClick={onSelectAll} style={{ background: 'none', border: 'none', padding: 0, color: '#d1d5db', fontSize: 12, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Select all {total}</button>
             : <p style={{ margin: 0, fontSize: 12, color: '#d1d5db' }}>All cars in this list</p>}
         </div>
+        {onPublish && (
+          <button disabled={busy} onClick={onPublish} style={{ ...btn, background: PL.accent, color: '#fff', opacity: busy ? .5 : 1 }}>
+            {busy ? 'Publishing…' : `Publish ${count}`}
+          </button>
+        )}
         <div style={{ position: 'relative' }}>
           <button disabled={busy} onClick={() => setMenu(m => !m)} style={{ ...btn, background: 'rgba(255,255,255,.12)', color: '#fff', opacity: busy ? .5 : 1 }}>Status</button>
           {menu && (
