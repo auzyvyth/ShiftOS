@@ -522,7 +522,7 @@ def cmd_photos(a):
         if not ok: failed.append((label, "database refused the update"))
         time.sleep(0.3)
     print(f"\ndone: {uploaded} photos saved | NOT taken (under {a.min_photos} photos): {len(held)} | failed: {len(failed)}")
-    for lab, why in held + failed: print("  -", lab, "-", why)
+    for lab, reason in held + failed: print("  -", lab, "-", reason)
     return 0
 
 
@@ -590,7 +590,7 @@ def cmd_create(a):
         made += 1
         print(f"    CREATED id {lid}: {len(urls)} photos, stock record {'yes' if su else 'NO (add it in the app)'}")
     print(f"\ndone: {made} cars {'shown' if a.dry_run else 'created'} | not taken: {len(held)}")
-    for lab, why in held: print("  -", lab, "-", why)
+    for lab, reason in held: print("  -", lab, "-", reason)
     return 0
 
 
