@@ -319,10 +319,24 @@ def drive_id(url):
     return m.group(1) if m else None
 
 
+RESKEYS = {}   # folder id -> resourcekey from the link (older Drive shares need it)
+
+
+def note_reskey(url, fid):
+    m = re.search(r"resourcekey=([\w-]+)", url or "")
+    if m and fid: RESKEYS[fid] = m.group(1)
+
+
+def why(r):
+    try: e = r.json()["error"]; return f"{r.status_code} {e.get('status','')} {e.get('message','')[:160]}"
+    except Exception: return f"{r.status_code} {r.text[:120]}"
+
+
 def drive_get(http, tok, path, **params):
     for attempt in range(4):
-        r = http.get(f"{DRIVE}/{path}", params={"supportsAllDrives": "true", **params},
-                     headers={"Authorization": f"Bearer {tok}"}, timeout=60)
+        hdr = {"Authorization": f"Bearer {tok}"}
+        if RESKEYS: hdr["X-Goog-Drive-Resource-Keys"] = ",".join(f"{k}/{v}" for k, v in RESKEYS.items())
+        r = http.get(f"{DRIVE}/{path}", params={"supportsAllDrives": "true", **params}, headers=hdr, timeout=60)
         if r.status_code in (429, 500, 503): time.sleep(2 ** attempt); continue
         return r
     return r
@@ -335,7 +349,7 @@ def folder_images(http, tok, fid, depth=1):
         r = drive_get(http, tok, "files", q=f"'{fid}' in parents and trashed=false", orderBy="name",
                       pageSize=100, pageToken=token, includeItemsFromAllDrives="true",
                       fields="nextPageToken,files(id,name,mimeType,size)")
-        if r.status_code != 200: return out, skipped, f"drive {r.status_code}"
+        if r.status_code != 200: return out, skipped, "drive " + why(r)
         d = r.json()
         for f in d.get("files", []):
             mt = f.get("mimeType", "")
@@ -475,11 +489,11 @@ def cmd_photos(a):
     tok, held, failed, uploaded = google_token(), [], [], 0
     for n, (r, l) in enumerate(todo, 1):
         label = f"{brand_name(r['brand'])} {r['model']} {r['vin']}"
-        fid = drive_id(r["drive"])
+        fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
         if not fid: failed.append((label, "bad link")); continue
         meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType")
         if meta.status_code != 200:
-            failed.append((label, f"no access ({meta.status_code}): folder not shared with this Google account")); continue
+            failed.append((label, f"no access: {why(meta)}")); continue
         mt = meta.json().get("mimeType", "")
         files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
         if err: failed.append((label, err)); continue
@@ -531,10 +545,11 @@ def cmd_create(a):
         if made >= a.limit: break
         c = clean_car(r)
         label = f"{brand_name(r['brand'])} {r['model']} {r['year']} {r['vin']}"
-        fid = drive_id(r["drive"])
+        fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
+        print(f"checking {label} ...", flush=True)
         meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
         if not meta or meta.status_code != 200:
-            held.append((label, "cannot open the Drive folder")); continue
+            held.append((label, "cannot open the Drive folder: " + (why(meta) if meta else "no folder id in link " + r["drive"][:80]))); continue
         mt = meta.json().get("mimeType", "")
         files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
         if err or len(files) < a.min_photos:
