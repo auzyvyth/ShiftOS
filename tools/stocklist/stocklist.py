@@ -304,7 +304,15 @@ def db_index(listings):
 
 
 # ---------------------------------------------------------------- Google Drive (read only)
+_GT = {}
+
+
 def google_token():
+    if _GT.get("t") and time.time() - _GT["at"] < 2400: return _GT["t"]   # reuse for 40 min, then refresh
+    _GT["t"] = _google_token(); _GT["at"] = time.time(); return _GT["t"]
+
+
+def _google_token():
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
     d = _cfg("google.json")
@@ -619,69 +627,77 @@ def cmd_create(a):
     print(f"location for every car (from your dealer profile): {prof.get('city')}, {prof.get('state')}")
     todo = [r for r in rows if not r["sold"] and r["drive"] and r["vin"] not in have]
     print(f"{len(todo)} cars are for sale, have a photo link and are not in the app yet. "
-          f"Will create at most {a.limit}, status '{a.status}'" + (" (dry run)" if a.dry_run else ""))
-    tok, made, held = google_token(), 0, []
+          "Will create " + (f"at most {a.limit}" if a.limit else "ALL of them (no cap)") + f", status '{a.status}'" + (" (dry run)" if a.dry_run else ""))
+    made, held = 0, []
     for r in todo:
-        if made >= a.limit: break
-        c = clean_car(r)
+        if a.limit and made >= a.limit: break
         label = f"{brand_name(r['brand'])} {r['model']} {r['year']} {r['vin']}"
-        fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
-        print(f"checking {label} ...", flush=True)
-        meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
-        if meta is None or meta.status_code != 200:
-            held.append((label, "cannot open the Drive folder: " + (why(meta) if meta is not None else "no folder id in link " + r["drive"][:80]))); continue
-        mt = meta.json().get("mimeType", "")
-        files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
-        if err or len(files) < a.min_photos:
-            held.append((label, err or f"{len(files)} photos, needs {a.min_photos}")); continue
-        files = files[:MAX_PHOTOS]
-        base = int(r["price_rm"]); mk = markup_for(base)
-        row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
-               "year": r["year"], "selling_price": base + mk, "mileage": r["mileage_km"],
-               "colour": form_colour(r["colour"]), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
-               "fuel_type": guess_fuel(r, c), "transmission": guess_transmission(c),
-               "condition": "recon", "is_recon": True, "import_country": form_country(r["co"]),
-               "vin": r["vin"], "vin_number": r["vin"], "registration_date": reg_text(r),
-               "options": r["options"] or None, "warranty_months": WARRANTY_MONTHS, "payment_type": PAYMENT_TYPE,
-               "state": prof.get("state"), "city": prof.get("city"), "dealer_id": sb.uid, "status": a.status}
-        print(f"    (PDF base RM{base:,} + markup RM{mk:,} = asking RM{base + mk:,})")
-        print(f"\n--- {label}: {len(files)} photos in folder")
-        for k, v in row.items(): print(f"    {k:15} {v}")
-        for msg in form_check(row): print(f"    !! form would show this empty: {msg}")
-        if a.dry_run: made += 1; continue
-        shrunk = []
-        for f in files:
-            try:
-                d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
-                             headers={"Authorization": f"Bearer {tok}"}, timeout=120)
-                if d.status_code == 200 and len(d.content) <= 40_000_000:
-                    shrunk.append((looks_like_auction_sheet(d.content), f["name"], shrink(d.content)))
-            except Exception as e:
-                print(f"    skipped one file: {type(e).__name__}")
-        if len(shrunk) < a.min_photos:
-            held.append((label, f"only {len(shrunk)} photos could be read")); continue
-        sheets = [n for sh, n, _ in shrunk if sh]
-        shrunk = [d for sh, n, d in shrunk if not sh] + [d for sh, n, d in shrunk if sh]   # auction sheets go LAST
-        if sheets: print(f"    looks like an auction sheet, moved to the end: {', '.join(sheets)}")
-        ins = http.post(f"{SUPABASE_URL}/rest/v1/car_listings", json=row, timeout=60,
-                        headers=sb.h({"Prefer": "return=representation"}))
-        if ins.status_code >= 300:
-            held.append((label, f"database refused: {ins.text[:200]}")); continue
-        lid = ins.json()[0]["id"]
+        tok = google_token()   # re-read each car: Google tokens last 1 hour, a full run takes longer
         try:
-            urls = [sb.upload(f"{sb.uid}/{lid}/{i:02d}-{hashlib.sha1(d).hexdigest()[:8]}.webp", d) for i, d in enumerate(shrunk, 1)]
-            ok = sb.patch(lid, {"images": urls})
-            if not ok: raise RuntimeError("database refused the photo update")
-        except Exception as e:
-            sb.patch(lid, {"status": "archived"})   # never leave a half-made car live
-            held.append((label, f"photos failed ({e}); car archived")); continue
-        sp = http.patch(f"{SUPABASE_URL}/rest/v1/stock_units", params={"listing_id": f"eq.{lid}", "dealer_id": f"eq.{sb.uid}"},
-                        json={"purchase_price": base}, headers=sb.h({"Prefer": "return=representation"}))
-        su = sp.json() if sp.status_code < 300 else []
-        made += 1
-        print(f"    CREATED id {lid}: {len(urls)} photos, base price saved on the stock record: {'yes' if su else 'NO (set it in the app)'}")
+            c = clean_car(r)
+            label = f"{brand_name(r['brand'])} {r['model']} {r['year']} {r['vin']}"
+            fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
+            print(f"checking {label} ...", flush=True)
+            meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
+            if meta is None or meta.status_code != 200:
+                held.append((label, "cannot open the Drive folder: " + (why(meta) if meta is not None else "no folder id in link " + r["drive"][:80]))); continue
+            mt = meta.json().get("mimeType", "")
+            files, skipped, err = ([meta.json()], 0, "") if mt.startswith("image/") else folder_images(http, tok, fid)
+            if err or len(files) < a.min_photos:
+                held.append((label, err or f"{len(files)} photos, needs {a.min_photos}")); continue
+            files = files[:MAX_PHOTOS]
+            base = int(r["price_rm"]); mk = markup_for(base)
+            row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
+                   "year": r["year"], "selling_price": base + mk, "mileage": r["mileage_km"],
+                   "colour": form_colour(r["colour"]), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
+                   "fuel_type": guess_fuel(r, c), "transmission": guess_transmission(c),
+                   "condition": "recon", "is_recon": True, "import_country": form_country(r["co"]),
+                   "vin": r["vin"], "vin_number": r["vin"], "registration_date": reg_text(r),
+                   "options": r["options"] or None, "warranty_months": WARRANTY_MONTHS, "payment_type": PAYMENT_TYPE,
+                   "state": prof.get("state"), "city": prof.get("city"), "dealer_id": sb.uid, "status": a.status}
+            print(f"    (PDF base RM{base:,} + markup RM{mk:,} = asking RM{base + mk:,})")
+            print(f"\n--- {label}: {len(files)} photos in folder")
+            for k, v in row.items(): print(f"    {k:15} {v}")
+            for msg in form_check(row): print(f"    !! form would show this empty: {msg}")
+            if a.dry_run: made += 1; continue
+            shrunk = []
+            for f in files:
+                try:
+                    d = http.get(f"{DRIVE}/files/{f['id']}", params={"alt": "media", "supportsAllDrives": "true"},
+                                 headers={"Authorization": f"Bearer {tok}"}, timeout=120)
+                    if d.status_code == 200 and len(d.content) <= 40_000_000:
+                        shrunk.append((looks_like_auction_sheet(d.content), f["name"], shrink(d.content)))
+                except Exception as e:
+                    print(f"    skipped one file: {type(e).__name__}")
+            if len(shrunk) < a.min_photos:
+                held.append((label, f"only {len(shrunk)} photos could be read")); continue
+            sheets = [n for sh, n, _ in shrunk if sh]
+            shrunk = [d for sh, n, d in shrunk if not sh] + [d for sh, n, d in shrunk if sh]   # auction sheets go LAST
+            if sheets: print(f"    looks like an auction sheet, moved to the end: {', '.join(sheets)}")
+            ins = http.post(f"{SUPABASE_URL}/rest/v1/car_listings", json=row, timeout=60,
+                            headers=sb.h({"Prefer": "return=representation"}))
+            if ins.status_code >= 300:
+                held.append((label, f"database refused: {ins.text[:200]}")); continue
+            lid = ins.json()[0]["id"]
+            try:
+                urls = [sb.upload(f"{sb.uid}/{lid}/{i:02d}-{hashlib.sha1(d).hexdigest()[:8]}.webp", d) for i, d in enumerate(shrunk, 1)]
+                ok = sb.patch(lid, {"images": urls})
+                if not ok: raise RuntimeError("database refused the photo update")
+            except Exception as e:
+                sb.patch(lid, {"status": "archived"})   # never leave a half-made car live
+                held.append((label, f"photos failed ({e}); car archived")); continue
+            sp = http.patch(f"{SUPABASE_URL}/rest/v1/stock_units", params={"listing_id": f"eq.{lid}", "dealer_id": f"eq.{sb.uid}"},
+                            json={"purchase_price": base}, headers=sb.h({"Prefer": "return=representation"}))
+            su = sp.json() if sp.status_code < 300 else []
+            made += 1
+            print(f"    CREATED id {lid}: {len(urls)} photos, base price saved on the stock record: {'yes' if su else 'NO (set it in the app)'}")
+        except Exception as e:   # one bad car (network blip, odd file) never stops the run
+            held.append((label, f"error {type(e).__name__}: {str(e)[:120]}"))
+            print(f"    ERROR on this car, skipped: {type(e).__name__}", flush=True)
     print(f"\ndone: {made} cars {'shown' if a.dry_run else 'created'} | not taken: {len(held)}")
     for lab, reason in held: print("  -", lab, "-", reason)
+    Path("create_report.txt").write_text("\n".join(f"{lab} - {reason}" for lab, reason in held), encoding="utf-8")
+    if held: print("the full not-taken list is saved in create_report.txt")
     return 0
 
 
@@ -724,7 +740,7 @@ def main():
             p.add_argument("--limit", type=int); p.add_argument("--dry-run", action="store_true")
             p.add_argument("--max-photos", type=int, default=MAX_PHOTOS); p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
         if name == "create":
-            p.add_argument("--limit", type=int, default=5); p.add_argument("--dry-run", action="store_true")
+            p.add_argument("--limit", type=int, default=5, help="0 = no cap"); p.add_argument("--dry-run", action="store_true")
             p.add_argument("--min-photos", type=int, default=MIN_PHOTOS)
             p.add_argument("--status", default="unpublished", choices=["unpublished", "available"])
         if name in ("unpublish", "tidy"): p.add_argument("--yes", action="store_true")
