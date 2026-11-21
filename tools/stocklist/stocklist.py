@@ -19,7 +19,7 @@ Photos are processed ONE AT A TIME in memory: no image is ever saved to disk.
 No service-role key is used: everything goes through your own dealer login, so the database
 rules apply exactly as in the app. Setup + steps: tools/stocklist/README.md
 """
-import argparse, csv, hashlib, io, json, os, re, sys, time
+import argparse, csv, datetime, hashlib, io, json, os, re, sys, time
 from pathlib import Path
 
 CFG_DIR = Path(os.environ.get("DREVO_STOCK_DIR", Path.home() / ".drevo_stock"))
@@ -307,21 +307,26 @@ def db_index(listings):
 _GT = {}
 
 
-def google_token():
-    if _GT.get("t") and time.time() - _GT["at"] < 2400: return _GT["t"]   # reuse for 40 min, then refresh
-    _GT["t"] = _google_token(); _GT["at"] = time.time(); return _GT["t"]
+def google_token(force=False):
+    # Reuse the token only while Google says it is still good (with 5 min spare). It used to be "40 minutes
+    # from when we fetched it", but a token fetched late in its 1-hour life expired mid-run and every later
+    # car failed with 401 UNAUTHENTICATED. force=True = a 401 came back, get a fresh one now.
+    if not force and _GT.get("t") and time.time() < _GT["exp"] - 300: return _GT["t"]
+    _GT["t"], _GT["exp"] = _google_token(force)
+    return _GT["t"]
 
 
-def _google_token():
+def _google_token(force=False):
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
     d = _cfg("google.json")
     if not d: sys.exit("No Google login. Run: python stocklist.py google")
     creds = Credentials.from_authorized_user_info(d, SCOPES)
-    if not creds.valid:
+    if force or not creds.valid:
         creds.refresh(Request())
         _save("google.json", json.loads(creds.to_json()))
-    return creds.token
+    exp = creds.expiry.replace(tzinfo=datetime.timezone.utc).timestamp() if creds.expiry else time.time() + 1800
+    return creds.token, exp
 
 
 def drive_id(url):
@@ -639,6 +644,9 @@ def cmd_create(a):
             fid = drive_id(r["drive"]); note_reskey(r["drive"], fid)
             print(f"checking {label} ...", flush=True)
             meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType") if fid else None
+            if meta is not None and meta.status_code == 401:   # token went stale: one fresh token, one retry
+                tok = google_token(force=True)
+                meta = drive_get(http, tok, f"files/{fid}", fields="id,name,mimeType")
             if meta is None or meta.status_code != 200:
                 held.append((label, "cannot open the Drive folder: " + (why(meta) if meta is not None else "no folder id in link " + r["drive"][:80]))); continue
             mt = meta.json().get("mimeType", "")
