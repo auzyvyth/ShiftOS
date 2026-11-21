@@ -17,17 +17,35 @@ import { cleanTheme, themeParam } from "./storefrontTheme.js";
 export const LAYOUT_VERSION = 1;
 export const VARIANTS = ["a", "b", "c"]; // the plan's hard cap: 3 versions per section
 
-// Default order = the page as it was before layouts existed.
+// ── The database gate (stage 4 phase B) ─────────────────────────────────────
+// The live `storefront_layout_ok` (migration 20261120a) REFUSES a section id it does not list,
+// so a save holding "brands", "browse" or "sold" would fail until migration
+// 20261121a_storefront_phase_b.sql (QUEUED, not applied) adds them and the recent-sales lookup.
+// While this is false those three sections do not exist anywhere: not in SECTIONS, not in the
+// editor, not saved, not drawn, and the page never calls get_dealer_recent_sales.
+// FLIP TO true the night 20261121a is applied (after midnight, nobody live), in the same release.
+export const DB_PHASE_B = false;
+// Unit tests load a second copy of this file with the gate open (globalThis.__SF_PHASE_B_TEST);
+// the app never sets it.
+const PHASE_B_OPEN = DB_PHASE_B || globalThis.__SF_PHASE_B_TEST === true;
+export const PHASE_B_IDS = ["brands", "browse", "sold"];
+
+// Default order = the page as it was before layouts existed (phase B sections slot in where
+// a buyer would look for them: brands under the strip, the browse bar just above the cars,
+// recently sold after the reviews).
 // pin: "first" / "last" = cannot move. locked = always on (the page needs it to sell).
 // shows: when the section appears at all, whatever the layout says (the editor says so).
-export const SECTIONS = [
+const ALL_SECTIONS = [
   { id: "hero", label: "Top banner", pin: "first", locked: true, shows: "Always" },
   { id: "strip", label: "Stock count and quick buttons", shows: "Always" },
+  { id: "brands", label: "Brands you stock", shows: "When your cars for sale are of at least 2 brands" },
   { id: "video", label: "Your video", shows: "When a video is switched on in Settings" },
   { id: "hot_deals", label: "Hot deals", shows: "When a car is priced at least 3% under its original price" },
+  { id: "browse", label: "Browse bar", shows: "When you have a car for sale (brand, model, price and body type picked from your cars)" },
   { id: "cars", label: "Your cars", locked: true, shows: "Always" },
   { id: "about", label: "About us", shows: "When you wrote About text in Settings" },
   { id: "reviews", label: "Buyer reviews", shows: "Always (asks buyers to leave the first one)" },
+  { id: "sold", label: "Recently sold", shows: "When you sold a car in the last 12 months (car and month only, never the price or the buyer)" },
   { id: "why", label: "Why choose us", shows: "When you wrote at least one reason in Settings" },
   { id: "stats", label: "By the numbers", shows: "When at least one number is above zero" },
   { id: "how", label: "How it works", shows: "When you wrote at least one step in Settings" },
@@ -35,6 +53,7 @@ export const SECTIONS = [
   { id: "calculator", label: "Loan calculator", shows: "Always" },
   { id: "contact", label: "Get in touch", pin: "last", locked: true, shows: "Always" },
 ];
+export const SECTIONS = PHASE_B_OPEN ? ALL_SECTIONS : ALL_SECTIONS.filter((s) => !PHASE_B_IDS.includes(s.id));
 
 const BY_ID = Object.fromEntries(SECTIONS.map((s, i) => [s.id, { ...s, index: i }]));
 export const sectionInfo = (id) => BY_ID[id] || null;

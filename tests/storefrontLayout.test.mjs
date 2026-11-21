@@ -6,6 +6,7 @@ import {
   DEFAULT_FONT, FONTS, FONT_IDS, cleanFont, fontCss, fontSheet, draftFont,
   PRESETS, applyPreset, presetOf, shuffleLook,
   OPTIONS, OPTION_IDS, defaultOptions, cleanOptions, draftOptions,
+  DB_PHASE_B, PHASE_B_IDS,
 } from "../src/utils/storefrontLayout.js";
 import { AVAILABLE_VERSIONS, VERSION_INFO, VERSION_OPTIONS } from "../src/components/storefront/sections/versions.js";
 
@@ -214,12 +215,55 @@ assert.match(inline, /import \{[^}]*monthlyPayment[^}]*\} from "..\/..\/..\/util
 assert.ok(!/flatToEir|Math\.pow/.test(inline), "no flat rate and no second formula in the inline calculator");
 assert.match(inline, /bank decides/i, "the fine print says the bank decides");
 
-// The database check lists exactly the same sections and versions (migration 20261120a).
-const sql = readFileSync(new URL("../supabase/migrations/20261120a_analytics_event_types.sql", import.meta.url), "utf8");
-const fn = sql.slice(sql.indexOf("function public.storefront_layout_ok"), sql.indexOf("alter table public.profiles add column if not exists storefront_layout"));
-const list = (after) => [...fn.slice(fn.indexOf(after) + after.length).split(")")[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+// The database check lists exactly the same sections and versions. Live today: migration
+// 20261120a. Phase B (QUEUED): 20261121a adds brands / browse / sold. The gate DB_PHASE_B picks
+// which one the app must match, so the app can never save an id the live check refuses.
+const sqlOf = (file, end) => {
+  const sql = readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8");
+  const from = sql.indexOf("function public.storefront_layout_ok");
+  return sql.slice(from, end ? sql.indexOf(end, from) : sql.indexOf("$$;", sql.indexOf("$$", from) + 2));
+};
+const listIn = (fn, after) => [...fn.slice(fn.indexOf(after) + after.length).split(")")[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+const fnLive = sqlOf("20261120a_analytics_event_types.sql", "alter table public.profiles add column if not exists storefront_layout");
+const fnB = sqlOf("20261121a_storefront_phase_b.sql");
+const fn = DB_PHASE_B ? fnB : fnLive;
+const list = (after) => listIn(fn, after);
 assert.deepEqual(list("s->>'id', '') not in (").sort(), SECTIONS.map((x) => x.id).sort(), "SQL section list = JS");
 assert.deepEqual(list("s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "SQL versions = JS");
+if (!DB_PHASE_B) {
+  for (const id of PHASE_B_IDS) assert.ok(!SECTIONS.some((x) => x.id === id), `gate closed: ${id} does not exist yet`);
+  assert.equal(SECTIONS.length, 13, "gate closed: the same 13 sections as the live check");
+}
+
+// ── Stage 4 phase B, gate OPEN: a second copy of the rules, as they will be after 20261121a ──
+globalThis.__SF_PHASE_B_TEST = true;
+const B = await import("../src/utils/storefrontLayout.js?phaseB");
+delete globalThis.__SF_PHASE_B_TEST;
+const bIds = B.SECTIONS.map((x) => x.id);
+assert.deepEqual(listIn(fnB, "s->>'id', '') not in (").sort(), [...bIds].sort(), "20261121a lists every section the open gate has");
+assert.deepEqual(listIn(fnB, "s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "20261121a versions = JS");
+for (const id of PHASE_B_IDS) assert.ok(bIds.includes(id), `gate open: ${id} exists`);
+assert.ok(bIds.length <= 20, "the DB caps a layout at 20 sections");
+assert.equal(bIds.indexOf("brands"), bIds.indexOf("strip") + 1, "brands right under the strip");
+assert.equal(bIds.indexOf("browse"), bIds.indexOf("cars") - 1, "browse bar just above the cars");
+assert.equal(bIds.indexOf("sold"), bIds.indexOf("reviews") + 1, "recently sold after the reviews");
+assert.deepEqual(bIds.filter((id) => !PHASE_B_IDS.includes(id)), SECTIONS.map((x) => x.id), "the old sections keep their order");
+// A layout saved before the flip (13 sections) gets the three new ones, switched on, in place.
+const oldSaved = toSaved(moveSection(toggleSection(defaultLayout(), "why"), "about", -1));
+const opened = B.cleanLayout(oldSaved);
+assert.equal(opened.length, bIds.length);
+for (const id of PHASE_B_IDS) assert.ok(B.sectionOn(opened, id), `${id} comes back on`);
+assert.equal(opened.find((r) => r.id === "why").on, false, "the dealer's own off survives the flip");
+assert.equal(opened.map((r) => r.id).indexOf("brands"), opened.map((r) => r.id).indexOf("strip") + 1);
+// Saving, switching off and the preview link work for the new ids; the closed gate drops them.
+const bOff = B.toggleSection(B.defaultLayout(), "sold");
+assert.equal(B.sectionOn(bOff, "sold"), false);
+assert.deepEqual(B.fromDraftParam(B.draftParam(bOff)), bOff, "preview link carries the new sections");
+const bSaved = B.toSaved(bOff);
+assert.equal(bSaved.sections.length, bIds.length);
+assert.equal(cleanLayout(bSaved).length, SECTIONS.length, "closed gate: a saved phase-B id is dropped, never drawn");
+assert.ok(!draftParam(cleanLayout(bSaved)).match(/brands|browse|sold/), "closed gate: the preview link never carries them");
+assert.ok(B.isDefaultLayout(B.defaultLayout()));
 // The check reads only v + sections, so the stage-4 `font` key needs no migration. If someone
 // tightens the check to list allowed keys, `font` must be in it or every font save fails.
 assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes("'font'"), "DB check must allow the font key");
