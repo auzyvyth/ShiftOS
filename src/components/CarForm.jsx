@@ -1797,6 +1797,21 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return null;
   };
 
+  // Edit mode: only what the old disabled button required (not mileage 0 or a
+  // blank colour, which older / new-car rows legitimately have).
+  const editBlockers = () => {
+    const at = (step, ...pairs) => {
+      const fields = pairs.filter(([m]) => m).map(([, l]) => l);
+      return fields.length ? { step, fields } : null;
+    };
+    return (
+      at(1, [!photosOk, photosMissingLabel(form.images.length, minPhotos)]) ||
+      at(2, [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"]) ||
+      at(4, [!form.state, "State"], [!form.city, "City"],
+        [!form.basePrice && !isNewCar && !costOptional, "Base price"], [!form.sellingPrice, "Selling price"])
+    );
+  };
+
   // Advance a step, or explain (via toast) exactly what's missing.
   const goNext = () => {
     const miss = missingFields();
@@ -1862,7 +1877,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     // pop up"). Catch it here: name the missing fields and bounce the user to
     // the offending step. Edit mode ("Save Changes") keeps the lighter checks so
     // quick edits of older listings aren't blocked on legacy-empty fields.
-    const incomplete = listing ? null : firstIncompleteStep();
+    // Edit mode used to have the bottom button DISABLED (no words) while a
+    // required field was blank, so "Save Changes" looked dead. It now stays
+    // pressable and says what is missing, same as a new listing.
+    const incomplete = listing
+      ? editBlockers()
+      : firstIncompleteStep();
     if (incomplete) {
       const label = STEPS.find((x) => x.id === incomplete.step)?.label || `Step ${incomplete.step}`;
       setStep(incomplete.step);
@@ -3066,6 +3086,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       else tags.push(f);
       set("features", tags.join(", "));
     };
+    // The dealer's own options text (stock sheet import) as tickable chips,
+    // minus anything already in the common list above.
+    const sheetTags = parseTags(String(form.options || "").replace(/[\/;|]/g, ","))
+      .filter((t) => t.length <= 40 && !COMMON_FEATURES.some((c) => c.toLowerCase() === t.toLowerCase()))
+      .slice(0, 40);
     return (
       <>
             <Field
@@ -3099,6 +3124,29 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   })}
                 </div>
               </div>
+              {sheetTags.length > 0 && (
+                <div className="mb-2.5">
+                  <p className="text-xs text-gray-500 mb-1.5">From your stock sheet - tap the ones this car has</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sheetTags.map((f) => {
+                      const on = isSel(f);
+                      return (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => toggleFeature(f)}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                            on ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {on && <Check className="w-3.5 h-3.5" />}
+                          {f}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <textarea
                 name="features"
                 value={form.features}
@@ -4290,7 +4338,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || (capError && !keepPrivate) || !(photosOk && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar || costOptional) && form.sellingPrice)}
+            disabled={uploading || (capError && !keepPrivate)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

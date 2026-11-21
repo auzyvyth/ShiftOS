@@ -1,5 +1,5 @@
 // The one-question consent sheet for Drevo's own social pages (SOCIAL-1). Mounted once in App.jsx.
-// Rules it keeps:
+// Rules it keeps (2026-11-22: ONE standing answer for all the seller's cars, see socialStanding.js):
 //   - Ask AFTER the form is done and the car is waiting for approval, never inside the form.
 //   - An answer is stored only by set_listing_social_consent (the database checks the car is the caller's).
 //   - Closing the sheet WITHOUT answering stores nothing: "no answer" is not consent.
@@ -12,6 +12,7 @@ import { supabase } from '../../supabaseClient';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { waLink } from '../../utils/plans';
 import { ASK_SOCIAL_EVENT } from './askSocialConsent';
+import { readStanding, saveStanding, setConsentFor, unansweredCarIds } from './socialStanding';
 
 function Sheet({ ask, onClose }) {
   useModalHistory(true, onClose);
@@ -25,9 +26,19 @@ function Sheet({ ask, onClose }) {
 
   const answer = async (yes) => {
     setState('saving'); setError('');
-    const { error: e } = await supabase.rpc('set_listing_social_consent', { p_listing: ask.id, p_consent: yes });
-    if (e) {
-      if (e.code === 'PGRST202' || e.code === '42883') { onClose(); return; }
+    // One answer for ALL the seller's cars, now and later (owner 2026-11-22). Save it first, then write it
+    // on this car(s) and on every other car never asked about.
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+    const ids = Array.from(new Set([...(ask.ids?.length ? ask.ids : [ask.id]), ...(uid ? await unansweredCarIds(uid) : [])]));
+    const failed = await setConsentFor(ids, yes);
+    if (failed === 'missing') { onClose(); return; }
+    if (failed) {
+      setError(`Could not save the answer for ${failed} of ${ids.length} cars. Please try again.`);
+      setState('ask');
+      return;
+    }
+    if (uid && !(await saveStanding(uid, yes ? 'yes' : 'no'))) {
       setError('Could not save your answer. Please try again.');
       setState('ask');
       return;
@@ -48,19 +59,19 @@ function Sheet({ ask, onClose }) {
         borderRadius: wide ? 16 : '16px 16px 0 0', boxShadow: '0 20px 60px rgba(0,0,0,.35)' }}>
         {state === 'thanks' ? (
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.45 }}>
-            <b>Thank you.</b> If we approve {ask.title}, we will feature it on Drevo&apos;s pages. Nothing is posted before it is approved.
+            <b>Thank you.</b> We will not ask again. Your cars, now and any you add later, can be featured on Drevo&apos;s pages. Nothing is posted before we approve it.
           </p>
         ) : (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#6b7280', marginBottom: 4 }}>YOUR CAR IS WAITING FOR APPROVAL</div>
-            <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, marginBottom: 10 }}>Want Drevo to feature it on our Facebook Page and TikTok?</div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#6b7280', marginBottom: 4 }}>ASKED ONCE, COVERS ALL YOUR CARS</div>
+            <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, marginBottom: 10 }}>Want Drevo to feature your cars on our Facebook Page and TikTok?</div>
             <p style={{ margin: '0 0 8px', fontSize: 14.5, lineHeight: 1.5, color: '#374151' }}>
-              More buyers see {ask.title}. We only post it after we approve it.
+              More buyers see your cars. This answer covers every car you have now and any you add later, so we will not ask again. We only post a car after we approve it.
             </p>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.55, color: '#4b5563' }}>
               <li>We post your photos, price and car details, and credit you by name.</li>
               <li>Never your phone number. Buyers come to your Drevo page.</li>
-              <li>Change your mind any time: <a href={waLink(`Please stop featuring my car on Drevo's pages: ${ask.title}`)} target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626' }}>message us</a> and we take it down.</li>
+              <li>Change your mind any time: <a href={waLink(`Please stop featuring my cars on Drevo's pages`)} target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626' }}>message us</a> and we take them down.</li>
             </ul>
             {error && <div role="alert" style={{ marginBottom: 10, fontSize: 13.5, color: '#b91c1c' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
@@ -68,7 +79,7 @@ function Sheet({ ask, onClose }) {
                 style={{ flex: 1, height: 48, borderRadius: 999, border: '1px solid #e5e7eb', background: '#fff', color: '#111827', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: font }}>No thanks</button>
               <button onClick={() => answer(true)} disabled={state === 'saving'}
                 style={{ flex: 2, height: 48, borderRadius: 999, border: 'none', background: '#dc2626', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font, opacity: state === 'saving' ? 0.7 : 1 }}>
-                {state === 'saving' ? 'Saving...' : 'Yes, feature my car'}
+                {state === 'saving' ? 'Saving...' : 'Yes, feature all my cars'}
               </button>
             </div>
           </>
@@ -82,7 +93,16 @@ function Sheet({ ask, onClose }) {
 export default function SocialConsentHost() {
   const [ask, setAsk] = useState(null);
   useEffect(() => {
-    const on = (e) => { if (e.detail?.id) setAsk(e.detail); };
+    const on = async (e) => {
+      if (!e.detail?.id) return;
+      // Already answered once? A yes is applied quietly to the car(s) just published; a no is final.
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      const standing = uid ? await readStanding(uid) : null;
+      if (standing === 'yes') { setConsentFor(e.detail.ids?.length ? e.detail.ids : [e.detail.id], true); return; }
+      if (standing === 'no') return;
+      setAsk(e.detail);
+    };
     window.addEventListener(ASK_SOCIAL_EVENT, on);
     return () => window.removeEventListener(ASK_SOCIAL_EVENT, on);
   }, []);

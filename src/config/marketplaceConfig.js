@@ -1,5 +1,6 @@
 import { MY_STATES } from '../utils/locations.js';
 import { readCache } from '../utils/localCache.js';
+import { COLOURS as FORM_COLOURS } from '../utils/carFormOptions.js';
 // Canonical brand whitelist used for filtering. Must cover every brand the
 // brand strips link to AND every brand value that can exist in the DB (from
 // CarForm CAR_DATA), otherwise sanitizeBrand() drops the param and the page
@@ -46,7 +47,7 @@ export const CONDITION_OPTIONS = [
   { value: 'recon', label: 'Recon / Import' },
 ];
 export const FUEL_TYPES = ['Petrol','Diesel','Electric','Hybrid','Mild Hybrid'];
-export const COLOURS    = ['White','Black','Silver','Grey','Red','Blue','Brown','Green','Orange','Yellow','Gold','Maroon'];
+export const COLOURS    = FORM_COLOURS.map((c) => c.label);   // one list with the car form (carFormOptions.js)
 
 export const CAR_FIELDS  = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,seller_role,seller_type,dealer_is_verified,seller_sold_count,payment_type,is_model_card';
 export const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';

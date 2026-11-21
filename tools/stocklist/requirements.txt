@@ -1,0 +1,5 @@
+pdfplumber
+Pillow
+requests
+google-auth
+google-auth-oauthlib
