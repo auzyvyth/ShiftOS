@@ -11,6 +11,17 @@ import { cardTitle, cardPlace } from '../utils/cardTitle';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly, DEFAULT_LOAN_RATIO, DEFAULT_TENURE_YEARS, DEFAULT_EIR } from '../utils/financing';
 import { isSubdomain } from '../hooks/useTenant';
+import { sellerWaUrl } from '../utils/sellerWhatsApp';
+import { getRef } from '../utils/refTracking';
+
+// The WhatsApp mark, for the big card's button (lucide has none). Green on a neutral key:
+// the mark says WhatsApp, the price stays the card's one colour (owner, 2026-11-21).
+const WaMark = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <path fill="#25D366" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" />
+    <path fill="#fff" d="M16.5 14.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2s.2-1.1.2-1.2-.2-.2-.4-.3z"/>
+  </svg>
+);
 
 // Inject the image-loading shimmer animation once. Animates `transform`
 // (not `background-position`) so the compositor can run it on the GPU —
@@ -48,11 +59,14 @@ function Shimmer({ style, className, dark = false, delay }) {
 //   car        — public_car_listings row
 //   ctaContext — accepted for old callers; contact lives on the car page now
 //   inCompare / compareFull / onCompare — the compare tray
+//   size       — 'grid' (default, portrait) | 'big' (one wide card per row on a phone, two on
+//                desktop: price on the photo, spec tags, ONE WhatsApp button; cardSize.js)
 // Photos are resized WebP via weserv; 480px covers a 240px card on a 2x screen.
 const toThumb = (url) => cdnImg(url, 480, 72);
 
 // eslint-disable-next-line no-unused-vars
-export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false, priceMode = 'price' }) {
+export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false, priceMode = 'price', size = 'grid' }) {
+  const big = size === 'big';
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -195,10 +209,27 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const saved = isSaved(car.id);
   const priceText = price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'Price on request';
 
+  // Big card: the price on the photo (Monthly mode swaps which number is big), and the one
+  // WhatsApp button. It links /api/wa (CDP-3: no number in the page) for THIS car, with the
+  // ?ref= that brought the buyer, and logs the tap like the page's budget finder does.
+  const bigMain = showMonthly ? `RM ${monthly.toLocaleString('en-MY')}/mo` : priceText;
+  const bigSub = showMonthly
+    ? `${fromPrefix}RM ${price.toLocaleString('en-MY')} · ${Math.round((1 - DEFAULT_LOAN_RATIO) * 100)}% down, ${DEFAULT_TENURE_YEARS} yrs, ${DEFAULT_EIR}%`
+    : monthly ? `${car.is_model_card ? 'from' : 'est.'} RM ${monthly.toLocaleString('en-MY')}/mo` : '';
+  const chips = [...specParts, condLabel].filter(Boolean);
+  const waHref = big && !isSold ? sellerWaUrl({
+    car: car.id, slug: getRef() || undefined,
+    text: `Hi, I'm interested in the ${[year, brand, model, variant].filter(Boolean).join(' ')}${price ? ` (${priceText})` : ''}. ${typeof window !== 'undefined' ? window.location.origin + carHref : ''}`,
+  }) : null;
+  const onWa = (e) => {
+    e.stopPropagation();
+    trackEvent(supabase, 'whatsapp_click', { car_id: car.id, car_name: `${brand} ${model} ${year}`, dealer_id: car.dealer_id || null, salesman_slug: getRef() || null, metadata: { source: 'big_card', price } });
+  };
+
   return (
     <div
       ref={cardRef}
-      className={`sc-root${dark ? ' sc-dark' : ''}${isSold ? ' sc-sold' : ''}`}
+      className={`sc-root${dark ? ' sc-dark' : ''}${isSold ? ' sc-sold' : ''}${big ? ' sc-big' : ''}`}
       {...(!isSold ? carWarmProps(car) : {})}
       onClick={() => {
         if (suppressClick.current) { suppressClick.current = false; return; }
@@ -240,7 +271,16 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {isSold ? <span className="sc-tag tl">Sold</span>
           : isHot && discountPct ? <span className="sc-tag tl crimson">-{discountPct}%</span>
           : grade ? <span className="sc-tag tl">{grade}</span> : null}
-        {photoCount > 1 && (
+        {big ? (
+          <>
+            <div className="sc-fade" />
+            <div className="sc-ov">
+              <div className="sc-ov-main">{bigMain}</div>
+              {bigSub && <div className="sc-ov-sub">{bigSub}</div>}
+            </div>
+            {photoCount > 1 && <span className="sc-tag br">{hasGallery ? `${safeIdx + 1} / ${slides.length}` : `${photoCount} photos`}</span>}
+          </>
+        ) : photoCount > 1 && (
           <span className="sc-tag bl">{hasGallery ? `${safeIdx + 1} / ${slides.length}` : `${photoCount} photos`}</span>
         )}
         {!isSold && (
@@ -289,7 +329,9 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         </h3>
         <div className="sc-variant">{cardVariant || ' '}</div>
 
-        {showMonthly ? (
+        {big ? (
+          chips.length > 0 && <div className="sc-chips">{chips.map(c => <span key={c}>{c}</span>)}</div>
+        ) : showMonthly ? (
           <>
             <div className="sc-price xd-crimson-text">RM {monthly.toLocaleString('en-MY')}/mo</div>
             <div className="sc-sub">{fromPrefix}RM {price.toLocaleString('en-MY')} · {Math.round((1 - DEFAULT_LOAN_RATIO) * 100)}% down, {DEFAULT_TENURE_YEARS} yrs, {DEFAULT_EIR}%</div>
@@ -306,27 +348,35 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           </>
         )}
 
-        <div className="sc-specs">
-          <div className="sc-specs-in">{specParts.join(' · ') || ' '}</div>
-        </div>
+        {!big && (
+          <div className="sc-specs">
+            <div className="sc-specs-in">{specParts.join(' · ') || ' '}</div>
+          </div>
+        )}
         <div className="sc-seller" title={isVerified ? `Verified ${sellerLabel.toLowerCase()}` : undefined}>
           {isVerified && <BadgeCheck size={13} style={{ flexShrink: 0, color: 'var(--xd-crimson-mid)' }} aria-label="Verified" role="img" />}
           <span>
-            <span className="sc-hide-narrow">{condLabel ? condLabel + ' · ' : ''}</span>
+            {!big && <span className="sc-hide-narrow">{condLabel ? condLabel + ' · ' : ''}</span>}
             {sellerLabel}{place ? `, ${place}` : ''}{showSold ? ` · ${soldCount} sold` : ''}
           </span>
         </div>
+        {waHref && (
+          <a className="sc-wa" href={waHref} target="_blank" rel="noopener noreferrer" onClick={onWa}
+            aria-label={`WhatsApp the seller about the ${cardName}`}>
+            <WaMark /> {isSubdomain() ? 'WhatsApp us' : 'WhatsApp seller'}
+          </a>
+        )}
       </div>
     </div>
   );
 }
 
 // Skeleton: the same portrait shape as the card, so nothing jumps when it loads.
-export function ShowroomCardSkeleton({ dark = false }) {
+export function ShowroomCardSkeleton({ dark = false, big = false }) {
   const bar = (style, delay) => <Shimmer dark={dark} delay={delay} style={{ borderRadius: 4, ...style }} />;
   return (
     <div className={`sc-root${dark ? ' sc-dark' : ''}`} style={{ pointerEvents: 'none' }}>
-      <Shimmer dark={dark} style={{ aspectRatio: '4 / 3' }} />
+      <Shimmer dark={dark} style={{ aspectRatio: big ? '16 / 10' : '4 / 3' }} />
       <div className="sc-body">
         {bar({ height: 14, width: '78%', marginBottom: 6 })}
         {bar({ height: 11, width: '48%', marginBottom: 12 }, '0.05s')}

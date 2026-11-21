@@ -3,7 +3,7 @@ import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles, ArrowDownWideNarrow } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles, ArrowDownWideNarrow, LayoutGrid, GalleryVerticalEnd } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
@@ -11,6 +11,7 @@ import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
 import { usePriceMode } from '../utils/priceMode';
+import { useCardSize } from '../utils/cardSize';
 import { trackEvent } from '../utils/analytics';
 import { cleanSearchText, activeFilterKeys, searchKey } from '../utils/searchTracking';
 import { chassisSearch } from '../utils/chassisCodes';
@@ -436,6 +437,8 @@ export default function CarListingPage() {
 
   // Monthly | Price switch for the cards (device-remembered, src/utils/priceMode.js).
   const [priceMode, setPriceMode] = usePriceMode();
+  // Grid | Big card switch (device-remembered, src/utils/cardSize.js).
+  const [cardSize, setCardSize] = useCardSize();
 
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
@@ -995,9 +998,20 @@ export default function CarListingPage() {
           </h1>
 
           {/* Results: the count, then the filters in force (each with an x) */}
-          <p style={{ margin:'0 0 10px', fontSize:'17px', fontWeight:'800', color:T.text, letterSpacing:'-0.01em' }}>
-            {loading ? '…' : totalCount.toLocaleString()} <span style={{ fontSize:'14px', fontWeight:'600', color:T.textMuted }}>{totalCount === 1 ? 'car' : 'cars'} for sale</span>
-          </p>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', margin:'0 0 10px' }}>
+            <p style={{ margin:0, fontSize:'17px', fontWeight:'800', color:T.text, letterSpacing:'-0.01em' }}>
+              {loading ? '…' : totalCount.toLocaleString()} <span style={{ fontSize:'14px', fontWeight:'600', color:T.textMuted }}>{totalCount === 1 ? 'car' : 'cars'} for sale</span>
+            </p>
+            {/* Grid | Big card */}
+            <div role="group" aria-label="Card size" style={{ display:'inline-flex', flexShrink:0, gap:'2px', padding:'3px', borderRadius:'11px', background:T.field }}>
+              {[['grid', LayoutGrid, 'Grid'], ['big', GalleryVerticalEnd, 'Big cards']].map(([v, Icon, label]) => (
+                <button key={v} type="button" aria-pressed={cardSize===v} aria-label={label} title={label} onClick={()=>setCardSize(v)}
+                  style={{ width:'36px', height:'34px', borderRadius:'8px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', background: cardSize===v ? T.ctl : 'transparent', color: cardSize===v ? T.text : T.textMuted, boxShadow: cardSize===v ? '0 1px 2px rgba(15,23,42,0.14)' : 'none' }}>
+                  <Icon size={17}/>
+                </button>
+              ))}
+            </div>
+          </div>
           {filterChips.length > 0 && (
             <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center', marginBottom:'14px' }}>
               {filterChips.map(chip=>(
@@ -1031,9 +1045,9 @@ export default function CarListingPage() {
                       <span style={{ background:T.ink, color:T.inkText, fontSize:'11px', fontWeight:'700', padding:'4px 8px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
-                  <div className="cl-grid sc-grid" style={{ opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
+                  <div className={`cl-grid sc-grid${cardSize === 'big' ? ' sc-grid-big' : ''}`} style={{ opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
-                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
+                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark} big={cardSize === 'big'}/>)
                       : cars.length === 0
                         ? (
                           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
@@ -1050,7 +1064,7 @@ export default function CarListingPage() {
                             const compareFull = compareIds.length >= 4 && !inCompare;
                             return (
                               <ShowroomCard
-                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark} priceMode={priceMode}
+                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark} priceMode={priceMode} size={cardSize}
                                 inCompare={inCompare} compareFull={compareFull}
                                 onCompare={()=>{ inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 priority={i===0}
