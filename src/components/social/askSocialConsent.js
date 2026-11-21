@@ -5,7 +5,10 @@
 // would close with it.
 export const ASK_SOCIAL_EVENT = 'drevo:ask-social-consent';
 
-export function askSocialConsent({ id, title }) {
-  if (!id || typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(ASK_SOCIAL_EVENT, { detail: { id, title: title || 'your car' } }));
+// One car: { id, title }. Many cars at once (bulk publish): { ids, title: '12 cars' }, one question, one answer
+// stored on each car.
+export function askSocialConsent({ id, ids, title }) {
+  const list = ids?.length ? ids : id ? [id] : [];
+  if (!list.length || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ASK_SOCIAL_EVENT, { detail: { id: list[0], ids: list, title: title || 'your car' } }));
 }

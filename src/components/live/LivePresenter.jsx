@@ -9,12 +9,12 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
-  netPrice, rebateKey, carLabel, isLocalNew, LOCAL_NEW_EIR, savedRebates, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, rebateNeedsAsk, rebateKey, carLabel, isLocalNew, LOCAL_NEW_EIR, savedRebates, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
   tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT, revealPick, viewerHandle, HANDLE_MAX,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveInsFigures, saveLiveInsFigures, initialLiveCarRates, saveLiveCarRates, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
   initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
@@ -234,6 +234,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // to end the live, and that asks first. A seller aiming for Adjust's own
   // close hit the live's X a row above it and ended the stream.
   const [confirmEnd, setConfirmEnd] = useState(false);
+  // A rebate over REBATE_ASK_SHARE of the price asks "keep it?" once it is typed
+  // (never refused: a dealership may run a real crazy deal). Changing it puts
+  // back what the box held when the seller started typing.
+  const [rebateAsk, setRebateAsk] = useState(null);
+  const rebatePrev = useRef({});
   const requestExit = () => {
     if (photoFull) setPhotoFull(false);
     else if (pickOpen) setPickOpen(false);
@@ -288,9 +293,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     listings.some(isLocalNew) && 'local',
     (!listings.length || listings.some((c) => !isLocalNew(c))) && 'std',
   ].filter(Boolean);
+  // A car's own rate (typed on its Rate line, kept on this device until
+  // changed) wins over its group's; the basis it was typed in goes with it.
+  const [carRates, setCarRates] = useState(() => (embedded ? {} : initialLiveCarRates()));
+  const [rateEdit, setRateEdit] = useState(false);
   const rateOf = (c) => {
+    const own = carRates[c?.id];
+    if (own && Number(own.r) > 0) return { rate: Number(own.r), basis: own.b === 'flat' ? 'flat' : 'eir', own: true };
     const r = rates[isLocalNew(c) ? 'local' : 'std'];
-    return { rate: Math.max(0, Number(r.eir) || 0), basis: r.basis };
+    return { rate: Math.max(0, Number(r.eir) || 0), basis: r.basis, own: false };
   };
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, never saved to the listing (promos change monthly). Every
@@ -337,6 +348,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       .filter(([k, v]) => ids.has(k.split(':')[0]) && Number(v) > 0));
     saveLiveInsFigures(keep);
   }, [insTyped, listingIds, embedded]);
+  useEffect(() => {
+    if (embedded || !listingIds) return;
+    const ids = new Set(listingIds.split(','));
+    saveLiveCarRates(Object.fromEntries(Object.entries(carRates).filter(([k, v]) => ids.has(k) && Number(v?.r) > 0)));
+  }, [carRates, listingIds, embedded]);
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -378,6 +394,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Back closes the photo first, then (asking) the live.
   useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
   useModalHistory(!embedded && confirmEnd, () => setConfirmEnd(false));
+  const rememberRebate = (key) => { rebatePrev.current[key] = rebates[key] ?? ''; };
+  const checkRebate = (key, listPrice) => {
+    const n = Number(rebates[key]) || 0;
+    if (rebateNeedsAsk(listPrice, n) && rebatePrev.current[key] !== rebates[key]) {
+      setRebateAsk({ key, price: Number(listPrice) || 0, value: n });
+    }
+  };
+  const undoRebate = () => {
+    setRebateAsk((a) => {
+      if (a) {
+        const back = rebatePrev.current[a.key] ?? '';
+        setRebates((r) => { const n = { ...r }; if (back === '') delete n[a.key]; else n[a.key] = back; return n; });
+      }
+      return null;
+    });
+  };
+  useModalHistory(!embedded && !!rebateAsk, undoRebate);
   useModalHistory(!embedded && pickOpen, () => setPickOpen(false));
   // Back closes the Settings pop-up, never the live.
   useModalHistory(!embedded && adjustOpen, () => setAdjustOpen(false));
@@ -544,7 +577,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const { price, rebate, net } = netPrice(shown, rebates);
   // This car's rate group, its rate and how it was quoted.
   const rateGroup = isLocalNew(shown) ? 'local' : 'std';
-  const { rate, basis } = rateOf(shown);
+  const { rate, basis, own: ownRate } = rateOf(shown);
+  // Typing on the Rate line: digits and one dot, capped like Adjust; empty
+  // drops this car back onto its group's rate.
+  const typeCarRate = (v) => {
+    const clean = clampRateInput(v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').slice(0, 5));
+    setCarRates((m) => {
+      const next = { ...m };
+      if (clean === '') delete next[car.id];
+      else next[car.id] = { r: clean, b: m[car.id]?.b || rates[rateGroup].basis };
+      return next;
+    });
+  };
   // Insurance for a car: typed figure first, else the tariff estimate off the
   // price before rebate (the car's value) and its engine cc (a model card's
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
@@ -570,6 +614,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setDepEdit(false);
     setRebateEdit(false);
     setInsEdit(false);
+    setRateEdit(false);
   }, [listings.length]);
 
   // Straight to car i, sliding in from the side it sits on.
@@ -585,6 +630,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setDepEdit(false);
     setRebateEdit(false);
     setInsEdit(false);
+    setRateEdit(false);
   }, [idx, listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -634,6 +680,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         else if (e.key === 'ArrowLeft') stepPhoto(-1);
         return;
       }
+      if (rebateAsk) { if (e.key === 'Escape') undoRebate(); return; }
       if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
       // Type a number, then Enter: the car viewers asked for by its #N.
       if (!basic && !adjustOpen && !budgetSetOpen && /^[0-9]$/.test(e.key)) { setTypedNo((v) => (v + e.key).replace(/^0+/, '').slice(-3)); return; }
@@ -647,7 +694,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, goTo, typedNo, pickOpen, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen, basic]);
+  }, [go, goTo, typedNo, pickOpen, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, rebateAsk, adjustOpen, budgetSetOpen, basic]);
   // A typed number nobody confirmed clears itself.
   useEffect(() => {
     if (!typedNo) return undefined;
@@ -1328,7 +1375,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-confirm-btns button { flex: 1; height: 44px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
         .lp-confirm-keep { border: none; background: var(--lp-a); color: #fff; }
         .lp-confirm-end { border: 1.5px solid #d1d5db; background: #fff; color: #0f1115; }
-        .lp-brk tr.lp-tap { cursor: pointer; }
+        .lp-brk tr.lp-tap, .lp-brk td.lp-tap { cursor: pointer; }
         .lp-cellin { font-size: max(16px, 1em) !important; box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         /* Tailwind preflight makes every svg display:block, which dropped the pen onto
            its own line under the number. Inline, and BEFORE the number so the
@@ -1716,7 +1763,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   ))}
                 </div>
               )}
-              {!financeable ? null
+              {!financeable ? (price > 0 && rebate >= price ? <p className="lp-ans-msg">{t.rebateCovers}</p> : null)
                 : noLoan ? <p className="lp-ans-msg">{t.depositCovers}</p>
                 : !tenures.length ? <p className="lp-ans-msg">{t.tooOld(MAX_CAR_AGE_AT_END)}</p> : (<>
                   <p className="lp-ans-lbl">
@@ -1793,8 +1840,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                         <td>
                           <input className="lp-cellin" autoFocus type="text" inputMode="numeric" placeholder="0"
                             aria-label={t.rebateEdit} value={rebates[rk] ?? ''}
+                            onFocus={() => rememberRebate(rk)}
                             onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [rk]: d })); }}
-                            onBlur={() => setRebateEdit(false)}
+                            onBlur={() => { setRebateEdit(false); checkRebate(rk, price); }}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
                         </td>
                       </tr>
@@ -1821,7 +1869,24 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                           <Info size={13} />
                         </button>
                       </td>
-                      <td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td>
+                      {/* Typed in place, like Rebate: this car's own rate, kept on
+                          the device until changed (owner, 2026-10-24). */}
+                      {rateEdit ? (
+                        <td>
+                          <input className="lp-cellin" autoFocus type="text" inputMode="decimal"
+                            placeholder={fmtRate(rates[rateGroup].eir)} aria-label={t.rateEdit}
+                            value={carRates[car.id]?.r ?? ''}
+                            onChange={(e) => typeCarRate(e.target.value)}
+                            onBlur={() => setRateEdit(false)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+                        </td>
+                      ) : (
+                        <td className="lp-tap" role="button" tabIndex={0} aria-label={t.rateEdit}
+                          onClick={() => setRateEdit(true)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRateEdit(true); } }}>
+                          <Pencil size={12} aria-hidden="true" className="lp-pen" />{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}
+                        </td>
+                      )}
                     </tr>
                   </>)}
                 </tbody>
@@ -1849,7 +1914,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {rateWarn && (
                 <p className="lp-warn">
                   {rateWarn === 'looksFlat'
-                    ? <>{t.looksFlat}<button type="button" onClick={() => setRate(rateGroup, { basis: 'flat' })}>{t.switchFlat}</button></>
+                    ? <>{t.looksFlat}<button type="button" onClick={() => (ownRate
+                        ? setCarRates((m) => ({ ...m, [car.id]: { ...m[car.id], b: 'flat' } }))
+                        : setRate(rateGroup, { basis: 'flat' }))}>{t.switchFlat}</button></>
                     : t.aboveCap(eirCap(pickYears))}
                 </p>
               )}
@@ -2170,6 +2237,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                           <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
                             <span>- RM</span>
                             <input id={`lp-reb-${row.key}`} type="text" inputMode="numeric" placeholder="0" value={v}
+                              onFocus={() => rememberRebate(row.key)} onBlur={() => checkRebate(row.key, row.price)}
                               onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [row.key]: d })); }} />
                           </span>
                           {on
@@ -2233,6 +2301,22 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-confirm-btns">
               <button type="button" className="lp-confirm-end" onClick={() => { setConfirmEnd(false); finish(); }}>{t.endYes}</button>
               <button type="button" className="lp-confirm-keep" autoFocus onClick={() => setConfirmEnd(false)}>{t.endKeep}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {rebateAsk && (
+        <div className="lp-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lp-reb-ask-h"
+          onClick={(e) => { if (e.target === e.currentTarget) undoRebate(); }}>
+          <div className="lp-confirm-card">
+            <h2 id="lp-reb-ask-h">{t.rebateAskTitle}</h2>
+            <p>
+              {t.rebateAskBody(fmt(rebateAsk.value), fmt(rebateAsk.price), Math.round((rebateAsk.value / rebateAsk.price) * 100))}
+              {rebateAsk.value >= rebateAsk.price ? ` ${t.rebateAskAll}` : ''}
+            </p>
+            <div className="lp-confirm-btns">
+              <button type="button" className="lp-confirm-end" onClick={() => setRebateAsk(null)}>{t.rebateAskKeep}</button>
+              <button type="button" className="lp-confirm-keep" autoFocus onClick={undoRebate}>{t.rebateAskChange}</button>
             </div>
           </div>
         </div>

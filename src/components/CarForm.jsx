@@ -1797,6 +1797,35 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return null;
   };
 
+  // Edit mode: only what the old disabled button required (not mileage 0 or a
+  // blank colour, which older / new-car rows legitimately have).
+  const editBlockers = () => {
+    const at = (step, ...pairs) => {
+      const fields = pairs.filter(([m]) => m).map(([, l]) => l);
+      return fields.length ? { step, fields } : null;
+    };
+    return (
+      at(1, [!photosOk, photosMissingLabel(form.images.length, minPhotos)]) ||
+      at(2, [!form.brand, "Brand"], [!form.model, "Model"], [!form.year, "Year"]) ||
+      at(4, [!form.state, "State"], [!form.city, "City"],
+        [!form.basePrice && !isNewCar && !costOptional, "Base price"], [!form.sellingPrice, "Selling price"])
+    );
+  };
+
+  // Fast lane (new listings, not the dealer intake path): after a quick stage,
+  // go to the next stage that still has a REQUIRED gap, else straight to Review.
+  // Stages with nothing required left are not walked screen by screen. The data
+  // is the same as tapping Continue/Skip through every optional screen (payment
+  // "loan", encumbrance "unknown", no warranty, no services), so nothing is
+  // invented; the optional rows stay one tap away on each stage's summary and on
+  // Review's Edit buttons.
+  const fastLane = quickMode && !listing && !intakeDone;
+  const nextNeededStep = (from) => {
+    if (!fastLane) return from + 1;
+    for (let s = from + 1; s <= 5; s++) if (missingForStep(s).length) return s;
+    return 6;
+  };
+
   // Advance a step, or explain (via toast) exactly what's missing.
   const goNext = () => {
     const miss = missingFields();
@@ -1862,7 +1891,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     // pop up"). Catch it here: name the missing fields and bounce the user to
     // the offending step. Edit mode ("Save Changes") keeps the lighter checks so
     // quick edits of older listings aren't blocked on legacy-empty fields.
-    const incomplete = listing ? null : firstIncompleteStep();
+    // Edit mode used to have the bottom button DISABLED (no words) while a
+    // required field was blank, so "Save Changes" looked dead. It now stays
+    // pressable and says what is missing, same as a new listing.
+    const incomplete = listing
+      ? editBlockers()
+      : firstIncompleteStep();
     if (incomplete) {
       const label = STEPS.find((x) => x.id === incomplete.step)?.label || `Step ${incomplete.step}`;
       setStep(incomplete.step);
@@ -3066,6 +3100,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       else tags.push(f);
       set("features", tags.join(", "));
     };
+    // The dealer's own options text (stock sheet import) as tickable chips,
+    // minus anything already in the common list above.
+    const sheetTags = parseTags(String(form.options || "").replace(/[\/;|]/g, ","))
+      .filter((t) => t.length <= 40 && !COMMON_FEATURES.some((c) => c.toLowerCase() === t.toLowerCase()))
+      .slice(0, 40);
     return (
       <>
             <Field
@@ -3099,6 +3138,29 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   })}
                 </div>
               </div>
+              {sheetTags.length > 0 && (
+                <div className="mb-2.5">
+                  <p className="text-xs text-gray-500 mb-1.5">From your stock sheet - tap the ones this car has</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sheetTags.map((f) => {
+                      const on = isSel(f);
+                      return (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => toggleFeature(f)}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                            on ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {on && <Check className="w-3.5 h-3.5" />}
+                          {f}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <textarea
                 name="features"
                 value={form.features}
@@ -3139,10 +3201,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       setForm={setForm}
       screens={screens}
       summaryRows={summaryRows}
-      landOnSummary={!!visitedStages[id]}
+      // Fast lane: a stage opens on its first required gap, then its summary,
+      // never on question one of a screen the seller has nothing to say to.
+      landOnSummary={!!visitedStages[id] || fastLane}
+      skipSummary={fastLane}
       contextLine={carLine}
       onExitBack={() => setStep(id - 1)}
-      onDone={() => setStep(id + 1)}
+      onDone={() => setStep(nextNeededStep(id))}
     />
   );
   const tiles = (options, current, onPick, cols = "grid-cols-2") => (
@@ -3261,7 +3326,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       ) },
     { key: "services", title: "Anything included with the car?", skip: svcEmpty || !!intakeDone, filled: form.included_services.length > 0,
       render: () => renderServices() },
+    // Required like publish requires it: a profile with no state/city otherwise
+    // reaches Review and gets bounced back here by the pre-flight check.
     { key: "pricing_more", title: "Location & deposit", enter: "pass", primaryLabel: "Done",
+      required: true, answered: !!form.state && !!form.city,
       render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
   ], [
     { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
@@ -3478,7 +3546,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           specsLocked={specsLocked}
           unlockSpecs={unlockSpecs}
           onExitBack={() => setStep(1)}
-          onDone={() => setStep(3)}
+          onDone={() => setStep(nextNeededStep(2))}
+          conditionChosen={!!defaultValues?.condition}
           renderExtras={renderQuickExtras}
         />
       ) : (
@@ -4290,7 +4359,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || (capError && !keepPrivate) || !(photosOk && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar || costOptional) && form.sellingPrice)}
+            disabled={uploading || (capError && !keepPrivate)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

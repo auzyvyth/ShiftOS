@@ -144,6 +144,15 @@ export function rateWarning(rate, basis, years) {
 // advisor told the owner, 2026-11-11), so each variant carries its own; the
 // old one-box-per-card rule (2026-10-22) is gone.
 export const rebateKey = (car) => (car?._variantId ? `${car.id}:${car._variantId}` : car?.id);
+// A rebate this big is probably a typo (RM73,400 off a RM73,400 car blanked a
+// live, 2026-11-15), but a dealership may run a real crazy deal, so it is never
+// refused: the presenter asks "keep it?" first. Share of the price.
+export const REBATE_ASK_SHARE = 0.2;
+export const rebateNeedsAsk = (price, rebate) => {
+  const p = Number(price) || 0;
+  const r = Number(rebate) || 0;
+  return p > 0 && r > p * REBATE_ASK_SHARE;
+};
 export function netPrice(car, rebates) {
   const price = Number(car?.selling_price) || 0;
   const rebate = Math.min(price, Math.max(0, Number(rebates?.[rebateKey(car)]) || 0));

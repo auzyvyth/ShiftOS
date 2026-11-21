@@ -94,6 +94,7 @@ import { plWord } from "../theme/plStatus";
 import { InventorySwitch, StatusPills, AddCarSheet, AddCarButton, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from "../components/inventory/InventoryUi";
 import { WindowStickerSheet } from '../components/inventory/WindowSticker';
 import { BulkBar, BulkPriceSheet } from '../components/inventory/BulkBar';
+import { askSocialConsent } from '../components/social/askSocialConsent';
 import { AutoPostButton, AutoPostSheet, useAutoPost } from "../components/autopost/AutoPost";
 import { loginUrl } from "../config/site";
 import {
@@ -139,6 +140,8 @@ import { DELIVERIES_OPEN } from "../utils/storefrontLayout";
 // dealer resolve to the same dealer_id and would otherwise share one cache entry
 // on a shared device. A few KB duplicated is the right trade for that.
 const PANEL_CACHE_KEY = "dash";
+// Listings shows this many cars, then a See more button adds this many again.
+const LIST_PAGE = 30;
 
 // Which sidebar group owns each tab. Module scope on purpose: this was three
 // identical copies in three scopes, so a new tab had to be added to all three
@@ -241,8 +244,7 @@ export default function DashboardPage() {
   const [filterCondition, setFilterCondition] = useState('');
   const [filterTransmission, setFilterTransmission] = useState('');
   const [filterState, setFilterState] = useState('');
-  const [visibleCount, setVisibleCount] = useState(30);
-  const sentinelRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
   const [copiedListingId, setCopiedListingId] = useState(null);
   const [userId, setUserId] = useState(seed.uid);
   const [salesmen,         setSalesmen]         = useState(() => seed.uid ? (readCache(`dash_salesmen_${seed.uid}`) || []) : []);
@@ -838,21 +840,32 @@ export default function DashboardPage() {
     setBulkBusy(true);
     let ok = 0, failed = 0, capHit = false;
     const updated = {};
-    for (const l of targets) {
-      const { data, error } = await supabase.from('car_listings').update({ status })
-        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select();
-      if (error || !data?.length) {
-        failed++;
-        if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
-        continue;
-      }
-      ok++;
-      updated[l.id] = data[0];
-      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+    // 10 cars at a time: one by one, publishing 175 cars took minutes.
+    for (let i = 0; i < targets.length; i += 10) {
+      const chunk = targets.slice(i, i + 10);
+      const results = await Promise.all(chunk.map(l => supabase.from('car_listings').update({ status })
+        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select()));
+      results.forEach(({ data, error }, j) => {
+        const l = chunk[j];
+        if (error || !data?.length) {
+          failed++;
+          if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
+          return;
+        }
+        ok++;
+        updated[l.id] = data[0];
+        logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+      });
     }
     setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
     setBulkBusy(false);
     exitSelect();
+    // Publishing many cars: ask ONCE whether Drevo may feature them (SOCIAL-1), instead of once per car.
+    // Own cars only, never one already answered, never a new-car card.
+    if (status === 'available' && !profile?.dealer_id) {
+      const askIds = Object.values(updated).filter(r => r.social_consent == null && !r.new_car_model_id).map(r => r.id);
+      if (askIds.length) askSocialConsent({ ids: askIds, title: `${askIds.length} car${askIds.length === 1 ? '' : 's'}` });
+    }
     if (capHit) toast.error(`Changed ${ok}. Your plan's listing limit stopped the rest.`);
     else if (failed) toast.error(`Changed ${ok}, ${failed} could not be changed. Try those again.`);
     else toast.success(`Changed ${ok} car${ok === 1 ? '' : 's'}${skippedSold ? `. Skipped ${skippedSold} sold` : ''}.`);
@@ -1023,7 +1036,11 @@ export default function DashboardPage() {
       setListings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
       if (detailListing?.id === updated.id) setDetailListing(updated);
       toast.success(`${l.brand} ${l.model} ${l.year} is now live on your marketplace.`);
-      setStatusFilter("available");
+      // Same once-only social ask as bulk publish (SOCIAL-1): a standing yes files it for Console > Social silently.
+      if (!profile?.dealer_id && updated.social_consent == null && !updated.new_car_model_id) {
+        askSocialConsent({ id: updated.id, title: `${l.year || ''} ${l.brand || ''} ${l.model || ''}`.trim() });
+      }
+      // Stay on Unpublished while there are more to go, so the next one is one tap away.
     } catch (e) {
       console.error('[handlePublishListing]', e);
     }
@@ -1058,19 +1075,7 @@ export default function DashboardPage() {
   }, [listings, searchQuery, statusFilter, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   // Reset visible window whenever the filtered set changes
-  useEffect(() => { setVisibleCount(30); }, [statusFilter, searchQuery, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
-
-  // Infinite scroll — expand visible window when sentinel enters viewport
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + 20); },
-      { rootMargin: '300px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [activeTab]);
+  useEffect(() => { setVisibleCount(LIST_PAGE); }, [statusFilter, searchQuery, filterMinPrice, filterMaxPrice, filterMinMileage, filterMaxMileage, filterCondition, filterTransmission, filterState]);
 
   const salesmenById = Object.fromEntries(salesmen.map((s) => [s.id, s]));
 
@@ -1156,7 +1161,7 @@ export default function DashboardPage() {
           <ChevronDown style={{ width: 12, height: 12, color: premiumLight.textMuted }} />
         </button>
         {open && (
-          <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: 6, zIndex: 50, background: '#fff', borderRadius: 12, boxShadow: premiumLight.shadow, padding: 4, minWidth: 140 }}>
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 50, background: '#fff', borderRadius: 12, boxShadow: premiumLight.shadow, padding: 4, minWidth: 140 }}>
             {Object.entries(STATUS).map(([key, val]) => (
               <button
                 key={key}
@@ -2039,6 +2044,7 @@ export default function DashboardPage() {
                     onSelectAll={() => setSelectedIds(new Set(filteredListings.map(l => l.id)))}
                     onClear={exitSelect}
                     onStatus={bulkStatus}
+                    onPublish={statusFilter === 'unpublished' ? () => bulkStatus('available') : null}
                     onPrice={() => setBulkPriceOpen(true)}
                   />
                   <BulkPriceSheet
@@ -2071,11 +2077,15 @@ export default function DashboardPage() {
                       {/* Cost / Recon / Gross columns removed (2026-11-09): a dealer's cost
                           lives on stock_units only (batch 4), so on car_listings they were
                           always blank. The Stock & costs pill shows them. */}
-                      <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
+                      {/* Row layout (owner, 2026-11-21: "rows are packed, left and right"): year, km and grade sit
+                          under the car's name instead of two columns; Seller shows only on Sold (it
+                          was a dash on every other car); the 30-day numbers are two lines of words
+                          (InterestCell line), not five tiles; Status is pinned right. */}
+                      <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: `1px solid ${premiumLight.line}` }}>
-                            {['', 'Vehicle', 'Price', 'Last 30 days', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
-                              <th key={i} style={{ ...INV_MICRO, padding: '11px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                            {['', 'Vehicle', 'Price', 'Last 30 days', ...(statusFilter === 'sold' ? ['Seller'] : []), 'Listed', 'Status'].map((h, i, all) => (
+                              <th key={i} style={{ ...INV_MICRO, padding: i === 0 ? '11px 8px 11px 20px' : '11px 16px', textAlign: i === all.length - 1 ? 'right' : 'left', whiteSpace: 'nowrap', paddingRight: i === all.length - 1 ? 24 : undefined }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -2096,19 +2106,25 @@ export default function DashboardPage() {
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
                                 {/* Thumbnail */}
-                                <td style={{ padding: '12px 8px 12px 16px', width: 84, position: 'relative' }}>
+                                <td style={{ padding: '14px 8px 14px 20px', width: 116, minWidth: 116, position: 'relative' }}>
                                   {selectMode && <SelectTick on={selectedIds.has(l.id)} />}
+                                  {/* maxWidth none: the reset's img{max-width:100%} let the table squeeze the photo to a sliver. */}
                                   {l.images?.[0]
-                                    ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
-                                    : <div style={{ width: 72, height: 48, borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
+                                    ? <img src={cdnImg(l.images[0], 200, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 96, height: 64, maxWidth: 'none', borderRadius: 10, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    : <div style={{ width: 96, height: 64, borderRadius: 10, background: premiumLight.raised, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: premiumLight.textMuted }} /></div>
                                   }
                                 </td>
                                 {/* Vehicle */}
-                                <td style={{ padding: '12px 16px', minWidth: 165 }}>
-                                  <p style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, fontWeight: 600 }}>{l.brand}</p>
-                                  <p style={{ fontSize: 14, color: '#111827', fontWeight: 700, lineHeight: 1.25, margin: '3px 0 0' }}>{l.model}</p>
-                                  {l.variant && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{l.variant}</p>}
-                                  {(l.vin || l.vin_number) && <p style={{ fontSize: 10, color: '#374151', margin: '3px 0 0', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</p>}
+                                <td style={{ padding: '14px 16px', minWidth: 200 }}>
+                                  <p style={{ fontSize: 14, color: '#111827', fontWeight: 700, lineHeight: 1.3, margin: 0 }}>
+                                    {[l.brand, l.model].filter(Boolean).join(' ')}
+                                    {l.variant && <span style={{ fontWeight: 500, color: '#6b7280' }}> {l.variant}</span>}
+                                  </p>
+                                  <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    {[l.year, l.mileage ? `${Number(l.mileage).toLocaleString()} km` : null, !l.auction_grade && l.condition ? l.condition[0].toUpperCase() + l.condition.slice(1) : null].filter(Boolean).join(' · ')}
+                                    {l.auction_grade && <span style={{ fontSize: 11, fontWeight: 700, color: premiumLight.text, background: premiumLight.raised, borderRadius: 999, padding: '1px 8px' }}>Grade {l.auction_grade}</span>}
+                                  </p>
+                                  {(l.vin || l.vin_number) && <p style={{ fontSize: 11, color: '#9ca3af', margin: '3px 0 0', fontFamily: 'monospace', letterSpacing: '0.03em' }}>{(l.vin || l.vin_number).trim()}</p>}
                                 </td>
                                 {/* Price */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
@@ -2122,28 +2138,11 @@ export default function DashboardPage() {
                                 </td>
                                 {/* Interest: counted views + enquiry taps, last 30 days */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  <InterestCell stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
-                                </td>
-                                {/* Year / Km */}
-                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                                  {l.year && <p style={{ fontSize: 13, color: '#374151', fontWeight: 600, margin: 0 }}>{l.year}</p>}
-                                  {l.mileage
-                                    ? <p style={{ fontSize: 11, color: '#6b7280', margin: l.year ? '2px 0 0' : 0 }}>{Number(l.mileage).toLocaleString()} km</p>
-                                    : !l.year && <span style={{ color: '#374151', fontSize: 13 }}>—</span>
-                                  }
-                                </td>
-                                {/* Grade */}
-                                <td style={{ padding: '12px 16px' }}>
-                                  {l.auction_grade
-                                    ? <span style={{ fontSize: 12, fontWeight: 700, color: premiumLight.text, background: premiumLight.raised, borderRadius: 999, padding: '3px 9px', display: 'inline-block' }}>{l.auction_grade}</span>
-                                    : l.condition
-                                      ? <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{l.condition}</span>
-                                      : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
-                                  }
+                                  <InterestCell line stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} scans={stickerScans ? (stickerScans[l.id] || 0) : null} />
                                 </td>
                                 {/* Seller — only meaningful once sold (shows the salesman who closed
                                     the deal). Available cars aren't "assigned", so leave it blank. */}
-                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                {statusFilter === 'sold' && <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   {(() => {
                                     if (!isSold) return <span style={{ color: '#d1d5db', fontSize: 12 }}>—</span>;
                                     const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
@@ -2158,14 +2157,15 @@ export default function DashboardPage() {
                                       </div>
                                     );
                                   })()}
-                                </td>
+                                </td>}
                                 {/* Age */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                                   <AgeBadge createdAt={l.created_at} />
                                   <span style={{ display: 'block', fontSize: 10, color: '#374151', marginTop: 4 }}>{fmtDate(l.created_at)}</span>
                                 </td>
                                 {/* Status */}
-                                <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
+                                <td style={{ padding: '14px 24px 14px 16px', width: 150, minWidth: 150 }} onClick={e => e.stopPropagation()}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                   <StatusBadge listing={l} />
                                   {!isSold && (() => {
                                     const gaps = getListingGaps(l);
@@ -2206,6 +2206,7 @@ export default function DashboardPage() {
                                     const lbl = rtD < 0 ? 'Road tax exp.' : `RT ${Math.ceil(rtD)}d`;
                                     return <span style={{ display: 'block', width: 'fit-content', marginTop: 5, fontSize: 10, fontWeight: 700, color: plWord(c), background: premiumLight.raised, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{lbl}</span>;
                                   })()}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -2311,8 +2312,18 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+                    {/* See more (owner, 2026-11-21): 30 at a time. The infinite-scroll watcher
+                        it replaces stopped after the first page (its effect ran once, before the
+                        list existed, so it watched nothing). */}
                     {visibleCount < filteredListings.length && (
-                      <div ref={sentinelRef} style={{ height: 1 }} />
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 16px 20px' }}>
+                        <button
+                          onClick={() => setVisibleCount(c => c + LIST_PAGE)}
+                          style={{ ...INV_GHOST_BTN, padding: '10px 18px', fontSize: 13 }}
+                        >
+                          See more ({Math.min(LIST_PAGE, filteredListings.length - visibleCount)} of {filteredListings.length - visibleCount} left)
+                        </button>
+                      </div>
                     )}
                     {selectedIds.size > 0 && <div style={{ height: 96 }} />}
                   </>

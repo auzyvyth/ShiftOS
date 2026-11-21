@@ -44,7 +44,8 @@ const en = {
   rateLabel: 'Interest rate',
   rateLocal: 'New Proton & Perodua',
   rateOther: 'Other cars',
-  carRateNote: (n, r) => `${n} is worked at ${r}.`,
+  carRateNote: (n, r) => `${n} is worked at ${r}. Tap the Rate line to give one car its own rate.`,
+  rateEdit: 'Set the rate for this car',
   closeAdjust: 'Close settings',
   endTitle: 'End the live?',
   endBody: 'The presentation closes and your live report shows.',
@@ -103,6 +104,12 @@ const en = {
   highValue: 'Above RM300k banks decide case by case, often with a bigger deposit or shorter tenure, so treat this as a rough guide.',
   subjectBank: 'Subject to bank approval.',
   depositCovers: 'The deposit covers the price: no loan needed.',
+  rebateCovers: 'The rebate covers the whole price: no loan needed. Check the rebate.',
+  rebateAskTitle: 'Keep this rebate?',
+  rebateAskBody: (rebate, price, pct) => `RM ${rebate} off a RM ${price} car is ${pct}% of the price.`,
+  rebateAskAll: 'That takes the price to RM 0, so there is no monthly to show.',
+  rebateAskKeep: 'Yes, keep it',
+  rebateAskChange: 'Change it',
   tenureCap: (y, age) => `Banks usually finance a used car until it is ${age} years old, so up to ${y} years here.`,
   tooOld: (age) => `Banks rarely give a car loan once a car is near ${age} years old.`,
   looksFlat: 'This looks like a flat (brochure) rate.',
@@ -241,7 +248,8 @@ const ms = {
   rateLabel: 'Kadar faedah',
   rateLocal: 'Proton & Perodua baru',
   rateOther: 'Kereta lain',
-  carRateNote: (n, r) => `${n} dikira pada ${r}.`,
+  carRateNote: (n, r) => `${n} dikira pada ${r}. Tap baris Kadar untuk kadar khas satu kereta.`,
+  rateEdit: 'Tetapkan kadar kereta ini',
   closeAdjust: 'Tutup tetapan',
   endTitle: 'Tamatkan live?',
   endBody: 'Paparan ditutup dan laporan live anda dipaparkan.',
@@ -300,6 +308,12 @@ const ms = {
   highValue: 'Melebihi RM300k, bank menilai setiap kes, selalunya dengan deposit lebih besar atau tempoh lebih pendek, jadi ini anggaran kasar sahaja.',
   subjectBank: 'Tertakluk kepada kelulusan bank.',
   depositCovers: 'Deposit menampung harga: tiada pinjaman diperlukan.',
+  rebateCovers: 'Rebat menampung seluruh harga: tiada pinjaman diperlukan. Semak rebat.',
+  rebateAskTitle: 'Kekalkan rebat ini?',
+  rebateAskBody: (rebate, price, pct) => `Rebat RM ${rebate} untuk kereta RM ${price} ialah ${pct}% daripada harga.`,
+  rebateAskAll: 'Harga jadi RM 0, jadi tiada bayaran bulanan untuk dipaparkan.',
+  rebateAskKeep: 'Ya, kekalkan',
+  rebateAskChange: 'Tukar',
   tenureCap: (y, age) => `Bank biasanya membiayai kereta terpakai sehingga umurnya ${age} tahun, jadi maksimum ${y} tahun di sini.`,
   tooOld: (age) => `Bank jarang memberi pinjaman kereta yang hampir berumur ${age} tahun.`,
   looksFlat: 'Kadar ini nampak seperti kadar flat (brosur).',
@@ -503,6 +517,26 @@ export function saveLiveInsFigures(figures) {
   try {
     if (Object.keys(figures).length) window.localStorage.setItem(LIVE_INS_FIG_KEY, JSON.stringify(figures));
     else window.localStorage.removeItem(LIVE_INS_FIG_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// A rate typed for ONE car on the Rate line (owner, 2026-10-24: brands run a
+// different promo rate per model), remembered on this device until changed.
+// { [listingId]: { r: '2.3', b: 'eir' | 'flat' } }; a car without one uses
+// its group's rate from Adjust. Never saved to the listing or the server.
+export const LIVE_CAR_RATE_KEY = 'xd_live_carrate';
+
+export function initialLiveCarRates() {
+  try {
+    const m = JSON.parse(window.localStorage.getItem(LIVE_CAR_RATE_KEY) || 'null');
+    return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+  } catch { return {}; }
+}
+
+export function saveLiveCarRates(rates) {
+  try {
+    if (Object.keys(rates).length) window.localStorage.setItem(LIVE_CAR_RATE_KEY, JSON.stringify(rates));
+    else window.localStorage.removeItem(LIVE_CAR_RATE_KEY);
   } catch { /* storage blocked */ }
 }
 
