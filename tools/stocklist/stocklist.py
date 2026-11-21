@@ -102,7 +102,9 @@ def brand_name(b):
 BODY_WORDS = {"HATCHBACK": "Hatchback", "SEDAN": "Sedan", "COUPE": "Coupe", "MPV": "MPV", "PICKUP": "Pickup"}
 # Only models where the body type is not in doubt. Values must be in BODY_TYPES (src/config/marketplaceConfig.js).
 MODEL_BODY = {"ALPHARD": "MPV", "VELLFIRE": "MPV", "STEPWAGON": "MPV", "HARRIER": "SUV", "NX": "SUV", "RX": "SUV",
-              "GX": "SUV", "LAND CRUISER": "SUV", "GR YARIS": "Hatchback", "CAYENNE": "SUV", "MACAN": "SUV", "JIMNY": "SUV", "DEFENDER": "SUV", "COUNTRYMAN": "SUV"}
+              "GX": "SUV", "LAND CRUISER": "SUV", "GR YARIS": "Hatchback", "CAYENNE": "SUV", "MACAN": "SUV", "JIMNY": "SUV", "DEFENDER": "SUV", "COUNTRYMAN": "SUV",
+              "CROWN": "SUV", "GR86": "Coupe", "SUPRA": "Coupe", "FAIRLADY Z": "Coupe", "MX-5": "Coupe",
+              "MOVE CANBUS": "Hatchback", "COOPER": "Hatchback"}   # MX-5: the form has no Convertible, Coupe is the closest
 TWO_WORD_MODELS = ("MOVE CANBUS", "LAND CRUISER", "FAIRLADY Z", "GR YARIS")
 UPPER_OK = {"JCW", "AMG", "GT", "RS", "GR", "SUV", "MPV", "III", "II", "IV"}
 CASE_FIX = {"SDRIVE": "sDrive", "XDRIVE": "xDrive", "20I": "20i"}
@@ -546,7 +548,7 @@ def guess_fuel(r, c):
     t = f"{r['model']} {r['spec']}".upper()
     if re.search(r"DIESEL|\bEV\b|ELECTRIC|PHEV|HYBRID", t): return None
     if c["brand"] in ("BYD", "Land Rover"): return None
-    return "Petrol" if re.search(r"\d\.\dL", r["spec"].upper()) else None
+    return "Petrol" if re.search(r"\d\.\dL", t) else None
 
 
 def guess_transmission(c):
@@ -566,6 +568,39 @@ def looks_like_auction_sheet(raw):
         return white > 0.6 and sat < 30 and 0.04 < (1 - white) < 0.4
     except Exception:
         return False
+
+
+# What the car form's pickers accept (src/utils/carFormOptions.js). A value outside these is saved fine but the
+# form shows the field EMPTY or unselected, which is how "it is in the database but not in the form" happens.
+FORM_BODY = ["Sedan", "SUV", "MPV", "Hatchback", "Coupe", "Pickup"]
+FORM_FUEL = ["Petrol", "Diesel", "Hybrid", "Electric"]
+FORM_TRANS = ["Auto", "Manual"]
+FORM_COUNTRY = ["Japan", "UK", "Australia", "Other"]
+FORM_COLOUR = ["White", "Black", "Silver", "Grey", "Red", "Blue", "Brown", "Beige", "Gold", "Green", "Orange", "Yellow"]
+
+
+def form_colour(text):
+    """'Platinum White Pearl Mica' -> White (the form's swatch). Unknown words are kept as typed."""
+    t = text.strip().title()
+    for w in FORM_COLOUR + ["Gray"]:
+        if re.search(rf"\b{w}\b", t, re.I): return "Grey" if w == "Gray" else w
+    return t
+
+
+def form_country(code):
+    c = COUNTRY.get(code.upper(), "")
+    return c if c in FORM_COUNTRY else ("Other" if c else None)
+
+
+def form_check(row):
+    """Anything the car form would show empty or unselected."""
+    w = []
+    for k, ok in (("body_type", FORM_BODY), ("fuel_type", FORM_FUEL), ("transmission", FORM_TRANS), ("import_country", FORM_COUNTRY), ("colour", FORM_COLOUR)):
+        if row.get(k) not in ok: w.append(f"{k}={row.get(k)!r} not a form choice")
+    if not row.get("mileage"): w.append("mileage is 0/blank (the form shows 0 as empty)")
+    for k in ("vin", "vin_number", "state", "engine_cc", "variant"):
+        if not row.get(k): w.append(f"{k} blank")
+    return w
 
 
 def _slug(r, c):
@@ -603,15 +638,16 @@ def cmd_create(a):
         base = int(r["price_rm"]); mk = markup_for(base)
         row = {"slug": _slug(r, c), "brand": c["brand"], "model": c["model"], "variant": c["variant"] or None,
                "year": r["year"], "selling_price": base + mk, "mileage": r["mileage_km"],
-               "colour": r["colour"].title(), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
+               "colour": form_colour(r["colour"]), "engine_cc": c["engine_cc"] or None, "body_type": c["body_type"] or None,
                "fuel_type": guess_fuel(r, c), "transmission": guess_transmission(c),
-               "condition": "recon", "is_recon": True, "import_country": COUNTRY.get(r["co"].upper()),
+               "condition": "recon", "is_recon": True, "import_country": form_country(r["co"]),
                "vin": r["vin"], "vin_number": r["vin"], "registration_date": reg_text(r),
                "options": r["options"] or None, "warranty_months": WARRANTY_MONTHS, "payment_type": PAYMENT_TYPE,
                "state": prof.get("state"), "city": prof.get("city"), "dealer_id": sb.uid, "status": a.status}
         print(f"    (PDF base RM{base:,} + markup RM{mk:,} = asking RM{base + mk:,})")
         print(f"\n--- {label}: {len(files)} photos in folder")
         for k, v in row.items(): print(f"    {k:15} {v}")
+        for msg in form_check(row): print(f"    !! form would show this empty: {msg}")
         if a.dry_run: made += 1; continue
         shrunk = []
         for f in files:
