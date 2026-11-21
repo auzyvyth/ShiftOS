@@ -25,10 +25,17 @@ function Sheet({ ask, onClose }) {
 
   const answer = async (yes) => {
     setState('saving'); setError('');
-    const { error: e } = await supabase.rpc('set_listing_social_consent', { p_listing: ask.id, p_consent: yes });
-    if (e) {
-      if (e.code === 'PGRST202' || e.code === '42883') { onClose(); return; }
-      setError('Could not save your answer. Please try again.');
+    const ids = ask.ids?.length ? ask.ids : [ask.id];
+    let failed = 0;
+    for (const id of ids) {
+      const { error: e } = await supabase.rpc('set_listing_social_consent', { p_listing: id, p_consent: yes });
+      if (e) {
+        if (e.code === 'PGRST202' || e.code === '42883') { onClose(); return; }
+        failed++;
+      }
+    }
+    if (failed) {
+      setError(ids.length > 1 ? `Could not save the answer for ${failed} of ${ids.length} cars. Please try again.` : 'Could not save your answer. Please try again.');
       setState('ask');
       return;
     }
@@ -52,8 +59,8 @@ function Sheet({ ask, onClose }) {
           </p>
         ) : (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#6b7280', marginBottom: 4 }}>YOUR CAR IS WAITING FOR APPROVAL</div>
-            <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, marginBottom: 10 }}>Want Drevo to feature it on our Facebook Page and TikTok?</div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', color: '#6b7280', marginBottom: 4 }}>{ask.ids?.length > 1 ? 'ONE QUESTION FOR ALL ' + ask.ids.length + ' CARS' : 'YOUR CAR IS WAITING FOR APPROVAL'}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25, marginBottom: 10 }}>Want Drevo to feature {ask.ids?.length > 1 ? 'them' : 'it'} on our Facebook Page and TikTok?</div>
             <p style={{ margin: '0 0 8px', fontSize: 14.5, lineHeight: 1.5, color: '#374151' }}>
               More buyers see {ask.title}. We only post it after we approve it.
             </p>

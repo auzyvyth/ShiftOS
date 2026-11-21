@@ -94,6 +94,7 @@ import { plWord } from "../theme/plStatus";
 import { InventorySwitch, StatusPills, AddCarSheet, AddCarButton, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from "../components/inventory/InventoryUi";
 import { WindowStickerSheet } from '../components/inventory/WindowSticker';
 import { BulkBar, BulkPriceSheet } from '../components/inventory/BulkBar';
+import { askSocialConsent } from '../components/social/askSocialConsent';
 import { AutoPostButton, AutoPostSheet, useAutoPost } from "../components/autopost/AutoPost";
 import { loginUrl } from "../config/site";
 import {
@@ -853,6 +854,12 @@ export default function DashboardPage() {
     setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
     setBulkBusy(false);
     exitSelect();
+    // Publishing many cars: ask ONCE whether Drevo may feature them (SOCIAL-1), instead of once per car.
+    // Own cars only, never one already answered, never a new-car card.
+    if (status === 'available' && !profile?.dealer_id) {
+      const askIds = Object.values(updated).filter(r => r.social_consent == null && !r.new_car_model_id).map(r => r.id);
+      if (askIds.length) askSocialConsent({ ids: askIds, title: `${askIds.length} car${askIds.length === 1 ? '' : 's'}` });
+    }
     if (capHit) toast.error(`Changed ${ok}. Your plan's listing limit stopped the rest.`);
     else if (failed) toast.error(`Changed ${ok}, ${failed} could not be changed. Try those again.`);
     else toast.success(`Changed ${ok} car${ok === 1 ? '' : 's'}${skippedSold ? `. Skipped ${skippedSold} sold` : ''}.`);
