@@ -354,6 +354,32 @@ select:focus-visible {
   .sc-tag { font-size: 11px; padding: 3px 6px; }
   .sc-hide-narrow { display: none; }
 }
+/* The BIG card (size="big", owner 2026-11-21): a wide photo with the price on it, spec tags,
+   ONE WhatsApp key (neutral, green mark). One per row on a phone, two on desktop (.sc-grid-big).
+   Dealer sites follow the dealer's theme through the same --sf-* variables as the card. */
+.sc-big .sc-photo { aspect-ratio: 16 / 10; }
+.sc-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: linear-gradient(transparent, rgba(0,0,0,0.6)); pointer-events: none; }
+.sc-ov { position: absolute; left: 14px; right: 80px; bottom: 12px; color: #fff; pointer-events: none; text-shadow: 0 1px 8px rgba(0,0,0,0.35); }
+.sc-ov-main { font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.sc-ov-sub { font-size: 13px; font-weight: 600; opacity: 0.92; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-tag.br { bottom: 14px; right: 12px; font-size: 12px; padding: 5px 8px; border-radius: 7px; }
+.sc-big .sc-tool { width: 38px; height: 38px; }
+.sc-big .sc-tools { top: 10px; right: 10px; }
+.sc-big .sc-tag.tl { top: 12px; left: 12px; font-size: 12px; padding: 5px 8px; border-radius: 7px; }
+.sc-big .sc-body { padding: 12px 16px 16px; }
+.sc-big .sc-name { font-size: 17px; font-weight: 700; }
+.sc-big .sc-variant { font-size: 14px; }
+.sc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.sc-chips span { font-size: 13px; font-weight: 600; line-height: 1; color: #111827; background: #F4F3EF; padding: 7px 10px; border-radius: 8px; }
+.sc-wa { margin-top: 14px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #0f1115; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+@media (hover:hover) and (pointer:fine) { .sc-wa:hover { background: #262a31; } }
+.sc-wa:active { transform: translateY(1px); }
+.sc-dark .sc-chips span { color: var(--sf-text, #f3f4f6); background: var(--sf-bg, rgba(255,255,255,0.06)); }
+.sc-dark .sc-wa { background: var(--sf-text, #f3f4f6); color: var(--sf-bg, #0b0d13); }
+.sc-grid.sc-grid-big { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 767px) { .sc-grid.sc-grid-big { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
+
 /* One grid for the card everywhere it is a list of cars. */
 .sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 20px; }
 @media (max-width: 640px) { .sc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
