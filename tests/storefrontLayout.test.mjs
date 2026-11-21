@@ -6,7 +6,7 @@ import {
   DEFAULT_FONT, FONTS, FONT_IDS, cleanFont, fontCss, fontSheet, draftFont,
   PRESETS, applyPreset, presetOf, shuffleLook,
   OPTIONS, OPTION_IDS, defaultOptions, cleanOptions, draftOptions,
-  DB_PHASE_B, PHASE_B_IDS,
+  DB_PHASE_B, PHASE_B_IDS, DB_PHASE_C, PHASE_C_IDS, DELIVERIES_OPEN,
 } from "../src/utils/storefrontLayout.js";
 import { AVAILABLE_VERSIONS, VERSION_INFO, VERSION_OPTIONS } from "../src/components/storefront/sections/versions.js";
 
@@ -227,13 +227,19 @@ const sqlOf = (file, end) => {
 const listIn = (fn, after) => [...fn.slice(fn.indexOf(after) + after.length).split(")")[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 const fnLive = sqlOf("20261120a_analytics_event_types.sql", "alter table public.profiles add column if not exists storefront_layout");
 const fnB = sqlOf("20261121a_storefront_phase_b.sql");
-const fn = DB_PHASE_B ? fnB : fnLive;
+const fnC = sqlOf("20261121b_storefront_delivery_gallery.sql");
+const fn = DB_PHASE_C && DB_PHASE_B ? fnC : DB_PHASE_B ? fnB : fnLive;
+assert.ok(!DB_PHASE_C || DB_PHASE_B, "phase C needs phase B: 20261121b lists the phase B ids, so both gates open together");
 const list = (after) => listIn(fn, after);
 assert.deepEqual(list("s->>'id', '') not in (").sort(), SECTIONS.map((x) => x.id).sort(), "SQL section list = JS");
 assert.deepEqual(list("s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "SQL versions = JS");
 if (!DB_PHASE_B) {
   for (const id of PHASE_B_IDS) assert.ok(!SECTIONS.some((x) => x.id === id), `gate closed: ${id} does not exist yet`);
   assert.equal(SECTIONS.length, 13, "gate closed: the same 13 sections as the live check");
+}
+if (!DB_PHASE_C) {
+  for (const id of PHASE_C_IDS) assert.ok(!SECTIONS.some((x) => x.id === id), `gate C closed: ${id} does not exist yet`);
+  assert.equal(DELIVERIES_OPEN, false, "gate C closed: no upload panel in the dashboard");
 }
 
 // ── Stage 4 phase B, gate OPEN: a second copy of the rules, as they will be after 20261121a ──
@@ -244,6 +250,7 @@ const bIds = B.SECTIONS.map((x) => x.id);
 assert.deepEqual(listIn(fnB, "s->>'id', '') not in (").sort(), [...bIds].sort(), "20261121a lists every section the open gate has");
 assert.deepEqual(listIn(fnB, "s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "20261121a versions = JS");
 for (const id of PHASE_B_IDS) assert.ok(bIds.includes(id), `gate open: ${id} exists`);
+for (const id of PHASE_C_IDS) assert.ok(!bIds.includes(id), `phase B open, C closed: ${id} still absent`);
 assert.ok(bIds.length <= 20, "the DB caps a layout at 20 sections");
 assert.equal(bIds.indexOf("brands"), bIds.indexOf("strip") + 1, "brands right under the strip");
 assert.equal(bIds.indexOf("browse"), bIds.indexOf("cars") - 1, "browse bar just above the cars");
@@ -270,5 +277,33 @@ assert.ok(B.isDefaultLayout(B.defaultLayout()));
 // The check reads only v + sections, so the stage-4 `font` key needs no migration. If someone
 // tightens the check to list allowed keys, `font` must be in it or every font save fails.
 assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes("'font'"), "DB check must allow the font key");
+
+// ── Stage 4 phase C, both gates OPEN: the rules as they will be after 20261121b ──
+globalThis.__SF_PHASE_B_TEST = true;
+globalThis.__SF_PHASE_C_TEST = true;
+const C = await import("../src/utils/storefrontLayout.js?phaseC");
+delete globalThis.__SF_PHASE_B_TEST;
+delete globalThis.__SF_PHASE_C_TEST;
+const cIds = C.SECTIONS.map((x) => x.id);
+assert.deepEqual(listIn(fnC, "s->>'id', '') not in (").sort(), [...cIds].sort(), "20261121b lists every section both open gates have");
+assert.deepEqual(listIn(fnC, "s->>'variant', '') not in (").sort(), [...VARIANTS].sort(), "20261121b versions = JS");
+assert.ok(C.DELIVERIES_OPEN, "gate C open: the upload panel shows");
+assert.ok(cIds.length <= 20, "the DB caps a layout at 20 sections");
+assert.equal(cIds.indexOf("deliveries"), cIds.indexOf("sold") + 1, "Happy customers right after Recently sold");
+assert.deepEqual(cIds.filter((id) => id !== "deliveries"), bIds, "phase B order kept");
+for (const id of [...PHASE_B_IDS, ...PHASE_C_IDS]) assert.ok(cIds.includes(id), `both open: ${id} exists`);
+// A layout saved under phase B gets "deliveries", on, in place; the dealer's offs survive.
+const bLayout = B.toSaved(B.toggleSection(B.defaultLayout(), "brands"));
+const cOpened = C.cleanLayout(bLayout);
+assert.equal(cOpened.length, cIds.length);
+assert.ok(C.sectionOn(cOpened, "deliveries"), "deliveries comes back on");
+assert.equal(C.sectionOn(cOpened, "brands"), false, "phase B off survives the phase C flip");
+const cOff = C.toggleSection(C.defaultLayout(), "deliveries");
+assert.deepEqual(C.fromDraftParam(C.draftParam(cOff)), cOff, "preview link carries deliveries");
+if (!DB_PHASE_C) {
+  assert.ok(!cleanLayout(C.toSaved(cOff)).some((r) => r.id === "deliveries"), "closed gate: a saved deliveries id is dropped, never drawn");
+  assert.ok(!draftParam(cleanLayout(C.toSaved(cOff))).includes("deliveries"), "closed gate: the preview link never carries it");
+}
+assert.deepEqual(AV.deliveries, ["a"], "Happy customers has one version");
 for (const k of ["theme", ...OPTION_IDS]) assert.ok(!/jsonb_object_keys\(p\)/.test(fn) || fn.includes(`'${k}'`), `DB check must allow the ${k} key`);
 console.log("storefrontLayout: all passed");

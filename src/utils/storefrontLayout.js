@@ -30,9 +30,23 @@ export const DB_PHASE_B = false;
 const PHASE_B_OPEN = DB_PHASE_B || globalThis.__SF_PHASE_B_TEST === true;
 export const PHASE_B_IDS = ["brands", "browse", "sold"];
 
+// ── The database gate (stage 4 phase C) ─────────────────────────────────────
+// "Happy customers" (the dealer's handover photos) needs migration
+// 20261121b_storefront_delivery_gallery.sql (QUEUED, not applied): the storefront_deliveries
+// table, its upload folder rules, get_dealer_deliveries and the layout check learning
+// "deliveries". 20261121b lists the phase B ids too, so phase C only opens once phase B is open.
+// While closed: no section, nothing saved, no get_dealer_deliveries call, and the dashboard's
+// Storefront > Delivery photos pill does not exist.
+// FLIP TO true the night 20261121b is applied (with DB_PHASE_B), in the same release.
+export const DB_PHASE_C = false;
+const PHASE_C_OPEN = (DB_PHASE_C && PHASE_B_OPEN) || globalThis.__SF_PHASE_C_TEST === true;
+export const PHASE_C_IDS = ["deliveries"];
+// The dashboard asks this before showing the upload panel (same gate, one place).
+export const DELIVERIES_OPEN = PHASE_C_OPEN;
+
 // Default order = the page as it was before layouts existed (phase B sections slot in where
 // a buyer would look for them: brands under the strip, the browse bar just above the cars,
-// recently sold after the reviews).
+// recently sold after the reviews; phase C: Happy customers right after Recently sold).
 // pin: "first" / "last" = cannot move. locked = always on (the page needs it to sell).
 // shows: when the section appears at all, whatever the layout says (the editor says so).
 const ALL_SECTIONS = [
@@ -46,6 +60,7 @@ const ALL_SECTIONS = [
   { id: "about", label: "About us", shows: "When you wrote About text in Settings" },
   { id: "reviews", label: "Buyer reviews", shows: "Always (asks buyers to leave the first one)" },
   { id: "sold", label: "Recently sold", shows: "When you sold a car in the last 12 months (car and month only, never the price or the buyer)" },
+  { id: "deliveries", label: "Happy customers", shows: "When you added a delivery photo in Storefront > Delivery photos (car and month only, every photo with the buyer's consent)" },
   { id: "why", label: "Why choose us", shows: "When you wrote at least one reason in Settings" },
   { id: "stats", label: "By the numbers", shows: "When at least one number is above zero" },
   { id: "how", label: "How it works", shows: "When you wrote at least one step in Settings" },
@@ -53,7 +68,8 @@ const ALL_SECTIONS = [
   { id: "calculator", label: "Loan calculator", shows: "Always" },
   { id: "contact", label: "Get in touch", pin: "last", locked: true, shows: "Always" },
 ];
-export const SECTIONS = PHASE_B_OPEN ? ALL_SECTIONS : ALL_SECTIONS.filter((s) => !PHASE_B_IDS.includes(s.id));
+const CLOSED_IDS = [...(PHASE_B_OPEN ? [] : PHASE_B_IDS), ...(PHASE_C_OPEN ? [] : PHASE_C_IDS)];
+export const SECTIONS = ALL_SECTIONS.filter((s) => !CLOSED_IDS.includes(s.id));
 
 const BY_ID = Object.fromEntries(SECTIONS.map((s, i) => [s.id, { ...s, index: i }]));
 export const sectionInfo = (id) => BY_ID[id] || null;
