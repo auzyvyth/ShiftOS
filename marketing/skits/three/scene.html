@@ -1,0 +1,188 @@
+<!doctype html>
+<!-- Drevo Skits, three.js test (2026-11-22): Abang Jo as a toon-shaded 3D puppet.
+     Same cast colours as tools/rig.mjs; faces are drawn on a canvas so the 2D eye/mouth
+     set can carry over. Driven frame by frame from render.mjs via window.frame(n). -->
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#fff}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/three/three.module.js"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+
+const W = 1080, H = 1920, FPS = 30;
+const INK = 0x16181d;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf4f5f7);
+const camera = new THREE.PerspectiveCamera(32, W / H, 0.1, 100);
+
+// three flat bands = cartoon light, like the 2D "flat colour + one shadow tone"
+const ramp = new THREE.DataTexture(new Uint8Array([110, 110, 110, 255, 200, 200, 200, 255, 255, 255, 255, 255]), 3, 1);
+ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
+const toon = (c) => new THREE.MeshToonMaterial({ color: c, gradientMap: ramp });
+scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, 6, 5); scene.add(sun);
+
+// ink outline = the same mesh, a bit bigger, black, back faces only (inverted hull)
+const inkMat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+function part(geo, color, outline = 0.025) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(geo, toon(color)); g.add(m);
+  if (outline) {
+    const o = new THREE.Mesh(geo, inkMat);
+    geo.computeBoundingSphere();
+    const r = geo.boundingSphere.radius; o.scale.setScalar(1 + outline / Math.max(r, 0.05));
+    g.add(o);
+  }
+  return g;
+}
+
+// ---------- set: white wall, red band + logo, floor, dot grid ----------
+const logoSvg = await (await fetch('/assets/drevo-logo.svg')).text();
+const LOGO_D = logoSvg.match(/ d="([^"]+)"/)[1];
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const wallTex = canvasTex(2048, 1024, (x, w, h) => {
+  x.fillStyle = '#f4f5f7'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#dc2626'; x.fillRect(0, 160, w, 170);
+  for (let i = 0; i < 3; i++) { x.save(); x.translate(180 + i * 640, 190); x.scale(380 / 688, 380 / 688);
+    x.fillStyle = '#fff'; x.fill(new Path2D(LOGO_D), 'evenodd'); x.restore(); }
+  x.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y = 0; y < h; y += 14) for (let xx = (y / 14) % 2 * 7; xx < w; xx += 14) { x.beginPath(); x.arc(xx, y, 2, 0, 7); x.fill(); }
+});
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(24, 12), new THREE.MeshBasicMaterial({ map: wallTex }));
+wall.position.set(0, 1.4, -4); scene.add(wall);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), toon(0xe9ebef));
+floor.rotation.x = -Math.PI / 2; floor.position.z = 4; scene.add(floor);
+
+// the poster-filtered Myvi photo, standing in the 3D set as a flat card (2.5D)
+const carTex = await new THREE.TextureLoader().loadAsync('/assets/car-myvi-toon.png');
+carTex.colorSpace = THREE.SRGBColorSpace;
+const car = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 4.4 * 732 / 984),
+  new THREE.MeshBasicMaterial({ map: carTex, transparent: true, alphaTest: 0.05 }));
+car.position.set(1.9, 4.4 * 732 / 984 / 2 - 0.08, -1.6); scene.add(car);
+const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.12 }));
+shadow.rotation.x = -Math.PI / 2; shadow.scale.set(2.3, 0.45, 1); shadow.position.set(1.9, 0.01, -1.5); scene.add(shadow);
+
+// ---------- Abang Jo ----------
+const SKIN = 0xc68b59, RED = 0xdc2626, HAIR = 0x1b1d22, PANTS = 0x22252b, SHOE = 0x0c0d10;
+const jo = new THREE.Group(); scene.add(jo);
+
+// legs: compass walk, both swing from ONE point under the body (STYLE.md "Moves")
+const hipPivot = new THREE.Group(); hipPivot.position.y = 0.95; jo.add(hipPivot);
+function leg() {
+  const p = new THREE.Group();
+  const l = part(new THREE.CapsuleGeometry(0.15, 0.62, 6, 16), PANTS); l.position.y = -0.44; p.add(l);
+  const s = part(new THREE.SphereGeometry(0.17, 20, 12), SHOE); s.scale.set(1, 0.6, 1.6); s.position.set(0, -0.87, 0.09); p.add(s);
+  hipPivot.add(p); return p;
+}
+const legL = leg(), legR = leg(); legL.position.x = -0.04; legR.position.x = 0.04;
+
+// body: red polo with the white Drevo wordmark on the chest (a decal, so it never reads backwards)
+const torso = part(new THREE.CapsuleGeometry(0.46, 0.55, 8, 24), RED, 0.03); torso.position.y = 1.42; torso.scale.z = 0.8; jo.add(torso);
+const chestTex = canvasTex(512, 256, (x) => { x.save(); x.translate(56, 90); x.scale(400 / 688, 400 / 688);
+  x.fillStyle = '#fff'; x.fill(new Path2D(LOGO_D), 'evenodd'); x.restore(); });
+const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.32, 32, 1, true, -0.55, 1.1),
+  new THREE.MeshBasicMaterial({ map: chestTex, transparent: true }));
+chest.position.y = 1.45; chest.scale.z = 0.8; chest.rotation.y = 0; jo.add(chest);
+const card = part(new THREE.BoxGeometry(0.13, 0.17, 0.02), 0xffffff, 0.012); card.position.set(0.0, 1.18, 0.39); jo.add(card);
+
+// arms pivot at the shoulder; 0 = down, + = out to his left (same convention as rig.mjs)
+function arm(side) {
+  const p = new THREE.Group(); p.position.set(side * 0.47, 1.8, 0);
+  const a = part(new THREE.CapsuleGeometry(0.11, 0.5, 6, 12), SKIN); a.position.y = -0.36; p.add(a);
+  const sl = part(new THREE.CapsuleGeometry(0.14, 0.12, 6, 12), RED); sl.position.y = -0.1; p.add(sl);
+  const h = part(new THREE.SphereGeometry(0.13, 16, 12), SKIN); h.position.y = -0.72; p.add(h);
+  const f = part(new THREE.CapsuleGeometry(0.04, 0.16, 4, 8), SKIN, 0.015); f.position.y = -0.88; f.visible = false; p.add(f);
+  p.userData.finger = f; jo.add(p); return p;
+}
+const armL = arm(1), armR = arm(-1);
+
+// head: the 2D head oval (rx 135, ry 150) as an ellipsoid, chibi-sized
+const head = new THREE.Group(); head.position.y = 2.55; jo.add(head);
+const skull = part(new THREE.SphereGeometry(0.62, 40, 28), SKIN, 0.03); skull.scale.set(0.9, 1, 0.88); head.add(skull);
+const ears = [-1, 1].map((s) => { const e = part(new THREE.SphereGeometry(0.12, 12, 10), SKIN, 0.02); e.position.set(s * 0.56, 0, 0); e.scale.z = 0.5; head.add(e); return e; });
+const hair = part(new THREE.SphereGeometry(0.645, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.42), HAIR, 0.03);
+hair.scale.set(0.9, 1, 0.88); hair.rotation.x = -0.28; head.add(hair);
+const quiff = part(new THREE.SphereGeometry(0.26, 20, 14), HAIR, 0.02); quiff.position.set(0.12, 0.52, 0.3); quiff.scale.set(1.5, 0.6, 1); head.add(quiff);
+
+// face = a canvas painted with the 2D eye + mouth shapes, wrapped on the front of the head
+const faceCanvas = document.createElement('canvas'); faceCanvas.width = 1024; faceCanvas.height = 512;
+const faceTex = new THREE.CanvasTexture(faceCanvas); faceTex.colorSpace = THREE.SRGBColorSpace;
+const face = new THREE.Mesh(new THREE.SphereGeometry(0.63, 48, 32, Math.PI * 0.5 - 1.0, 2.0, Math.PI * 0.25, Math.PI * 0.5),
+  new THREE.MeshBasicMaterial({ map: faceTex, transparent: true }));
+face.scale.set(0.9, 1, 0.88); head.add(face);
+function drawFace(eyes, mouth) {
+  const x = faceCanvas.getContext('2d'); x.clearRect(0, 0, 1024, 512);
+  x.strokeStyle = '#16181d'; x.fillStyle = '#16181d'; x.lineCap = 'round'; x.lineWidth = 14;
+  const ex = [404, 620], ey = 210;
+  // brows
+  ex.forEach((cx, i) => { x.beginPath(); const tilt = eyes === 'sly' ? (i ? -14 : 14) : 0;
+    x.moveTo(cx - 40, 150 + tilt); x.lineTo(cx + 40, 150 - tilt); x.stroke(); });
+  if (eyes === 'blink') ex.forEach((cx) => { x.beginPath(); x.moveTo(cx - 26, ey); x.lineTo(cx + 26, ey); x.stroke(); });
+  else if (eyes === 'happy') ex.forEach((cx) => { x.beginPath(); x.arc(cx, ey + 10, 28, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); });
+  else if (eyes === 'sly') ex.forEach((cx) => { x.beginPath(); x.ellipse(cx + 8, ey + 4, 22, 14, 0, 0, 7); x.fill(); });
+  else ex.forEach((cx) => { x.fillStyle = '#fff'; x.beginPath(); x.ellipse(cx, ey, 30, 36, 0, 0, 7); x.fill(); x.stroke();
+    x.fillStyle = '#16181d'; x.beginPath(); x.arc(cx + 4, ey + 4, 15, 0, 7); x.fill(); });
+  // moustache
+  x.lineWidth = 16; x.beginPath(); x.moveTo(456, 300); x.quadraticCurveTo(512, 284, 568, 300); x.stroke();
+  x.lineWidth = 12;
+  if (mouth === 'talk') { x.fillStyle = '#7a1f1f'; x.beginPath(); x.ellipse(512, 350, 40, 26, 0, 0, 7); x.fill(); x.stroke(); }
+  else if (mouth === 'grin') { x.fillStyle = '#fff'; x.beginPath(); x.moveTo(456, 335); x.quadraticCurveTo(512, 400, 568, 335); x.closePath(); x.fill(); x.stroke(); }
+  else if (mouth === 'smirk') { x.beginPath(); x.moveTo(470, 350); x.quadraticCurveTo(530, 360, 566, 330); x.stroke(); }
+  else { x.beginPath(); x.moveTo(476, 345); x.quadraticCurveTo(512, 362, 548, 345); x.stroke(); }
+  faceTex.needsUpdate = true;
+}
+
+// ---------- caption (same rule as the 2D skits: 2-4 words, punch word red) ----------
+const cap = document.createElement('div');
+cap.style.cssText = 'position:fixed;left:0;right:0;top:1500px;text-align:center;font:700 60px Outfit,system-ui,sans-serif;color:#fff;-webkit-text-stroke:12px #16181d;paint-order:stroke fill;';
+document.body.appendChild(cap);
+const CAPS = [[45, 95, 'Ha bang, <b>tengok</b> ni'], [100, 150, 'Myvi, <b>tip-top</b>'], [155, 210, 'Tak pernah <b>masuk air</b>']];
+
+// ---------- the shot: 7 s ----------
+const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
+const lerp = (a, b, t) => a + (b - a) * t;
+const deg = Math.PI / 180;
+window.FRAMES = 210;
+window.frame = (f) => {
+  // 0-45: walks in from the left, side-on (a real turn, no mirroring)
+  const walkT = Math.min(f / 45, 1);
+  const x = lerp(-3.4, -0.9, ease(walkT));
+  jo.position.set(x, 0, 0.4);
+  const dist = (x + 3.4) * 2.4; // leg swing tied to distance walked
+  const swing = walkT < 1 ? Math.sin(dist) * 24 * deg : 0;
+  legL.rotation.x = swing; legR.rotation.x = -swing;
+  // turn: side-on while walking, swings round to camera on arrival
+  jo.rotation.y = lerp(Math.PI / 2, 0.18, ease((f - 38) / 12));
+  // arms: snap between key poses on stressed words (no in-betweens)
+  const key = f < 45 ? [4, -4] : f < 100 ? [95, -8] : f < 155 ? [130, -8] : [118, -118];
+  armL.rotation.z = key[0] * deg * (f < 45 ? Math.sin(dist) : 1); armR.rotation.z = key[1] * deg;
+  armL.userData.finger.visible = f >= 45 && f < 155;
+  armL.rotation.x = f >= 100 && f < 155 ? -0.5 : 0;
+  // head looks at the car while pointing, back to camera for the punchline
+  head.rotation.y = f >= 60 && f < 150 ? 0.45 : 0;
+  head.rotation.z = f >= 155 ? Math.sin(f * 0.9) * 0.05 : 0; // tiny panic jitter
+  // face: talk flaps every 3 frames on lines, blink while listening
+  const talking = CAPS.some(([a, b]) => f >= a && f < b);
+  const rest = f >= 155 ? 'grin' : f >= 100 ? 'smirk' : 'closed';
+  const eyes = f >= 155 ? 'sly' : f % 75 < 3 ? 'blink' : 'neutral';
+  drawFace(eyes, talking && Math.floor(f / 3) % 2 ? 'talk' : rest);
+  // camera: slow push-in + a gentle drift sideways (STYLE.md pacing), punch-in on the last line
+  const push = lerp(11.5, 10.6, f / 210) - (f >= 155 ? 2.6 * ease((f - 155) / 5) : 0);
+  const look = f >= 155 ? new THREE.Vector3(x + 0.1, 2.2, 0.4) : new THREE.Vector3(lerp(-0.6, 0.4, f / 210), 1.75, 0);
+  camera.position.set(look.x + lerp(-1.2, 1.2, f / 210), look.y + 0.5, push);
+  camera.lookAt(look);
+  const c = CAPS.find(([a, b]) => f >= a && f < b);
+  cap.innerHTML = c ? c[2].replace(/<b>(.*?)<\/b>/, '<span style="color:#dc2626">$1</span>') : '';
+  renderer.render(scene, camera);
+};
+window.ready = true;
+</script></body></html>

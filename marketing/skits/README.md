@@ -17,3 +17,6 @@ Cartoon skit format (salesman + buyer, BM voice, word captions). Separate from t
 - `source/myvi-photo.webp` is a maker press photo: fine for tests, swap for our own photo before posting.
 - `tools/scene2.mjs` - walk right (legs + arm swing + bob, footsteps), point up (`pointR`), panic arms spread.
   Rig extras: `legL`/`legR` (hip angle), `facing: 'right'` (shoes), `pointL`/`pointR` (finger), `eyes: 'up'`.
+- `three/` - three.js TEST (2026-11-22): Abang Jo as a toon-shaded 3D puppet (flat light bands + ink outline),
+  face painted on a canvas, the Myvi poster photo as a flat card in the 3D set. Not adopted; the 2D rig is still the format.
+  Run: `npm i three` anywhere, then `THREE_DIR=<that>/node_modules/three/build NODE_PATH=$(npm root -g) node marketing/skits/three/render.mjs`
