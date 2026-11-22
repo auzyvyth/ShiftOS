@@ -68,6 +68,15 @@ Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
   on the chest (top 1600) on close-ups.
 - Inserts of real things are real photos (poster filter), e.g. a finger pressing a real door button.
 
+## Lessons from the side-by-side study (2026-11-22, private copy kept out of the repo)
+- Their close-up is a MID shot: waist up, the head in the top third, the body filling the frame. Ours
+  filled the screen with a big face, which reads louder and cheaper. Frame close-ups waist-up.
+- Their people are tall with small heads (~1/7 of the body); ours are chibi (big head). Changing the
+  body is an owner call (it changes every asset).
+- Every "thing" shot (door, interior, screen) is a REAL photo in the poster filter with a simple drawn
+  hand or heads on top. Drawn stand-ins (our interior, our door) read as noise.
+- Their caption is small (about 54px at 1080 wide) and sits on the chest, never on the face.
+
 ## Episodes
 - Each episode = `tools/epN.mjs` + `briefs/epN-*.md` (script with start/end per line for the voice recording).
 - Captions sit ABOVE the heads on wide shots (top 1000 lot / 880 showroom), low (1400) on close-ups.

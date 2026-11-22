@@ -247,3 +247,6 @@ export function showroom() {
   ${dots()}
 </svg>`;
 }
+
+// Extra characters for a one-off study or a new episode, without editing PEOPLE above.
+export function addPerson(key, def) { PEOPLE[key] = def; }
