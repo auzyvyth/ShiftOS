@@ -64,9 +64,9 @@ function arm(p, side, angle, point = false) {
   </g>`;
 }
 
-function leg(p, hx, angle, dir) {
+function leg(p, hx, angle, dir, lift = 0) {
   const shoe = dir > 0 ? 'M-34 333 L-34 298 L14 298 Q58 300 60 333 Z' : 'M34 333 L34 298 L-14 298 Q-58 300 -60 333 Z';
-  return `<g transform="translate(${hx} 650) rotate(${angle})">
+  return `<g transform="translate(${hx} ${650 - lift}) rotate(${angle})">
     <rect x="-35" y="-10" width="70" height="320" rx="30" fill="${p.pants}" ${OL}/>
     <path d="${shoe}" fill="${p.shoe}" ${OL}/>
   </g>`;
@@ -123,10 +123,10 @@ function mouth(kind) {
 export function character(who, pose = {}) {
   const p = PEOPLE[who];
   const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false,
-    legL = 0, legR = 0, facing = 'front', pointL = false, pointR = false } = pose;
+    legL = 0, legR = 0, liftL = 0, liftR = 0, facing = 'front', pointL = false, pointR = false } = pose;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 1000" width="500" height="1000">
   <ellipse cx="250" cy="978" rx="150" ry="16" fill="#000" opacity="0.12"/>
-  <g id="legs">${leg(p, 207, legL, facing === 'right' ? 1 : -1)}${leg(p, 293, legR, facing === 'left' ? -1 : 1)}</g>
+  <g id="legs">${leg(p, 207, legL, facing === 'right' ? 1 : -1, liftL)}${leg(p, 293, legR, facing === 'left' ? -1 : 1, liftR)}</g>
   <g id="arm-back">${arm(p, 'L', armL, pointL)}</g>
   <g id="torso">
     <path d="M145 410 Q250 370 355 410 L368 670 Q250 692 132 670 Z" fill="${p.shirt}" ${OL}/>
