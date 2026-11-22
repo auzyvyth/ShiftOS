@@ -17,6 +17,13 @@ const POSES = {
   shock: { eyes: 'shock', mouth: 'o', sweat: true, armL: 150, armR: -150 },
   happy: { eyes: 'happy', mouth: 'grin', armR: -160 },
   sly: { eyes: 'sly', mouth: 'grin', armR: -95 },
+  suspicious: { eyes: 'suspicious', mouth: 'frown' },
+  nervous: { eyes: 'nervous', mouth: 'wavy', sweat: true, armR: -165 },
+  angry: { eyes: 'angry', mouth: 'scream', tint: true, vein: true, armL: 60, armR: -60 },
+  cry: { eyes: 'cry', mouth: 'wail', tears: true },
+  dizzy: { eyes: 'dizzy', mouth: 'wavy' },
+  starstruck: { eyes: 'stars', mouth: 'grin', blush: true },
+  wink: { eyes: 'wink', mouth: 'smirk', armR: -95 },
 };
 const files = { 'background-showroom.svg': showroom(), 'car-myvi-red.svg': myvi() };
 for (const who of ['salesman', 'buyer']) for (const [k, p] of Object.entries(POSES)) files[`${who}-${k}.svg`] = character(who, p);
@@ -32,7 +39,7 @@ const sheet = `<!doctype html><html><head><meta name=viewport content="width=dev
  <h1>Drevo Skits: assets</h1><p>Mockup. Every piece is its own file; characters are rigs (arms, eyes, mouth swap).</p>
  <h2>Abang Jo, the salesman</h2><div class=row>${Object.keys(POSES).map((k) => card(`salesman-${k}.svg`, 300)).join('')}</div>
  <h2>Faiz, the buyer</h2><div class=row>${Object.keys(POSES).map((k) => card(`buyer-${k}.svg`, 300)).join('')}</div>
- <h2>The car</h2><div class=row>${card('car-myvi-red.svg', 200)}</div>
+ <h2>The car</h2><div class=row>${card('car-myvi-red.svg', 200)}<figure><img src="data:image/png;base64,${readFileSync(OUT + 'car-myvi-toon.png').toString('base64')}" style="height:200px"><figcaption>car-myvi-toon.png (your photo, toon filter)</figcaption></figure></div>
  <h2>Background</h2><div class=row>${card('background-showroom.svg', 520)}</div></body></html>`;
 
 const svgIn = (s, x, y, w, flip = false) => `<img src="${b64(s)}" style="position:absolute;left:${x}px;top:${y}px;width:${w}px;${flip ? 'transform:scaleX(-1)' : ''}">`;

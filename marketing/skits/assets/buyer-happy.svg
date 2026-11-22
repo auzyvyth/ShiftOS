@@ -28,6 +28,7 @@
     <circle cx="118" cy="265" r="30" fill="#d9a273" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="382" cy="265" r="30" fill="#d9a273" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <ellipse cx="250" cy="250" rx="135" ry="150" fill="#d9a273" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M330 140 Q395 230 345 380 Q380 300 365 200 Z" fill="#bb8456" opacity="0.35"/>
+    
     <path d="M120 200 C115 110 190 70 260 72 C335 74 390 115 385 195 C330 150 230 140 120 200 Z" fill="#1d1f24" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
       <path d="M115 175 C140 95 360 90 388 170 L392 192 C300 150 200 150 110 195 Z" fill="#16181d"/>
       <path d="M100 190 C70 195 55 205 60 215 C110 205 160 195 200 188" fill="#16181d"/>
@@ -35,6 +36,9 @@
     <path d="M245 280 Q236 312 252 318" fill="none" stroke="#bb8456" stroke-width="7" stroke-linecap="round"/>
     
     <g id="mouth"><path d="M200 345 Q250 352 300 345 Q295 392 250 395 Q205 392 200 345 Z" fill="#fff" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><line x1="203" y1="365" x2="297" y2="365" stroke="#16181d" stroke-width="4"/></g>
+    
+    
+    
     
   </g>
 </svg>

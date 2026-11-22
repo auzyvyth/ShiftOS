@@ -57,6 +57,23 @@ function arm(p, side, angle) {
 }
 
 function eyes(kind) {
+  const K = C.ink;
+  if (kind === 'suspicious') return `<path d="M176 262 L224 262 M276 262 L324 262" stroke="${K}" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="210" cy="270" r="9" fill="${K}"/><circle cx="310" cy="270" r="9" fill="${K}"/>
+    <path d="M172 238 L228 246 M272 222 Q300 200 330 214" fill="none" stroke="${K}" stroke-width="9" stroke-linecap="round"/>`;
+  if (kind === 'angry') return `<ellipse cx="200" cy="262" rx="24" ry="20" fill="#fff" stroke="${K}" stroke-width="6"/><ellipse cx="300" cy="262" rx="24" ry="20" fill="#fff" stroke="${K}" stroke-width="6"/>
+    <circle cx="200" cy="266" r="7" fill="${K}"/><circle cx="300" cy="266" r="7" fill="${K}"/>
+    <path d="M168 220 L232 248 M268 248 L332 220" stroke="${K}" stroke-width="12" stroke-linecap="round"/>`;
+  if (kind === 'cry') return `<path d="M176 256 L222 266 L176 276 M324 256 L278 266 L324 276" fill="none" stroke="${K}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M172 222 Q200 236 226 228 M274 228 Q300 236 328 222" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
+  if (kind === 'dizzy') return [200, 300].map((x) => `<path d="M${x} 258 m-4 0 a4 4 0 1 1 8 0 a9 9 0 1 1 -17 0 a14 14 0 1 1 27 0 a19 19 0 1 1 -37 0" fill="none" stroke="${K}" stroke-width="5" stroke-linecap="round"/>`).join('');
+  if (kind === 'stars') return [200, 300].map((x) => `<path d="M${x} 228 L${x + 9} 250 L${x + 32} 252 L${x + 14} 267 L${x + 20} 290 L${x} 277 L${x - 20} 290 L${x - 14} 267 L${x - 32} 252 L${x - 9} 250 Z" fill="#ffcf33" stroke="${K}" stroke-width="5" stroke-linejoin="round"/>`).join('');
+  if (kind === 'wink') return `<ellipse cx="200" cy="258" rx="24" ry="29" fill="#fff" stroke="${K}" stroke-width="6"/><circle cx="204" cy="262" r="11" fill="${K}"/>
+    <path d="M278 262 Q300 276 322 262" fill="none" stroke="${K}" stroke-width="9" stroke-linecap="round"/>
+    <path d="M176 215 Q200 205 224 214 M276 230 Q300 214 324 226" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
+  if (kind === 'nervous') return `<ellipse cx="200" cy="258" rx="26" ry="30" fill="#fff" stroke="${K}" stroke-width="6"/><ellipse cx="300" cy="258" rx="26" ry="30" fill="#fff" stroke="${K}" stroke-width="6"/>
+    <circle cx="188" cy="252" r="8" fill="${K}"/><circle cx="288" cy="252" r="8" fill="${K}"/>
+    <path d="M172 214 Q198 196 226 212 M274 212 Q302 196 328 214" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'happy') return `<path d="M180 262 Q200 238 220 262 M280 262 Q300 238 320 262" fill="none" stroke="${C.ink}" stroke-width="9" stroke-linecap="round"/>`;
   if (kind === 'shock') return `<ellipse cx="200" cy="255" rx="30" ry="36" fill="#fff" ${OL}/><ellipse cx="300" cy="255" rx="30" ry="36" fill="#fff" ${OL}/>
     <circle cx="200" cy="258" r="7" fill="${C.ink}"/><circle cx="300" cy="258" r="7" fill="${C.ink}"/>
@@ -71,6 +88,12 @@ function eyes(kind) {
 }
 
 function mouth(kind) {
+  const K = C.ink;
+  if (kind === 'frown') return `<path d="M215 378 Q250 352 285 378" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
+  if (kind === 'wavy') return `<path d="M205 368 q11 -12 22 0 t22 0 t22 0 t22 0" fill="none" stroke="${K}" stroke-width="7" stroke-linecap="round"/>`;
+  if (kind === 'scream') return `<path d="M200 340 Q250 330 300 340 Q300 420 250 425 Q200 420 200 340 Z" fill="#5b1414" stroke="${K}" stroke-width="6"/><path d="M212 344 L288 344 L284 358 L216 358 Z" fill="#fff"/><path d="M225 405 Q250 388 275 405 Q262 420 250 420 Q238 420 225 405 Z" fill="#e0606a"/>`;
+  if (kind === 'smirk') return `<path d="M220 368 Q262 378 292 350" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
+  if (kind === 'wail') return `<path d="M210 395 Q250 330 290 395 Z" fill="#5b1414" stroke="${K}" stroke-width="6" stroke-linejoin="round"/>`;
   if (kind === 'talk') return `<path d="M215 345 Q250 340 285 345 Q280 395 250 398 Q220 395 215 345 Z" fill="#5b1414" ${OL}/><path d="M228 382 Q250 370 272 382 Q262 396 250 396 Q238 396 228 382 Z" fill="#e0606a"/>`;
   if (kind === 'o') return `<ellipse cx="250" cy="370" rx="20" ry="26" fill="#5b1414" ${OL}/>`;
   if (kind === 'grin') return `<path d="M200 345 Q250 352 300 345 Q295 392 250 395 Q205 392 200 345 Z" fill="#fff" ${OL}/><line x1="203" y1="365" x2="297" y2="365" stroke="${C.ink}" stroke-width="4"/>`;
@@ -80,7 +103,7 @@ function mouth(kind) {
 // pose = { armL, armR, eyes, mouth, sweat }
 export function character(who, pose = {}) {
   const p = PEOPLE[who];
-  const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false } = pose;
+  const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false } = pose;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 1000" width="500" height="1000">
   <ellipse cx="250" cy="978" rx="150" ry="16" fill="#000" opacity="0.12"/>
   <g id="legs">
@@ -101,11 +124,15 @@ export function character(who, pose = {}) {
     <circle cx="118" cy="265" r="30" fill="${p.skin}" ${OL}/><circle cx="382" cy="265" r="30" fill="${p.skin}" ${OL}/>
     <ellipse cx="250" cy="250" rx="135" ry="150" fill="${p.skin}" ${OL}/>
     <path d="M330 140 Q395 230 345 380 Q380 300 365 200 Z" fill="${p.skinDark}" opacity="0.35"/>
+    ${tint ? `<ellipse cx="250" cy="250" rx="135" ry="150" fill="#e5484d" opacity="0.35"/>` : ''}
     ${p.hair(OL)}
     <g id="eyes">${eyes(e)}</g>
     <path d="M245 280 Q236 312 252 318" fill="none" stroke="${p.skinDark}" stroke-width="7" stroke-linecap="round"/>
     ${p.extra()}
     <g id="mouth">${mouth(m)}</g>
+    ${blush ? `<ellipse cx="165" cy="315" rx="26" ry="14" fill="#ff7a8a" opacity="0.6"/><ellipse cx="335" cy="315" rx="26" ry="14" fill="#ff7a8a" opacity="0.6"/>` : ''}
+    ${vein ? `<path d="M318 150 l16 16 m-4 -22 l-6 28 m24 -14 l-28 6 m22 12 l-16 -16" stroke="#c0161d" stroke-width="8" stroke-linecap="round"/>` : ''}
+    ${tears ? `<path d="M182 278 Q170 340 178 420 L200 420 Q196 340 204 280 Z M318 278 Q330 340 322 420 L300 420 Q304 340 296 280 Z" fill="#7cc7ff" stroke="${C.ink}" stroke-width="4" opacity="0.9"/>` : ''}
     ${sweat ? `<path d="M380 170 Q398 205 380 222 Q362 205 380 170 Z" fill="#7cc7ff" ${OL.replace('6', '4')}/>` : ''}
   </g>
 </svg>`;
