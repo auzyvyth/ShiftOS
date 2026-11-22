@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, BellOff, X, Check, LogIn } from 'lucide-react';
+import { Bell, BellOff, X, Check } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { markBuyerIntent } from '../lib/buyerAuth';
 
@@ -120,12 +120,15 @@ export default function PriceAlertButton({ filters, hasFilters }) {
 
   return (
     <div ref={dropRef} style={{ position: 'relative', display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+      <style>{'@media(max-width:767px){.pab-label{display:none}.pab-save{width:34px;height:34px;padding:0 !important;justify-content:center}}'}</style>
       {/* Save button */}
       {hasFilters && (
         <button
           onClick={isAlreadySaved ? () => deleteAlert(alertId) : saveAlert}
           disabled={loading}
           title={isAlreadySaved ? 'Remove alert' : session ? 'Save this search as an alert' : 'Sign in to save alert'}
+          aria-label={limitHit ? 'Alert limit reached' : isAlreadySaved ? 'Remove alert' : 'Save search'}
+          className="pab-save"
           style={{
             display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0,
             padding: '6px 9px', borderRadius: '9px', cursor: loading ? 'wait' : 'pointer',
@@ -136,16 +139,11 @@ export default function PriceAlertButton({ filters, hasFilters }) {
             fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', whiteSpace: 'nowrap',
           }}
         >
-          {limitHit
-            ? <>Limit reached ({MAX_ALERTS})</>
-            : saved
-              ? <><Check size={13} /> Saved</>
-              : isAlreadySaved
-                ? <><BellOff size={13} /> Remove alert</>
-                : session
-                  ? <><Bell size={13} /> Save search</>
-                  : <><LogIn size={13} /> Save search</>
-          }
+          {/* Phone: icon only (the words pushed the showroom's top row off the screen). */}
+          {saved ? <Check size={13} /> : isAlreadySaved ? <BellOff size={13} /> : <Bell size={13} />}
+          <span className="pab-label">
+            {limitHit ? `Limit reached (${MAX_ALERTS})` : saved ? 'Saved' : isAlreadySaved ? 'Remove alert' : 'Save search'}
+          </span>
         </button>
       )}
 
