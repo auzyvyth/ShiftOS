@@ -22,3 +22,6 @@ Cartoon skit format (salesman + buyer, BM voice, word captions). Separate from t
   Run: `npm i three` anywhere, then `THREE_DIR=<that>/node_modules/three/build NODE_PATH=$(npm root -g) node marketing/skits/three/render.mjs`
 - `three/cast3d.js` + `three/sheet3d.mjs` - the cast in 3D (toon shading + ink outline), faces = the 2D rig's eyes/mouths
   painted on the head. Run: `THREE_DIR=<that>/node_modules/three/build NODE_PATH=$(npm root -g) node marketing/skits/three/sheet3d.mjs`
+- `three/ep1.mjs` - episode 1 in 3D (script `briefs/ep1-final-tak-pernah-masuk-air.md`). Photos go in `preview/ep1-photos/`
+  (not committed), poster-filtered with `tools/toon.py --full` (whole-frame photos) or without it (cut-out car).
+  `--stills` renders 14 key frames to `preview/ep1-3d-stills.jpg`; without it, `preview/ep1-3d.mp4`.

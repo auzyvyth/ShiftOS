@@ -1,7 +1,8 @@
 // Drevo Skits, 3D cast (three.js): every character built from simple shapes with a toon look
 // (flat light bands + ink outline). Colours come from tools/rig.mjs PEOPLE; the FACE is the 2D rig's
 // eyes + mouth painted on the head (faceSvg from the page), so 2D and 3D share one expression set.
-// Pose = the 2D names: armL / armR in degrees (0 down, +-90 out, +-160 up), pointL / pointR, turn (rad).
+// Pose = the 2D names: armL / armR in degrees (0 down, +-90 out, +-160 up), pointL / pointR, turn (rad),
+// hand: 'thumbL' | 'thumbR' (thumbs up) | 'threeL' | 'threeR' (three fingers), legL / legR (walk).
 import * as THREE from 'three';
 
 const INK = 0x16181d;
@@ -163,7 +164,14 @@ export function buildCharacter(who, p, extra = {}) {
     const sl = part(new THREE.CapsuleGeometry(0.145, 0.12, 6, 12), C('shirt')); sl.position.y = -0.1; g.add(sl);
     const h = part(new THREE.SphereGeometry(0.13, 16, 12), C('skin')); h.position.y = -0.72; g.add(h);
     const f = part(new THREE.CapsuleGeometry(0.04, 0.16, 4, 8), C('skin'), { outline: 0.012 }); f.position.y = -0.88; f.visible = false; g.add(f);
-    g.userData.finger = f; body.add(g); return g;
+    // thumbs up: one thumb that always points at the sky, whatever the arm angle (set in pose)
+    const thumbPivot = new THREE.Group(); thumbPivot.position.y = -0.72; g.add(thumbPivot);
+    const t = part(new THREE.CapsuleGeometry(0.045, 0.12, 4, 8), C('skin'), { outline: 0.012 }); t.position.y = 0.15; thumbPivot.add(t);
+    thumbPivot.visible = false;
+    // three fingers held up along the arm (raise the arm to show them)
+    const three = new THREE.Group(); three.visible = false; g.add(three);
+    for (const dx of [-0.075, 0, 0.075]) { const fi = part(new THREE.CapsuleGeometry(0.035, 0.15, 4, 8), C('skin'), { outline: 0.012 }); fi.position.set(dx, -0.9, 0); three.add(fi); }
+    g.userData.finger = f; g.userData.thumb = thumbPivot; g.userData.three = three; body.add(g); return g;
   });
 
   // head: neck, skull, ears, face texture, hair
@@ -190,7 +198,12 @@ export function pose(ch, q = {}, faceImg) {
   const { arms, legs, faceCanvas, faceTex } = ch.userData;
   const [armL, armR] = arms;
   armL.rotation.z = (q.armL ?? 10) * deg; armR.rotation.z = (q.armR ?? -10) * deg;
+  armL.rotation.x = (q.armLx ?? 0) * deg; armR.rotation.x = (q.armRx ?? 0) * deg; // reach toward the camera
   armL.userData.finger.visible = !!q.pointL; armR.userData.finger.visible = !!q.pointR;
+  for (const [a, k] of [[armL, 'L'], [armR, 'R']]) {
+    a.userData.thumb.visible = q.hand === `thumb${k}`; a.userData.thumb.rotation.z = -a.rotation.z;
+    a.userData.three.visible = q.hand === `three${k}`;
+  }
   legs[0].rotation.x = (q.legL ?? 0) * deg; legs[1].rotation.x = (q.legR ?? 0) * deg;
   ch.rotation.y = q.turn ?? 0;
   if (faceImg) {

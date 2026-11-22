@@ -1,6 +1,6 @@
 # Poster filter, matched to the reference skits (owner, 2026-11-22: the old ink-line toon "looks burnt"):
 # smooth flat bands of colour, bright + saturated, NO lines inside the car, one thin outline round it.
-# python3 -I tools/toon.py in.(webp|png|jpg) out.png [--scale 4]
+# python3 -I tools/toon.py in.(webp|png|jpg) out.png [--scale 4] [--full = no cut-out, for whole-frame photos]
 import sys
 from collections import deque
 import numpy as np
@@ -15,8 +15,10 @@ alpha = np.asarray(raw)[..., 3]
 im = Image.new('RGB', raw.size, (255, 255, 255)); im.paste(raw, mask=raw.split()[3])
 h, w = alpha.shape
 
-# cut-out: the photo's own transparency, else near-white connected to the border
-if alpha.min() < 128:
+# cut-out: the photo's own transparency, else near-white connected to the border (--full keeps the whole photo)
+if '--full' in sys.argv:
+    keep = np.ones((h, w), bool)
+elif alpha.min() < 128:
     keep = alpha >= 128
 else:
     a = np.asarray(im).astype(int)
@@ -44,6 +46,7 @@ ring = (np.asarray(m.filter(ImageFilter.MaxFilter(5))) > 127) & ~mk
 rgba = np.zeros((h, w, 4), 'uint8')
 rgba[..., :3] = np.asarray(flat)
 rgba[..., 3] = mk * 255
-rgba[ring] = [22, 24, 29, 255]
+if '--full' not in sys.argv:
+    rgba[ring] = [22, 24, 29, 255]
 Image.fromarray(rgba).save(out)
 print('ok', w, h)
