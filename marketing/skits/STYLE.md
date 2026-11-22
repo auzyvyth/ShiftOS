@@ -52,6 +52,22 @@ Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
 - Jokes: about situations every buyer knows (smoke, "tak pernah accident", hidden costs). Never a real
   brand, dealer or person as the butt of the joke without the owner's call + a legal check.
 
+## Pacing (measured from the owner's reference skit, 2026-11-22; test: `tools/pacing-test.mjs`)
+- **Talk never stops**: gaps between lines 0.6 s at most. Something changes on screen every ~0.8 s;
+  a hard cut every ~6 s. No shot holds still for more than a second.
+- **The background pans slowly sideways the whole shot** (`#bgl` translateX ~0.6-0.8 px/frame, scaled
+  1.12 so the edges never show); characters stay put. That constant drift is why it never feels frozen.
+- **Two shot types, alternated**: WIDE (everyone, full body) and CLOSE (one character from the thighs
+  up, 900px wide, over the SAME background scaled 1.55 and blurred 7px). Punchlines and reactions = CLOSE.
+  A silent reaction close-up (1-1.5 s) after a big line is normal.
+- **Arms SNAP between key poses on the stressed words** (every 0.3-0.6 s), no in-betweens: down,
+  out to the side, pointing, raised, both up. Keys live in a `KEYS` table per character.
+- Listeners blink (`eyes: 'blink'`, 3 frames every ~2.5 s) and otherwise hold still.
+- Characters walk in WHILE talking, arm already up (the compass walk).
+- **Captions: 2-4 words, ~1 s each, 60px, fade in/out over 3 frames**; above the heads on wide shots,
+  on the chest (top 1600) on close-ups.
+- Inserts of real things are real photos (poster filter), e.g. a finger pressing a real door button.
+
 ## Episodes
 - Each episode = `tools/epN.mjs` + `briefs/epN-*.md` (script with start/end per line for the voice recording).
 - Captions sit ABOVE the heads on wide shots (top 1000 lot / 880 showroom), low (1400) on close-ups.

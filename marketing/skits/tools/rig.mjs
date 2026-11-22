@@ -90,6 +90,8 @@ function leg(p, hx, angle, dir, lift = 0) {
 
 function eyes(kind) {
   const K = C.ink;
+  if (kind === 'blink') return `<path d="M178 262 Q200 272 222 262 M278 262 Q300 272 322 262" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>
+    <path d="M176 215 Q200 205 224 214 M276 214 Q300 205 324 215" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'up') return `<ellipse cx="200" cy="258" rx="24" ry="29" fill="#fff" ${OL}/><ellipse cx="300" cy="258" rx="24" ry="29" fill="#fff" ${OL}/>
     <circle cx="206" cy="242" r="11" fill="${K}"/><circle cx="306" cy="242" r="11" fill="${K}"/>
     <path d="M176 208 Q200 196 224 206 M276 206 Q300 196 324 208" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
