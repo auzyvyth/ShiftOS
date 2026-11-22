@@ -955,6 +955,10 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   once `20261024a` is applied and old tabs reload; `20261025a` then drops the publication.
 
 ## Deployment pipeline — 3 stages
+**Never add a new file in `api/` for a picture or small endpoint (2026-11-22).** The project hit Vercel's function
+limit at 16-17 files and production silently stopped deploying (#615 and #616 never went live). The three picture makers are ONE
+function, `api/card.js` (`?kind=agent|dealer|post`, code in `api/_cards/`; the old `/api/agent-card`, `/api/dealer-card`,
+`/api/post-photo` addresses are rewrites in `vercel.json`). Add a kind there; keep `api/*.js` at 15 or fewer.
 **API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**
 (`vercel.json` `regions`, 2026-10-21). They ran in Vercel's default `iad1` (Washington):
 every database call crossed the Pacific and a buyer's booking took ~15s. Never move them
