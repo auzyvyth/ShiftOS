@@ -29,9 +29,12 @@
     <ellipse cx="250" cy="250" rx="135" ry="150" fill="#d9a273" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M330 140 Q395 230 345 380 Q380 300 365 200 Z" fill="#bb8456" opacity="0.35"/>
     
-    <path d="M120 200 C115 110 190 70 260 72 C335 74 390 115 385 195 C330 150 230 140 120 200 Z" fill="#1d1f24" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
-      <path d="M115 175 C140 95 360 90 388 170 L392 192 C300 150 200 150 110 195 Z" fill="#16181d"/>
-      <path d="M100 190 C70 195 55 205 60 215 C110 205 160 195 200 188" fill="#16181d"/>
+    <path d="M116 240 L116 186 L142 186 L140 240 Z M384 240 L384 186 L358 186 L360 240 Z" fill="#1b1d22" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M110 182 C110 104 174 64 250 64 C326 64 390 104 390 182 Z" fill="#262a32" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M250 66 L250 180 M180 80 C166 110 160 146 162 180 M320 80 C334 110 340 146 338 180" fill="none" stroke="#3b4049" stroke-width="5"/>
+      <circle cx="250" cy="66" r="10" fill="#262a32" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      <rect x="226" y="120" width="48" height="34" rx="8" fill="#dc2626" stroke="#14181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M102 182 Q250 160 398 182 Q392 202 250 200 Q108 202 102 182 Z" fill="#16181d" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <g id="eyes"><ellipse cx="200" cy="258" rx="24" ry="29" fill="#fff" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="300" cy="258" rx="24" ry="29" fill="#fff" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="204" cy="262" r="11" fill="#16181d"/><circle cx="304" cy="262" r="11" fill="#16181d"/>
     <path d="M176 215 Q200 205 224 214 M276 214 Q300 205 324 215" fill="none" stroke="#16181d" stroke-width="8" stroke-linecap="round"/></g>

@@ -33,8 +33,10 @@
     <ellipse cx="250" cy="250" rx="135" ry="150" fill="#c68b59" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M330 140 Q395 230 345 380 Q380 300 365 200 Z" fill="#a86f42" opacity="0.35"/>
     
-    <path d="M118 205 C110 95 205 62 280 70 C350 78 398 120 392 200 C380 165 352 140 300 138 C250 136 190 150 150 175 C135 186 124 196 118 205 Z" fill="#14161a" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
-      <path d="M200 92 C240 50 330 55 345 100 C320 80 260 80 230 105 Z" fill="#2b2f36"/>
+    <path d="M114 244 L114 205 C110 118 170 72 252 70 C334 70 394 116 388 205 L388 244 L368 244
+        C366 206 354 180 334 166 C300 146 246 154 212 136 C192 152 158 172 140 206 L136 244 Z" fill="#1b1d22" stroke="#16181d" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M212 136 C204 118 196 104 186 92" fill="none" stroke="#3b4049" stroke-width="7" stroke-linecap="round"/>
+      <path d="M226 92 C262 82 304 88 334 108" fill="none" stroke="#3b4049" stroke-width="8" stroke-linecap="round"/>
     <g id="eyes"><path d="M200 228 L209 250 L232 252 L214 267 L220 290 L200 277 L180 290 L186 267 L168 252 L191 250 Z" fill="#ffcf33" stroke="#16181d" stroke-width="5" stroke-linejoin="round"/><path d="M300 228 L309 250 L332 252 L314 267 L320 290 L300 277 L280 290 L286 267 L268 252 L291 250 Z" fill="#ffcf33" stroke="#16181d" stroke-width="5" stroke-linejoin="round"/></g>
     <path d="M245 280 Q236 312 252 318" fill="none" stroke="#a86f42" stroke-width="7" stroke-linecap="round"/>
     <path d="M215 330 C235 322 265 322 285 330" fill="none" stroke="#14161a" stroke-width="9" stroke-linecap="round"/>

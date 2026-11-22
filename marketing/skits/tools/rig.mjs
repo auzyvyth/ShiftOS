@@ -23,8 +23,11 @@ const PEOPLE = {
   salesman: {
     name: 'Abang Jo', skin: '#c68b59', skinDark: '#a86f42',
     shirt: C.red, shirtDark: C.redDark, pants: '#22252b', shoe: '#0c0d10',
-    hair: (o) => `<path d="M118 205 C110 95 205 62 280 70 C350 78 398 120 392 200 C380 165 352 140 300 138 C250 136 190 150 150 175 C135 186 124 196 118 205 Z" fill="#14161a" ${o}/>
-      <path d="M200 92 C240 50 330 55 345 100 C320 80 260 80 230 105 Z" fill="#2b2f36"/>`,
+    // neat side-part quiff: follows the skull, sideburns stop at the ear
+    hair: (o) => `<path d="M114 244 L114 205 C110 118 170 72 252 70 C334 70 394 116 388 205 L388 244 L368 244
+        C366 206 354 180 334 166 C300 146 246 154 212 136 C192 152 158 172 140 206 L136 244 Z" fill="#1b1d22" ${o}/>
+      <path d="M212 136 C204 118 196 104 186 92" fill="none" stroke="#3b4049" stroke-width="7" stroke-linecap="round"/>
+      <path d="M226 92 C262 82 304 88 334 108" fill="none" stroke="#3b4049" stroke-width="8" stroke-linecap="round"/>`,
     extra: () => `<path d="M215 330 C235 322 265 322 285 330" fill="none" stroke="#14161a" stroke-width="9" stroke-linecap="round"/>`, // moustache
     torsoDetail: () => `
       <path d="M215 400 L250 445 L285 400" fill="none" stroke="${C.white}" stroke-width="7" stroke-linejoin="round"/>
@@ -37,9 +40,13 @@ const PEOPLE = {
   buyer: {
     name: 'Faiz', skin: '#d9a273', skinDark: '#bb8456',
     shirt: '#f7f7f8', shirtDark: '#d8dbe0', pants: '#33415a', shoe: '#f2f2f2',
-    hair: (o) => `<path d="M120 200 C115 110 190 70 260 72 C335 74 390 115 385 195 C330 150 230 140 120 200 Z" fill="#1d1f24" ${o}/>
-      <path d="M115 175 C140 95 360 90 388 170 L392 192 C300 150 200 150 110 195 Z" fill="${C.ink}"/>
-      <path d="M100 190 C70 195 55 205 60 215 C110 205 160 195 200 188" fill="${C.ink}"/>`,
+    // front-facing cap: dome on the skull, curved brim, short sideburns under it
+    hair: (o) => `<path d="M116 240 L116 186 L142 186 L140 240 Z M384 240 L384 186 L358 186 L360 240 Z" fill="#1b1d22" ${o}/>
+      <path d="M110 182 C110 104 174 64 250 64 C326 64 390 104 390 182 Z" fill="#262a32" ${o}/>
+      <path d="M250 66 L250 180 M180 80 C166 110 160 146 162 180 M320 80 C334 110 340 146 338 180" fill="none" stroke="#3b4049" stroke-width="5"/>
+      <circle cx="250" cy="66" r="10" fill="#262a32" ${o}/>
+      <rect x="226" y="120" width="48" height="34" rx="8" fill="${C.red}" ${o.replace('6', '4')}/>
+      <path d="M102 182 Q250 160 398 182 Q392 202 250 200 Q108 202 102 182 Z" fill="${C.ink}" ${o}/>`,
     extra: () => '',
     torsoDetail: () => `<path d="M212 402 C225 430 275 430 288 402" fill="none" stroke="${C.ink}" stroke-width="5"/>
       <path d="M330 420 L175 640" stroke="#4b3a2a" stroke-width="12" stroke-linecap="round"/>
