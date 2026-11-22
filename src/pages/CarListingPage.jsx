@@ -885,7 +885,7 @@ export default function CarListingPage() {
         </div>
       </div>
 
-      <main id="main-content" tabIndex={-1} style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '64px' : 0 }}>
+      <main id="main-content" tabIndex={-1} style={{ background:T.pageBg, minHeight:'100vh', overflowX:'clip', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '64px' : 0 }}>
 
         {/* ── Top block (owner, 2026-11-21: "blocky and messy") ── ONE glossy surface: search,
              sort, Monthly | Price. On a phone the search is an ICON that opens the field
@@ -949,9 +949,9 @@ export default function CarListingPage() {
                 </button>
               )}
               {/* Sort: a tight label + icon with a transparent native select laid over it */}
-              <div style={{ position:'relative', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'6px', height:'40px', padding:'0 6px', cursor:'pointer' }}>
+              <div style={{ position:'relative', flexShrink:1, minWidth:0, display:'inline-flex', alignItems:'center', gap:'6px', height:'40px', padding:'0 6px', cursor:'pointer' }}>
                 <ArrowDownWideNarrow size={16} style={{ color:T.textMuted, flexShrink:0 }}/>
-                <span style={{ fontSize:'13.5px', fontWeight:'700', color:T.text, whiteSpace:'nowrap' }}>{(SORT_OPTIONS.find(o=>o.value===sort)||SORT_OPTIONS[0]).short}</span>
+                <span style={{ fontSize:'13.5px', fontWeight:'700', color:T.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 }}>{(SORT_OPTIONS.find(o=>o.value===sort)||SORT_OPTIONS[0]).short}</span>
                 <select
                   value={sort}
                   onChange={e=>setParam('sort',e.target.value)}
