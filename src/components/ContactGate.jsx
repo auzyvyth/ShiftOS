@@ -22,7 +22,10 @@ const LegalModal = lazy(() => import('./LegalModal'));
 // pipeline lead (via /api/whatsapp-lead; the RPC is server-only since SEC-10), then opens
 // WhatsApp. Matches the car-detail enquiry form's fields so salesmen get the same
 // info from every "WhatsApp" button. Used by every public "WhatsApp" button.
-export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
+// pick = { variantId, colour } from a new-car model page (NEWCAR-PICK): it rides on the lead so
+// the advisor's pipeline shows what the buyer chose. carId alone is enough (the server reads the
+// dealer off the car), so a page that knows only the advisor's card can still make the lead.
+export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed, pick }) {
   useModalHistory(!!open, onClose);
   const { t } = useTranslation();
   const [name, setName] = useState('');
@@ -82,7 +85,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     // buyer: WhatsApp is opening anyway and carries their real number.
     const ph = isValidMyPhone(phone) ? toPlus60(phone) : '';
     saveBuyerDetails({ name: nm, phone: ph, state });
-    if (dealerId) {
+    if (dealerId || carId) {
       fetch(apiUrl('/api/whatsapp-lead'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,6 +97,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           state: state || null,
           refSlug: getRef() || null,
           token,
+          ...(pick?.variantId ? { variantId: pick.variantId, colour: pick.colour || null } : {}),
         }),
       }).catch((err) => console.error('whatsapp-lead:', err));
     }

@@ -24,10 +24,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { dealerId, carId, name, phone, state, refSlug, token } = req.body || {};
+  const { dealerId, carId, name, phone, state, refSlug, token, variantId, colour } = req.body || {};
+  // NEWCAR-PICK: the variant + colour the buyer picked on a new-car model page. Shape-checked
+  // here; the database checks they belong to the car (create_lead_from_whatsapp).
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const pickVariant = UUID.test(String(variantId || '')) ? String(variantId) : null;
+  const pickColour = pickVariant && colour ? String(colour).trim().slice(0, 40) || null : null;
 
   const nm = String(name || '').trim();
-  if (!dealerId || !nm) {
+  if ((!dealerId && !carId) || !nm) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -59,7 +64,9 @@ export default async function handler(req, res) {
     if (listing?.dealer_id) realDealerId = listing.dealer_id;
   }
 
-  const { data, error } = await supabase.rpc('create_lead_from_whatsapp', {
+  if (!realDealerId) return res.status(400).json({ error: 'Missing required fields' });
+
+  const args = {
     p_dealer_id: realDealerId,
     p_car_id: carId || null,
     p_name: nm.substring(0, 100),
@@ -68,7 +75,13 @@ export default async function handler(req, res) {
     p_phone: phone && isValidMyPhone(phone) ? normalizePhone(phone) : null,
     p_ref_slug: refSlug || null,
     p_state: state ? String(state).substring(0, 40) : null,
-  });
+  };
+  let { data, error } = await supabase.rpc('create_lead_from_whatsapp',
+    pickVariant ? { ...args, p_variant_id: pickVariant, p_colour: pickColour } : args);
+  // Before migration 20261122b the function has no pick parameters: make the lead without them.
+  if (error && pickVariant && /p_variant_id|does not exist|PGRST202/i.test(`${error.code} ${error.message}`)) {
+    ({ data, error } = await supabase.rpc('create_lead_from_whatsapp', args));
+  }
 
   if (error) {
     // rate_limited (DB flood cap) and other RPC errors are non-fatal to the UX —
