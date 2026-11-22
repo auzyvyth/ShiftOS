@@ -14,6 +14,9 @@ red chapter cards, no voice) does not apply here. Commands are in `README.md`.
 | Face | thin moustache | clean |
 | Legs | black trousers, black shoes | navy jeans, white shoes |
 
+- **Tauke Lan** (the villain, `tauke`): flowery mustard shirt, gold chain, slicked-back hair, thick moustache,
+  khaki trousers, optional sunglasses (`shades: true`). **The Drevo shirt is never the con man**: a dodgy seller
+  is Tauke Lan, on his own lot (`lot()` in `tools/ep1.mjs`, no Drevo branding), never in the Drevo showroom.
 - Style: thick ink outline (`#16181d`, 6px), flat colour + one shadow tone, round head on a short body.
 - **Never mirror a character** (scaleX -1): the shirt logo reads backwards. Point with the other arm.
 - Hair and caps are drawn to the head oval (centre 250,250, rx 135, ry 150). Never a loose shape on top.
@@ -22,7 +25,7 @@ red chapter cards, no voice) does not apply here. Commands are in `README.md`.
 ## Faces (pose params: `eyes`, `mouth` + extras)
 Eyes: `neutral`, `happy`, `shock`, `sly`, `suspicious`, `angry`, `cry`, `dizzy`, `stars`, `wink`, `nervous`, `up`.
 Mouths: `closed`, `talk`, `o`, `grin`, `frown`, `wavy`, `scream`, `smirk`, `wail`.
-Extras: `sweat`, `blush`, `vein`, `tears`, `tint` (red face). The brim must never hide the eyebrows.
+Extras: `sweat`, `blush`, `vein`, `tears`, `tint` (red face; `tint: 'green'` = smelling something), `shades`. The brim must never hide the eyebrows.
 Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
 
 ## Moves
@@ -44,6 +47,12 @@ Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
 - Camera: slow push-in (+4-5%); on a hit: zoom punch, shake, white flash 4 frames.
 - Jokes: about situations every buyer knows (smoke, "tak pernah accident", hidden costs). Never a real
   brand, dealer or person as the butt of the joke without the owner's call + a legal check.
+
+## Episodes
+- Each episode = `tools/epN.mjs` + `briefs/epN-*.md` (script with start/end per line for the voice recording).
+- Captions sit ABOVE the heads on wide shots (top 1000 lot / 880 showroom), low (1400) on close-ups.
+- Tip cards: white, ink border, red number circle, top 250, slide down; one per lesson.
+- Close-ups are drawn full-screen SVGs (carpet, lamp); actors render above them.
 
 ## Sound
 - **Always mix onto a silent base track the full length of the video.** An audio stream that starts

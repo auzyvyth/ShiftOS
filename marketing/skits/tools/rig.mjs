@@ -37,6 +37,22 @@ const PEOPLE = {
       <rect x="232" y="560" width="36" height="50" rx="5" fill="${C.white}" ${OL.replace('6', '4')}/>
       <rect x="240" y="572" width="20" height="5" rx="2" fill="${C.red}"/>`,
   },
+  tauke: {
+    name: 'Tauke Lan', skin: '#b97e4f', skinDark: '#9a6538',
+    shirt: '#f2b705', shirtDark: '#c98f00', pants: '#8b7b58', shoe: '#5a3b22',
+    // slicked-back hair, thick and shiny, no part
+    hair: (o) => `<path d="M114 236 L114 200 C112 112 176 70 252 70 C330 70 392 112 388 200 L388 236 L368 236
+        C366 190 350 160 320 150 C280 136 220 138 184 150 C152 162 138 190 136 236 Z" fill="#121317" ${o}/>
+      <path d="M170 104 C220 84 290 84 340 112 M180 128 C230 110 290 110 336 134" fill="none" stroke="#3b4049" stroke-width="6" stroke-linecap="round"/>`,
+    // thick moustache + goatee
+    extra: () => `<path d="M206 336 C226 318 274 318 294 336 C276 332 262 334 250 342 C238 334 224 332 206 336 Z" fill="#121317" stroke="#121317" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M238 402 Q250 418 262 402 Z" fill="#121317" stroke="#121317" stroke-width="5" stroke-linejoin="round"/>`,
+    // loud flowery shirt, open collar, gold chain
+    torsoDetail: () => `<path d="M208 400 L250 470 L292 400 Z" fill="#b97e4f" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M222 412 Q250 470 278 412" fill="none" stroke="#e8c14a" stroke-width="7" stroke-linecap="round"/>
+      ${[[175, 500], [310, 520], [205, 600], [300, 615], [250, 545], [160, 640], [340, 450]].map(([x, y]) =>
+        `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="0" cy="-13" rx="8" ry="13" fill="#e5484d" transform="rotate(${a})"/>`).join('')}<circle r="6" fill="#fff"/></g>`).join('')}`,
+  },
   buyer: {
     name: 'Faiz', skin: '#d9a273', skinDark: '#bb8456',
     shirt: '#f7f7f8', shirtDark: '#d8dbe0', pants: '#33415a', shoe: '#f2f2f2',
@@ -123,7 +139,7 @@ function mouth(kind) {
 export function character(who, pose = {}) {
   const p = PEOPLE[who];
   const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false,
-    legL = 0, legR = 0, liftL = 0, liftR = 0, stride = false, facing = 'front', pointL = false, pointR = false } = pose;
+    shades = false, legL = 0, legR = 0, liftL = 0, liftR = 0, stride = false, facing = 'front', pointL = false, pointR = false } = pose;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 1000" width="500" height="1000">
   <ellipse cx="250" cy="978" rx="150" ry="16" fill="#000" opacity="0.12"/>
   <g id="legs">${stride
@@ -142,12 +158,15 @@ export function character(who, pose = {}) {
     <circle cx="118" cy="265" r="30" fill="${p.skin}" ${OL}/><circle cx="382" cy="265" r="30" fill="${p.skin}" ${OL}/>
     <ellipse cx="250" cy="250" rx="135" ry="150" fill="${p.skin}" ${OL}/>
     <path d="M330 140 Q395 230 345 380 Q380 300 365 200 Z" fill="${p.skinDark}" opacity="0.35"/>
-    ${tint ? `<ellipse cx="250" cy="250" rx="135" ry="150" fill="#e5484d" opacity="0.35"/>` : ''}
+    ${tint ? `<ellipse cx="250" cy="250" rx="135" ry="150" fill="${tint === 'green' ? '#7bc96f' : '#e5484d'}" opacity="${tint === 'green' ? 0.45 : 0.35}"/>` : ''}
     ${p.hair(OL)}
     <g id="eyes">${eyes(e)}</g>
     <path d="M245 280 Q236 312 252 318" fill="none" stroke="${p.skinDark}" stroke-width="7" stroke-linecap="round"/>
     ${p.extra()}
     <g id="mouth">${mouth(m)}</g>
+    ${shades ? `<path d="M160 236 L240 236 Q240 290 200 290 Q160 290 160 236 Z M260 236 L340 236 Q340 290 300 290 Q260 290 260 236 Z" fill="#111" ${OL}/>
+      <path d="M240 244 L260 244 M160 238 L118 230 M340 238 L382 230" stroke="${C.ink}" stroke-width="7" stroke-linecap="round"/>
+      <path d="M178 250 L196 266 M278 250 L296 266" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity="0.8"/>` : ''}
     ${blush ? `<ellipse cx="165" cy="315" rx="26" ry="14" fill="#ff7a8a" opacity="0.6"/><ellipse cx="335" cy="315" rx="26" ry="14" fill="#ff7a8a" opacity="0.6"/>` : ''}
     ${vein ? `<path d="M318 150 l16 16 m-4 -22 l-6 28 m24 -14 l-28 6 m22 12 l-16 -16" stroke="#c0161d" stroke-width="8" stroke-linecap="round"/>` : ''}
     ${tears ? `<path d="M182 278 Q170 340 178 420 L200 420 Q196 340 204 280 Z M318 278 Q330 340 322 420 L300 420 Q304 340 296 280 Z" fill="#7cc7ff" stroke="${C.ink}" stroke-width="4" opacity="0.9"/>` : ''}
