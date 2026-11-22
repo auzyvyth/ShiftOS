@@ -45,6 +45,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
 const UsedCarsHubPage = lazy(() => import("./pages/UsedCarsHubPage"));
 const NewCarModelPage = lazy(() => import("./pages/NewCarModelPage"));
+const BrandLoanPage = lazy(() => import("./pages/BrandLoanPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
@@ -202,6 +203,7 @@ function App() {
           <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
+          <Route path="/kalkulator-loan/:brand" element={<BrandLoanPage />} />
           <Route path="/compare" element={<ComparePage />} />
           {/* Sub-nav frame only (MarketplaceSubNav) — no functionality yet */}
           <Route path="/vehicle-services" element={<ComingSoonPage title="Vehicle Services" description="Servicing, inspections and maintenance booked straight from Drevo. We're building it — check back soon." />} />

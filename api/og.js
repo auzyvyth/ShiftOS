@@ -19,8 +19,9 @@ import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
+import { LOAN_TENURES, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan } from "../src/utils/brandLoan.js";
 import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
-import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
+import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath, NEW_CAR_BRANDS } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 import { dealerSchema } from "../src/utils/dealerSchema.js";
 import { OG_IMAGES } from "../src/config/ogImages.js";
@@ -313,6 +314,31 @@ function buildNewModelHtml(brand, rows, advisors) {
     <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
   </main>`;
   return htmlShell({ title: copy.title, description: copy.description, canonical, body });
+}
+
+// LOAN-SEO: /kalkulator-loan/:brand. Same copy + maths as BrandLoanPage (brandLoan.js).
+function buildBrandLoanHtml(brand, models) {
+  const copy = loanCopy(brand, models);
+  const head = LOAN_TENURES.map((y) => `<th>${y} tahun</th>`).join("");
+  const tables = models.map((m) => `<h3><a href="${SITE_URL}${m.path}">${esc(`${brand} ${m.model}`)}</a></h3>
+    <table>
+      <tr><th>Varian</th><th>Harga</th>${head}</tr>
+      ${m.variants.map((v) => `<tr><td>${esc(v.variant)}</td><td>${esc(rmLoan(v.price))}</td>${LOAN_TENURES.map((y) => `<td>${esc(rmLoan(loanMonthly(v.price, { years: y, rate: copy.rate })))}</td>`).join("")}</tr>`).join("\n      ")}
+    </table>`).join("\n    ");
+  const faqs = copy.faqs.map((f) => `<h3>${esc(f.q)}</h3>\n    <p>${esc(f.a)}</p>`).join("\n    ");
+  const others = NEW_CAR_BRANDS.filter((b) => b !== brand).map((b) => `<a href="${SITE_URL}${loanPath(b)}">Kalkulator loan ${esc(b)}</a>`).join(" · ");
+  const body = `  <main>
+    <h1>${esc(copy.h1)}</h1>
+    <p>${esc(copy.intro)}</p>
+    <h2>Ansuran bulanan semua varian ${esc(brand)} (${esc(brand)} loan calculator)</h2>
+    <p>Deposit ${LOAN_DEPOSIT_PCT}%, ${copy.rate}% EIR atas baki berkurangan, harga rasmi Semenanjung tanpa insurans. Bank yang menentukan kadar dan kelulusan.</p>
+    ${tables}
+    <h2>Soalan lazim</h2>
+    ${faqs}
+    <p><a href="${SITE_URL}/articles/cara-kira-loan-kereta-excel">Cara kira loan kereta guna Excel (template percuma)</a> · <a href="${SITE_URL}/articles/car-loan-malaysia-flat-rate-vs-eir">Flat rate vs EIR</a> · <a href="${SITE_URL}/for-salesmen">Live presentation untuk sales advisor</a></p>
+    <p>${others} · <a href="${SITE_URL}/calculator">Kalkulator loan kereta terpakai</a></p>
+  </main>`;
+  return htmlShell({ lang: "ms", title: copy.title, description: copy.description, canonical: `${SITE_URL}${loanPath(brand)}`, jsonLd: [loanFaqLd(copy.faqs)], body });
 }
 
 // ── HTML shell ────────────────────────────────────────────────────────────────
@@ -1179,6 +1205,18 @@ export default async function handler(req) {
     if (!ncRows.length) return new Response("Not found", { status: 404 });
     const advisors = await sbRpc("get_new_model_advisors", { p_brand: ncBrand, p_model: ncRows[0].model });
     return html(buildNewModelHtml(ncBrand, ncRows, advisors.filter((a) => a && a.slug)));
+  }
+
+  // 4b3. LOAN-SEO brand loan calculators -- marketplace only, 404 for a brand with no prices.
+  const blMatch = pathname.match(/^\/kalkulator-loan\/([^/]+)$/);
+  if (blMatch) {
+    if (subdomain) return new Response("Not found", { status: 404 });
+    const blBrand = loanBrandFromSlug(decodeURIComponent(blMatch[1]));
+    if (!blBrand) return new Response("Not found", { status: 404 });
+    const blRows = await sbFetch(`new_car_models?brand=eq.${encodeURIComponent(blBrand)}&is_active=eq.true&select=id,brand,model,variant,price_peninsular,is_active`);
+    const blModels = loanModels(blBrand, blRows);
+    if (!blModels.length) return new Response("Not found", { status: 404 });
+    return html(buildBrandLoanHtml(blBrand, blModels));
   }
 
   // 4c. Salesman mini page (/s/:slug) — the agent's public storefront. Uses the

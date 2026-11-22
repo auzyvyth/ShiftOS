@@ -3,6 +3,7 @@ import { ORDER as FEATURE_ORDER } from "../src/config/featurePagesCopy.js";
 import { ARTICLE_PAGES } from "../src/config/articlePages.generated.js";
 import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelHubs.js";
 import { newModelPath } from "../src/utils/newCars.js";
+import { loanPath } from "../src/utils/brandLoan.js";
 export const config = { runtime: "edge" };
 
 import { ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
@@ -222,6 +223,13 @@ export default async function handler(req) {
         if (seen.has(path)) continue;
         seen.add(path);
         staticRoutes.push({ path, changefreq: "weekly", priority: "0.7" });
+      }
+      // LOAN-SEO: one loan calculator per brand that has a priced row.
+      const loanSeen = new Set();
+      for (const r of Array.isArray(ncRows) ? ncRows : []) {
+        if (!r.brand || loanSeen.has(r.brand)) continue;
+        loanSeen.add(r.brand);
+        staticRoutes.push({ path: loanPath(r.brand), changefreq: "weekly", priority: "0.8" });
       }
     } catch (_) {}
   }
