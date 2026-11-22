@@ -206,6 +206,6 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400');
     return res.status(200).end(out);
   } catch {
-    return res.redirect(302, agent.cover_url || agent.avatar_url || '/og-default.jpg');
+    return res.redirect(302, agent.cover_url || agent.avatar_url || '/og-marketplace.jpg');
   }
 }

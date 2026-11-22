@@ -28,6 +28,8 @@ import { themeOf, draftTheme, themeCss } from "../utils/storefrontTheme";
 import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
 import { accentTheme } from "../utils/liveAccent";
 import { STOREFRONT_CAR_FIELDS } from "../utils/storefrontStock";
+import { OG_IMAGES } from "../config/ogImages";
+import { dealerShareImage } from "../utils/dealerShareImage";
 // Load only when the buyer taps "Trade in my car" / "Check my loan" (STOREFRONT-1).
 const TradeInSheet = lazy(() => import("../components/storefront/TradeInSheet"));
 const LoanCheckSheet = lazy(() => import("../components/storefront/LoanCheckSheet"));
@@ -271,7 +273,7 @@ const HomePage = () => {
         />
         <meta
           property="og:image"
-          content={profile?.site_logo_url || "https://drevo.my/og-default.jpg"}
+          content={dealerShareImage(profile, SITE_URL) || OG_IMAGES.marketplace}
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="canonical" href={profile?.subdomain ? `https://${profile.subdomain}.${ROOT_DOMAIN}` : SITE_URL} />

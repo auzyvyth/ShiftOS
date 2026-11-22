@@ -2130,6 +2130,19 @@ the title would be cut), description and Person `alternateName` (`api/og.js`). S
 its own Save button and own query, so the main profile save cannot fail on it. There is NO seller search on Drevo yet, so
 "found" means Google; an in-app search by nickname is a later step.
 
+## Link-preview pictures (OG-1, owner 2026-11-22) — one per audience, one per dealer
+What WhatsApp / Facebook show when a link is shared. ONE list, `OG_IMAGES` (`src/config/ogImages.js`), read by
+the SPA Helmet AND `api/og.js` (the crawler page is what WhatsApp actually reads): `og-marketplace.jpg` (buyers:
+home, showroom, hubs, guides, articles, fallbacks; `og-default.jpg` is a copy for old links), `og-dealers.jpg`
+(/shiftos), `og-salesmen.jpg` (/for-salesmen, /plans). The old dark "ShiftOS / XDRIVE.MY" card is gone.
+Built by `tools/og/compose.mjs` from REAL components with demo data (`tools/og/harness`, `capture.cjs` -> `shots/`):
+ShowroomCard, the dealer Overview money cards, the Premium dashboard + Live calculator phones. Never redraw a
+screen. A changed picture = a NEW filename (previews are cached per URL for days).
+A dealer storefront gets its OWN card, `api/dealer-card.js` (banner = first hero slide, else newest car; logo or
+initial; name, address, town, live car count, "Verified" only on `is_verified`; NEVER a phone number, CDP-3).
+URL from `dealerShareImage()` (`src/utils/dealerShareImage.js`, `v=` changes with the fields drawn), takes a
+subdomain only. Same build as `api/agent-card.js`; both need `api/_fonts` in `vercel.json` includeFiles.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

@@ -25,6 +25,7 @@ import { liveNewCarBrands } from '../utils/newCars';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import StaleListingsNotice from '../components/StaleListingsNotice';
+import { OG_IMAGES } from '../config/ogImages';
 import {
   BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, SORT_OPTIONS,
   YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
@@ -702,11 +703,11 @@ export default function MarketplacePage() {
         <meta property="og:site_name"   content="Drevo" />
         <meta property="og:title"       content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
-        <meta property="og:image"       content="https://drevo.my/og-default.jpg" />
+        <meta property="og:image"       content={OG_IMAGES.marketplace} />
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:title"       content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
-        <meta name="twitter:image"       content="https://drevo.my/og-default.jpg" />
+        <meta name="twitter:image"       content={OG_IMAGES.marketplace} />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
