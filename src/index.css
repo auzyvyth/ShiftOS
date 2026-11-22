@@ -357,7 +357,9 @@ select:focus-visible {
 /* The BIG card (size="big", owner 2026-11-21): a wide photo with the price on it, spec tags,
    ONE WhatsApp key (neutral, green mark). One per row on a phone, two on desktop (.sc-grid-big).
    Dealer sites follow the dealer's theme through the same --sf-* variables as the card. */
-.sc-big .sc-photo { aspect-ratio: 16 / 10; }
+.sc-big .sc-photo { aspect-ratio: 5 / 4; }
+.sc-root.sc-big { box-shadow: 0 2px 6px rgba(15,23,42,0.06), 0 8px 24px rgba(15,23,42,0.10); }
+.sc-root.sc-big.sc-dark { box-shadow: 0 0 0 1px var(--sf-border, rgba(255,255,255,0.08)), 0 8px 24px rgba(0,0,0,0.28); }
 .sc-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: linear-gradient(transparent, rgba(0,0,0,0.6)); pointer-events: none; }
 .sc-ov { position: absolute; left: 14px; right: 80px; bottom: 12px; color: #fff; pointer-events: none; text-shadow: 0 1px 8px rgba(0,0,0,0.35); }
 .sc-ov-main { font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
