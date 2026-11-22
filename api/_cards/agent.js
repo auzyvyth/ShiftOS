@@ -16,8 +16,8 @@
 import fs from 'node:fs';
 import sharp from 'sharp';
 import satori from 'satori';
-import { agentName, agentLocation } from '../src/utils/agentSeo.js';
-import { coverFocusY } from '../src/utils/coverFocus.js';
+import { agentName, agentLocation } from '../../src/utils/agentSeo.js';
+import { coverFocusY } from '../../src/utils/coverFocus.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -33,7 +33,7 @@ const AV_X = 56;
 const AV_Y = BANNER - Math.round(D / 2);
 const MAX_BYTES = 15 * 1024 * 1024;
 
-const font = (f) => fs.readFileSync(new URL(`./_fonts/${f}`, import.meta.url));
+const font = (f) => fs.readFileSync(new URL(`../_fonts/${f}`, import.meta.url));
 const FONTS = [
   { name: 'Outfit', data: font('outfit-latin-500-normal.woff'), weight: 500, style: 'normal' },
   { name: 'Outfit', data: font('outfit-latin-700-normal.woff'), weight: 700, style: 'normal' },

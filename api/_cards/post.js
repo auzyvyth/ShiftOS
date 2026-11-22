@@ -14,8 +14,8 @@
 import fs from 'node:fs';
 import sharp from 'sharp';
 import satori from 'satori';
-import { carTitle, money } from '../supabase/functions/_shared/postCaption.js';
-import { ROOT_DOMAIN } from '../src/config/site.js';
+import { carTitle, money } from '../../supabase/functions/_shared/postCaption.js';
+import { ROOT_DOMAIN } from '../../src/config/site.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -29,11 +29,11 @@ const MAX_BYTES = 15 * 1024 * 1024;
 const PUBLIC_PHOTO = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/car-images\//;
 
 const read = (p) => fs.readFileSync(new URL(p, import.meta.url));
-const LOGO = read('../public/drevo-logo-white.png');
+const LOGO = read('../../public/drevo-logo-white.png');
 const FONTS = [
-  { name: 'Outfit', data: read('./_fonts/outfit-latin-500-normal.woff'), weight: 500, style: 'normal' },
-  { name: 'Outfit', data: read('./_fonts/outfit-latin-700-normal.woff'), weight: 700, style: 'normal' },
-  { name: 'Bebas', data: read('./_fonts/bebas-neue-latin-400-normal.woff'), weight: 400, style: 'normal' },
+  { name: 'Outfit', data: read('../_fonts/outfit-latin-500-normal.woff'), weight: 500, style: 'normal' },
+  { name: 'Outfit', data: read('../_fonts/outfit-latin-700-normal.woff'), weight: 700, style: 'normal' },
+  { name: 'Bebas', data: read('../_fonts/bebas-neue-latin-400-normal.woff'), weight: 400, style: 'normal' },
 ];
 
 const h = (type, style, ...children) => ({ type, props: { style, children: children.length > 1 ? children : children[0] } });

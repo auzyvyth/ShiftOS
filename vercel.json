@@ -13,14 +13,8 @@
     "api/ai-messages.js": {
       "maxDuration": 300
     },
-    "api/agent-card.js": {
-      "includeFiles": "api/_fonts/**"
-    },
-    "api/post-photo.js": {
-      "includeFiles": "{api/_fonts/**,public/drevo-logo-white.png}"
-    },
-    "api/dealer-card.js": {
-      "includeFiles": "{api/_fonts/**,public/drevo-logo-dark.png}"
+    "api/card.js": {
+      "includeFiles": "{api/_fonts/**,public/drevo-logo-dark.png,public/drevo-logo-white.png}"
     }
   },
   "redirects": [
@@ -70,6 +64,18 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/agent-card",
+      "destination": "/api/card?kind=agent"
+    },
+    {
+      "source": "/api/dealer-card",
+      "destination": "/api/card?kind=dealer"
+    },
+    {
+      "source": "/api/post-photo",
+      "destination": "/api/card?kind=post"
+    },
     {
       "source": "/api/auth-throttle",
       "destination": "/api/auth-account-status?throttle=1"

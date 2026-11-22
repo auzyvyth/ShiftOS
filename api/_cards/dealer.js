@@ -11,9 +11,9 @@
 import fs from 'node:fs';
 import sharp from 'sharp';
 import satori from 'satori';
-import { chosenPageColor, PAGE_COLOR_DEFAULT } from '../src/utils/pageAccent.js';
-import { accentTheme } from '../src/utils/liveAccent.js';
-import { ROOT_DOMAIN } from '../src/config/site.js';
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from '../../src/utils/pageAccent.js';
+import { accentTheme } from '../../src/utils/liveAccent.js';
+import { ROOT_DOMAIN } from '../../src/config/site.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -27,9 +27,9 @@ const TILE_X = 56;
 const TILE_Y = BANNER - Math.round(TILE / 2);
 const MAX_BYTES = 15 * 1024 * 1024;
 
-const font = (f) => fs.readFileSync(new URL(`./_fonts/${f}`, import.meta.url));
+const font = (f) => fs.readFileSync(new URL(`../_fonts/${f}`, import.meta.url));
 // Small "Drevo" wordmark bottom right: the site lives on Drevo.
-const MARK = fs.readFileSync(new URL('../public/drevo-logo-dark.png', import.meta.url));
+const MARK = fs.readFileSync(new URL('../../public/drevo-logo-dark.png', import.meta.url));
 const MARK_W = 132, MARK_H = Math.round(132 * 120 / 688);
 
 const FONTS = [
