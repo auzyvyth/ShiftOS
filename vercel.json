@@ -16,6 +16,9 @@
     "api/agent-card.js": {
       "includeFiles": "api/_fonts/**"
     },
+    "api/post-photo.js": {
+      "includeFiles": "{api/_fonts/**,public/drevo-logo-white.png}"
+    },
     "api/dealer-card.js": {
       "includeFiles": "{api/_fonts/**,public/drevo-logo-dark.png}"
     }

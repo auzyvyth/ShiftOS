@@ -24,8 +24,8 @@ import {
 import { callZernioPost, explain } from './zernioApi';
 
 const NETWORK = {
-  facebook:  { label: 'Facebook Page', canTakeDown: true,  note: 'Clickable link, up to 8 photos.' },
-  tiktok:    { label: 'TikTok',        canTakeDown: false, note: 'Photo post. No clickable link, so it says "link in bio". Cannot be taken down from here.' },
+  facebook:  { label: 'Facebook Page', canTakeDown: true,  note: 'Clickable link, up to 8 watermarked photos, the first one a cover with name and price.' },
+  tiktok:    { label: 'TikTok',        canTakeDown: false, note: 'Photo post with music, every photo watermarked, the first one a cover with name and price. No clickable link, so the text says to search the car on Drevo. Cannot be taken down from here.' },
 };
 
 const isDone = (s) => ['published', 'failed', 'error', 'removed', 'cancelled'].includes(String(s || '').toLowerCase());

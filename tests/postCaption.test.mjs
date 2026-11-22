@@ -3,7 +3,7 @@
 // stops an over-long Threads post or a link in a TikTok title: Zernio accepts 501 characters
 // for Threads without complaint (tested 2026-11-12).
 import {
-  buildPost, validateText, carLink, carTitle, clip, money, LIMITS, TIKTOK_TITLE_MAX, BIO_LINE,
+  buildPost, validateText, carLink, carTitle, clip, money, LIMITS, TIKTOK_TITLE_MAX, hashtags, findLine,
 } from '../supabase/functions/_shared/postCaption.js';
 
 let pass = 0;
@@ -32,10 +32,17 @@ for (const p of ['facebook', 'threads', 'instagram', 'tiktok']) {
 ok(buildPost('facebook', defender, url).text.includes(url), 'facebook carries the clickable link');
 ok(buildPost('threads', defender, url).text.includes(url), 'threads carries the link');
 ok(!buildPost('instagram', defender, url).text.includes('http'), 'instagram has no link');
-ok(buildPost('instagram', defender, url).text.includes(BIO_LINE), 'instagram says link in bio');
+ok(buildPost('instagram', defender, url).text.includes('search "2023 Land Rover Defender" on drevo.my'), 'instagram names the site as plain text');
 const tt = buildPost('tiktok', civic, url);
 ok(!tt.text.includes('http') && !tt.title.includes('http'), 'tiktok has no link');
-ok(tt.text.includes(BIO_LINE), 'tiktok says link in bio');
+ok(!/link in bio/i.test(tt.text), 'tiktok never says link in bio (owner: no bio link)');
+ok(tt.text.includes('search "2025 Honda Civic" on drevo.my'), 'tiktok names the site: ' + tt.text);
+ok(tt.text.endsWith(hashtags(civic)), 'tiktok ends with the hashtags');
+ok(hashtags(civic) === '#drevo #honda #hondacivic #keretaterpakai #jualkereta #kualalumpur #hondamalaysia', 'hashtags from the row: ' + hashtags(civic));
+ok(hashtags({ brand: 'Land Rover', model: 'Defender', condition: 'recon' }).includes('#landroverdefender #keretarecond'), 'hashtags join words, follow condition');
+ok(!/#(murah|cheap|best)/i.test(hashtags(civic)), 'no claim hashtags');
+ok(findLine(civic, 'not a url') === '', 'no host = no line');
+ok(buildPost('facebook', defender, url).text.endsWith('#drevo #landrover #landroverdefender'), 'facebook gets 3 hashtags');
 ok(len(tt.title) <= TIKTOK_TITLE_MAX && !tt.title.includes('#'), 'tiktok title <= 90, no hashtag: ' + tt.title);
 ok(tt.title.includes('RM250,000'), 'tiktok title keeps the price');
 
@@ -99,7 +106,7 @@ ok(validateText('threads', '   ').errors.includes('empty'), 'empty rejected');
     ok(r.fits, pl + ' still fits with the credit');
   }
   ok(!buildPost('facebook', carX, u).text.includes('Listed on Drevo by'), 'no credit line when none is given');
-  ok(buildPost('tiktok', carX, u, { credit: 'Ali Motors' }).text.includes('All my cars: link in bio'), 'tiktok keeps link in bio');
+  ok(buildPost('tiktok', carX, u, { credit: 'Ali Motors' }).text.includes('on drevo.my'), 'tiktok keeps the site line with a credit');
 }
 ok(!validateText('myspace', 'hi').ok, 'unknown platform rejected');
 
