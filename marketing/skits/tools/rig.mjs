@@ -123,10 +123,13 @@ function mouth(kind) {
 export function character(who, pose = {}) {
   const p = PEOPLE[who];
   const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false,
-    legL = 0, legR = 0, liftL = 0, liftR = 0, facing = 'front', pointL = false, pointR = false } = pose;
+    legL = 0, legR = 0, liftL = 0, liftR = 0, stride = false, facing = 'front', pointL = false, pointR = false } = pose;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 1000" width="500" height="1000">
   <ellipse cx="250" cy="978" rx="150" ry="16" fill="#000" opacity="0.12"/>
-  <g id="legs">${leg(p, 207, legL, facing === 'right' ? 1 : -1, liftL)}${leg(p, 293, legR, facing === 'left' ? -1 : 1, liftR)}</g>
+  <g id="legs">${stride
+    // walking: both legs swing from one point under the body, like the reference skits
+    ? leg(p, 250, legR, facing === 'left' ? -1 : 1, 0) + leg(p, 250, legL, facing === 'left' ? -1 : 1, 0)
+    : leg(p, 207, legL, facing === 'right' ? 1 : -1, liftL) + leg(p, 293, legR, facing === 'left' ? -1 : 1, liftR)}</g>
   <g id="arm-back">${arm(p, 'L', armL, pointL)}</g>
   <g id="torso">
     <path d="M145 410 Q250 370 355 410 L368 670 Q250 692 132 670 Z" fill="${p.shirt}" ${OL}/>

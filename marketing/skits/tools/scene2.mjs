@@ -23,24 +23,26 @@ const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
 const lerp = (a, b, t) => a + (b - a) * t;
 const shake = (f, from, len, amp) => (f >= from && f < from + len ? Math.sin(f * 7.3) * amp * (1 - (f - from) / len) : 0);
 const STEPS = [];
+let lastHalf = -1;
 
 function frame(f) {
-  // constant speed, easing out over the last 15%; the step rhythm follows the distance walked, so feet never slide
-  const p = Math.min(f / WALK_END, 1), V = 1 / 0.925;
-  const u = p < 0.85 ? V * p : V * 0.85 + V * (p - 0.85) - (V * (p - 0.85) ** 2) / 0.3;
+  // reference walk: steady glide, legs scissor from one point, arms nearly still, no bob, no sway.
+  // Leg swing is tied to distance covered (no sliding), and each walk ends with the legs together.
+  const p = Math.min(f / WALK_END, 1);
+  const u = p < 0.9 ? p / 0.95 : 0.9 / 0.95 + (p - 0.9) / 0.95 - ((p - 0.9) ** 2) / (0.95 * 0.2);
   const walking = f < WALK_END;
-  const amp = p < 0.85 ? 1 : Math.max(0, (1 - p) / 0.15);
-  const ph = u * WALK_END * 0.925 * 0.26, sw = Math.sin(ph) * amp;
-  const prev = Math.sin(((f - 1) / WALK_END < 0.85 ? V * (f - 1) / WALK_END : u) * WALK_END * 0.925 * 0.26);
-  if (walking && f > 0 && amp > 0.3 && Math.sign(Math.sin(ph)) !== Math.sign(prev)) STEPS.push(f);
-  const lift = (v) => Math.round(Math.max(0, v) * 48);
-  const walkPose = { liftL: lift(sw), liftR: lift(-sw), legL: Math.round(Math.max(0, sw) * 10), legR: -Math.round(Math.max(0, -sw) * 10),
-    armL: Math.round(10 - sw * 12), armR: Math.round(-10 - sw * 12), facing: 'right' };
-  const x = { s: lerp(-300, 610, u), b: lerp(-740, 40, u) };
-  const y = { s: -Math.abs(sw) * 9, b: -Math.abs(Math.sin(ph + 0.6) * amp) * 9 };
-  const sway = { s: -sw * 2.5, b: -Math.sin(ph + 0.6) * amp * 2.5 };
+  const path = { s: [-280, 610], b: [-720, 40] };
+  const x = { s: lerp(path.s[0], path.s[1], u), b: lerp(path.b[0], path.b[1], u) };
+  const gait = (k) => {
+    const dist = path[k][1] - path[k][0], steps = Math.round(dist / 100), d = (x[k] - path[k][0]) * (steps * Math.PI) / dist;
+    const half = Math.floor(d / Math.PI);
+    if (k === 's' && half !== lastHalf) { if (lastHalf >= 0) STEPS.push(f); lastHalf = half; }
+    const a = Math.sin(d) * 24;
+    return { stride: true, legL: Math.round(a), legR: -Math.round(a), armL: Math.round(8 + Math.sin(d) * 4), armR: Math.round(-8 + Math.sin(d) * 4), facing: 'right' };
+  };
+  const y = { s: 0, b: 0 }, sway = { s: 0, b: 0 };
   let b, s;
-  if (walking) { b = { ...walkPose, eyes: 'neutral', mouth: 'closed' }; s = { ...walkPose, eyes: 'happy', mouth: 'grin' }; }
+  if (walking) { b = { ...gait('b'), eyes: 'neutral', mouth: 'closed' }; s = { ...gait('s'), eyes: 'happy', mouth: 'grin' }; }
   else if (f < POINT) { b = { eyes: 'neutral' }; s = { eyes: 'sly', mouth: 'grin' }; }
   else if (f < CRASH) {
     s = { eyes: 'up', mouth: 'grin', armR: -155, pointR: true };
