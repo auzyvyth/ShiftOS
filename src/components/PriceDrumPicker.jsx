@@ -13,6 +13,7 @@ export const PRICE_STEPS = [
   { value: '80000',   label: 'RM 80k' },
   { value: '90000',   label: 'RM 90k' },
   { value: '100000',  label: 'RM 100k' },
+  { value: '150000',  label: 'RM 150k' },
   { value: '200000',  label: 'RM 200k' },
   { value: '300000',  label: 'RM 300k' },
   { value: '400000',  label: 'RM 400k' },

@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import { useModalHistory } from '../hooks/useModalHistory';
-import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles, ArrowDownWideNarrow, LayoutGrid, GalleryVerticalEnd } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Flame, Car, Search, Sparkles, ArrowDownWideNarrow, LayoutGrid, GalleryVerticalEnd } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
-import { MY_STATES } from '../utils/locations';
 import { usePriceMode } from '../utils/priceMode';
 import { useCardSize } from '../utils/cardSize';
 import { trackEvent } from '../utils/analytics';
@@ -19,9 +17,8 @@ import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import {
-  BRAND_OPTIONS as BRAND_OPTS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES,
+  BODY_TYPES, FINANCING_TYPES,
   MILEAGE_OPTIONS as MILEAGE_OPTS, CONDITION_OPTIONS as CONDITION_OPTS,
-  FUEL_TYPES, COLOURS, YEARS,
   sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
   sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
@@ -29,12 +26,12 @@ import {
 } from '../config/marketplaceConfig';
 import { readCache, writeCache } from '../utils/localCache';
 import StaleListingsNotice from '../components/StaleListingsNotice';
-import { CAR_DATA } from '../data/carData';
 import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import NewBrandRow from '../components/marketplace/NewBrandRow';
+import FiltersPanel, { filterTheme } from '../components/listing/FiltersPanel';
 import { useAutoLoadMore } from '../hooks/useAutoLoadMore';
 import { storefront as SF } from '../theme/tokens';
 import { StorefrontError } from '../components/ErrorScreen';
@@ -117,266 +114,6 @@ const san = {
   seller:    sanitizeSellerType,
   str:       sanitizeStr,
 };
-
-/* ── Price range popover (click → floating min/max picker) ──────── */
-function PricePopover({ minPrice, maxPrice, onApply }) {
-  const [open, setOpen] = useState(false);
-  useModalHistory(open, () => setOpen(false));
-  const [pos, setPos]   = useState({ top: 0, left: 0, width: 240 });
-  const btnRef = useRef(null);
-  const popRef = useRef(null);
-
-  const minLabel = PRICE_STEPS.find(s => s.value === String(minPrice || ''))?.label || 'Any';
-  const maxLabel = PRICE_STEPS.find(s => s.value === String(maxPrice || ''))?.label || 'Any';
-  const hasVal   = minPrice || maxPrice;
-  const summary  = hasVal ? `${minLabel} – ${maxLabel}` : 'Any price';
-
-  useLayoutEffect(() => {
-    if (!open || !btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect();
-    const PW = 300, GAP = 8;
-    // Prefer opening to the LEFT of the filter bar; fall back below if no room.
-    let left = r.left - PW - GAP;
-    if (left < 12) left = Math.max(12, r.right - PW); // tuck under, right-aligned
-    let top = r.top;
-    const PH = 320;
-    if (top + PH > window.innerHeight - 12) top = Math.max(12, window.innerHeight - PH - 12);
-    setPos({ top, left, width: PW });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = e => {
-      if (btnRef.current?.contains(e.target) || popRef.current?.contains(e.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const col = (selectedVal, isMin) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>{isMin ? 'Min' : 'Max'}</p>
-      <div className="cl-sidebar-scroll" style={{ maxHeight: '230px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '4px' }}>
-        {PRICE_STEPS.map(s => {
-          const active = String(selectedVal || '') === s.value;
-          // guard: min can't exceed max and vice-versa
-          const disabled = isMin
-            ? (maxPrice && s.value && Number(s.value) > Number(maxPrice))
-            : (minPrice && s.value && Number(s.value) < Number(minPrice));
-          return (
-            <button key={s.value || 'any'}
-              disabled={disabled}
-              onClick={() => onApply(isMin ? s.value : String(minPrice || ''), isMin ? String(maxPrice || '') : s.value)}
-              style={{
-                textAlign: 'left', padding: '7px 10px', borderRadius: '7px', cursor: disabled ? 'not-allowed' : 'pointer',
-                border: 'none', fontSize: '13px', fontWeight: active ? 700 : 500,
-                background: active ? 'rgba(220,38,38,0.08)' : 'transparent',
-                color: disabled ? '#d1d5db' : active ? '#dc2626' : '#374151',
-                transition: 'background-color 100ms var(--xd-ease-out), border-color 100ms var(--xd-ease-out), color 100ms var(--xd-ease-out), box-shadow 100ms var(--xd-ease-out), transform 100ms var(--xd-ease-out), opacity 100ms var(--xd-ease-out)',
-              }}
-            >{s.label}</button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      <button ref={btnRef} onClick={() => setOpen(o => !o)} style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#fff', border: `1px solid ${open ? '#dc2626' : '#e5e7eb'}`, borderRadius: '8px',
-        padding: '9px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: hasVal ? 600 : 400,
-        color: hasVal ? '#111827' : '#9ca3af', fontFamily: "'Outfit',sans-serif", transition: 'border-color 0.12s',
-      }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
-        <ChevronDown size={14} style={{ color: '#9ca3af', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-      {open && createPortal(
-        <div ref={popRef} style={{
-          position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 1200,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.18)', padding: '14px', fontFamily: "'Outfit',sans-serif",
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 800, color: '#111827', margin: 0 }}>Price Range</p>
-            <button onClick={() => { onApply('', ''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <RotateCcw size={10} /> Clear
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {col(minPrice, true)}
-            <div style={{ width: '1px', background: '#f3f4f6' }} />
-            {col(maxPrice, false)}
-          </div>
-          <button onClick={() => setOpen(false)} style={{
-            width: '100%', marginTop: '12px', background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
-            border: 'none', color: '#fff', fontSize: '13px', fontWeight: 700, borderRadius: '9px',
-            padding: '10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
-          }}>Done</button>
-        </div>,
-        document.body
-      )}
-    </>
-  );
-}
-
-/* ── Filter section wrapper ─────────────────────────────────────── */
-function FG({ title, children }) {
-  // colors inherit from --fp-* vars set on the FiltersPanel root (theme-aware)
-  return (
-    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid var(--fp-line, #f3f4f6)' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'var(--fp-muted, #9ca3af)', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
-      {children}
-    </div>
-  );
-}
-
-/* ── Filter panel (sidebar + drawer content) ────────────────────── */
-function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
-  const d = draft;
-  const dark = !isMarketplace;
-  // Theme vars — inherited by FG and nested controls so the whole drawer themes
-  // from one place (dark on the dealer subdomain, light on the marketplace).
-  const fpVars = dark ? {
-    '--fp-input': sv('bg', SF.surface2), '--fp-border': sv('border', SF.border),
-    '--fp-text': sv('text', SF.text), '--fp-muted': sv('muted', SF.textMuted), '--fp-line': sv('border', SF.line),
-    '--fp-ink': sv('text', '#ffffff'), '--fp-ink-text': sv('bg', '#0f1115'),
-  } : {
-    '--fp-input': '#fff', '--fp-border': '#e5e7eb',
-    '--fp-text': '#111827', '--fp-muted': '#9ca3af', '--fp-line': '#f3f4f6',
-    '--fp-ink': '#0f1115', '--fp-ink-text': '#ffffff',
-  };
-  const pill = active => ({
-    padding:'6px 11px', borderRadius:'6px',
-    border:`1px solid ${active ? 'var(--fp-ink)' : 'var(--fp-border)'}`,
-    background: active ? 'var(--fp-ink)' : 'var(--fp-input)',
-    color: active ? 'var(--fp-ink-text)' : 'var(--fp-text)',
-    fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)',
-    lineHeight:'1.4',
-  });
-  const sel = {
-    width:'100%', background:'var(--fp-input)', border:'1px solid var(--fp-border)', borderRadius:'8px',
-    padding:'9px 30px 9px 12px', color:'var(--fp-text)', fontSize:'13px',
-    appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box',
-    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-    backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center',
-  };
-
-  const modelOptions = CAR_DATA[d.brand] || [];
-
-  return (
-    <div style={fpVars}>
-      <FG title="Hot Deals">
-        <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: d.hot_deals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${d.hot_deals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:d.hot_deals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)' }}
-          onClick={()=>setDraftParam('hot_deals', d.hot_deals?'':'true')}
-        >
-          <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
-          {d.hot_deals && <span style={{ fontSize:'12px', color:'#d97706' }}>✓</span>}
-        </button>
-      </FG>
-
-      <FG title="Brand">
-        <select style={sel} value={d.brand||''} onChange={e=>setDraftParam('brand', e.target.value)}>
-          <option value="">All Brands</option>
-          {BRAND_OPTS.map(b=><option key={b} value={b}>{b}</option>)}
-        </select>
-      </FG>
-
-      {d.brand && modelOptions.length > 0 && (
-        <FG title="Model">
-          <select style={sel} value={d.model||''} onChange={e=>setDraftParam('model',e.target.value)}>
-            <option value="">All {d.brand} Models</option>
-            {modelOptions.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-        </FG>
-      )}
-
-      {d.model && (
-        <FG title="Variant">
-          <input type="text" placeholder="e.g. 1.5 G" value={d.variant||''} onChange={e=>setDraftParam('variant', e.target.value)} style={{ ...sel, padding:'9px 12px', backgroundImage:'none' }}/>
-        </FG>
-      )}
-
-      <FG title="Price Range">
-        <PricePopover minPrice={d.min_price} maxPrice={d.max_price} onApply={(min,max)=>{ setDraftParam('min_price', min); setDraftParam('max_price', max); }}/>
-      </FG>
-
-      <FG title="Year">
-        <div style={{ display:'flex', gap:'8px' }}>
-          <select style={{ ...sel, flex:1 }} value={d.year_from||''} onChange={e=>setDraftParam('year_from',e.target.value)}>
-            <option value="">From</option>
-            {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-          <select style={{ ...sel, flex:1 }} value={d.year_to||''} onChange={e=>setDraftParam('year_to',e.target.value)}>
-            <option value="">To</option>
-            {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-      </FG>
-
-      <FG title="Body Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {BODY_TYPES.map(bt=><button key={bt} style={pill(d.body_type===bt)} onClick={()=>setDraftParam('body_type',d.body_type===bt?'':bt)}>{bt}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Transmission">
-        <div style={{ display:'flex', gap:'6px' }}>
-          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(d.transmission===tx)} onClick={()=>setDraftParam('transmission',d.transmission===tx?'':tx)}>{tx}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Condition">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {CONDITION_OPTS.map(co=><button key={co.value} style={pill(d.condition===co.value)} onClick={()=>setDraftParam('condition',d.condition===co.value?'':co.value)}>{co.label}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Fuel Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FUEL_TYPES.map(ft=><button key={ft} style={pill(d.fuel_type===ft)} onClick={()=>setDraftParam('fuel_type',d.fuel_type===ft?'':ft)}>{ft}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Max Mileage">
-        <select style={sel} value={d.mileage_max||''} onChange={e=>setDraftParam('mileage_max',e.target.value)}>
-          <option value="">Any Mileage</option>
-          {MILEAGE_OPTS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </FG>
-
-      <FG title="Location">
-        <select style={sel} value={d.state||''} onChange={e=>setDraftParam('state',e.target.value)}>
-          <option value="">All States</option>
-          {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-        </select>
-      </FG>
-
-      <FG title="Payment">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(d.financing===ft.value)} onClick={()=>setDraftParam('financing',d.financing===ft.value?'':ft.value)}>{ft.label}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Colour">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {COLOURS.map(c=><button key={c} style={pill(d.colour===c)} onClick={()=>setDraftParam('colour',d.colour===c?'':c)}>{c}</button>)}
-        </div>
-      </FG>
-
-      {isMarketplace && (
-        <FG title="Seller">
-          <div style={{ display:'flex', gap:'6px' }}>
-            {SELLER_TYPES.map(st=><button key={st.value} style={pill(d.seller_type===st.value)} onClick={()=>setDraftParam('seller_type',d.seller_type===st.value?'':st.value)}>{st.label}</button>)}
-          </div>
-        </FG>
-      )}
-    </div>
-  );
-}
 
 /* ── Main ───────────────────────────────────────────────────────── */
 export default function CarListingPage() {
@@ -780,7 +517,11 @@ export default function CarListingPage() {
     else setParam(key,'');
   };
 
-  const filtersProps = { isMarketplace, draft, setDraftParam };
+  const filtersProps = { isMarketplace, draft, setDraftParam, priceMode };
+  const fpVars = filterTheme(dark);
+  // Each opening starts the panel fresh (main screen, not a brand list left open last time).
+  const [drawerSeq, setDrawerSeq] = useState(0);
+  useEffect(() => { if (drawerOpen) setDrawerSeq((n) => n + 1); }, [drawerOpen]);
 
   /* ── Early states ── */
   if (!isMarketplace && !tenantLoading && !tenant) {
@@ -815,6 +556,14 @@ export default function CarListingPage() {
         .cl-sidebar-scroll::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:2px }
         .cl-brand-scroll::-webkit-scrollbar { display:none }
         .cl-chips-scroll::-webkit-scrollbar { display:none }
+        .cl-drawer { position:fixed; top:0; right:0; bottom:0; width:400px; max-width:92vw; transform:translateX(100%); transition:transform .3s cubic-bezier(0.22,1,0.36,1), visibility 0s linear .3s }
+        .cl-drawer.open { transform:none; transition:transform .3s cubic-bezier(0.22,1,0.36,1) }
+        .cl-drawer-grab { display:none }
+        @media(max-width:767px) {
+          .cl-drawer { left:0; width:auto; max-width:none; top:44px; border-radius:22px 22px 0 0; transform:translateY(100%) }
+          .cl-drawer-grab { display:block; width:38px; height:4px; border-radius:9px; background:var(--fp-muted); opacity:.35; margin:8px auto 0 }
+        }
+        @media (prefers-reduced-motion: reduce) { .cl-drawer, .cl-drawer.open { transition:none } }
         .cl-fab { display:none !important }
         .cl-phone-only { display:none !important }
         @media(max-width:767px) {
@@ -847,40 +596,26 @@ export default function CarListingPage() {
         <div onClick={()=>setDrawerOpen(false)} style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)' }}/>
       )}
 
-      {/* Filter drawer — slides from RIGHT, above header */}
-      <div style={{
-        position:'fixed', top:0, right:0, bottom:0, zIndex:1110,
-        width:'300px', maxWidth:'92vw',
-        background: dark ? sv('card', SF.surface) : '#fff', borderLeft:`1px solid ${dark ? sv('border', SF.border) : '#e5e7eb'}`,
-        transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition:'transform 0.28s cubic-bezier(0.22,1,0.36,1)',
-        display:'flex', flexDirection:'column',
-        fontFamily:"'Outfit',sans-serif",
-        boxShadow: drawerOpen ? '-12px 0 40px rgba(0,0,0,0.12)' : 'none',
-      }}>
-        {/* Drawer header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:`1px solid ${dark ? sv('border', SF.line) : '#f3f4f6'}` }}>
-          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color: dark ? sv('text', SF.text) : '#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
-            <SlidersHorizontal size={15} style={{ color:T.textMuted }}/> Filters
-            {activeChips.length > 0 && (
-              <span style={{ background: dark ? `var(--sf-theme-accent, ${brandAccent})` : '#de1c3e', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 6px', borderRadius:'4px' }}>{activeChips.length}</span>
-            )}
-          </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background: dark ? sv('bg', 'rgba(255,255,255,0.06)') : 'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color: dark ? sv('muted', SF.textSec) : '#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
-            <X size={16}/>
+      {/* Filter drawer (2026-11-22 redesign): a bottom sheet on a phone, a side drawer on a tablet.
+          The panel edits a DRAFT; the list loads once, on Search (owner: no work per tap). */}
+      <div className={`cl-drawer${drawerOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-label="Filters" aria-hidden={!drawerOpen}
+        style={{ ...fpVars, zIndex:1110, background:'var(--fp-pg)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif", boxShadow: drawerOpen ? '0 -12px 40px rgba(0,0,0,0.18)' : 'none', visibility: drawerOpen ? 'visible' : 'hidden' }}>
+        <div className="cl-drawer-grab" aria-hidden />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 18px 12px' }}>
+          <h2 style={{ margin:0, fontSize:'19px', fontWeight:'800', color:'var(--fp-text)', fontFamily:"'Outfit',sans-serif" }}>Filters</h2>
+          <button type="button" onClick={()=>setDrawerOpen(false)} aria-label="Close filters" style={{ width:'34px', height:'34px', background:'var(--fp-row)', border:'none', cursor:'pointer', color:'var(--fp-text)', borderRadius:'999px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <X size={17}/>
           </button>
         </div>
-        {/* Drawer body */}
-        <div className="cl-sidebar-scroll" style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
-          <FiltersPanel {...filtersProps}/>
+        <div className="cl-sidebar-scroll" style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'0 16px 8px' }}>
+          <FiltersPanel key={drawerSeq} {...filtersProps}/>
         </div>
-        {/* Drawer footer */}
-        <div style={{ padding:'14px 20px', borderTop:`1px solid ${dark ? sv('border', SF.line) : '#f3f4f6'}`, display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background: dark ? sv('bg', 'rgba(255,255,255,0.06)') : 'rgba(0,0,0,0.04)', border:`1px solid ${dark ? sv('border', SF.border) : '#e5e7eb'}`, color: dark ? sv('muted', SF.textSec) : '#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'12px 16px calc(14px + env(safe-area-inset-bottom))', borderTop:'1px solid var(--fp-line)', background:'var(--fp-pg)' }}>
+          <button type="button" onClick={resetAll} style={{ background:'none', border:'none', color:'var(--fp-text)', fontSize:'15px', fontWeight:'700', padding:'12px 10px', cursor:'pointer', textDecoration:'underline', textUnderlineOffset:'3px', fontFamily:"'Outfit',sans-serif" }}>
             Reset
           </button>
-          <button onClick={applyDraft} style={{ flex:2, ...(accentFill || { background:'var(--xd-crimson)', color:'#fff', boxShadow:'var(--xd-crimson-shadow)' }), border:'none', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
-            <Search size={14}/> Search
+          <button type="button" onClick={applyDraft} className={accentClass} style={{ flex:1, ...(accentFill || { background:'var(--xd-crimson)', color:'#fff', boxShadow:'var(--xd-crimson-shadow)' }), border:'none', fontSize:'16px', fontWeight:'800', borderRadius:'14px', padding:'14px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+            <Search size={17}/> Search
           </button>
         </div>
       </div>
@@ -1119,26 +854,21 @@ export default function CarListingPage() {
             {/* ── Filter sidebar — RIGHT side (desktop only) ── */}
             {isWide && <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background: dark ? sv('card', '#0d1117') : '#fff', border:`1px solid ${dark ? sv('border', 'rgba(255,255,255,0.08)') : '#e5e7eb'}`, borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'calc(var(--mh-h, 64px) + 88px)', transition:'top .28s ease', maxHeight:'calc(100vh - var(--mh-h, 64px) - 108px)', overflowY:'auto' }}
+              style={{ ...fpVars, width:'300px', flexShrink:0, background:'var(--fp-pg)', borderRadius:'18px', padding:'14px 12px 0', position:'sticky', top:'calc(var(--mh-h, 64px) + 88px)', transition:'top .28s ease', maxHeight:'calc(100vh - var(--mh-h, 64px) - 108px)', overflowY:'auto', boxShadow:'0 0 0 1px var(--fp-line)' }}
             >
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:`1px solid ${dark ? sv('border', 'rgba(255,255,255,0.08)') : '#f3f4f6'}` }}>
-                <h2 style={{ color:T.text, fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
-                  <SlidersHorizontal size={13} style={{ color:T.textMuted }}/> Filters
-                  {activeChips.length > 0 && (
-                    <span style={{ background: dark ? `var(--sf-theme-accent, ${brandAccent})` : '#de1c3e', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 5px', borderRadius:'4px' }}>{activeChips.length}</span>
-                  )}
-                </h2>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', margin:'0 4px 12px' }}>
+                <h2 style={{ color:'var(--fp-text)', fontSize:'17px', fontWeight:'800', margin:0, fontFamily:"'Outfit',sans-serif" }}>Filters</h2>
                 {hasFilters && (
-                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
-                    <RotateCcw size={10}/> Reset
+                  <button type="button" onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--fp-text)', fontSize:'13.5px', fontWeight:'700', textDecoration:'underline', textUnderlineOffset:'3px', fontFamily:"'Outfit',sans-serif", padding:0 }}>
+                    Reset
                   </button>
                 )}
               </div>
               <FiltersPanel {...filtersProps}/>
-              <div style={{ position:'sticky', bottom:0, background: dark ? sv('card', '#0d1117') : '#fff', paddingTop:'12px', marginTop:'4px', borderTop:`1px solid ${dark ? sv('border', 'rgba(255,255,255,0.08)') : '#f3f4f6'}` }}>
-                <button onClick={applyDraft} disabled={!draftDirty}
-                  style={{ width:'100%', background: draftDirty ? (dark ? accentFill.background : 'var(--xd-crimson)') : (dark ? sv('bg', 'rgba(255,255,255,0.06)') : '#f3f4f6'), border:'none', color: draftDirty ? '#fff' : (dark ? sv('muted', 'rgba(255,255,255,0.4)') : '#9ca3af'), fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'12px', cursor: draftDirty ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
-                  <Search size={14}/> Search
+              <div style={{ position:'sticky', bottom:0, background:'var(--fp-pg)', padding:'10px 0 12px', margin:'0 -2px' }}>
+                <button type="button" onClick={applyDraft} disabled={!draftDirty} className={draftDirty ? accentClass : undefined}
+                  style={{ width:'100%', ...(draftDirty ? (accentFill || { background:'var(--xd-crimson)', color:'#fff', boxShadow:'var(--xd-crimson-shadow)' }) : { background:'var(--fp-row)', color:'var(--fp-muted)' }), border:'none', fontSize:'15px', fontWeight:'800', borderRadius:'14px', padding:'13px', cursor: draftDirty ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                  <Search size={16}/> Search
                 </button>
               </div>
             </aside>}
