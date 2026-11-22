@@ -19,7 +19,7 @@ export const logo = (x, y, w, fill = '#F40000') =>
 // ---------- characters ----------
 // Viewbox 500x1000, feet on y=975. Arm angles: 0 = straight down, -90 = out to the right side
 // for the right arm (+90 for the left), -160 = raised.
-const PEOPLE = {
+export const PEOPLE = {
   salesman: {
     name: 'Abang Jo', skin: '#c68b59', skinDark: '#a86f42',
     shirt: C.red, shirtDark: C.redDark, pants: '#22252b', shoe: '#0c0d10',
@@ -161,7 +161,7 @@ function leg(p, hx, angle, dir, lift = 0) {
   </g>`;
 }
 
-function eyes(kind) {
+export function eyes(kind) {
   const K = C.ink;
   if (kind === 'side') return `<ellipse cx="200" cy="258" rx="24" ry="22" fill="#fff" ${OL}/><ellipse cx="300" cy="258" rx="24" ry="22" fill="#fff" ${OL}/>
     <circle cx="216" cy="262" r="10" fill="${K}"/><circle cx="316" cy="262" r="10" fill="${K}"/>
@@ -202,7 +202,7 @@ function eyes(kind) {
     <path d="M176 215 Q200 205 224 214 M276 214 Q300 205 324 215" fill="none" stroke="${C.ink}" stroke-width="8" stroke-linecap="round"/>`;
 }
 
-function mouth(kind) {
+export function mouth(kind) {
   const K = C.ink;
   if (kind === 'grimace') return `<path d="M200 350 L300 350 Q300 388 250 388 Q200 388 200 350 Z" fill="#fff" ${OL}/><path d="M204 369 L296 369 M225 352 L225 386 M250 352 L250 388 M275 352 L275 386" stroke="${K}" stroke-width="4"/>`;
   if (kind === 'frown') return `<path d="M215 378 Q250 352 285 378" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
