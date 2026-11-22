@@ -104,8 +104,8 @@ await br.close();
 // sound: a low boom at the smoke + short pops on each caption
 const t = (f) => (f / FPS).toFixed(3);
 const pops = LINES.map(([a], i) => `sine=f=${700 + i * 90}:d=0.07,volume=0.25,adelay=${Math.round((a / FPS) * 1000)}|${Math.round((a / FPS) * 1000)}[p${i}]`).join(';');
-const filter = `anoisesrc=c=brown:d=1.4:a=0.9,lowpass=f=180,afade=t=out:st=0.05:d=1.3,adelay=${Math.round(t(BOOM) * 1000)}|${Math.round(t(BOOM) * 1000)}[bm];${pops};[bm]${LINES.map((_, i) => `[p${i}]`).join('')}amix=inputs=${LINES.length + 1}:normalize=0,apad,atrim=0:${N / FPS}[a]`;
+const filter = `anoisesrc=c=brown:d=1.4:a=0.9,lowpass=f=180,afade=t=out:st=0.05:d=1.3,adelay=${Math.round(t(BOOM) * 1000)}|${Math.round(t(BOOM) * 1000)}[bm];${pops};[1:a]atrim=0:${N / FPS}[base];[base][bm]${LINES.map((_, i) => `[p${i}]`).join('')}amix=inputs=${LINES.length + 2}:normalize=0:duration=first,asetpts=PTS-STARTPTS[a]`;
 execFileSync('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', `${FR}%04d.jpg`, '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
-  '-filter_complex', filter, '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-c:a', 'aac', '-shortest',
+  '-filter_complex', filter, '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-g', '30', '-profile:v', 'main', '-movflags', '+faststart', '-c:a', 'aac', '-ar', '44100', '-t', String(N / FPS),
   `${DIR}preview/scene1-test.mp4`]);
 console.log('ok', `${DIR}preview/scene1-test.mp4`);
