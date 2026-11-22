@@ -2005,6 +2005,17 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **The model page was redesigned (NEWCAR-PAGE, owner 2026-11-22: "robotic and empty"):** photos
+  (`new_car_model_media`), colour dots + variant chips from `new_car_models.specs`, price + monthly
+  (10% down, 7 yrs, `LOCAL_NEW_EIR` for new Proton/Perodua), "what it adds" (`variantExtras`), a year's
+  road tax / insurance / petrol (`ownership.js`, labelled estimates), advisors, then the brand's other
+  models. Words + facts come from specs only (`modelFacts`, `modelLead` in `newCars.js`); never invent one.
+  **The pick rides into the lead (NEWCAR-PICK):** an advisor's WhatsApp opens `ContactGate` (`pick` prop) ->
+  `/api/whatsapp-lead` (`variantId`, `colour`) -> `create_lead_from_whatsapp(..., p_variant_id, p_colour)`,
+  which keeps them only when the variant is of the car's model and the colour is that variant's
+  (`leads.new_car_model_id` + `leads.car_colour`; migration `20261122b`, QUEUED; before it the API retries
+  without them). Premium's lead card shows "Wants: <variant> · <colour>" and that variant's price
+  (`useVariantNames`), and the won confirm starts on the picked variant.
 - **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
   2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
   After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from "react";
+import { useVariantNames } from "../hooks/useVariantNames";
+import { colourSwatch, PRICE_ZONES, zoneForState } from "../utils/newCars";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -512,6 +514,8 @@ export default function SalesmanPremium() {
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);
+ // NEWCAR-PICK: names for the variant a buyer picked on a new-car model page.
+ const pickedVariantNames = useVariantNames(leads.map((l) => l.new_car_model_id));
  const [staleLeads, setStaleLeads] = useState([]);
  // "reward the comeback" greeting + Monthly Goal card (ported from Lite)
  const [isReturning, setIsReturning] = useState(false);
@@ -2048,7 +2052,7 @@ export default function SalesmanPremium() {
  clearTimeout(pendingStageRef.current[lead.id].timer);
  delete pendingStageRef.current[lead.id];
  }
- setWonPrompt({ lead, price: lead.car_listings?.selling_price ? String(lead.car_listings.selling_price) : "" });
+ setWonPrompt({ lead, price: lead.car_listings?.selling_price ? String(lead.car_listings.selling_price) : "", variantId: lead.new_car_model_id || undefined });
  return;
  }
  // Intercept a seller-initiated move into the booking stage → ask for the
@@ -3470,7 +3474,11 @@ export default function SalesmanPremium() {
  const dealerCar = lead.car_listings ? null : dealerSaleFor(lead)?.car || null;
  const car = lead.car_listings || (dealerCar && !dealerCar._label ? dealerCar : null);
  const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : (dealerCar?._label || null);
- const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
+ // NEWCAR-PICK: a buyer who picked a variant on the model page is quoted THAT variant's price
+ // (the seller's own price zone), not the card's cheapest "from" price.
+ const pick = pickedVariantNames[lead.new_car_model_id] || null;
+ const pickPrice = pick?.prices?.[PRICE_ZONES.find((z) => z.key === zoneForState(profile?.state))?.col || "price_peninsular"];
+ const carPrice = pickPrice ? `RM ${Number(pickPrice).toLocaleString("en-MY")}` : car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
  const progressStages = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken","won"];
  const normalizedStage = lead.stage === "closed_won"? "won" : lead.stage;
  const currentProgressIdx = progressStages.indexOf(normalizedStage);
@@ -3555,6 +3563,16 @@ export default function SalesmanPremium() {
  {carName && <p style={{ margin: 0, fontSize: 12, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
  {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
  </div>
+ )}
+ {/* NEWCAR-PICK: what the buyer picked on the model page (variant + colour). */}
+ {(pick || lead.car_colour) && (
+ <p data-lead-pick style={{ margin: "4px 0 0", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: PD.text, minWidth: 0 }}>
+ {lead.car_colour && <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 99, flexShrink: 0, background: colourSwatch(lead.car_colour), boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.35)" }} />}
+ <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <span style={{ color: PD.textMuted }}>{t("salesmanPremium.leads.picked", "Wants")}: </span>
+ {[pick?.variant, lead.car_colour].filter(Boolean).join(" · ")}
+ </span>
+ </p>
  )}
  {(() => {
  // Was "Last contact: {timeAgo(lead.updated_at)}", which sat directly above a
@@ -7975,7 +7993,7 @@ export default function SalesmanPremium() {
  car={soldPickCar}
  leads={openLeadsOnCar(leads, soldPickCar.id)}
  onClose={() => setSoldPickCar(null)}
- onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l, price: l.car_listings?.selling_price ? String(l.car_listings.selling_price) : "" }); }}
+ onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l, price: l.car_listings?.selling_price ? String(l.car_listings.selling_price) : "", variantId: l.new_car_model_id || undefined }); }}
  onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
  onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
  />
