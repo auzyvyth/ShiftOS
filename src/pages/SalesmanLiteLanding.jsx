@@ -19,6 +19,7 @@ import { ROOT_DOMAIN } from "../config/site";
 import { PLAN_CONFIG, OPS_WHATSAPP } from "../utils/planConfig";
 import { isInAppBrowser } from "../utils/installPrompt";
 import { trackEvent } from "../utils/analytics";
+import { OG_IMAGES } from "../config/ogImages";
 import {
   CANON, SEO_KEYWORDS, SOFTWARE_LD, FAQ_LD, FAQ_LD_EN, webpageLd, EXAMPLE_PAGE,
   DEFAULT_LANG, LANG_KEY, LANDING_COPY, landingCopy,
@@ -128,7 +129,7 @@ export default function SalesmanLiteLanding() {
         <meta property="og:description" content={t.seoDesc} />
         <meta property="og:url" content={CANON} />
         <meta property="og:site_name" content="Drevo" />
-        <meta property="og:image" content="https://drevo.my/og-default.jpg" />
+        <meta property="og:image" content={OG_IMAGES.salesmen} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={t.seoTitle} />
         <meta name="twitter:description" content={t.seoDesc} />

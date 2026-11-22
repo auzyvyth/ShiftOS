@@ -7,6 +7,7 @@ import PricingCards from '../components/pricing/PricingCards';
 import { DEALER_PLANS, salesmanPricingCards, waLink } from '../utils/plans';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile } from '../lib/buyerAuth';
+import { OG_IMAGES } from '../config/ogImages';
 
 /*
  * The one place a seller picks what they are signing up for.
@@ -84,6 +85,8 @@ export default function PlansPage() {
         <title>Plans &amp; Pricing | Drevo</title>
         <meta name="description" content="Sell cars on Drevo. Free for individual salesmen, Premium from RM35/month (founding price), dealer plans from RM299/month with a 14-day free trial." />
         <link rel="canonical" href="https://drevo.my/plans" />
+        <meta property="og:image" content={OG_IMAGES.salesmen} />
+        <meta name="twitter:image" content={OG_IMAGES.salesmen} />
       </Helmet>
 
       <MarketplaceHeader />

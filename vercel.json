@@ -15,6 +15,9 @@
     },
     "api/agent-card.js": {
       "includeFiles": "api/_fonts/**"
+    },
+    "api/dealer-card.js": {
+      "includeFiles": "{api/_fonts/**,public/drevo-logo-dark.png}"
     }
   },
   "redirects": [
