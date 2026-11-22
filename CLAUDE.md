@@ -430,6 +430,10 @@ still says "21 pages") — do not update it; it is pending removal.
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were
   duplicated once and the copies are what drift.
+  **Filter panel (2026-11-22): `src/components/listing/FiltersPanel.jsx`** (phone bottom sheet, tablet drawer,
+  desktop right sidebar; Carlist's grouped layout). It edits a DRAFT and the list loads ONCE on Search (owner:
+  no work per tap, so no live count on the button). Monthly budget = a max price on the cards' loan
+  (`maxPriceForMonthly`, snapped to `PRICE_STEPS`, which gained RM150k). Hot deals + body type live in the chip row only.
 - src/pages/CarDetailPage.jsx — single car listing page (has "What's Included" services strip)
 - src/pages/SalesmanPanel.jsx — salesman role dashboard (file: Salesmanpanel.jsx)
 - src/pages/DashboardPage.jsx — owner/admin dashboard (see nav tabs below)
