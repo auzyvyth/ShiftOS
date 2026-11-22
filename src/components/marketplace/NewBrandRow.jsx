@@ -41,7 +41,7 @@ export default function NewBrandRow() {
     <div className="nbr">
       <style>{NBR_CSS}</style>
       <div className="nbr-row">
-        <span className="nbr-label">Buying new?</span>
+        <span className="nbr-label">New car?</span>
         {brands.map((b) => (
           <button key={b.brand} type="button" className="nbr-brand" aria-pressed={open === b.brand}
             onClick={() => setOpen(open === b.brand ? null : b.brand)}>
@@ -71,15 +71,15 @@ export default function NewBrandRow() {
 }
 
 const NBR_CSS = `
-  .nbr { font-family:'Outfit',sans-serif; margin-top:8px; }
+  .nbr { font-family:'Outfit',sans-serif; margin-top:6px; }
   .nbr-row { display:flex; align-items:center; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
   .nbr-row::-webkit-scrollbar { display:none; }
-  .nbr-label { flex-shrink:0; font-size:12px; font-weight:600; color:#6b7280; margin-right:2px; white-space:nowrap; }
-  .nbr-brand { flex-shrink:0; height:44px; min-width:76px; padding:0 12px; display:flex; align-items:center; justify-content:center;
-    background:#fff; border:1px solid rgba(15,17,21,.10); border-radius:8px; cursor:pointer; }
-  .nbr-brand[aria-pressed="true"] { border-color:#0f1115; box-shadow:0 0 0 1px #0f1115; }
-  .nbr-brand img { max-height:32px; max-width:84px; object-fit:contain; display:block; }
-  .nbr-word { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:.03em; color:#0f1115; }
+  .nbr-label { flex-shrink:0; font-size:12.5px; font-weight:600; color:#6b7280; margin-right:2px; white-space:nowrap; }
+  .nbr-brand { flex-shrink:0; height:36px; min-width:60px; padding:0 10px; display:flex; align-items:center; justify-content:center;
+    background:#fff; border:none; box-shadow:0 0 0 1px rgba(15,23,42,.09); border-radius:10px; cursor:pointer; }
+  .nbr-brand[aria-pressed="true"] { box-shadow:0 0 0 2px #0f1115; }
+  .nbr-brand img { max-height:22px; max-width:64px; object-fit:contain; display:block; }
+  .nbr-word { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:.03em; color:#0f1115; }
   .nbr-models { position:relative; display:grid; grid-auto-flow:column; grid-auto-columns:150px; gap:10px; overflow-x:auto;
     scrollbar-width:none; margin-top:10px; padding:2px 40px 6px 2px; }
   .nbr-models::-webkit-scrollbar { display:none; }

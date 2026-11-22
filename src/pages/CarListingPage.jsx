@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import { useModalHistory } from '../hooks/useModalHistory';
-import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Flame, Car, Search, Sparkles, ArrowDownWideNarrow, LayoutGrid, GalleryVerticalEnd } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
-import { MY_STATES } from '../utils/locations';
 import { usePriceMode } from '../utils/priceMode';
+import { useCardSize } from '../utils/cardSize';
 import { trackEvent } from '../utils/analytics';
 import { cleanSearchText, activeFilterKeys, searchKey } from '../utils/searchTracking';
 import { chassisSearch } from '../utils/chassisCodes';
@@ -18,9 +17,8 @@ import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from '../hooks/useTenant';
 import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import {
-  BRAND_OPTIONS as BRAND_OPTS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES,
+  BODY_TYPES, FINANCING_TYPES,
   MILEAGE_OPTIONS as MILEAGE_OPTS, CONDITION_OPTIONS as CONDITION_OPTS,
-  FUEL_TYPES, COLOURS, YEARS,
   sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
   sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
@@ -28,15 +26,19 @@ import {
 } from '../config/marketplaceConfig';
 import { readCache, writeCache } from '../utils/localCache';
 import StaleListingsNotice from '../components/StaleListingsNotice';
-import { CAR_DATA } from '../data/carData';
 import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import NewBrandRow from '../components/marketplace/NewBrandRow';
-import Pagination from '../components/ui/Pagination';
+import FiltersPanel, { filterTheme } from '../components/listing/FiltersPanel';
+import { useAutoLoadMore } from '../hooks/useAutoLoadMore';
 import { storefront as SF } from '../theme/tokens';
 import { StorefrontError } from '../components/ErrorScreen';
+import { themeOf, themeCss } from '../utils/storefrontTheme';
+import { accentTheme, hexToRgb } from '../utils/liveAccent';
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from '../utils/pageAccent';
+import { sv } from '../components/storefront/sections/shared';
 
 // Dealer-storefront chrome only (/cars on <sub>.xdrive.my). Lazy so the
 // marketplace /showroom does not download them, nor the framer-motion they
@@ -45,7 +47,9 @@ const Header = lazy(() => import('../components/Header'));
 const StickyWhatsAppButton = lazy(() => import('../components/StickyWhatsAppButton'));
 
 /* ── Constants ──────────────────────────────────────────────────── */
-const PER_PAGE = 15;
+// 50 at a time, the next 50 load by themselves near the bottom (owner, 2026-11-22; was 15 +
+// numbered pages). useAutoLoadMore + the end line under the grid.
+const PER_PAGE = 50;
 // Same freshness window as the marketplace grid's saved copy.
 const SEED_TTL = 30 * 60 * 1000;
 
@@ -111,266 +115,6 @@ const san = {
   str:       sanitizeStr,
 };
 
-/* ── Price range popover (click → floating min/max picker) ──────── */
-function PricePopover({ minPrice, maxPrice, onApply }) {
-  const [open, setOpen] = useState(false);
-  useModalHistory(open, () => setOpen(false));
-  const [pos, setPos]   = useState({ top: 0, left: 0, width: 240 });
-  const btnRef = useRef(null);
-  const popRef = useRef(null);
-
-  const minLabel = PRICE_STEPS.find(s => s.value === String(minPrice || ''))?.label || 'Any';
-  const maxLabel = PRICE_STEPS.find(s => s.value === String(maxPrice || ''))?.label || 'Any';
-  const hasVal   = minPrice || maxPrice;
-  const summary  = hasVal ? `${minLabel} – ${maxLabel}` : 'Any price';
-
-  useLayoutEffect(() => {
-    if (!open || !btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect();
-    const PW = 300, GAP = 8;
-    // Prefer opening to the LEFT of the filter bar; fall back below if no room.
-    let left = r.left - PW - GAP;
-    if (left < 12) left = Math.max(12, r.right - PW); // tuck under, right-aligned
-    let top = r.top;
-    const PH = 320;
-    if (top + PH > window.innerHeight - 12) top = Math.max(12, window.innerHeight - PH - 12);
-    setPos({ top, left, width: PW });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = e => {
-      if (btnRef.current?.contains(e.target) || popRef.current?.contains(e.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const col = (selectedVal, isMin) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 6px' }}>{isMin ? 'Min' : 'Max'}</p>
-      <div className="cl-sidebar-scroll" style={{ maxHeight: '230px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '4px' }}>
-        {PRICE_STEPS.map(s => {
-          const active = String(selectedVal || '') === s.value;
-          // guard: min can't exceed max and vice-versa
-          const disabled = isMin
-            ? (maxPrice && s.value && Number(s.value) > Number(maxPrice))
-            : (minPrice && s.value && Number(s.value) < Number(minPrice));
-          return (
-            <button key={s.value || 'any'}
-              disabled={disabled}
-              onClick={() => onApply(isMin ? s.value : String(minPrice || ''), isMin ? String(maxPrice || '') : s.value)}
-              style={{
-                textAlign: 'left', padding: '7px 10px', borderRadius: '7px', cursor: disabled ? 'not-allowed' : 'pointer',
-                border: 'none', fontSize: '13px', fontWeight: active ? 700 : 500,
-                background: active ? 'rgba(220,38,38,0.08)' : 'transparent',
-                color: disabled ? '#d1d5db' : active ? '#dc2626' : '#374151',
-                transition: 'background-color 100ms var(--xd-ease-out), border-color 100ms var(--xd-ease-out), color 100ms var(--xd-ease-out), box-shadow 100ms var(--xd-ease-out), transform 100ms var(--xd-ease-out), opacity 100ms var(--xd-ease-out)',
-              }}
-            >{s.label}</button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      <button ref={btnRef} onClick={() => setOpen(o => !o)} style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#fff', border: `1px solid ${open ? '#dc2626' : '#e5e7eb'}`, borderRadius: '8px',
-        padding: '9px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: hasVal ? 600 : 400,
-        color: hasVal ? '#111827' : '#9ca3af', fontFamily: "'Outfit',sans-serif", transition: 'border-color 0.12s',
-      }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
-        <ChevronDown size={14} style={{ color: '#9ca3af', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-      {open && createPortal(
-        <div ref={popRef} style={{
-          position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 1200,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.18)', padding: '14px', fontFamily: "'Outfit',sans-serif",
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 800, color: '#111827', margin: 0 }}>Price Range</p>
-            <button onClick={() => { onApply('', ''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <RotateCcw size={10} /> Clear
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {col(minPrice, true)}
-            <div style={{ width: '1px', background: '#f3f4f6' }} />
-            {col(maxPrice, false)}
-          </div>
-          <button onClick={() => setOpen(false)} style={{
-            width: '100%', marginTop: '12px', background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
-            border: 'none', color: '#fff', fontSize: '13px', fontWeight: 700, borderRadius: '9px',
-            padding: '10px', cursor: 'pointer', fontFamily: "'Outfit',sans-serif",
-          }}>Done</button>
-        </div>,
-        document.body
-      )}
-    </>
-  );
-}
-
-/* ── Filter section wrapper ─────────────────────────────────────── */
-function FG({ title, children }) {
-  // colors inherit from --fp-* vars set on the FiltersPanel root (theme-aware)
-  return (
-    <div style={{ marginBottom:'16px', paddingBottom:'16px', borderBottom:'1px solid var(--fp-line, #f3f4f6)' }}>
-      <p style={{ fontSize:'10px', fontWeight:'700', color:'var(--fp-muted, #9ca3af)', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 10px' }}>{title}</p>
-      {children}
-    </div>
-  );
-}
-
-/* ── Filter panel (sidebar + drawer content) ────────────────────── */
-function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
-  const d = draft;
-  const dark = !isMarketplace;
-  // Theme vars — inherited by FG and nested controls so the whole drawer themes
-  // from one place (dark on the dealer subdomain, light on the marketplace).
-  const fpVars = dark ? {
-    '--fp-input': SF.surface2, '--fp-border': SF.border,
-    '--fp-text': SF.text, '--fp-muted': SF.textMuted, '--fp-line': SF.line,
-    '--fp-ink': '#ffffff', '--fp-ink-text': '#0f1115',
-  } : {
-    '--fp-input': '#fff', '--fp-border': '#e5e7eb',
-    '--fp-text': '#111827', '--fp-muted': '#9ca3af', '--fp-line': '#f3f4f6',
-    '--fp-ink': '#0f1115', '--fp-ink-text': '#ffffff',
-  };
-  const pill = active => ({
-    padding:'6px 11px', borderRadius:'6px',
-    border:`1px solid ${active ? 'var(--fp-ink)' : 'var(--fp-border)'}`,
-    background: active ? 'var(--fp-ink)' : 'var(--fp-input)',
-    color: active ? 'var(--fp-ink-text)' : 'var(--fp-text)',
-    fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)',
-    lineHeight:'1.4',
-  });
-  const sel = {
-    width:'100%', background:'var(--fp-input)', border:'1px solid var(--fp-border)', borderRadius:'8px',
-    padding:'9px 30px 9px 12px', color:'var(--fp-text)', fontSize:'13px',
-    appearance:'none', cursor:'pointer', outline:'none', boxSizing:'border-box',
-    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-    backgroundRepeat:'no-repeat', backgroundPosition:'right 10px center',
-  };
-
-  const modelOptions = CAR_DATA[d.brand] || [];
-
-  return (
-    <div style={fpVars}>
-      <FG title="Hot Deals">
-        <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: d.hot_deals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${d.hot_deals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:d.hot_deals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)' }}
-          onClick={()=>setDraftParam('hot_deals', d.hot_deals?'':'true')}
-        >
-          <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
-          {d.hot_deals && <span style={{ fontSize:'12px', color:'#d97706' }}>✓</span>}
-        </button>
-      </FG>
-
-      <FG title="Brand">
-        <select style={sel} value={d.brand||''} onChange={e=>setDraftParam('brand', e.target.value)}>
-          <option value="">All Brands</option>
-          {BRAND_OPTS.map(b=><option key={b} value={b}>{b}</option>)}
-        </select>
-      </FG>
-
-      {d.brand && modelOptions.length > 0 && (
-        <FG title="Model">
-          <select style={sel} value={d.model||''} onChange={e=>setDraftParam('model',e.target.value)}>
-            <option value="">All {d.brand} Models</option>
-            {modelOptions.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
-        </FG>
-      )}
-
-      {d.model && (
-        <FG title="Variant">
-          <input type="text" placeholder="e.g. 1.5 G" value={d.variant||''} onChange={e=>setDraftParam('variant', e.target.value)} style={{ ...sel, padding:'9px 12px', backgroundImage:'none' }}/>
-        </FG>
-      )}
-
-      <FG title="Price Range">
-        <PricePopover minPrice={d.min_price} maxPrice={d.max_price} onApply={(min,max)=>{ setDraftParam('min_price', min); setDraftParam('max_price', max); }}/>
-      </FG>
-
-      <FG title="Year">
-        <div style={{ display:'flex', gap:'8px' }}>
-          <select style={{ ...sel, flex:1 }} value={d.year_from||''} onChange={e=>setDraftParam('year_from',e.target.value)}>
-            <option value="">From</option>
-            {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-          <select style={{ ...sel, flex:1 }} value={d.year_to||''} onChange={e=>setDraftParam('year_to',e.target.value)}>
-            <option value="">To</option>
-            {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-      </FG>
-
-      <FG title="Body Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {BODY_TYPES.map(bt=><button key={bt} style={pill(d.body_type===bt)} onClick={()=>setDraftParam('body_type',d.body_type===bt?'':bt)}>{bt}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Transmission">
-        <div style={{ display:'flex', gap:'6px' }}>
-          {TRANSMISSIONS.map(tx=><button key={tx} style={pill(d.transmission===tx)} onClick={()=>setDraftParam('transmission',d.transmission===tx?'':tx)}>{tx}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Condition">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {CONDITION_OPTS.map(co=><button key={co.value} style={pill(d.condition===co.value)} onClick={()=>setDraftParam('condition',d.condition===co.value?'':co.value)}>{co.label}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Fuel Type">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FUEL_TYPES.map(ft=><button key={ft} style={pill(d.fuel_type===ft)} onClick={()=>setDraftParam('fuel_type',d.fuel_type===ft?'':ft)}>{ft}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Max Mileage">
-        <select style={sel} value={d.mileage_max||''} onChange={e=>setDraftParam('mileage_max',e.target.value)}>
-          <option value="">Any Mileage</option>
-          {MILEAGE_OPTS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </FG>
-
-      <FG title="Location">
-        <select style={sel} value={d.state||''} onChange={e=>setDraftParam('state',e.target.value)}>
-          <option value="">All States</option>
-          {MY_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-        </select>
-      </FG>
-
-      <FG title="Payment">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {FINANCING_TYPES.map(ft=><button key={ft.value} style={pill(d.financing===ft.value)} onClick={()=>setDraftParam('financing',d.financing===ft.value?'':ft.value)}>{ft.label}</button>)}
-        </div>
-      </FG>
-
-      <FG title="Colour">
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-          {COLOURS.map(c=><button key={c} style={pill(d.colour===c)} onClick={()=>setDraftParam('colour',d.colour===c?'':c)}>{c}</button>)}
-        </div>
-      </FG>
-
-      {isMarketplace && (
-        <FG title="Seller">
-          <div style={{ display:'flex', gap:'6px' }}>
-            {SELLER_TYPES.map(st=><button key={st.value} style={pill(d.seller_type===st.value)} onClick={()=>setDraftParam('seller_type',d.seller_type===st.value?'':st.value)}>{st.label}</button>)}
-          </div>
-        </FG>
-      )}
-    </div>
-  );
-}
-
 /* ── Main ───────────────────────────────────────────────────────── */
 export default function CarListingPage() {
   useMarketplaceTracking();
@@ -399,21 +143,41 @@ export default function CarListingPage() {
 
   // Subdomain storefront = dark theme (matches the rest of the dealer page);
   // marketplace = light. Drives the page surfaces below.
+  // On a dealer site every colour is `var(--sf-x, <old dark value>)` (sv, shared.js): it follows
+  // the dealer's Dark/Light theme + accent (storefrontTheme.js) and is the old look with no theme.
   const dark = !isMarketplace;
+  const brandAccent = accentTheme(chosenPageColor(tenant) || PAGE_COLOR_DEFAULT).accent;
+  const brandRgb = (hexToRgb(brandAccent) || [220, 38, 38]).join(',');
+  const themeStyle = dark ? themeCss(themeOf(tenant?.storefront_layout), brandAccent) : '';
   const T = dark
-    ? { pageBg:'#08090f', barBg:'rgba(13,17,23,0.97)', barBorder:'rgba(255,255,255,0.08)',
-        ctrlBg:'rgba(255,255,255,0.06)', ctrlBorder:'rgba(255,255,255,0.12)',
-        text:'#f3f4f6', textMuted:'#9ca3af', chipBg:'rgba(255,255,255,0.04)',
-        chipBorder:'rgba(255,255,255,0.12)', chipText:'#d1d5db', overlay:'rgba(8,9,15,0.55)',
-        ink:'#ffffff', inkText:'#0f1115', tagBg:'rgba(255,255,255,0.08)', tagBorder:'rgba(255,255,255,0.12)' }
-    : { pageBg:'#F7F6F2', barBg:'rgba(247,246,242,0.96)', barBorder:'rgba(0,0,0,0.07)',
-        ctrlBg:'#fff', ctrlBorder:'#e5e7eb',
-        text:'#111827', textMuted:'#6b7280', chipBg:'#fff',
-        chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)',
-        ink:'#0f1115', inkText:'#ffffff', tagBg:'#ECEAE4', tagBorder:'#E0DDD5' };
+    ? { pageBg:sv('bg','#08090f'), overlay:'rgba(8,9,15,0.55)',
+        text:sv('text','#f3f4f6'), textMuted:sv('muted','#9ca3af'),
+        // The top block: one glossy surface with the accent's faint glow at the left (the
+        // marketplace header's recipe), card colour down to the page colour.
+        topBg:`radial-gradient(ellipse 420px 160px at 0% 0%, rgba(var(--sf-accent-rgb, ${brandRgb}),0.14), transparent 70%), linear-gradient(180deg, ${sv('card','#12141b')} 0%, ${sv('bg','#0b0d13')} 100%)`,
+        topLine:sv('border','rgba(255,255,255,0.07)'),
+        field:sv('bg','rgba(255,255,255,0.06)'),
+        ctl:sv('card','rgba(255,255,255,0.05)'), ctlLine:sv('border','rgba(255,255,255,0.10)'),
+        ink:sv('text','#f3f4f6'), inkText:sv('bg','#0b0d13') }
+    : { pageBg:'#F7F6F2', overlay:'rgba(247,246,242,0.55)',
+        text:'#111827', textMuted:'#6b7280',
+        topBg:'radial-gradient(ellipse 420px 160px at 0% 0%, rgba(220,38,38,0.08), rgba(220,38,38,0) 70%), linear-gradient(180deg, #ffffff 0%, #f3f4f7 100%)',
+        topLine:'rgba(15,23,42,0.08)',
+        field:'#F4F3EF',
+        ctl:'#fff', ctlLine:'rgba(15,23,42,0.09)',
+        ink:'#0f1115', inkText:'#ffffff' };
+  // The ONE glossy red (marketplace: --xd-crimson, the home page's search button) or, on a
+  // dealer site, the dealer's accent with the same gloss. Only the main action wears it.
+  const accentFill = dark
+    ? { background:`linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 60%), var(--sf-theme-accent, ${brandAccent})`,
+        color:'var(--sf-on-accent, #fff)', boxShadow:`0 4px 12px -4px rgba(var(--sf-accent-rgb, ${brandRgb}),0.55)` }
+    : null; // marketplace uses the xd-crimson-fill class
+  const accentClass = dark ? undefined : 'xd-crimson-fill';
 
   // Monthly | Price switch for the cards (device-remembered, src/utils/priceMode.js).
   const [priceMode, setPriceMode] = usePriceMode();
+  // Grid | Big card switch (device-remembered, src/utils/cardSize.js).
+  const [cardSize, setCardSize] = useCardSize();
 
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
@@ -435,7 +199,12 @@ export default function CarListingPage() {
   const model       = san.str(searchParams.get('model')||'');
   const variant     = san.str(searchParams.get('variant')||'');
   const sort        = ['newest','price_asc','price_desc','year_desc','year_asc','mileage_asc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
-  const page        = san.page(searchParams.get('page')||'1');
+  // Which batch of 50 is loaded. Kept with the filters it belongs to, so a new filter starts
+  // at batch 1 in the same render (no fetch of batch 3 of the old search). Old ?page= links
+  // just open at the top.
+  const filterKey = [brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort].join('|');
+  const [paging, setPaging] = useState({ key: filterKey, page: 1 });
+  const page = paging.key === filterKey ? paging.page : 1;
 
   const [searchInput, setSearchInput]   = useState(q);
   // Unfiltered marketplace page 1 paints the fresh saved list on its first
@@ -453,6 +222,11 @@ export default function CarListingPage() {
   const [totalCount, setTotal]          = useState(() => seed?.totalCount || 0);
   const [loading, setLoading]           = useState(() => !seed);
   const [fetching, setFetching]         = useState(false);
+  const [loadingMore, setLoadingMore]   = useState(false);
+  const [moreError, setMoreError]       = useState(false);
+  // The first live answer has landed (the grid may first show the device's saved 15), so the
+  // next batch never races the batch-1 refresh.
+  const [liveReady, setLiveReady]       = useState(false);
   const [error, setError]               = useState(null);
   // Showing the device's saved copy because the live fetch failed (marketplace,
   // unfiltered page 1 only) -- drives StaleListingsNotice.
@@ -491,6 +265,15 @@ export default function CarListingPage() {
     setSearchParams(next, { replace:true });
   };
 
+  // Phone search: an icon that opens the field (owner, 2026-11-21). Cancel puts the words back.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = () => { setSearchOpen(false); setSearchInput(q); };
+  const submitSearch = (val) => { commitSearch(val); setSearchOpen(false); };
+
+  // Quick-pick chips: white pills on a hairline, selected = ink (never a tint).
+  const chipBase = { flexShrink:0, display:'inline-flex', alignItems:'center', gap:'5px', height:'38px', padding:'0 14px', borderRadius:'999px', fontSize:'13px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out)' };
+  const chip = (on) => ({ ...chipBase, border:'none', background: on ? T.ink : T.ctl, color: on ? T.inkText : T.text, boxShadow: on ? 'none' : `0 0 0 1px ${T.ctlLine}` });
+
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -502,7 +285,6 @@ export default function CarListingPage() {
     next.delete('page');
     setSearchParams(next, { replace:true });
   };
-  const setPage  = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace:true }); };
 
   // ── Draft filters ── The filter panel edits a local draft; nothing refetches
   // until the user hits Search. Committed filters live in the URL (drive the
@@ -546,9 +328,11 @@ export default function CarListingPage() {
       && !transmission && !fuelType && !colour && !sellerType;
     // Seeded cars are refreshed quietly: no skeleton, no dimmed grid over
     // cars that are already right.
-    if (refreshQuietly.current) { /* keep the seeded grid up */ }
+    const more = page > 1;
+    if (more) { setLoadingMore(true); setMoreError(false); }
+    else if (refreshQuietly.current) { /* keep the seeded grid up */ }
     else if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
-    setError(null);
+    if (!more) setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
       // publicClient: a public read must never wait on the login lock. On
@@ -556,7 +340,7 @@ export default function CarListingPage() {
       // never sent (2026-10-12, signed-in seller searching "Ferrari").
       let query = publicClient
         .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
+        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, more ? undefined : { count:'exact' })
         .in('status', ['available', 'reserved']);
 
       if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
@@ -651,7 +435,13 @@ export default function CarListingPage() {
       const { data, error:err, count } = await withTimeout(query);
       if (err) throw err;
       if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
-      setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      if (more) {
+        // Append, skipping any car already shown (a car added meanwhile shifts the pages by one).
+        setCars(prev => { const seen = new Set(prev.map(c => c.id)); return [...prev, ...(data || []).filter(c => !seen.has(c.id))]; });
+        if ((data || []).length < PER_PAGE) setTotal(t => Math.min(t, (page - 1) * PER_PAGE + (data || []).length));
+      } else {
+        setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      }
       trackBrowse({
         surface: isMarketplace ? 'marketplace' : 'storefront',
         dealerId: !isMarketplace ? tenant?.id : null,
@@ -660,9 +450,11 @@ export default function CarListingPage() {
       });
       // Keep the device's copy of the live grid fresh from here too, so a buyer
       // who only ever lands on /showroom still has something during an outage.
-      if (isDefaultShowroom) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });
+      if (isDefaultShowroom && !more) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });
     } catch {
       if (myReq !== reqSeq.current) return;
+      // A failed NEXT batch keeps the cars on screen and offers a retry under them.
+      if (more) { setMoreError(true); return; }
       // Unfiltered marketplace page 1 only: unfiltered cars under an active
       // filter (or on a dealer's own storefront) would be wrong, not just stale.
       const saved = isDefaultShowroom ? readLiveCarsFallback() : null;
@@ -672,11 +464,15 @@ export default function CarListingPage() {
         setError('Failed to load listings. Please try again.');
       }
     }
-    finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; refreshQuietly.current = false; } }
+    finally { if (myReq === reqSeq.current) { if (!more) setLiveReady(true); setLoading(false); setFetching(false); setLoadingMore(false); initialLoad.current = false; refreshQuietly.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
-  useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
+  const hasMore = liveReady && !error && !showingSaved && !loading && cars.length > 0 && cars.length < totalCount;
+  const moreRef = useAutoLoadMore({
+    hasMore: hasMore && !moreError, busy: loadingMore || fetching,
+    onLoadMore: () => setPaging({ key: filterKey, page: page + 1 }),
+  });
 
   /* Store visit tracking */
   useEffect(() => {
@@ -688,7 +484,6 @@ export default function CarListingPage() {
   }, []); // eslint-disable-line
 
   const hasFilters = brand||bodyType||transmission||state||minPrice||maxPrice||financing||yearFrom||yearTo||q||condition||mileageMax||hotDeals||fuelType||colour||sellerType||model||variant;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* Active chip list */
   const activeChips = [
@@ -711,6 +506,9 @@ export default function CarListingPage() {
     sellerType && { key:'seller_type', label: SELLER_TYPES.find(st => st.value === sellerType)?.label || sellerType },
   ].filter(Boolean);
 
+  // The search words show in the open field, so they are not a chip too.
+  const filterChips = activeChips.filter(c => c.key !== 'q');
+
   const removeChip = key => {
     if (key==='price_range') { const n=new URLSearchParams(searchParams); n.delete('min_price'); n.delete('max_price'); n.delete('page'); setSearchParams(n,{replace:true}); }
     else if (key==='hot_deals') setParam('hot_deals','');
@@ -719,7 +517,11 @@ export default function CarListingPage() {
     else setParam(key,'');
   };
 
-  const filtersProps = { isMarketplace, draft, setDraftParam };
+  const filtersProps = { isMarketplace, draft, setDraftParam, priceMode };
+  const fpVars = filterTheme(dark);
+  // Each opening starts the panel fresh (main screen, not a brand list left open last time).
+  const [drawerSeq, setDrawerSeq] = useState(0);
+  useEffect(() => { if (drawerOpen) setDrawerSeq((n) => n + 1); }, [drawerOpen]);
 
   /* ── Early states ── */
   if (!isMarketplace && !tenantLoading && !tenant) {
@@ -754,7 +556,22 @@ export default function CarListingPage() {
         .cl-sidebar-scroll::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:2px }
         .cl-brand-scroll::-webkit-scrollbar { display:none }
         .cl-chips-scroll::-webkit-scrollbar { display:none }
+        .cl-drawer { position:fixed; top:0; right:0; bottom:0; width:400px; max-width:92vw; transform:translateX(100%); transition:transform .3s cubic-bezier(0.22,1,0.36,1), visibility 0s linear .3s }
+        .cl-drawer.open { transform:none; transition:transform .3s cubic-bezier(0.22,1,0.36,1) }
+        .cl-drawer-grab { display:none }
+        @media(max-width:767px) {
+          .cl-drawer { left:0; width:auto; max-width:none; top:44px; border-radius:22px 22px 0 0; transform:translateY(100%) }
+          .cl-drawer-grab { display:block; width:38px; height:4px; border-radius:9px; background:var(--fp-muted); opacity:.35; margin:8px auto 0 }
+        }
+        @media (prefers-reduced-motion: reduce) { .cl-drawer, .cl-drawer.open { transition:none } }
         .cl-fab { display:none !important }
+        .cl-phone-only { display:none !important }
+        @media(max-width:767px) {
+          .cl-phone-only { display:flex !important }
+          .cl-desk-only { display:none !important }
+          .cl-controls-hide { display:none !important }
+          .cl-seg { margin-left:auto }
+        }
         .cl-filter-btn-topbar { display:flex !important }
         @media(max-width:1024px) {
           .cl-fab { display:flex !important }
@@ -771,6 +588,7 @@ export default function CarListingPage() {
         }
       `}</style>
 
+      {themeStyle && <style>{themeStyle}</style>}
       {isMarketplace ? <MarketplaceHeader /> : <Suspense fallback={null}><Header /></Suspense>}
 
       {/* Drawer backdrop — above header (z-100) */}
@@ -778,139 +596,156 @@ export default function CarListingPage() {
         <div onClick={()=>setDrawerOpen(false)} style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)' }}/>
       )}
 
-      {/* Filter drawer — slides from RIGHT, above header */}
-      <div style={{
-        position:'fixed', top:0, right:0, bottom:0, zIndex:1110,
-        width:'300px', maxWidth:'92vw',
-        background: dark ? SF.surface : '#fff', borderLeft:`1px solid ${dark ? SF.border : '#e5e7eb'}`,
-        transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition:'transform 0.28s cubic-bezier(0.22,1,0.36,1)',
-        display:'flex', flexDirection:'column',
-        fontFamily:"'Outfit',sans-serif",
-        boxShadow: drawerOpen ? '-12px 0 40px rgba(0,0,0,0.12)' : 'none',
-      }}>
-        {/* Drawer header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:`1px solid ${dark ? SF.line : '#f3f4f6'}` }}>
-          <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color: dark ? SF.text : '#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
-            <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
-            {activeChips.length > 0 && (
-              <span style={{ background:'#dc2626', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 6px', borderRadius:'4px' }}>{activeChips.length}</span>
-            )}
-          </h2>
-          <button onClick={()=>setDrawerOpen(false)} style={{ background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color: dark ? SF.textSec : '#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
-            <X size={16}/>
+      {/* Filter drawer (2026-11-22 redesign): a bottom sheet on a phone, a side drawer on a tablet.
+          The panel edits a DRAFT; the list loads once, on Search (owner: no work per tap). */}
+      <div className={`cl-drawer${drawerOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-label="Filters" aria-hidden={!drawerOpen}
+        style={{ ...fpVars, zIndex:1110, background:'var(--fp-pg)', display:'flex', flexDirection:'column', fontFamily:"'Outfit',sans-serif", boxShadow: drawerOpen ? '0 -12px 40px rgba(0,0,0,0.18)' : 'none', visibility: drawerOpen ? 'visible' : 'hidden' }}>
+        <div className="cl-drawer-grab" aria-hidden />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 18px 12px' }}>
+          <h2 style={{ margin:0, fontSize:'19px', fontWeight:'800', color:'var(--fp-text)', fontFamily:"'Outfit',sans-serif" }}>Filters</h2>
+          <button type="button" onClick={()=>setDrawerOpen(false)} aria-label="Close filters" style={{ width:'34px', height:'34px', background:'var(--fp-row)', border:'none', cursor:'pointer', color:'var(--fp-text)', borderRadius:'999px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <X size={17}/>
           </button>
         </div>
-        {/* Drawer body */}
-        <div className="cl-sidebar-scroll" style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
-          <FiltersPanel {...filtersProps}/>
+        <div className="cl-sidebar-scroll" style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'0 16px 8px' }}>
+          <FiltersPanel key={drawerSeq} {...filtersProps}/>
         </div>
-        {/* Drawer footer */}
-        <div style={{ padding:'14px 20px', borderTop:`1px solid ${dark ? SF.line : '#f3f4f6'}`, display:'flex', gap:'10px' }}>
-          <button onClick={resetAll} style={{ flex:1, background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:`1px solid ${dark ? SF.border : '#e5e7eb'}`, color: dark ? SF.textSec : '#6b7280', fontSize:'13px', fontWeight:'600', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'12px 16px calc(14px + env(safe-area-inset-bottom))', borderTop:'1px solid var(--fp-line)', background:'var(--fp-pg)' }}>
+          <button type="button" onClick={resetAll} style={{ background:'none', border:'none', color:'var(--fp-text)', fontSize:'15px', fontWeight:'700', padding:'12px 10px', cursor:'pointer', textDecoration:'underline', textUnderlineOffset:'3px', fontFamily:"'Outfit',sans-serif" }}>
             Reset
           </button>
-          <button onClick={applyDraft} style={{ flex:2, background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'11px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
-            <Search size={14}/> Search
+          <button type="button" onClick={applyDraft} className={accentClass} style={{ flex:1, ...(accentFill || { background:'var(--xd-crimson)', color:'#fff', boxShadow:'var(--xd-crimson-shadow)' }), border:'none', fontSize:'16px', fontWeight:'800', borderRadius:'14px', padding:'14px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+            <Search size={17}/> Search
           </button>
         </div>
       </div>
 
-      <main id="main-content" tabIndex={-1} style={{ background:T.pageBg, minHeight:'100vh', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '84px' : 0 }}>
+      <main id="main-content" tabIndex={-1} style={{ background:T.pageBg, minHeight:'100vh', overflowX:'clip', fontFamily:"'Outfit',sans-serif", paddingTop: dark ? '64px' : 0 }}>
 
-        {/* ── Top bar ── On the subdomain the header is a floating fixed pill that
-             hides on scroll, so the bar is in-flow (scrolls away, never follows /
-             overlaps the header). On the marketplace it sticks below the header,
-             at whatever height the header is actually occupying right now
-             (--mh-h, published by MarketplaceHeader) rather than a fixed 64px.
-             It was 64px, which was 6px short of the real 70px desktop bar AND
-             stayed 64px after the header auto-hid, stranding this bar with a
-             strip of page scrolling past above it. */}
-        <div style={{ background:T.barBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${T.barBorder}`, padding:'10px 0', position: dark ? 'static' : 'sticky', top: dark ? 'auto' : 'var(--mh-h, 64px)', transition:'top .28s ease', zIndex:20 }}>
-          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
-            <div className="cl-topbar" style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-              {/* Search */}
+        {/* ── Top block (owner, 2026-11-21: "blocky and messy") ── ONE glossy surface: search,
+             sort, Monthly | Price. On a phone the search is an ICON that opens the field
+             (`searchOpen`); a search in force keeps the field open with its words, so the buyer
+             sees why the list is short. Desktop keeps the field open. On the subdomain the
+             header is a floating fixed pill, so this block is in-flow; on the marketplace it
+             sticks below the header at the height the header really occupies (--mh-h). */}
+        <div className="cl-top" style={{ background:T.topBg, borderBottom:`1px solid ${T.topLine}`, position: dark ? 'static' : 'sticky', top: dark ? 'auto' : 'var(--mh-h, 64px)', transition:'top .28s ease', zIndex:20 }}>
+          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 16px' }}>
+            {/* Phone: the open field (tapped icon, or a search in force) */}
+            {(searchOpen || q) && (
+              <div className="cl-phone-only" style={{ display:'flex', alignItems:'center', gap:'10px', paddingTop:'10px' }}>
+                <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:'6px', background: searchOpen ? T.ctl : T.field, borderRadius:'14px', boxShadow: searchOpen ? `0 0 0 2px ${T.ink}` : `0 0 0 1px ${T.ctlLine}` }}>
+                  <SearchAutocomplete
+                    value={searchInput}
+                    onChange={setSearchInput}
+                    dark={dark}
+                    autoFocus={searchOpen}
+                    placeholder={dark ? 'Search our cars' : 'Search brand, model, variant'}
+                    wrapStyle={{ flex:1, minWidth:0 }}
+                    formStyle={{ background:'transparent', border:'none', height:'44px' }}
+                    inputStyle={{ fontSize:'16px', padding:'10px 8px 10px 4px' }}
+                    navigateTo={basePath}
+                    onSubmit={submitSearch}
+                  />
+                  {!searchOpen && q && (
+                    <button type="button" onClick={()=>{ setSearchInput(''); commitSearch(''); }} aria-label="Clear search"
+                      style={{ flexShrink:0, width:'28px', height:'28px', marginRight:'8px', borderRadius:'999px', border:'none', background:T.ctlLine, color:T.text, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                      <X size={14}/>
+                    </button>
+                  )}
+                </div>
+                {searchOpen && (
+                  <button type="button" onClick={closeSearch}
+                    style={{ flexShrink:0, background:'none', border:'none', padding:'10px 2px', color:T.text, fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:'inherit' }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className={`cl-controls${searchOpen ? ' cl-controls-hide' : ''}`} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'10px 0 12px' }}>
+              {/* Desktop: the field, always open */}
               <SearchAutocomplete
                 value={searchInput}
                 onChange={setSearchInput}
                 dark={dark}
-                placeholder="Search brand, model, variant…"
-                wrapClassName="cl-topbar-search"
-                wrapStyle={{ flex:1, minWidth:'160px' }}
+                placeholder={dark ? 'Search our cars' : 'Search brand, model, variant'}
+                wrapClassName="cl-desk-only"
+                wrapStyle={{ flex:'1 1 auto', maxWidth:'520px', marginRight:'auto' }}
+                formStyle={{ background:T.field, border:'none', borderRadius:'14px', height:'46px', boxShadow:`inset 0 0 0 1px ${T.ctlLine}` }}
+                inputStyle={{ fontSize:'14.5px' }}
                 navigateTo={basePath}
                 onSubmit={commitSearch}
               />
-              {/* Controls — sort, filters and save-search live in ONE row that
-                  drops under the search on mobile and never wraps internally. */}
-              <div className="cl-topbar-controls" style={{ display:'flex', gap:'8px', alignItems:'center', flexShrink:0 }}>
-                {/* Sort — custom pill: the native <select> sizes to its widest
-                    option, leaving a gap before the arrow, so we render a tight
-                    label + chevron and lay a transparent select over it. */}
-                <div style={{ position:'relative', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'5px', background:T.ctrlBg, border:`1px solid ${T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', cursor:'pointer' }}>
-                  <span style={{ fontSize:'13px', fontWeight:'600', color:T.text, whiteSpace:'nowrap' }}>{(SORT_OPTIONS.find(o=>o.value===sort)||SORT_OPTIONS[0]).short}</span>
-                  <ChevronDown size={12} style={{ color:'#9ca3af', flexShrink:0 }}/>
-                  <select
-                    value={sort}
-                    onChange={e=>setParam('sort',e.target.value)}
-                    aria-label="Sort"
-                    style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0, cursor:'pointer', border:'none', appearance:'none', fontFamily:"'Outfit',sans-serif" }}
-                  >
-                    {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-                {/* Filters — marginLeft:auto pushes it (and the save-search after
-                    it) to the right of the row so the alert bell hugs the screen
-                    edge; inert on desktop where the controls box is content-width. */}
-                <button
-                  onClick={()=>setDrawerOpen(true)}
-                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', minHeight:'44px', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
-                >
-                  <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
+              {/* Phone: the icon */}
+              {!q && (
+                <button type="button" className="cl-phone-only" onClick={()=>setSearchOpen(true)} aria-label="Search"
+                  style={{ flexShrink:0, width:'40px', height:'40px', borderRadius:'12px', border:'none', background:T.field, color:T.text, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <Search size={18}/>
                 </button>
-                {isMarketplace && (
-                  <PriceAlertButton
-                    hasFilters={!!hasFilters}
-                    filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
-                  />
-                )}
+              )}
+              {/* Sort: a tight label + icon with a transparent native select laid over it */}
+              <div style={{ position:'relative', flexShrink:1, minWidth:0, display:'inline-flex', alignItems:'center', gap:'6px', height:'40px', padding:'0 6px', cursor:'pointer' }}>
+                <ArrowDownWideNarrow size={16} style={{ color:T.textMuted, flexShrink:0 }}/>
+                <span style={{ fontSize:'13.5px', fontWeight:'700', color:T.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 }}>{(SORT_OPTIONS.find(o=>o.value===sort)||SORT_OPTIONS[0]).short}</span>
+                <select
+                  value={sort}
+                  onChange={e=>setParam('sort',e.target.value)}
+                  aria-label="Sort"
+                  style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0, cursor:'pointer', border:'none', appearance:'none', fontFamily:"'Outfit',sans-serif" }}
+                >
+                  {SORT_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
+              <div role="group" aria-label="Show cards by" className="cl-seg" style={{ display:'inline-flex', flexShrink:0, padding:'3px', borderRadius:'999px', background:T.field }}>
+                {[['monthly','Monthly'],['price','Price']].map(([v,label])=>(
+                  <button key={v} type="button" aria-pressed={priceMode===v} onClick={()=>setPriceMode(v)}
+                    style={{ padding:'0 12px', height:'34px', borderRadius:'999px', border:'none', background:priceMode===v?T.ink:'transparent', color:priceMode===v?T.inkText:T.textMuted, fontSize:'12.5px', fontWeight:'700', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out)', fontFamily:'inherit' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {isMarketplace && (
+                <PriceAlertButton
+                  hasFilters={!!hasFilters}
+                  filters={{ keyword:q||null, brand:brand||null, model:model||null, variant:variant||null, bodyType:bodyType||null, state:state||null, condition:condition||null, maxPrice:maxPrice||null, minYear:yearFrom||null, maxYear:yearTo||null }}
+                />
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Quick-filter chip strip ── */}
-        <div style={{ background:T.pageBg, borderBottom:`1px solid ${T.barBorder}`, padding:'8px 0' }}>
-          <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
-            <div className="cl-chips-scroll" style={{ display:'flex', gap:'7px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
-              <button
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 11px', borderRadius:'6px', border:`1px solid ${hotDeals?T.ink:T.chipBorder}`, background:hotDeals?T.ink:T.chipBg, color:hotDeals?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
-                onClick={()=>setParam('hot_deals',hotDeals?'':'true')}
-              >
-                <Flame size={11} color={hotDeals ? T.inkText : '#ea580c'}/> Hot Deals
+        {/* ── Chips: Filters (the one glossy accent) first, then the quick picks ── */}
+        <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'12px 16px 0' }}>
+          <div className="cl-chips-scroll" style={{ display:'flex', alignItems:'center', gap:'6px', overflowX:'auto', padding:'2px 2px 4px', scrollbarWidth:'none' }}>
+            <button type="button" onClick={()=>setDrawerOpen(true)} className={accentClass}
+              style={{ ...chipBase, ...(accentFill || {}), border:'none', fontWeight:'700', gap:'6px', paddingLeft:'12px' }}>
+              <SlidersHorizontal size={14}/> Filters
+              {filterChips.length > 0 && (
+                <span style={{ minWidth:'18px', height:'18px', padding:'0 5px', borderRadius:'999px', background:'rgba(255,255,255,0.95)', color: dark ? `var(--sf-theme-accent, ${brandAccent})` : '#c0102f', fontSize:'11px', fontWeight:'800', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{filterChips.length}</span>
+              )}
+            </button>
+            <span aria-hidden style={{ width:'1px', alignSelf:'stretch', margin:'6px 2px', background:T.ctlLine, flexShrink:0 }}/>
+            <button type="button" aria-pressed={hotDeals} onClick={()=>setParam('hot_deals',hotDeals?'':'true')} style={chip(hotDeals)}>
+              <Flame size={13} color={hotDeals ? 'currentColor' : '#ea580c'}/> Hot deals
+            </button>
+            {BODY_TYPES.map(bt=>(
+              <button key={bt} type="button" aria-pressed={bodyType===bt} onClick={()=>setParam('body_type',bodyType===bt?'':bt)} style={chip(bodyType===bt)}>
+                {bt}
               </button>
-              {BODY_TYPES.map(bt=>(
-                <button key={bt}
-                  style={{ flexShrink:0, padding:'5px 11px', borderRadius:'6px', border:`1px solid ${bodyType===bt?T.ink:T.chipBorder}`, background:bodyType===bt?T.ink:T.chipBg, color:bodyType===bt?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
-                  onClick={()=>setParam('body_type',bodyType===bt?'':bt)}
-                >
-                  {bt}
-                </button>
-              ))}
-            </div>
-            {isMarketplace && <NewBrandRow />}
+            ))}
           </div>
+          {isMarketplace && <NewBrandRow />}
         </div>
 
         {/* ── Main content ── */}
-        <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'20px 20px 80px' }}>
+        <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'16px 16px 80px' }}>
 
-          {/* AI summary teaser — shows whenever a text search is active (q set via
-              the top-bar SearchAutocomplete, the page's one searchbar). Not built
-              yet; this just sets the expectation instead of staying silent. */}
+          {/* AI summary teaser — shows whenever a text search is active. Not built yet; this
+              just sets the expectation instead of staying silent. Grey, no tint. */}
           {q && (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', background: dark ? 'rgba(220,38,38,0.08)' : 'rgba(220,38,38,0.06)', border:`1px solid ${dark ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}`, borderRadius:'10px', padding:'10px 14px', marginBottom:'14px', fontFamily:"'Outfit',sans-serif" }}>
-              <Sparkles size={14} style={{ color:'#dc2626', flexShrink:0 }} />
-              <span style={{ fontSize:'12.5px', fontWeight:'600', color: dark ? '#f3f4f6' : '#111827' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', background:T.ctl, boxShadow:`0 0 0 1px ${T.ctlLine}`, borderRadius:'12px', padding:'10px 14px', marginBottom:'14px' }}>
+              <Sparkles size={14} style={{ color:T.textMuted, flexShrink:0 }} />
+              <span style={{ fontSize:'12.5px', fontWeight:'600', color:T.text }}>
                 AI summary of "{q}" results — coming soon
               </span>
             </div>
@@ -921,33 +756,34 @@ export default function CarListingPage() {
             {hotDeals ? 'Hot deal cars in Malaysia' : `Used cars for sale${brand ? ' - ' + brand : ''}${model ? ' ' + model : ''}${state ? ' in ' + state : ' in Malaysia'}`}
           </h1>
 
-          {/* Results row */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center' }}>
-              <span style={{ color:T.textMuted, fontSize:'13px' }}>
-                <span style={{ color:T.text, fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
-              </span>
-              {activeChips.map(chip=>(
-                <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:T.tagBg, border:`1px solid ${T.tagBorder}`, color:T.text, fontSize:'12px', fontWeight:'600', padding:'4px 7px 4px 9px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>
-                  {chip.label}
-                  <button onClick={()=>removeChip(chip.key)} aria-label={`Remove ${chip.label} filter`} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:'8px', margin:'-8px -7px -8px -4px', display:'flex', alignItems:'center' }}><X size={12}/></button>
-                </span>
-              ))}
-              {hasFilters && (
-                <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color: dark ? '#9ca3af' : '#6b7280', fontSize:'12px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', minHeight:'32px', padding:'0 6px', fontFamily:"'Outfit',sans-serif" }}>
-                  <RotateCcw size={11}/> Clear all
-                </button>
-              )}
-            </div>
-            <div role="group" aria-label="Show cards by" style={{ display:'inline-flex', padding:'2px', borderRadius:'8px', background:T.chipBg, border:`1px solid ${T.chipBorder}`, fontFamily:"'Outfit',sans-serif" }}>
-              {[['monthly','Monthly'],['price','Price']].map(([v,label])=>(
-                <button key={v} type="button" aria-pressed={priceMode===v} onClick={()=>setPriceMode(v)}
-                  style={{ padding:'5px 12px', minHeight:'36px', borderRadius:'6px', border:'none', background:priceMode===v?T.ink:'transparent', color:priceMode===v?T.inkText:T.chipText, fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out)', fontFamily:'inherit' }}>
-                  {label}
+          {/* Results: the count, then the filters in force (each with an x) */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', margin:'0 0 10px' }}>
+            <p style={{ margin:0, fontSize:'17px', fontWeight:'800', color:T.text, letterSpacing:'-0.01em' }}>
+              {loading ? '…' : totalCount.toLocaleString()} <span style={{ fontSize:'14px', fontWeight:'600', color:T.textMuted }}>{totalCount === 1 ? 'car' : 'cars'} for sale</span>
+            </p>
+            {/* Grid | Big card */}
+            <div role="group" aria-label="Card size" style={{ display:'inline-flex', flexShrink:0, gap:'2px', padding:'3px', borderRadius:'11px', background:T.field }}>
+              {[['grid', LayoutGrid, 'Grid'], ['big', GalleryVerticalEnd, 'Big cards']].map(([v, Icon, label]) => (
+                <button key={v} type="button" aria-pressed={cardSize===v} aria-label={label} title={label} onClick={()=>setCardSize(v)}
+                  style={{ width:'36px', height:'34px', borderRadius:'8px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', background: cardSize===v ? T.ctl : 'transparent', color: cardSize===v ? T.text : T.textMuted, boxShadow: cardSize===v ? '0 1px 2px rgba(15,23,42,0.14)' : 'none' }}>
+                  <Icon size={17}/>
                 </button>
               ))}
             </div>
           </div>
+          {filterChips.length > 0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', alignItems:'center', marginBottom:'14px' }}>
+              {filterChips.map(chip=>(
+                <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'2px', background:T.ctl, boxShadow:`0 0 0 1px ${T.ctlLine}`, color:T.text, fontSize:'12px', fontWeight:'600', padding:'0 4px 0 11px', height:'30px', borderRadius:'999px' }}>
+                  {chip.label}
+                  <button onClick={()=>removeChip(chip.key)} aria-label={`Remove ${chip.label} filter`} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:'8px 6px', display:'flex', alignItems:'center' }}><X size={12}/></button>
+                </span>
+              ))}
+              <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, fontSize:'12px', fontWeight:'700', minHeight:'30px', padding:'0 6px', fontFamily:'inherit' }}>
+                Clear all
+              </button>
+            </div>
+          )}
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}
           <div className="cl-layout" style={{ display:'flex', gap:'24px', alignItems: isWide ? 'flex-start' : 'stretch', flexDirection: isWide ? 'row' : 'column' }}>
@@ -958,7 +794,7 @@ export default function CarListingPage() {
               {error && (
                 <div style={{ textAlign:'center', padding:'60px 20px' }}>
                   <p style={{ color:'#dc2626', fontSize:'15px', marginBottom:'16px' }}>{error}</p>
-                  <button onClick={fetchCars} style={{ background:'#dc2626', color:'#fff', border:'none', padding:'12px 24px', borderRadius:'10px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Try Again</button>
+                  <button onClick={fetchCars} style={{ ...(accentFill || { background:'var(--xd-crimson)', boxShadow:'var(--xd-crimson-shadow)' }), color:'#fff', border:'none', padding:'12px 24px', borderRadius:'10px', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>Try Again</button>
                 </div>
               )}
               {!error && (
@@ -968,16 +804,16 @@ export default function CarListingPage() {
                       <span style={{ background:T.ink, color:T.inkText, fontSize:'11px', fontWeight:'700', padding:'4px 8px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
-                  <div className="cl-grid sc-grid" style={{ opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
+                  <div className={`cl-grid sc-grid${cardSize === 'big' ? ' sc-grid-big' : ''}`} style={{ opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
                     {loading
-                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark}/>)
+                      ? Array.from({ length: PER_PAGE }).map((_,i) => <ShowroomCardSkeleton key={i} dark={dark} big={cardSize === 'big'}/>)
                       : cars.length === 0
                         ? (
                           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'80px 20px' }}>
                             <Car size={48} color="#d1d5db" style={{ marginBottom:'16px' }}/>
                             <p style={{ color:T.text, fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
                             <p style={{ color:T.textMuted, fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
-                            <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'#dc2626', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                            <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', ...(accentFill || { background:'var(--xd-crimson)', boxShadow:'var(--xd-crimson-shadow)' }), border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                               <RotateCcw size={13}/> Clear all filters
                             </button>
                           </div>
@@ -987,7 +823,7 @@ export default function CarListingPage() {
                             const compareFull = compareIds.length >= 4 && !inCompare;
                             return (
                               <ShowroomCard
-                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark} priceMode={priceMode}
+                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark} priceMode={priceMode} size={cardSize}
                                 inCompare={inCompare} compareFull={compareFull}
                                 onCompare={()=>{ inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 priority={i===0}
@@ -998,12 +834,19 @@ export default function CarListingPage() {
                   </div>
                 </div>
               )}
-              {!loading && !error && !showingSaved && totalPages > 1 && (
-                <div style={{ padding:'40px 0 20px' }}>
-                  <Pagination page={page} totalPages={totalPages} onPage={setPage}/>
-                  <p style={{ textAlign:'center', color:'#6b7280', fontSize:'13px', marginTop:'12px', fontFamily:"'Outfit',sans-serif" }}>
-                    Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,totalCount)} of {totalCount.toLocaleString()} cars
-                  </p>
+              {/* Next 50 load by themselves; the line says so when it truly ends. */}
+              {!loading && !error && !showingSaved && cars.length > 0 && (
+                <div ref={moreRef} style={{ padding:'28px 0 12px', textAlign:'center', fontSize:'13px', fontWeight:600, color:T.textMuted }}>
+                  {moreError ? (
+                    <button type="button" onClick={() => { setMoreError(false); setPaging({ key: filterKey, page }); fetchCars(); }}
+                      style={{ background:'none', border:'none', color:T.text, font:'inherit', fontWeight:700, cursor:'pointer', minHeight:'40px' }}>
+                      Couldn't load more cars. Tap to try again
+                    </button>
+                  ) : cars.length < totalCount ? (
+                    <span aria-live="polite">{loadingMore ? 'Loading more cars…' : `${cars.length} of ${totalCount.toLocaleString()} cars`}</span>
+                  ) : (
+                    <span>That's all {totalCount.toLocaleString()} {totalCount === 1 ? 'car' : 'cars'}{hasFilters ? ' for this search' : ''}.</span>
+                  )}
                 </div>
               )}
             </div>
@@ -1011,26 +854,21 @@ export default function CarListingPage() {
             {/* ── Filter sidebar — RIGHT side (desktop only) ── */}
             {isWide && <aside
               className="cl-sidebar-desktop cl-sidebar-scroll"
-              style={{ width:'260px', flexShrink:0, background: dark ? '#0d1117' : '#fff', border:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`, borderRadius:'16px', padding:'16px 18px', position:'sticky', top:'calc(var(--mh-h, 64px) + 66px)', transition:'top .28s ease', maxHeight:'calc(100vh - var(--mh-h, 64px) - 86px)', overflowY:'auto' }}
+              style={{ ...fpVars, width:'300px', flexShrink:0, background:'var(--fp-pg)', borderRadius:'18px', padding:'14px 12px 0', position:'sticky', top:'calc(var(--mh-h, 64px) + 88px)', transition:'top .28s ease', maxHeight:'calc(100vh - var(--mh-h, 64px) - 108px)', overflowY:'auto', boxShadow:'0 0 0 1px var(--fp-line)' }}
             >
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', paddingBottom:'12px', borderBottom:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
-                <h2 style={{ color:T.text, fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
-                  <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/> Filters
-                  {activeChips.length > 0 && (
-                    <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 5px', borderRadius:'4px' }}>{activeChips.length}</span>
-                  )}
-                </h2>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', margin:'0 4px 12px' }}>
+                <h2 style={{ color:'var(--fp-text)', fontSize:'17px', fontWeight:'800', margin:0, fontFamily:"'Outfit',sans-serif" }}>Filters</h2>
                 {hasFilters && (
-                  <button onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, fontSize:'11px', fontWeight:'600', display:'flex', alignItems:'center', gap:'3px', fontFamily:"'Outfit',sans-serif" }}>
-                    <RotateCcw size={10}/> Reset
+                  <button type="button" onClick={resetAll} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--fp-text)', fontSize:'13.5px', fontWeight:'700', textDecoration:'underline', textUnderlineOffset:'3px', fontFamily:"'Outfit',sans-serif", padding:0 }}>
+                    Reset
                   </button>
                 )}
               </div>
               <FiltersPanel {...filtersProps}/>
-              <div style={{ position:'sticky', bottom:0, background: dark ? '#0d1117' : '#fff', paddingTop:'12px', marginTop:'4px', borderTop:`1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f3f4f6'}` }}>
-                <button onClick={applyDraft} disabled={!draftDirty}
-                  style={{ width:'100%', background: draftDirty ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : (dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'), border:'none', color: draftDirty ? '#fff' : (dark ? 'rgba(255,255,255,0.4)' : '#9ca3af'), fontSize:'13px', fontWeight:'700', borderRadius:'10px', padding:'12px', cursor: draftDirty ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'7px' }}>
-                  <Search size={14}/> Search
+              <div style={{ position:'sticky', bottom:0, background:'var(--fp-pg)', padding:'10px 0 12px', margin:'0 -2px' }}>
+                <button type="button" onClick={applyDraft} disabled={!draftDirty} className={draftDirty ? accentClass : undefined}
+                  style={{ width:'100%', ...(draftDirty ? (accentFill || { background:'var(--xd-crimson)', color:'#fff', boxShadow:'var(--xd-crimson-shadow)' }) : { background:'var(--fp-row)', color:'var(--fp-muted)' }), border:'none', fontSize:'15px', fontWeight:'800', borderRadius:'14px', padding:'13px', cursor: draftDirty ? 'pointer' : 'default', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                  <Search size={16}/> Search
                 </button>
               </div>
             </aside>}
@@ -1039,7 +877,6 @@ export default function CarListingPage() {
         </div>
       </main>
 
-      {/* Mobile FAB — bottom-right; raised above the WhatsApp button on dealer subdomains */}
       <MarketplaceFooter />
       {!isMarketplace && <Suspense fallback={null}><StickyWhatsAppButton /></Suspense>}
     </>

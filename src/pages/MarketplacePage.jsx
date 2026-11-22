@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useAutoLoadMore } from '../hooks/useAutoLoadMore';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
@@ -38,7 +39,8 @@ import {
 // back-gesture handling unchanged). Not in the first download of the page.
 const AdvancedSearchModal = lazy(() => import('../components/marketplace/AdvancedSearchModal'));
 
-const PER_PAGE = 12;
+// 50 at a time; the next 50 load by themselves near the bottom (owner, 2026-11-22).
+const PER_PAGE = 50;
 
 /* Trimmed field list for the hero rows (photo + price only, above-the-fold
    critical path) — the full CAR_FIELDS (29 cols) is for detail-heavy grids,
@@ -128,6 +130,10 @@ export default function MarketplacePage() {
   // fetch failed -- drives StaleListingsNotice. Cleared by the next success.
   const [showingSaved, setShowingSaved] = useState(false);
   const [loadPage, setLoadPage]   = useState(1);
+  const [moreError, setMoreError] = useState(false);
+  // The first live answer has landed (the grid may first show the device's saved copy), so the
+  // next batch never races the batch-1 refresh.
+  const [liveReady, setLiveReady] = useState(false);
 
   /* Body-type carousels — lazy loaded when section enters viewport */
   const [bodyTypeCars, setBodyTypeCars] = useState({ Hatchback: [], Sedan: [], SUV: [], MPV: [] });
@@ -302,7 +308,8 @@ export default function MarketplacePage() {
     const usingCachedFallback = hadCacheOnMount.current;
     hadCacheOnMount.current = false;
     if (!usingCachedFallback) setLoading(true);
-    setError(null);
+    if (loadPage === 1) setError(null);
+    setMoreError(false);
     try {
       const from = (loadPage - 1) * PER_PAGE;
       const to   = from + PER_PAGE - 1;
@@ -405,6 +412,8 @@ export default function MarketplacePage() {
         }
       } else {
         setCars(prev => dedupe([...prev, ...rows]));
+        // A short batch is the last one: the total follows what really arrived.
+        if (rows.length < PER_PAGE) setTotal(t => Math.min(t, (loadPage - 1) * PER_PAGE + rows.length));
       }
       // count is only requested on page 1 (see above); don't clobber the total
       // with the null that later pages return, which would break the load-more
@@ -412,6 +421,8 @@ export default function MarketplacePage() {
       if (loadPage === 1) setTotal(count || 0);
     } catch (e) {
       console.error('[fetchCars]', e?.message || e?.code || e);
+      // A failed NEXT batch keeps the cars on screen and offers a retry under them.
+      if (loadPage > 1) { setMoreError(true); return; }
       // Database down or hanging. On the unfiltered first page, keep (or
       // bring back) the device's saved copy of the grid with a notice, rather
       // than an empty page. Any filtered view still gets the error: unfiltered
@@ -425,6 +436,7 @@ export default function MarketplacePage() {
       }
     } finally {
       setLoading(false);
+      if (loadPage === 1) setLiveReady(true);
     }
   }, [loadPage, brand, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, model, variant, sort, isDefaultView]);
 
@@ -437,9 +449,11 @@ export default function MarketplacePage() {
     fetchCars();
   }, [fetchCars]);
 
-  /* Load-more is manual (see the grid footer). Auto-load on scroll was removed:
-     it grew the grid as you scrolled and pushed the footer down, so the footer
-     kept running away from the user. One explicit "Load more", then "See all". */
+  /* The next 50 load by themselves as the buyer nears the bottom (owner, 2026-11-22). It
+     was a manual "See all" once because the footer kept running away; the end line under
+     the grid ("That's all N cars") is where the footer comes back. */
+  const hasMore = liveReady && !error && !showingSaved && !loading && cars.length > 0 && cars.length < totalCount;
+  const moreRef = useAutoLoadMore({ hasMore: hasMore && !moreError, busy: loading, onLoadMore: () => setLoadPage((p) => p + 1) });
 
   /* ── Filter helpers ── */
   const setParam = (key, value) => {
@@ -1403,45 +1417,18 @@ export default function MarketplacePage() {
                 </div>
               )}
 
-              {/* Loading indicator while a manual "Load more" is in flight */}
-              {loading && loadPage > 1 && (
-                <div style={{ textAlign:'center', padding:'24px 0', fontFamily:"'Outfit',sans-serif", fontSize:'13px', color:'#9ca3af' }}>
-                  Loading more…
-                </div>
-              )}
-
-              {/* The home page shows the newest 12 only, then ONE way on: "See all"
-                  -> Showroom, which has the filters (MARKET-CLEAN, 2026-11-16). */}
-              {!loading && !error && !showingSaved && cars.length > 0 && cars.length < totalCount && (
-                <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
-                  {(
-                    <button
-                      className="xd-crimson-fill"
-                      onClick={() => {
-                        const p = new URLSearchParams();
-                        if (brand)        p.set('brand', brand);
-                        if (model)        p.set('model', model);
-                        if (variant)      p.set('variant', variant);
-                        if (bodyType)     p.set('body_type', bodyType);
-                        if (state)        p.set('state', state);
-                        if (minPrice)     p.set('min_price', minPrice);
-                        if (maxPrice)     p.set('max_price', maxPrice);
-                        if (transmission) p.set('transmission', transmission);
-                        if (condition)    p.set('condition', condition);
-                        if (fuelType)     p.set('fuel_type', fuelType);
-                        if (colour)       p.set('colour', colour);
-                        if (sellerType)   p.set('seller_type', sellerType);
-                        if (q)            p.set('q', q);
-                        navigate(`/showroom?${p.toString()}`);
-                      }}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}
-                      onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#b91c1c'; }}
-                      onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
-                    >
-                      See all {totalCount.toLocaleString()} cars <ArrowRight size={14}/>
+              {/* Next 50 load by themselves; the line says so when it truly ends. */}
+              {!error && !showingSaved && cars.length > 0 && !(loading && loadPage === 1) && (
+                <div ref={moreRef} style={{ textAlign:'center', padding:'4px 0 56px', fontFamily:"'Outfit',sans-serif", fontSize:'13px', fontWeight:600, color:'#6b7280' }}>
+                  {moreError ? (
+                    <button type="button" onClick={fetchCars} style={{ background:'none', border:'none', color:'#111827', font:'inherit', fontWeight:700, cursor:'pointer', minHeight:'40px' }}>
+                      Couldn't load more cars. Tap to try again
                     </button>
+                  ) : cars.length < totalCount ? (
+                    <span aria-live="polite">{loading ? 'Loading more cars…' : `${cars.length} of ${totalCount.toLocaleString()} cars`}</span>
+                  ) : (
+                    <span>That's all {totalCount.toLocaleString()} {totalCount === 1 ? 'car' : 'cars'}{hasFilters ? ' for this search' : ''}.</span>
                   )}
-                  <p style={{ marginTop:'10px', color:'#9ca3af', fontSize:'12px', fontFamily:"'Outfit',sans-serif" }}>Showing {cars.length} of {totalCount.toLocaleString()}</p>
                 </div>
               )}
             </div>

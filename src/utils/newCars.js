@@ -149,3 +149,58 @@ export function newCarSpecLine(specs) {
     s.seats && s.seats !== 5 ? `${s.seats} seats` : null,
   ].filter(Boolean).join(" · ");
 }
+
+// ── Model page helpers (NEWCAR-PAGE, owner 2026-11-22: "robotic and empty") ──
+// Every figure comes from new_car_models.specs (checked per batch); nothing is invented.
+
+// A paint name -> a swatch colour for the dot. Unknown names get a neutral grey and
+// still show their name, so a new paint never breaks the picker.
+const SWATCHES = [
+  [/white|putih|pearl/i, "#f4f4f2"], [/black|hitam|onyx|midnight/i, "#17181b"],
+  [/silver|perak/i, "#b8bcc2"], [/grey|gray|kelabu|gunmetal|graphite|titanium/i, "#6b7076"],
+  [/red|merah|ruby|maroon|crimson/i, "#9b1c24"], [/blue|biru|marine|navy|sapphire/i, "#1e3a5f"],
+  [/green|hijau|olive/i, "#3f5b45"], [/brown|bronze|beige|coklat|gold/i, "#8a6a48"],
+  [/orange|oren|yellow|kuning/i, "#d9822b"], [/purple|ungu/i, "#5b3f7a"],
+];
+export function colourSwatch(name) {
+  const hit = SWATCHES.find(([re]) => re.test(String(name || "")));
+  return hit ? hit[1] : "#a3a3a3";
+}
+
+// "5 years / 150,000 km" -> "5 yrs". null when it does not start with a year count.
+export function warrantyShort(w) {
+  const m = String(w || "").match(/(\d+)\s*(years?|yrs?|tahun)/i);
+  return m ? `${m[1]} yrs` : null;
+}
+
+// Up to four quick facts for the top of the model page: [{ value, label }].
+export function modelFacts(specs) {
+  const s = specs || {};
+  const out = [];
+  if (s.power_ps) out.push({ value: `${s.power_ps} PS`, label: s.engine ? `${engineLabel(s.engine)} engine` : "power" });
+  else if (s.engine) out.push({ value: s.engine, label: "engine" });
+  if (s.range_km || s.ev_range_km) out.push({ value: `${s.range_km || s.ev_range_km} km`, label: s.range_km ? "range" : "EV range" });
+  if (s.seats) out.push({ value: String(s.seats), label: "seats" });
+  if (s.boot_l) out.push({ value: `${s.boot_l} L`, label: "boot" });
+  const w = warrantyShort(s.warranty);
+  if (w) out.push({ value: w, label: "warranty" });
+  return out.slice(0, 4);
+}
+
+// "1.5L NA" -> "1.5L" ("NA" = naturally aspirated, jargon to a buyer); "1.5L turbo" stays.
+export const engineLabel = (e) => String(e || "").replace(/\s+NA$/i, "").trim();
+
+// One plain sentence about the model, from its specs only.
+export function modelLead(specs, fromPrice) {
+  const s = specs || {};
+  const w = warrantyShort(s.warranty);
+  const bits = [
+    s.engine ? `a ${engineLabel(s.engine)} engine` : null,
+    s.seats ? `${s.seats} seats` : null,
+    s.boot_l ? `a ${s.boot_l} L boot` : null,
+    w ? `a ${w.replace(" yrs", "-year")} warranty` : null,
+  ].filter(Boolean);
+  const list = bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0];
+  const text = list ? `${list[0].toUpperCase()}${list.slice(1)}.` : "";
+  return [text, fromPrice ? `From ${rm(fromPrice)}.` : ""].filter(Boolean).join(" ");
+}

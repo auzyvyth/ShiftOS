@@ -392,7 +392,7 @@ still says "21 pages") — do not update it; it is pending removal.
   follow) ONLY when a theme is saved: no theme = pixel-identical. Dark + accent sets only the accent variables. A new colour
   on a dealer site must use a `--sf-*` variable with its old value as fallback, never a white alpha (it vanishes on Light).
   No accent picked = the brand colour (`accentOf`, `var(--sf-theme-accent, brand)`). The top banner stays a dark photo band
-  on Light. /cars and car pages are not themed yet. The same-town
+  on Light. /cars is themed too (2026-11-21, `CarListingPage.jsx` writes the same `themeCss`; its top block, chips and filter panel use `sv()`); car pages are not yet. The same-town
   check is designed in `docs/STOREFRONT_PLAN.md` (needs a DB function), not built.
   **Stage 4 phase A (2026-11-20, local commits): the owner's reference site's ORGANISATION and colouring, never its words or
   photos.** Look OPTIONS = small top-level keys on the same jsonb (`OPTIONS` in `storefrontLayout.js`: fixed values, default never
@@ -430,6 +430,10 @@ still says "21 pages") — do not update it; it is pending removal.
   `/cars` (subdomain). Its filter whitelists + sanitisers are IMPORTED from
   src/config/marketplaceConfig.js — never re-declare them here, they were
   duplicated once and the copies are what drift.
+  **Filter panel (2026-11-22): `src/components/listing/FiltersPanel.jsx`** (phone bottom sheet, tablet drawer,
+  desktop right sidebar; Carlist's grouped layout). It edits a DRAFT and the list loads ONCE on Search (owner:
+  no work per tap, so no live count on the button). Monthly budget = a max price on the cards' loan
+  (`maxPriceForMonthly`, snapped to `PRICE_STEPS`, which gained RM150k). Hot deals + body type live in the chip row only.
 - src/pages/CarDetailPage.jsx — single car listing page (has "What's Included" services strip)
 - src/pages/SalesmanPanel.jsx — salesman role dashboard (file: Salesmanpanel.jsx)
 - src/pages/DashboardPage.jsx — owner/admin dashboard (see nav tabs below)
@@ -2005,6 +2009,17 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **The model page was redesigned (NEWCAR-PAGE, owner 2026-11-22: "robotic and empty"):** photos
+  (`new_car_model_media`), colour dots + variant chips from `new_car_models.specs`, price + monthly
+  (10% down, 7 yrs, `LOCAL_NEW_EIR` for new Proton/Perodua), "what it adds" (`variantExtras`), a year's
+  road tax / insurance / petrol (`ownership.js`, labelled estimates), advisors, then the brand's other
+  models. Words + facts come from specs only (`modelFacts`, `modelLead` in `newCars.js`); never invent one.
+  **The pick rides into the lead (NEWCAR-PICK):** an advisor's WhatsApp opens `ContactGate` (`pick` prop) ->
+  `/api/whatsapp-lead` (`variantId`, `colour`) -> `create_lead_from_whatsapp(..., p_variant_id, p_colour)`,
+  which keeps them only when the variant is of the car's model and the colour is that variant's
+  (`leads.new_car_model_id` + `leads.car_colour`; migration `20261122b`, QUEUED; before it the API retries
+  without them). Premium's lead card shows "Wants: <variant> · <colour>" and that variant's price
+  (`useVariantNames`), and the won confirm starts on the picked variant.
 - **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
   2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
   After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards
