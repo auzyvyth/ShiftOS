@@ -54,17 +54,29 @@ const PEOPLE = {
   },
 };
 
-function arm(p, side, angle) {
+function arm(p, side, angle, point = false) {
   const sx = side === 'L' ? 152 : 348;
   return `<g transform="translate(${sx} 425) rotate(${angle})">
+    ${point ? `<rect x="-9" y="236" width="18" height="62" rx="9" fill="${p.skin}" ${OL}/>` : ''}
     <rect x="-27" y="-10" width="54" height="225" rx="27" fill="${p.skin}" ${OL}/>
     <path d="M-36 -18 Q-40 60 -32 85 L32 85 Q40 60 36 -18 Q0 -38 -36 -18 Z" fill="${p.shirt}" ${OL}/>
     <circle cx="0" cy="228" r="31" fill="${p.skin}" ${OL}/>
   </g>`;
 }
 
+function leg(p, hx, angle, dir) {
+  const shoe = dir > 0 ? 'M-34 333 L-34 298 L14 298 Q58 300 60 333 Z' : 'M34 333 L34 298 L-14 298 Q-58 300 -60 333 Z';
+  return `<g transform="translate(${hx} 650) rotate(${angle})">
+    <rect x="-35" y="-10" width="70" height="320" rx="30" fill="${p.pants}" ${OL}/>
+    <path d="${shoe}" fill="${p.shoe}" ${OL}/>
+  </g>`;
+}
+
 function eyes(kind) {
   const K = C.ink;
+  if (kind === 'up') return `<ellipse cx="200" cy="258" rx="24" ry="29" fill="#fff" ${OL}/><ellipse cx="300" cy="258" rx="24" ry="29" fill="#fff" ${OL}/>
+    <circle cx="206" cy="242" r="11" fill="${K}"/><circle cx="306" cy="242" r="11" fill="${K}"/>
+    <path d="M176 208 Q200 196 224 206 M276 206 Q300 196 324 208" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'suspicious') return `<path d="M176 262 L224 262 M276 262 L324 262" stroke="${K}" stroke-width="9" stroke-linecap="round"/>
     <circle cx="210" cy="270" r="9" fill="${K}"/><circle cx="310" cy="270" r="9" fill="${K}"/>
     <path d="M172 238 L228 246 M272 222 Q300 200 330 214" fill="none" stroke="${K}" stroke-width="9" stroke-linecap="round"/>`;
@@ -110,22 +122,18 @@ function mouth(kind) {
 // pose = { armL, armR, eyes, mouth, sweat }
 export function character(who, pose = {}) {
   const p = PEOPLE[who];
-  const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false } = pose;
+  const { armL = 10, armR = -10, eyes: e = 'neutral', mouth: m = 'closed', sweat = false, blush = false, vein = false, tears = false, tint = false,
+    legL = 0, legR = 0, facing = 'front', pointL = false, pointR = false } = pose;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 1000" width="500" height="1000">
   <ellipse cx="250" cy="978" rx="150" ry="16" fill="#000" opacity="0.12"/>
-  <g id="legs">
-    <rect x="172" y="640" width="70" height="320" rx="30" fill="${p.pants}" ${OL}/>
-    <rect x="258" y="640" width="70" height="320" rx="30" fill="${p.pants}" ${OL}/>
-    <path d="M150 975 Q150 940 200 938 L245 938 L245 975 Z" fill="${p.shoe}" ${OL}/>
-    <path d="M350 975 Q350 940 300 938 L255 938 L255 975 Z" fill="${p.shoe}" ${OL}/>
-  </g>
-  <g id="arm-back">${arm(p, 'L', armL)}</g>
+  <g id="legs">${leg(p, 207, legL, facing === 'right' ? 1 : -1)}${leg(p, 293, legR, facing === 'left' ? -1 : 1)}</g>
+  <g id="arm-back">${arm(p, 'L', armL, pointL)}</g>
   <g id="torso">
     <path d="M145 410 Q250 370 355 410 L368 670 Q250 692 132 670 Z" fill="${p.shirt}" ${OL}/>
     <path d="M300 420 L355 410 L368 670 Q330 680 300 682 Z" fill="${p.shirtDark}" opacity="0.55"/>
     ${p.torsoDetail()}
   </g>
-  <g id="arm-front">${arm(p, 'R', armR)}</g>
+  <g id="arm-front">${arm(p, 'R', armR, pointR)}</g>
   <g id="head">
     <rect x="222" y="360" width="56" height="50" fill="${p.skinDark}" ${OL}/>
     <circle cx="118" cy="265" r="30" fill="${p.skin}" ${OL}/><circle cx="382" cy="265" r="30" fill="${p.skin}" ${OL}/>

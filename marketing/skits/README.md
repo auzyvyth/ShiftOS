@@ -14,3 +14,5 @@ Cartoon skit format (salesman + buyer, BM voice, word captions). Separate from t
 - `tools/scene1.mjs` - the 5 s test scene, frames in the browser + ffmpeg -> `preview/scene1-test.mp4`.
   Faces: neutral, talk, sly, suspicious, nervous, shock, angry, cry, dizzy, starstruck, wink, happy.
 - `source/myvi-photo.webp` is a maker press photo: fine for tests, swap for our own photo before posting.
+- `tools/scene2.mjs` - walk right (legs + arm swing + bob, footsteps), point up (`pointR`), panic arms spread.
+  Rig extras: `legL`/`legR` (hip angle), `facing: 'right'` (shoes), `pointL`/`pointR` (finger), `eyes: 'up'`.
