@@ -35,7 +35,7 @@ import SearchAutocomplete from '../components/SearchAutocomplete';
 import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import NewBrandRow from '../components/marketplace/NewBrandRow';
-import Pagination from '../components/ui/Pagination';
+import { useAutoLoadMore } from '../hooks/useAutoLoadMore';
 import { storefront as SF } from '../theme/tokens';
 import { StorefrontError } from '../components/ErrorScreen';
 import { themeOf, themeCss } from '../utils/storefrontTheme';
@@ -50,7 +50,9 @@ const Header = lazy(() => import('../components/Header'));
 const StickyWhatsAppButton = lazy(() => import('../components/StickyWhatsAppButton'));
 
 /* ── Constants ──────────────────────────────────────────────────── */
-const PER_PAGE = 15;
+// 50 at a time, the next 50 load by themselves near the bottom (owner, 2026-11-22; was 15 +
+// numbered pages). useAutoLoadMore + the end line under the grid.
+const PER_PAGE = 50;
 // Same freshness window as the marketplace grid's saved copy.
 const SEED_TTL = 30 * 60 * 1000;
 
@@ -460,7 +462,12 @@ export default function CarListingPage() {
   const model       = san.str(searchParams.get('model')||'');
   const variant     = san.str(searchParams.get('variant')||'');
   const sort        = ['newest','price_asc','price_desc','year_desc','year_asc','mileage_asc'].includes(searchParams.get('sort')) ? searchParams.get('sort') : 'newest';
-  const page        = san.page(searchParams.get('page')||'1');
+  // Which batch of 50 is loaded. Kept with the filters it belongs to, so a new filter starts
+  // at batch 1 in the same render (no fetch of batch 3 of the old search). Old ?page= links
+  // just open at the top.
+  const filterKey = [brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort].join('|');
+  const [paging, setPaging] = useState({ key: filterKey, page: 1 });
+  const page = paging.key === filterKey ? paging.page : 1;
 
   const [searchInput, setSearchInput]   = useState(q);
   // Unfiltered marketplace page 1 paints the fresh saved list on its first
@@ -478,6 +485,11 @@ export default function CarListingPage() {
   const [totalCount, setTotal]          = useState(() => seed?.totalCount || 0);
   const [loading, setLoading]           = useState(() => !seed);
   const [fetching, setFetching]         = useState(false);
+  const [loadingMore, setLoadingMore]   = useState(false);
+  const [moreError, setMoreError]       = useState(false);
+  // The first live answer has landed (the grid may first show the device's saved 15), so the
+  // next batch never races the batch-1 refresh.
+  const [liveReady, setLiveReady]       = useState(false);
   const [error, setError]               = useState(null);
   // Showing the device's saved copy because the live fetch failed (marketplace,
   // unfiltered page 1 only) -- drives StaleListingsNotice.
@@ -536,7 +548,6 @@ export default function CarListingPage() {
     next.delete('page');
     setSearchParams(next, { replace:true });
   };
-  const setPage  = p => { const next = new URLSearchParams(searchParams); next.set('page', String(p)); setSearchParams(next, { replace:true }); };
 
   // ── Draft filters ── The filter panel edits a local draft; nothing refetches
   // until the user hits Search. Committed filters live in the URL (drive the
@@ -580,9 +591,11 @@ export default function CarListingPage() {
       && !transmission && !fuelType && !colour && !sellerType;
     // Seeded cars are refreshed quietly: no skeleton, no dimmed grid over
     // cars that are already right.
-    if (refreshQuietly.current) { /* keep the seeded grid up */ }
+    const more = page > 1;
+    if (more) { setLoadingMore(true); setMoreError(false); }
+    else if (refreshQuietly.current) { /* keep the seeded grid up */ }
     else if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
-    setError(null);
+    if (!more) setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
       // publicClient: a public read must never wait on the login lock. On
@@ -590,7 +603,7 @@ export default function CarListingPage() {
       // never sent (2026-10-12, signed-in seller searching "Ferrari").
       let query = publicClient
         .from('public_car_listings')
-        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
+        .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, more ? undefined : { count:'exact' })
         .in('status', ['available', 'reserved']);
 
       if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
@@ -685,7 +698,13 @@ export default function CarListingPage() {
       const { data, error:err, count } = await withTimeout(query);
       if (err) throw err;
       if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
-      setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      if (more) {
+        // Append, skipping any car already shown (a car added meanwhile shifts the pages by one).
+        setCars(prev => { const seen = new Set(prev.map(c => c.id)); return [...prev, ...(data || []).filter(c => !seen.has(c.id))]; });
+        if ((data || []).length < PER_PAGE) setTotal(t => Math.min(t, (page - 1) * PER_PAGE + (data || []).length));
+      } else {
+        setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      }
       trackBrowse({
         surface: isMarketplace ? 'marketplace' : 'storefront',
         dealerId: !isMarketplace ? tenant?.id : null,
@@ -694,9 +713,11 @@ export default function CarListingPage() {
       });
       // Keep the device's copy of the live grid fresh from here too, so a buyer
       // who only ever lands on /showroom still has something during an outage.
-      if (isDefaultShowroom) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });
+      if (isDefaultShowroom && !more) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });
     } catch {
       if (myReq !== reqSeq.current) return;
+      // A failed NEXT batch keeps the cars on screen and offers a retry under them.
+      if (more) { setMoreError(true); return; }
       // Unfiltered marketplace page 1 only: unfiltered cars under an active
       // filter (or on a dealer's own storefront) would be wrong, not just stale.
       const saved = isDefaultShowroom ? readLiveCarsFallback() : null;
@@ -706,11 +727,15 @@ export default function CarListingPage() {
         setError('Failed to load listings. Please try again.');
       }
     }
-    finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; refreshQuietly.current = false; } }
+    finally { if (myReq === reqSeq.current) { if (!more) setLiveReady(true); setLoading(false); setFetching(false); setLoadingMore(false); initialLoad.current = false; refreshQuietly.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
-  useEffect(() => { window.scrollTo({ top:0, behavior:'smooth' }); }, [page]);
+  const hasMore = liveReady && !error && !showingSaved && !loading && cars.length > 0 && cars.length < totalCount;
+  const moreRef = useAutoLoadMore({
+    hasMore: hasMore && !moreError, busy: loadingMore || fetching,
+    onLoadMore: () => setPaging({ key: filterKey, page: page + 1 }),
+  });
 
   /* Store visit tracking */
   useEffect(() => {
@@ -722,7 +747,6 @@ export default function CarListingPage() {
   }, []); // eslint-disable-line
 
   const hasFilters = brand||bodyType||transmission||state||minPrice||maxPrice||financing||yearFrom||yearTo||q||condition||mileageMax||hotDeals||fuelType||colour||sellerType||model||variant;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   /* Active chip list */
   const activeChips = [
@@ -1075,12 +1099,19 @@ export default function CarListingPage() {
                   </div>
                 </div>
               )}
-              {!loading && !error && !showingSaved && totalPages > 1 && (
-                <div style={{ padding:'40px 0 20px' }}>
-                  <Pagination page={page} totalPages={totalPages} onPage={setPage}/>
-                  <p style={{ textAlign:'center', color:T.textMuted, fontSize:'13px', marginTop:'12px', fontFamily:"'Outfit',sans-serif" }}>
-                    Showing {((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE,totalCount)} of {totalCount.toLocaleString()} cars
-                  </p>
+              {/* Next 50 load by themselves; the line says so when it truly ends. */}
+              {!loading && !error && !showingSaved && cars.length > 0 && (
+                <div ref={moreRef} style={{ padding:'28px 0 12px', textAlign:'center', fontSize:'13px', fontWeight:600, color:T.textMuted }}>
+                  {moreError ? (
+                    <button type="button" onClick={() => { setMoreError(false); setPaging({ key: filterKey, page }); fetchCars(); }}
+                      style={{ background:'none', border:'none', color:T.text, font:'inherit', fontWeight:700, cursor:'pointer', minHeight:'40px' }}>
+                      Couldn't load more cars. Tap to try again
+                    </button>
+                  ) : cars.length < totalCount ? (
+                    <span aria-live="polite">{loadingMore ? 'Loading more cars…' : `${cars.length} of ${totalCount.toLocaleString()} cars`}</span>
+                  ) : (
+                    <span>That's all {totalCount.toLocaleString()} {totalCount === 1 ? 'car' : 'cars'}{hasFilters ? ' for this search' : ''}.</span>
+                  )}
                 </div>
               )}
             </div>
