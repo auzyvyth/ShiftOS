@@ -11,6 +11,7 @@ Cartoon skit format (salesman + buyer, BM voice, word captions). Separate from t
 - No real maker badges or logos on cars; the Myvi is a drawn silhouette, not Perodua's photo.
 - `tools/toon.py` - toon filter for a car photo (cut-out, flat colours, ink lines):
   `python3 -I tools/toon.py source/myvi-photo.webp assets/car-myvi-toon.png`
+- Rules for the look and moves: `STYLE.md`. Renders in `preview/` are not committed (re-render in ~15 s).
 - `tools/scene1.mjs` - the 5 s test scene, frames in the browser + ffmpeg -> `preview/scene1-test.mp4`.
   Faces: neutral, talk, sly, suspicious, nervous, shock, angry, cry, dizzy, starstruck, wink, happy.
 - `source/myvi-photo.webp` is a maker press photo: fine for tests, swap for our own photo before posting.

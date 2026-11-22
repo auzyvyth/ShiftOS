@@ -1,2 +1,2 @@
-preview/frames/
-preview/frames2/
+preview/*
+!preview/asset-sheet-desktop.png
