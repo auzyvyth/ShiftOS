@@ -90,6 +90,11 @@ function leg(p, hx, angle, dir, lift = 0) {
 
 function eyes(kind) {
   const K = C.ink;
+  if (kind === 'side') return `<ellipse cx="200" cy="258" rx="24" ry="22" fill="#fff" ${OL}/><ellipse cx="300" cy="258" rx="24" ry="22" fill="#fff" ${OL}/>
+    <circle cx="216" cy="262" r="10" fill="${K}"/><circle cx="316" cy="262" r="10" fill="${K}"/>
+    <path d="M176 228 L224 236 M276 236 L324 228" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
+  if (kind === 'squint') return `<path d="M176 262 Q200 248 224 262 M276 262 Q300 248 324 262" fill="none" stroke="${K}" stroke-width="9" stroke-linecap="round"/>
+    <path d="M176 222 Q200 210 224 220 M276 220 Q300 210 324 222" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'blink') return `<path d="M178 262 Q200 272 222 262 M278 262 Q300 272 322 262" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>
     <path d="M176 215 Q200 205 224 214 M276 214 Q300 205 324 215" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'up') return `<ellipse cx="200" cy="258" rx="24" ry="29" fill="#fff" ${OL}/><ellipse cx="300" cy="258" rx="24" ry="29" fill="#fff" ${OL}/>
@@ -126,6 +131,7 @@ function eyes(kind) {
 
 function mouth(kind) {
   const K = C.ink;
+  if (kind === 'grimace') return `<path d="M200 350 L300 350 Q300 388 250 388 Q200 388 200 350 Z" fill="#fff" ${OL}/><path d="M204 369 L296 369 M225 352 L225 386 M250 352 L250 388 M275 352 L275 386" stroke="${K}" stroke-width="4"/>`;
   if (kind === 'frown') return `<path d="M215 378 Q250 352 285 378" fill="none" stroke="${K}" stroke-width="8" stroke-linecap="round"/>`;
   if (kind === 'wavy') return `<path d="M205 368 q11 -12 22 0 t22 0 t22 0 t22 0" fill="none" stroke="${K}" stroke-width="7" stroke-linecap="round"/>`;
   if (kind === 'scream') return `<path d="M200 340 Q250 330 300 340 Q300 420 250 425 Q200 420 200 340 Z" fill="#5b1414" stroke="${K}" stroke-width="6"/><path d="M212 344 L288 344 L284 358 L216 358 Z" fill="#fff"/><path d="M225 405 Q250 388 275 405 Q262 420 250 420 Q238 420 225 405 Z" fill="#e0606a"/>`;

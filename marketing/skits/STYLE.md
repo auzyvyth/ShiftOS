@@ -89,6 +89,22 @@ Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
 - Effects: pop per caption, a footstep per step, boom/crash on hits. Voice: not decided yet
   (owner records, or an AI Malay voice). Encode with `-movflags +faststart`, `-g 30`.
 
-## Process (each step waits for the owner)
-1. Joke + script lines in BM. 2. Stills of the key beats. 3. A 5-6 s test. 4. The full skit.
+## Process (owner, 2026-11-22: "script, get the images, then animate")
+1. **Script** in BM, already ACTED: every line carries acting tags on its words (below).
+2. **Images**: real photos for every "thing" shot (car, interior, door, screen, carpet...), poster-filtered.
+   No photo = no shot; never stand in with drawn shapes (the drawn interior was "a bunch of shapes").
+3. **Voice** recorded (or the timing sheet), then **animate**: mouths from the voice, faces from the tags.
+Each step waits for the owner's OK.
+
+## Acting on every word (`tools/perform.mjs`)
+- Tags in braces sit right before the word they land on; they hold until the next tag or line end:
+  `'{squint}{grimace}Ugggh... {side}{closed}{leftOut}probably just...'`
+- Eyes: neutral happy shock sly suspicious angry cry dizzy stars wink nervous up side squint blink.
+  Mouths (resting): closed grin frown wavy scream smirk wail grimace o. Arms: armDown armOut armUp
+  point pointUp bothUp shrug leftOut headHands. Flags: sweat tears blush vein shades (noSweat...), red, green.
+- A word's time = the line's window split by characters (`actAt`). Change something on most stressed
+  words: a face OR an arm, roughly every 2-4 words. A line with no tag is a flat line.
+- **Lip-sync from the voice** (`loudness` + `lipMouth`): quiet = the tagged resting mouth, speaking =
+  open, loud = wide. Never a timer flap once a voice track exists.
+- The listener reacts too (blink, a face change on the punch word), never frozen.
 Send every render with SendUserFile and stills of the beats; check frames yourself before sending.

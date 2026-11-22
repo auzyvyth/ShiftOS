@@ -12,11 +12,14 @@ Everything lives in `marketing/skits/`. Read these first, every time:
 Do not copy their rules into replies or new files: link to them. A new rule the owner gives goes into
 STYLE.md in the same commit.
 
+## Order of work (owner): script (acted, with word tags) -> real photos -> voice -> animate
+
 ## How the code is built
 - `tools/rig.mjs` is the ONE source of every drawn asset. Characters are rigs: `character(who, pose)`,
   pose = arms, legs, eyes, mouth, extras. Never draw a character by hand in a scene file.
 - A scene is `tools/sceneN.mjs`: a `frame(f)` timeline -> poses + positions, rendered with Playwright
   frame by frame, then ffmpeg with a silent base track. Copy `scene2.mjs` for a new one.
+- `tools/perform.mjs`: word-level acting tags + lip-sync from the voice track. Every new scene uses it.
 - `tools/build.mjs` rewrites `assets/*.svg` and the asset sheet after any rig change.
 - Renders go to `preview/` (not committed). Run with `NODE_PATH=$(npm root -g)`.
 
