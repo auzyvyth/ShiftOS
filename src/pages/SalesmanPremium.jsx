@@ -683,13 +683,16 @@ export default function SalesmanPremium() {
  }, [isBroker, loadBrokerRegs]);
  // A quiet refresh each time the picker opens, in case a connection changed elsewhere.
  useEffect(() => { if (isBroker && linkCarLeadId) refreshPageCars(); }, [isBroker, linkCarLeadId]);
- // A lead's registration: the one filed against it, else a live one for the same number.
+ // A lead's registration: the one filed against it, else (only for a lead with no car of its own) one
+ // for the same number (a sale, or a live hold). The phone match used to pull an old approved sale onto
+ // ANY lead from that buyer, e.g. a WhatsApp lead on the seller's own new-car card (2026-11-22).
  const brokerRegForLead = useCallback((lead) => {
  if (!lead || !brokerRegs.length) return null;
+ const linked = brokerRegs.find((r) => r.broker_lead_id && r.broker_lead_id === lead.id);
+ if (linked) return linked;
+ if (lead.car_listing_id) return null;
  const digits = String(lead.phone || "").replace(/\D/g, "");
- return brokerRegs.find((r) => r.broker_lead_id && r.broker_lead_id === lead.id)
- || (digits ? brokerRegs.find((r) => r.buyer_phone === digits && (r.status === "sold" || new Date(r.hold_until) > new Date())) : null)
- || null;
+ return (digits ? brokerRegs.find((r) => r.buyer_phone === digits && (r.status === "sold" || (r.status === "registered" && new Date(r.hold_until) > new Date()))) : null) || null;
  }, [brokerRegs]);
  // The dealer car a buyer is registered on, shaped like a car row so the lead panel, the loan check
  // and the Won confirm can use it. The car itself is never linked to the lead (the database refuses
