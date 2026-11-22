@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { loanModels, loanCopy, loanMonthly, loanRate, loanPath, loanBrandFromSlug } from "../src/utils/brandLoan.js";
+import { loanModels, loanCopy, loanMonthly, loanRate, loanPath, loanBrandFromSlug, modelGuide, loanSections } from "../src/utils/brandLoan.js";
 import { monthlyPayment } from "../src/utils/financing.js";
 
 const rows = [
@@ -28,4 +28,20 @@ assert.match(c.intro, new RegExp(`RM ${loanMonthly(22000, { years: 9, rate: 4.8 
 assert.ok(c.faqs.length >= 5 && c.faqs.every((f) => f.q && f.a));
 assert.ok(!/undefined|NaN/.test(JSON.stringify(c)));
 assert.ok(!/undefined|NaN/.test(JSON.stringify(loanCopy("Honda", []))));
+// Guide: picks are rules over the spec sheet.
+const sp = (safety, features, extra = {}) => ({ safety, features, engine: "1.3L", airbags: 4, ...extra });
+const g = modelGuide("Perodua", loanModels("Perodua", [
+  { id: "a", brand: "Perodua", model: "Myvi", variant: "1.3 G Manual", price_peninsular: 46500, specs: sp(["ISOFIX"], ["LED headlamps"]) },
+  { id: "b", brand: "Perodua", model: "Myvi", variant: "1.3 G Auto", price_peninsular: 48500, specs: sp(["ISOFIX", "Autonomous emergency braking (pedestrian)", "Lane keeping assist"], ["LED headlamps"]) },
+  { id: "c", brand: "Perodua", model: "Myvi", variant: "1.5 AV", price_peninsular: 59900, specs: sp(["ISOFIX", "Autonomous emergency braking (pedestrian)", "Lane keeping assist", "Reverse camera"], ["LED headlamps", "Dash cam"], { engine: "1.5L", airbags: 6 }) },
+])[0], 4.8);
+const pick = (label) => g.picks.find((p) => p.labels.includes(label))?.variant;
+assert.equal(pick("Paling jimat"), "1.3 G Manual");
+assert.equal(pick("Pilihan keselamatan"), "1.3 G Auto", "cheapest variant with AEB");
+assert.equal(pick("Paling lengkap"), "1.5 AV");
+assert.ok(g.steps[0].items.includes("gear automatik"), "gearbox read from the variant name");
+assert.ok(g.steps[1].items.some((x) => x.startsWith("enjin 1.5L")) && g.steps[1].items.includes("6 airbags"));
+assert.ok(!/undefined|NaN/.test(JSON.stringify(g)));
+const secs = loanSections("Perodua", m, 4.8);
+assert.ok(secs.length >= 6 && !/undefined|NaN/.test(JSON.stringify(secs)));
 console.log("brandLoan: ok");

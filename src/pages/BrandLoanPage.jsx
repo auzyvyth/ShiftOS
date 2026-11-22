@@ -14,7 +14,7 @@ import { RATE_MAX } from "../utils/liveMaths";
 import { NEW_CAR_BRANDS } from "../utils/newCars";
 import {
   LOAN_TENURES, LOAN_DEPOSITS, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanRate,
-  loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan,
+  loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan, modelGuide, loanSections,
 } from "../utils/brandLoan";
 
 // LOAN-SEO (2026-11-22): /kalkulator-loan/:brand. Every number comes from
@@ -37,7 +37,7 @@ export default function BrandLoanPage() {
     let alive = true;
     setRows(null); setFailed(false); setModelIx(0); setVariantIx(0); setRateText(String(loanRate(brand)));
     publicClient.from("new_car_models")
-      .select("id, brand, model, variant, price_peninsular, is_active")
+      .select("id, brand, model, variant, price_peninsular, is_active, specs")
       .eq("brand", brand).eq("is_active", true)
       .then(({ data, error }) => {
         if (!alive) return;
@@ -48,6 +48,8 @@ export default function BrandLoanPage() {
 
   const models = useMemo(() => (brand && rows ? loanModels(brand, rows) : []), [brand, rows]);
   const copy = useMemo(() => (brand ? loanCopy(brand, models) : null), [brand, models]);
+  const guides = useMemo(() => models.map((x) => modelGuide(brand, x, copy.rate)), [brand, models, copy]);
+  const sections = useMemo(() => (brand ? loanSections(brand, models, copy.rate) : []), [brand, models, copy]);
 
   if (!brand || isSubdomain()) return <NotFoundPage />;
   if (rows && !models.length) return <NotFoundPage />;
@@ -160,22 +162,75 @@ export default function BrandLoanPage() {
           {models.length > 0 && (
             <section className="bl-table-wrap">
               <h2 className="bl-h2 bl-h2-lg">Ansuran bulanan semua varian {brand}</h2>
-              <p className="bl-note">Deposit {LOAN_DEPOSIT_PCT}%, {copy.rate}% EIR, harga rasmi Semenanjung tanpa insurans.</p>
-              {models.map((x) => (
-                <div key={x.model} className="bl-card bl-table">
-                  <h3><Link to={x.path}>{brand} {x.model}</Link></h3>
-                  <table>
-                    <thead><tr><th>Varian</th><th>Harga</th>{LOAN_TENURES.map((y) => <th key={y}>{y} thn</th>)}</tr></thead>
-                    <tbody>
-                      {x.variants.map((r) => (
-                        <tr key={r.id || r.variant}>
-                          <td>{r.variant}</td>
-                          <td>{rmLoan(r.price)}</td>
-                          {LOAN_TENURES.map((y) => <td key={y}>{rmLoan(loanMonthly(r.price, { years: y, rate: copy.rate }))}</td>)}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <p className="bl-note">Deposit {LOAN_DEPOSIT_PCT}%, {copy.rate}% EIR, harga rasmi Semenanjung tanpa insurans. Di bawah setiap model: varian mana untuk siapa, apa yang anda dapat bila naik varian, dan kos setahun.</p>
+              {models.map((x, mi) => {
+                const g = guides[mi];
+                return (
+                  <article key={x.model} className="bl-card bl-model" id={`model-${x.path.split("/").pop()}`}>
+                    <h3><Link to={x.path}>{brand} {x.model}</Link> <small>dari {rmLoan(x.from)}</small></h3>
+                    {g.facts && <p className="bl-facts">{g.facts}</p>}
+                    <div className="bl-table">
+                      <table>
+                        <thead><tr><th>Varian</th><th>Harga</th>{LOAN_TENURES.map((y) => <th key={y}>{y} thn</th>)}</tr></thead>
+                        <tbody>
+                          {x.variants.map((r) => (
+                            <tr key={r.id || r.variant}>
+                              <td>{r.variant}</td>
+                              <td>{rmLoan(r.price)}</td>
+                              {LOAN_TENURES.map((y) => <td key={y}>{rmLoan(loanMonthly(r.price, { years: y, rate: copy.rate }))}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {g.picks.length > 1 && (
+                      <>
+                        <h4>{brand} {x.model} varian mana untuk anda?</h4>
+                        <ul className="bl-picks">
+                          {g.picks.map((p) => (
+                            <li key={p.variant}>
+                              <span className="bl-pick-l">{p.labels.join(" · ")}</span>
+                              <b>{p.variant} <small>{rmLoan(p.price)}</small></b>
+                              {p.why.map((w) => <p key={w}>{w[0].toUpperCase() + w.slice(1)}</p>)}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {g.steps.some((st) => st.items.length) && (
+                      <>
+                        <h4>Apa yang anda dapat bila naik varian</h4>
+                        <ul className="bl-steps">
+                          {g.steps.map((st) => (
+                            <li key={st.variant}>
+                              <b>{st.over} ke {st.variant}</b>: +{rmLoan(st.plus)} (lebih kurang +{rmLoan(st.plusMo)} sebulan)
+                              {st.items.length ? <span>. Tambah: {st.items.join(", ")}.</span> : <span>.</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    <p className="bl-costs">
+                      Gaji bersih sekitar <b>{rmLoan(g.costs.salary)}</b> untuk ansuran {rmLoan(g.costs.mo9)} ({x.variants[0].variant}, 9 tahun).
+                      {g.costs.roadTax != null && <> Cukai jalan <b>{rmLoan(g.costs.roadTax)}</b> setahun.</>}
+                      {g.costs.insurance != null && <> Insurans sekitar <b>{rmLoan(g.costs.insurance)}</b> setahun tanpa NCD.</>}
+                      {g.costs.fuel != null && <> Minyak sekitar <b>{rmLoan(g.costs.fuel)}</b> setahun (15,000 km, RON95).</>}
+                      {" "}Semua anggaran.
+                      {g.source && <> Spesifikasi: <a href={g.source} target="_blank" rel="noopener noreferrer">sumber</a>.</>}
+                    </p>
+                  </article>
+                );
+              })}
+            </section>
+          )}
+
+          {sections.length > 0 && (
+            <section className="bl-read">
+              {sections.map((sec) => (
+                <div key={sec.h}>
+                  <h2 className="bl-h2 bl-h2-lg">{sec.h}</h2>
+                  {sec.p.map((t) => <p key={t}>{t}</p>)}
+                  {sec.list && <ul>{sec.list.map((t) => <li key={t}>{t}</li>)}</ul>}
                 </div>
               ))}
             </section>
@@ -257,15 +312,33 @@ const CSS = `
   .bl-sa p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: #374151; }
   .bl-sa-t { display: flex; align-items: center; gap: 7px; font-weight: 800; color: #111827 !important; font-size: 14.5px !important; margin-bottom: 6px !important; }
   .bl-btn { display: inline-flex; align-items: center; height: 42px; padding: 0 16px; border-radius: 12px; background: #dc2626; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; }
-  .bl-table { padding: 12px 14px; margin-top: 10px; overflow-x: auto; }
-  .bl-table h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; }
-  .bl-table h3 a { color: #111827; text-decoration: none; }
+  .bl-model { padding: 16px; margin-top: 12px; }
+  .bl-model h3 { margin: 0; font-size: 18px; font-weight: 800; }
+  .bl-model h3 a { color: #111827; text-decoration: none; }
+  .bl-model h3 small { font-size: 13px; font-weight: 600; color: #6b7280; }
+  .bl-model h4 { margin: 16px 0 8px; font-size: 14.5px; font-weight: 800; }
+  .bl-facts { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: #4b5563; }
+  .bl-table { margin-top: 10px; overflow-x: auto; }
+  .bl-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  @media (min-width: 700px) { .bl-picks { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } }
+  .bl-picks li { background: #F4F3EF; border-radius: 12px; padding: 10px 12px; }
+  .bl-pick-l { display: block; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #dc2626; }
+  .bl-picks b { display: block; font-size: 15px; margin-top: 2px; }
+  .bl-picks b small { font-size: 12.5px; color: #6b7280; font-weight: 600; }
+  .bl-picks p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: #374151; }
+  .bl-steps { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: #374151; }
+  .bl-steps li + li { margin-top: 6px; }
+  .bl-costs { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid rgba(15,23,42,.07); font-size: 13px; line-height: 1.6; color: #4b5563; }
+  .bl-costs a { color: #111827; }
+  .bl-read p, .bl-read li { font-size: 14.5px; line-height: 1.65; color: #374151; }
+  .bl-read ul { padding-left: 18px; }
+  @media (min-width: 900px) { .bl-read { max-width: 760px; } }
   .bl-table table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
   .bl-table th { text-align: right; font-size: 11.5px; font-weight: 700; color: #6b7280; padding: 6px 4px; white-space: nowrap; }
   .bl-table th:first-child, .bl-table td:first-child { text-align: left; }
   .bl-table td { text-align: right; padding: 8px 4px; border-top: 1px solid rgba(15,23,42,.07); white-space: nowrap; font-weight: 600; }
   .bl-table td:first-child { white-space: normal; font-weight: 700; }
-  @media (min-width: 900px) { .bl-table-wrap { max-width: 760px; } .bl-faq { max-width: 760px; } }
+  @media (min-width: 900px) { .bl-table-wrap { max-width: 820px; } .bl-faq { max-width: 760px; } }
   .bl-faq details { margin-top: 8px; padding: 12px 16px; }
   .bl-faq summary { font-weight: 700; font-size: 14.5px; cursor: pointer; }
   .bl-faq details p { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: #374151; }

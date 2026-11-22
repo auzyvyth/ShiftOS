@@ -19,7 +19,7 @@ import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
-import { LOAN_TENURES, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan } from "../src/utils/brandLoan.js";
+import { LOAN_TENURES, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan, modelGuide, loanSections } from "../src/utils/brandLoan.js";
 import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath, NEW_CAR_BRANDS } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
@@ -320,11 +320,32 @@ function buildNewModelHtml(brand, rows, advisors) {
 function buildBrandLoanHtml(brand, models) {
   const copy = loanCopy(brand, models);
   const head = LOAN_TENURES.map((y) => `<th>${y} tahun</th>`).join("");
-  const tables = models.map((m) => `<h3><a href="${SITE_URL}${m.path}">${esc(`${brand} ${m.model}`)}</a></h3>
+  const tables = models.map((m) => {
+    const g = modelGuide(brand, m, copy.rate);
+    const picks = g.picks.length > 1 ? `<h4>${esc(`${brand} ${m.model}`)} varian mana untuk anda?</h4>
+    <ul>${g.picks.map((p) => `<li><strong>${esc(p.labels.join(" / "))}: ${esc(p.variant)} (${esc(rmLoan(p.price))})</strong>. ${esc(p.why.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "))}</li>`).join("")}</ul>` : "";
+    const steps = g.steps.some((x) => x.items.length) ? `<h4>Apa yang anda dapat bila naik varian</h4>
+    <ul>${g.steps.map((x) => `<li>${esc(`${x.over} ke ${x.variant}: +${rmLoan(x.plus)} (lebih kurang +${rmLoan(x.plusMo)} sebulan)${x.items.length ? `. Tambah: ${x.items.join(", ")}` : ""}.`)}</li>`).join("")}</ul>` : "";
+    const c = g.costs;
+    const costs = [
+      `Gaji bersih sekitar ${rmLoan(c.salary)} untuk ansuran ${rmLoan(c.mo9)} (${m.variants[0].variant}, 9 tahun).`,
+      c.roadTax != null ? `Cukai jalan ${rmLoan(c.roadTax)} setahun.` : "",
+      c.insurance != null ? `Insurans sekitar ${rmLoan(c.insurance)} setahun tanpa NCD.` : "",
+      c.fuel != null ? `Minyak sekitar ${rmLoan(c.fuel)} setahun (15,000 km, RON95).` : "",
+      "Semua anggaran.",
+    ].filter(Boolean).join(" ");
+    return `<h3><a href="${SITE_URL}${m.path}">${esc(`${brand} ${m.model}`)}</a></h3>
+    ${g.facts ? `<p>${esc(g.facts)}</p>` : ""}
     <table>
       <tr><th>Varian</th><th>Harga</th>${head}</tr>
       ${m.variants.map((v) => `<tr><td>${esc(v.variant)}</td><td>${esc(rmLoan(v.price))}</td>${LOAN_TENURES.map((y) => `<td>${esc(rmLoan(loanMonthly(v.price, { years: y, rate: copy.rate })))}</td>`).join("")}</tr>`).join("\n      ")}
-    </table>`).join("\n    ");
+    </table>
+    ${picks}
+    ${steps}
+    <p>${esc(costs)}</p>`;
+  }).join("\n    ");
+  const reading = loanSections(brand, models, copy.rate).map((x) => `<h2>${esc(x.h)}</h2>
+    ${x.p.map((t) => `<p>${esc(t)}</p>`).join("\n    ")}${x.list ? `\n    <ul>${x.list.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}`).join("\n    ");
   const faqs = copy.faqs.map((f) => `<h3>${esc(f.q)}</h3>\n    <p>${esc(f.a)}</p>`).join("\n    ");
   const others = NEW_CAR_BRANDS.filter((b) => b !== brand).map((b) => `<a href="${SITE_URL}${loanPath(b)}">Kalkulator loan ${esc(b)}</a>`).join(" · ");
   const body = `  <main>
@@ -333,6 +354,7 @@ function buildBrandLoanHtml(brand, models) {
     <h2>Ansuran bulanan semua varian ${esc(brand)} (${esc(brand)} loan calculator)</h2>
     <p>Deposit ${LOAN_DEPOSIT_PCT}%, ${copy.rate}% EIR atas baki berkurangan, harga rasmi Semenanjung tanpa insurans. Bank yang menentukan kadar dan kelulusan.</p>
     ${tables}
+    ${reading}
     <h2>Soalan lazim</h2>
     ${faqs}
     <p><a href="${SITE_URL}/articles/cara-kira-loan-kereta-excel">Cara kira loan kereta guna Excel (template percuma)</a> · <a href="${SITE_URL}/articles/car-loan-malaysia-flat-rate-vs-eir">Flat rate vs EIR</a> · <a href="${SITE_URL}/for-salesmen">Live presentation untuk sales advisor</a></p>
@@ -1213,7 +1235,7 @@ export default async function handler(req) {
     if (subdomain) return new Response("Not found", { status: 404 });
     const blBrand = loanBrandFromSlug(decodeURIComponent(blMatch[1]));
     if (!blBrand) return new Response("Not found", { status: 404 });
-    const blRows = await sbFetch(`new_car_models?brand=eq.${encodeURIComponent(blBrand)}&is_active=eq.true&select=id,brand,model,variant,price_peninsular,is_active`);
+    const blRows = await sbFetch(`new_car_models?brand=eq.${encodeURIComponent(blBrand)}&is_active=eq.true&select=id,brand,model,variant,price_peninsular,is_active,specs`);
     const blModels = loanModels(blBrand, blRows);
     if (!blModels.length) return new Response("Not found", { status: 404 });
     return html(buildBrandLoanHtml(blBrand, blModels));
