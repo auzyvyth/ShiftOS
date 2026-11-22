@@ -70,11 +70,84 @@ const PEOPLE = {
   },
 };
 
+// ---------- cast proposal (2026-11-22 design sheet, waiting for the owner's OK) ----------
+// Same body, outline and face set as Jo and Faiz; only skin, clothes and hair change.
+// Nobody's race is the joke: characters differ by clothes and job, never by an accent or a gesture.
+Object.assign(PEOPLE, {
+  rival: {
+    name: 'Bos Zack', skin: '#dba878', skinDark: '#bd8a5a',
+    shirt: '#0f766e', shirtDark: '#0b5a54', pants: '#5b6270', shoe: '#f4f1ea',
+    // tall swept-up quiff with a brown dye streak, gold-framed shades pushed up on it
+    hair: (o) => `<path d="M114 236 L114 196 C108 120 150 74 200 62 C230 30 320 26 352 70 C382 96 392 140 388 196 L388 236 L368 236
+        C366 196 352 170 322 160 C282 148 222 150 186 160 C154 170 138 196 136 236 Z" fill="#17181c" ${o}/>
+      <path d="M214 72 C252 52 314 50 342 80" fill="none" stroke="#8a5a2b" stroke-width="10" stroke-linecap="round"/>
+      <path d="M162 118 L236 118 Q236 152 199 152 Q162 152 162 118 Z M264 118 L338 118 Q338 152 301 152 Q264 152 264 118 Z" fill="#2c6e78" stroke="#d4a017" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M236 122 L264 122" stroke="#d4a017" stroke-width="6"/>
+      <path d="M176 126 L194 142 M278 126 L296 142" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="0.85"/>`,
+    extra: () => `<path d="M232 372 Q250 392 268 372" fill="none" stroke="#17181c" stroke-width="10" stroke-linecap="round"/>`,
+    // loud checked blazer, open over a black tee, a pen in the pocket
+    torsoDetail: () => `<path d="M212 404 L250 520 L288 404 Z" fill="#1b1d22" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M200 406 L246 540 M300 406 L254 540" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>
+      ${[460, 520, 580, 640].map((y) => `<path d="M140 ${y} L210 ${y} M290 ${y} L362 ${y}" stroke="#f2c14e" stroke-width="4" opacity="0.7"/>`).join('')}
+      ${[175, 325].map((x) => `<path d="M${x} 412 L${x} 668" stroke="#f2c14e" stroke-width="4" opacity="0.7"/>`).join('')}
+      <rect x="300" y="470" width="44" height="8" rx="4" fill="#fff" stroke="${C.ink}" stroke-width="3"/>`,
+  },
+  mak: {
+    name: 'Mak Som', skin: '#d39a6a', skinDark: '#b57e50',
+    shirt: '#3b7d6e', shirtDark: '#2c5f53', pants: '#3b7d6e', shoe: '#8b5e3c', longSleeve: true,
+    // tudung: one shape framing the face, draped over the neck and shoulders, a small brooch
+    hair: (o) => `<path fill-rule="evenodd" d="M250 74 C344 74 414 148 414 262 C414 332 398 384 378 424 Q332 480 250 484 Q168 480 122 424
+        C102 384 86 332 86 262 C86 148 156 74 250 74 Z M138 270 A112 124 0 1 0 362 270 A112 124 0 1 0 138 270 Z" fill="#e7b7c2" ${o}/>
+      <path d="M150 170 Q250 120 350 170" fill="none" stroke="#cf97a5" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="250" cy="452" r="12" fill="#f2c14e" ${o.replace('6', '4')}/>`,
+    extra: () => '',
+    // baju kurung: long top over a long skirt, small flowers
+    torsoDetail: () => `<path d="M150 660 L128 962 Q250 978 372 962 L350 660 Z" fill="#2c5f53" ${OL}/>
+      <path d="M134 600 Q250 640 366 600 L370 700 Q250 728 130 700 Z" fill="#3b7d6e" ${OL}/>
+      ${[[190, 520], [300, 560], [230, 640], [200, 820], [300, 880], [260, 760]].map(([x, y]) =>
+        `<g transform="translate(${x} ${y})">${[0, 90, 180, 270].map((a) => `<ellipse cx="0" cy="-9" rx="6" ry="9" fill="#f4d6dc" transform="rotate(${a})"/>`).join('')}<circle r="4" fill="#f2c14e"/></g>`).join('')}`,
+  },
+  lim: {
+    name: 'Uncle Lim', skin: '#edc9a1', skinDark: '#d2a87c',
+    shirt: '#2f4a6d', shirtDark: '#22374f', pants: '#2f4a6d', shoe: '#1b1d22',
+    // short neat salt-and-pepper hair
+    hair: (o) => `<path d="M116 236 L116 200 C114 120 172 82 250 82 C328 82 386 120 384 200 L384 236 L366 236
+        C362 196 350 170 330 160 C300 146 200 146 170 160 C150 170 138 196 134 236 Z" fill="#3a3d44" ${o}/>
+      <path d="M170 120 C210 100 290 100 330 120 M150 160 L160 210 M350 160 L340 210" fill="none" stroke="#a7adb6" stroke-width="7" stroke-linecap="round"/>`,
+    // round glasses
+    extra: () => `<circle cx="200" cy="258" r="40" fill="none" stroke="${C.ink}" stroke-width="7"/>
+      <circle cx="300" cy="258" r="40" fill="none" stroke="${C.ink}" stroke-width="7"/>
+      <path d="M240 254 Q250 246 260 254 M160 252 L118 244 M340 252 L382 244" fill="none" stroke="${C.ink}" stroke-width="7" stroke-linecap="round"/>`,
+    // workshop overall: zip, name patch, a red rag in the pocket
+    torsoDetail: () => `<path d="M250 404 L250 668" stroke="#1d2b40" stroke-width="6"/>
+      <rect x="276" y="450" width="70" height="34" rx="6" fill="#fff" stroke="${C.ink}" stroke-width="4"/>
+      <text x="311" y="474" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-weight="700" font-size="15" fill="${C.ink}">LIM</text>
+      <rect x="160" y="560" width="64" height="60" rx="8" fill="#22374f" stroke="${C.ink}" stroke-width="5"/>
+      <path d="M176 560 Q172 530 190 520 Q204 540 196 560 Z" fill="${C.red}" stroke="${C.ink}" stroke-width="4"/>`,
+  },
+  priya: {
+    name: 'Priya', skin: '#9a6440', skinDark: '#7a4c2e',
+    shirt: '#1e3a5f', shirtDark: '#162c48', pants: '#3a3f4a', shoe: '#1b1d22', longSleeve: true,
+    // long dark hair, centre part, a low ponytail over one shoulder
+    hair: (o) => `<path d="M112 300 L112 200 C108 116 172 70 250 70 C328 70 392 116 388 200 L388 300 L364 300
+        C364 220 350 178 322 156 C296 138 262 136 250 150 C238 136 204 138 178 156 C150 178 136 220 136 300 Z" fill="#15161a" ${o}/>
+      <path d="M368 280 Q412 350 384 470 Q366 430 352 330 Z" fill="#15161a" ${o}/>
+      <path d="M250 74 L250 150" stroke="#3b4049" stroke-width="6"/>`,
+    extra: () => `<circle cx="118" cy="300" r="7" fill="#f2c14e" stroke="${C.ink}" stroke-width="3"/><circle cx="382" cy="300" r="7" fill="#f2c14e" stroke="${C.ink}" stroke-width="3"/>`,
+    // navy blazer over a white blouse, bank lanyard
+    torsoDetail: () => `<path d="M214 404 L250 470 L286 404 Z" fill="#fff" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M204 406 L246 560 M296 406 L254 560" stroke="${C.ink}" stroke-width="6" stroke-linecap="round"/>
+      <path d="M222 412 C232 480 242 520 250 560 C258 520 268 480 278 412" fill="none" stroke="#7aa7d9" stroke-width="5"/>
+      <rect x="232" y="560" width="36" height="50" rx="5" fill="#fff" stroke="${C.ink}" stroke-width="4"/>
+      <rect x="240" y="572" width="20" height="5" rx="2" fill="#1e3a5f"/>`,
+  },
+});
+
 function arm(p, side, angle, point = false) {
   const sx = side === 'L' ? 152 : 348;
   return `<g transform="translate(${sx} 425) rotate(${angle})">
     ${point ? `<rect x="-9" y="236" width="18" height="62" rx="9" fill="${p.skin}" ${OL}/>` : ''}
-    <rect x="-27" y="-10" width="54" height="225" rx="27" fill="${p.skin}" ${OL}/>
+    <rect x="-27" y="-10" width="54" height="225" rx="27" fill="${p.longSleeve ? p.shirt : p.skin}" ${OL}/>
     <path d="M-36 -18 Q-40 60 -32 85 L32 85 Q40 60 36 -18 Q0 -38 -36 -18 Z" fill="${p.shirt}" ${OL}/>
     <circle cx="0" cy="228" r="31" fill="${p.skin}" ${OL}/>
   </g>`;
