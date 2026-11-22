@@ -40,7 +40,11 @@ Talking = mouth flaps between `talk` and the resting mouth every 3 frames.
 
 ## Scene
 - 1080x1920, 30 fps. Background `showroom()`: white wall, red band with the Drevo logo, spotlights.
-- Cars: a toon-filtered photo (`tools/toon.py`). Test photos may be a maker's press shot; anything
+- Cars: a POSTER-filtered photo (`tools/toon.py`): smooth flat colour bands, bright and saturated, NO ink
+  lines inside the car, one thin outline round it (owner, 2026-11-22: the ink-line toon "looks burnt").
+- Every drawn background ends with `dots()` (rig.mjs): the reference's fine dot grid, 7% black.
+- Close-ups of real things (carpet, headlight) use REAL photos run through the same poster filter, never
+  a drawing (owner, 2026-11-22: the drawn carpet/fish/lamp did not read). Test photos may be a maker's press shot; anything
   POSTED uses a photo we own or a seller's with their OK. Drawn cars carry no maker badge.
 - Captions: Outfit 700, 74px, white, 14px ink stroke, the punch word red (`<b>`), top 1400px,
   2-5 words, pop in over 5 frames. Never over the faces.

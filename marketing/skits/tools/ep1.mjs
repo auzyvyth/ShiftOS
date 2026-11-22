@@ -4,7 +4,7 @@ import { readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { character, showroom, logo, C } from './rig.mjs';
+import { character, showroom, logo, dots, C } from './rig.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const DIR = fileURLToPath(new URL('../', import.meta.url));
@@ -57,6 +57,7 @@ function lot() {
   <rect y="1180" width="1080" height="740" fill="#7a7f87"/>
   ${[160, 470, 780].map((x) => `<path d="M${x} 1180 L${x - 120} 1920" stroke="#e9ebef" stroke-width="10" opacity="0.7"/>`).join('')}
   <ellipse cx="300" cy="1700" rx="150" ry="22" fill="#9fb6c9" opacity="0.8"/><ellipse cx="840" cy="1560" rx="90" ry="14" fill="#9fb6c9" opacity="0.7"/>
+  ${dots()}
 </svg>`;
 }
 

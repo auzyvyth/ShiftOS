@@ -207,6 +207,10 @@ export function myvi(color = C.red, dark = C.redDark) {
 </svg>`;
 }
 
+// The reference skits lay a fine dot grid over every drawn background. Put it LAST inside the <svg>.
+export const dots = (op = 0.07) => `<defs><pattern id="dotgrid" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="2.2" fill="#000"/></pattern></defs>
+  <rect width="1080" height="1920" fill="url(#dotgrid)" opacity="${op}"/>`;
+
 // ---------- background: a Drevo showroom, 1080x1920 ----------
 export function showroom() {
   const lights = [180, 540, 900].map((x) => `
@@ -238,5 +242,6 @@ export function showroom() {
   <rect y="1160" width="1080" height="760" fill="${C.floor}"/>
   ${tiles}
   <rect y="1160" width="1080" height="760" fill="url(#beam)" opacity="0.35"/>
+  ${dots()}
 </svg>`;
 }
