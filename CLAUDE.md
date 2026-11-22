@@ -343,6 +343,11 @@ black, hard-cut red chapter card at every topic change, real app footage only, R
 folder holds both ads' source and is the template; reuse it. The finished MP4s are NOT in main/staging
 (66 MB in a public repo's history): they live on branch `ccr-b7b37fd0-l5oo8c`, `final/`. New rules go into those files, not here.
 
+## Comedy skits (cartoon salesman + buyer) — use the `drevo-skit` skill
+Malay cartoon skits for marketing/education/fun (owner, 2026-11-22): `.claude/skills/drevo-skit/SKILL.md`
+-> `marketing/skits/STYLE.md` (cast, faces, the reference "compass" walk, captions, sound). A separate
+format from the product ads above: the drevo-ad rules (real footage, no voice) do not apply to skits.
+
 ## System map — `docs/ARCHITECTURE.md`
 The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
 notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
