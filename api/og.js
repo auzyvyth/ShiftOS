@@ -23,6 +23,8 @@ import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescr
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 import { dealerSchema } from "../src/utils/dealerSchema.js";
+import { OG_IMAGES } from "../src/config/ogImages.js";
+import { dealerShareImage } from "../src/utils/dealerShareImage.js";
 
 export const config = { runtime: "edge" };
 
@@ -316,7 +318,7 @@ function buildNewModelHtml(brand, rows, advisors) {
 // ── HTML shell ────────────────────────────────────────────────────────────────
 // ogUrl: the address a share stands for; differs from canonical only on a
 // new-car model card (canonical = the model page, og:url = the card itself).
-function htmlShell({ lang = "en", title, ogTitle = title, siteName = "drevo.my", description, canonical, ogUrl = canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
+function htmlShell({ lang = "en", title, ogTitle = title, siteName = "drevo.my", description, canonical, ogUrl = canonical, image = OG_IMAGES.marketplace, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
   const ld = jsonLd
     .filter(Boolean)
     // "<" escaped as \u003c: JSON-LD carries seller-typed text, and a literal
@@ -338,6 +340,8 @@ function htmlShell({ lang = "en", title, ogTitle = title, siteName = "drevo.my",
   <meta property="og:title" content="${esc(ogTitle)}" />
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:image" content="${esc(image)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(description)}" />
@@ -474,7 +478,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, h
   const chassis = getChassisCode(car.brand, car.model, car.year, car.variant);
   const name = chassis ? `${baseName} (${chassis})` : baseName;
   const priceFormatted = `RM ${Number(car.selling_price).toLocaleString("en-MY")}`;
-  const image = car.images?.[0] ?? `${SITE_URL}/og-default.jpg`;
+  const image = car.images?.[0] ?? OG_IMAGES.marketplace;
   const location = [car.city, car.state].filter(Boolean).join(", ") || "Malaysia";
   const specs = [
     car.variant,
@@ -572,7 +576,7 @@ const BRAND_LD = [
   },
 ];
 
-function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase, extraLd = [], hubs = [] }) {
+function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase, extraLd = [], hubs = [], image }) {
   const items = cars.map((c) => {
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
@@ -600,7 +604,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     <ul>${hubs.map((b) => `<li><a href="${SITE_URL}${b.path}">${esc(b.brand)}</a> (${b.count}): ${b.models.map((m) => `<a href="${SITE_URL}${m.path}">${esc(m.model)}</a>`).join(", ")}</li>`).join("")}</ul>
     <p><a href="${SITE_URL}${HUB_BASE}">All brands and models</a></p>` : ""}
   </main>`;
-  return htmlShell({ title, description, canonical, jsonLd: [...extraLd, itemList], body });
+  return htmlShell({ title, description, canonical, image, jsonLd: [...extraLd, itemList], body });
 }
 
 // ── Salesman mini page (/s/:slug) ─────────────────────────────────────────────
@@ -632,7 +636,7 @@ function socialUrl(v, base) {
 function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   const name = agentName(s);
   const location = agentLocation(s);
-  const image = agentShareImage(s, SITE_URL) || `${SITE_URL}/og-default.jpg`;
+  const image = agentShareImage(s, SITE_URL) || OG_IMAGES.marketplace;
   const bio = (s.bio || "").replace(/\s+/g, " ").trim();
   const jobTitle = s.job_title || "Car Sales Agent";
   // Title + description come from agentSeo.js — the Premium settings preview
@@ -842,6 +846,7 @@ const STATIC_PAGES = {
       title: "DrevoOS — Software Dealer Kereta Malaysia | Used Car DMS & Sistem Urus Stok Kereta",
       description: SHIFTOS_DESC,
       canonical: `${SITE_URL}/shiftos`,
+      image: OG_IMAGES.dealers,
       jsonLd: [SOFTWARE_LD, faqLd],
       body,
     });
@@ -885,6 +890,7 @@ const STATIC_PAGES = {
       title: c.seoTitle,
       description: c.seoDesc,
       canonical: SL.CANON,
+      image: OG_IMAGES.salesmen,
       jsonLd: [SL.webpageLd("ms"), SL.SOFTWARE_LD, SL.FAQ_LD_BOTH],
       body,
     });
@@ -939,6 +945,7 @@ const STATIC_PAGES = {
     title: "Plans & Pricing | Drevo",
     description: "Sell cars on Drevo. Free for individual salesmen, RM35/month for Premium, dealer plans from RM299/month with a 14-day free trial.",
     canonical: `${SITE_URL}/plans`,
+    image: OG_IMAGES.salesmen,
     jsonLd: [SOFTWARE_LD],
     body: `  <main>
     <h1>Start selling on Drevo</h1>
@@ -1126,6 +1133,8 @@ export default async function handler(req) {
         cars, canonical: `${baseUrl}${pathname === "/" ? "" : pathname}`, baseUrl, carBase,
         // STOREFRONT-1: the dealer home says who the dealer is (same builder as HomePage.jsx).
         extraLd: pathname === "/" ? [dealerSchema(dealer, `https://${subdomain}.${ROOT_DOMAIN}`)].filter(Boolean) : [],
+        // The dealer's own preview card (their banner, logo, name), not the marketplace's.
+        image: dealerShareImage(dealer, SITE_URL) || undefined,
       }));
     }
     const META = {

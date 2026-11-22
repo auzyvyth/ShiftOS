@@ -2256,7 +2256,7 @@ export default function CarDetailPage() {
             ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""}${chassisSuffix} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Listed on Drevo.`
             : "";
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://drevo.my';
-          const img = car?.images?.[0] || `${origin}/og-default.jpg`;
+          const img = car?.images?.[0] || `${origin}/og-marketplace.jpg`;
           const url = car
             ? (dealer?.subdomain
                 ? getStorefrontUrl(dealer.subdomain, `/cars/${car.slug}`)

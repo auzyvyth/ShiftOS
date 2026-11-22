@@ -13,6 +13,7 @@ import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import HeroShowcase from "../components/shiftos/HeroShowcase";
 import { PAIN_PREVIEWS } from "../components/shiftos/PainPreviews";
+import { OG_IMAGES } from "../config/ogImages";
 
 // ─── SEO / AEO (GEO) ─────────────────────────────────────────────────────────
 // Keyword-dense meta, schema markup and an FAQ block so DrevoOS surfaces for the
@@ -759,6 +760,10 @@ export default function ShiftOSPage() {
         <meta property="og:description" content={SEO_DESC} />
         <meta property="og:url" content="https://drevo.my/shiftos" />
         <meta property="og:site_name" content="DrevoOS by Drevo" />
+        <meta property="og:image" content={OG_IMAGES.dealers} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:image" content={OG_IMAGES.dealers} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="DrevoOS — Used Car Dealer Software Malaysia" />
         <meta name="twitter:description" content={SEO_DESC} />
