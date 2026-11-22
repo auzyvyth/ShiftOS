@@ -24,7 +24,7 @@ Funny first, useful second.
 ## The cast
 | | Role | Personality | Look |
 |---|---|---|---|
-| **Abang Jo** | Drevo salesman, the hero | Honest, warm, a bit of a show-off; explains every trick | Red Drevo polo, lanyard + ID card, black trousers, neat side-part, thin moustache |
+| **Abang Jo** | Drevo salesman, the hero | Honest, warm, a bit of a show-off; explains every trick | Red Drevo polo, lanyard + ID card, black trousers, slicked-back hair, light skin, thin moustache (modelled on the owner) |
 | **Faiz** | First-time buyer | Young, eager, believes everything | White tee, brown sling bag, black cap with a red patch, jeans, white shoes |
 | **Bos Zack** | Rival seller who cuts corners | Flashy smooth talker; dodgy by what he DOES, not how he looks | Loud teal checked blazer over a black tee, tall quiff with a dyed streak, gold shades on his head, goatee, grey trousers, white loafers |
 | **Mak Som** | Faiz's mum, the real boss | Says little, sees everything; one look ends the bad deal | Rose tudung with a gold brooch, green baju kurung with small flowers |

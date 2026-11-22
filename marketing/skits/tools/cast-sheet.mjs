@@ -12,7 +12,7 @@ const font = readFileSync(fileURLToPath(new URL('../../../api/_fonts/outfit-lati
 
 const CAST = [
   { key: 'salesman', name: 'Abang Jo', role: 'Drevo salesman. The hero.', note: 'Honest, warm, a bit of a show-off. Always explains the trick to the buyer.',
-    colours: ['#c68b59', '#dc2626', '#22252b', '#1b1d22'],
+    colours: ['#e8bd94', '#dc2626', '#22252b', '#1b1d22'],
     poses: { Neutral: {}, Explaining: { mouth: 'talk', armR: -95, pointR: true }, Happy: { eyes: 'happy', mouth: 'grin', armR: -160 }, Wink: { eyes: 'wink', mouth: 'smirk' }, Shocked: { eyes: 'shock', mouth: 'o', sweat: true, armL: 150, armR: -150 } } },
   { key: 'buyer', name: 'Faiz', role: 'First-time buyer.', note: 'Young, eager, believes everything. The viewer sees themselves in him.',
     colours: ['#d9a273', '#f7f7f8', '#33415a', '#dc2626'],

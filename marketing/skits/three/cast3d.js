@@ -46,7 +46,11 @@ const blob = (color, r, pos, scale, rot = [0, 0, 0], o) => {
 
 const LOOKS = {
   salesman: {
-    hair: (hs) => { hs.add(cap(0x1b1d22, 0.42, -0.5)); hs.add(blob(0x1b1d22, 0.24, [0.14, 0.56, 0.24], [1.5, 0.55, 1], [0, 0, -0.2])); },
+    hair: (hs) => { // slicked back: high hairline, volume swept to the back, comb grooves front to back
+      hs.add(cap(0x17181c, 0.4, -0.62));
+      hs.add(blob(0x17181c, 0.42, [0, 0.36, -0.12], [1.3, 0.75, 1.35], [-0.25, 0, 0]));
+      for (const sx of [-0.2, 0, 0.2]) hs.add(blob(0x3b4049, 0.03, [sx, 0.6, 0.12], [1, 0.5, 6], [0.5, 0, 0], { outline: 0 }));
+    },
     chest: (x, w, h, ctx) => { // white V collar, placket, Drevo wordmark
       x.strokeStyle = '#fff'; x.lineWidth = 14; x.beginPath(); x.moveTo(w / 2 - 60, 0); x.lineTo(w / 2, 90); x.lineTo(w / 2 + 60, 0); x.stroke();
       if (ctx.logo) { x.save(); x.translate(w / 2 - 150, 150); x.scale(150 / 688, 150 / 688); x.fillStyle = '#fff'; x.fill(new Path2D(ctx.logo), 'evenodd'); x.restore(); }

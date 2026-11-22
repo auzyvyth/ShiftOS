@@ -21,13 +21,14 @@ export const logo = (x, y, w, fill = '#F40000') =>
 // for the right arm (+90 for the left), -160 = raised.
 export const PEOPLE = {
   salesman: {
-    name: 'Abang Jo', skin: '#c68b59', skinDark: '#a86f42',
+    name: 'Abang Jo', skin: '#e8bd94', skinDark: '#cc9c70',
     shirt: C.red, shirtDark: C.redDark, pants: '#22252b', shoe: '#0c0d10',
-    // neat side-part quiff: follows the skull, sideburns stop at the ear
-    hair: (o) => `<path d="M114 244 L114 205 C110 118 170 72 252 70 C334 70 394 116 388 205 L388 244 L368 244
-        C366 206 354 180 334 166 C300 146 246 154 212 136 C192 152 158 172 140 206 L136 244 Z" fill="#1b1d22" ${o}/>
-      <path d="M212 136 C204 118 196 104 186 92" fill="none" stroke="#3b4049" stroke-width="7" stroke-linecap="round"/>
-      <path d="M226 92 C262 82 304 88 334 108" fill="none" stroke="#3b4049" stroke-width="8" stroke-linecap="round"/>`,
+    // slicked-back hair: clean high hairline, combed straight back, comb lines + one shine
+    hair: (o) => `<path d="M114 236 L114 200 C110 116 172 66 252 66 C332 66 392 116 388 200 L388 236 L368 236
+        C366 196 352 168 326 154 C296 140 270 138 250 138 C230 138 204 140 174 154 C148 168 136 196 134 236 Z" fill="#17181c" ${o}/>
+      <path d="M190 142 C200 112 220 90 246 80 M230 138 C238 108 256 88 282 80 M272 140 C284 112 304 96 330 92 M312 150 C330 126 348 116 366 118"
+        fill="none" stroke="#3b4049" stroke-width="6" stroke-linecap="round"/>
+      <path d="M206 98 C232 82 264 78 292 82" fill="none" stroke="#5a606b" stroke-width="5" stroke-linecap="round" opacity="0.8"/>`,
     extra: () => `<path d="M215 330 C235 322 265 322 285 330" fill="none" stroke="#14161a" stroke-width="9" stroke-linecap="round"/>`, // moustache
     torsoDetail: () => `
       <path d="M215 400 L250 445 L285 400" fill="none" stroke="${C.white}" stroke-width="7" stroke-linejoin="round"/>

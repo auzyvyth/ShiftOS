@@ -8,9 +8,9 @@ red chapter cards, no voice) does not apply here. Commands are in `README.md`.
 ## Cast (code: `tools/rig.mjs`, `PEOPLE`)
 | | Abang Jo, the salesman | Faiz, the buyer |
 |---|---|---|
-| Skin | `#c68b59` | `#d9a273` |
+| Skin | `#e8bd94` | `#d9a273` |
 | Top | Drevo red polo `#dc2626`, white Drevo wordmark, lanyard + ID card | white tee, brown sling bag |
-| Hair | neat side-part quiff, follows the skull, sideburns stop at the ear | front-facing black cap, red patch, thin brim, short sideburns |
+| Hair | slicked-back hair (combed straight back, high hairline), owner 2026-11-22: Jo is modelled on the owner | front-facing black cap, red patch, thin brim, short sideburns |
 | Face | thin moustache | clean |
 | Legs | black trousers, black shoes | navy jeans, white shoes |
 
