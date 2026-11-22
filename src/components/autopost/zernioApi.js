@@ -9,6 +9,7 @@ const SERVER_ERRORS = {
   car_not_found: 'That car was not found.',
   no_consent: 'This seller has not agreed to have this car posted on Drevo\'s pages.',
   needs_photo: 'TikTok needs at least one photo.',
+  photo_failed: 'The watermarked photos could not be made. Nothing was posted. Try again in a minute.',
   tiktok_options_failed: 'Could not read your TikTok account\'s options. Try again in a moment.',
   tiktok_cannot_post: 'TikTok says this account cannot post more right now. Try again later.',
   tiktok_consent: 'Tick the TikTok box that confirms you previewed the post and agree to publish it.',

@@ -6,8 +6,10 @@
 // What it does: turns one car's facts into the text each network can actually take.
 //   - Threads: 500 characters, link counts. The description is clipped, then optional pieces drop.
 //   - TikTok photo post: title max 90 chars with NO link/hashtag (Zernio strips them),
-//     description max 4000. No clickable link anywhere, so it says "link in bio".
-//   - Instagram: a link in a caption is not clickable, so "link in bio" too.
+//     description max 4000. No clickable link anywhere, and Drevo's TikTok has no bio link
+//     (owner, 2026-11-22), so it names the site as plain text: search "<car>" on drevo.my.
+//     The description ends with hashtags built from the car row (`hashtags`).
+//   - Instagram: a link in a caption is not clickable, so the same plain-text line + hashtags.
 //   - Facebook Page: long text and a clickable link.
 // Never cut: the year + model, the price, the link (or "link in bio"). If even that does not
 // fit, `fits` is false and the sheet refuses to send. Never a phone number (CDP-3) and never
@@ -23,8 +25,41 @@ export const LIMITS = {
   tiktok: 4000, // the description; the title has its own cap below
 };
 export const TIKTOK_TITLE_MAX = 90;
-export const BIO_LINE = 'All my cars: link in bio';
 export const PLATFORMS = ['facebook', 'threads', 'instagram', 'tiktok'];
+
+// The site's host from the post's link ("drevo.my"), so this file never types a domain.
+export function siteHost(url) {
+  try { return new URL(url).host.replace(/^www\./, ''); } catch { return ''; }
+}
+
+// "Full details + the seller: search "2025 Honda Civic" on drevo.my". Plain text, never a
+// URL: TikTok and Instagram do not make links clickable and validateText refuses https://.
+export function findLine(car, url) {
+  const host = siteHost(url);
+  const name = carTitle(car, { variant: false });
+  return host ? `Full details + the seller: search "${name}" on ${host}` : '';
+}
+
+const tagWord = (s) => String(s || '').normalize('NFKD').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+const CONDITION_TAG = { used: 'keretaterpakai', recon: 'keretarecond', new: 'keretabaru' };
+
+// Hashtags from facts on the car row only (brand, model, condition, state), never a claim
+// like "murah" or "best deal". At most `max`, no duplicates.
+export function hashtags(car, max = 7) {
+  const brand = tagWord(car.brand);
+  const model = tagWord(car.model);
+  const state = tagWord(car.state);
+  const tags = [
+    'drevo',
+    brand,
+    brand && model ? brand + model : '',
+    CONDITION_TAG[String(car.condition || '').toLowerCase()] || 'keretaterpakai',
+    'jualkereta',
+    state,
+    brand ? brand + 'malaysia' : '',
+  ].filter((t) => t && t.length <= 30);
+  return [...new Set(tags)].slice(0, max).map((t) => '#' + t).join(' ');
+}
 
 const len = (s) => Array.from(String(s || '')).length; // characters, not UTF-16 units
 
@@ -70,7 +105,7 @@ function layout(platform, car, url, credit = '') {
   const extra = [car.transmission, car.fuel_type].filter(Boolean).join(' · ');
   const desc = car.description || '';
   const headline = price ? `${title}\n${price}` : title;
-  const cta = platform === 'facebook' || platform === 'threads' ? url : BIO_LINE;
+  const cta = platform === 'facebook' || platform === 'threads' ? url : findLine(car, url);
   const ctaLabel = platform === 'facebook' ? 'Photos and details: ' : '';
   // Drevo's own pages post a seller's car: the seller is credited by name (moral rights, and honest
   // about who is advertising). Empty for a seller posting their own car.
@@ -97,8 +132,9 @@ function layout(platform, car, url, credit = '') {
         { key: 'desc', text: desc, clip: true },
         { key: 'credit', text: creditLine, must: true },
         { key: 'cta', text: ctaLabel + cta, must: true },
+        { key: 'tags', text: hashtags(car, 3) },
       ],
-      dropOrder: ['desc', 'specs'], joiner: '\n\n', descKey: 'desc',
+      dropOrder: ['tags', 'desc', 'specs'], joiner: '\n\n', descKey: 'desc',
     };
   }
   // instagram + tiktok description
@@ -109,8 +145,9 @@ function layout(platform, car, url, credit = '') {
       { key: 'desc', text: desc, clip: true },
       { key: 'credit', text: creditLine, must: true },
       { key: 'cta', text: cta, must: true },
+      { key: 'tags', text: hashtags(car) },
     ],
-    dropOrder: ['desc', 'specs'], joiner: '\n\n', descKey: 'desc',
+    dropOrder: ['tags', 'desc', 'specs'], joiner: '\n\n', descKey: 'desc',
   };
 }
 

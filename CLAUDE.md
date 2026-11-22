@@ -307,6 +307,10 @@ Project ID: lemdkdizdlcirhbzqlos
   ("Listed on Drevo by ...") with their `?ref=` link. A seller who later says no after a post shows as "withdrew
   permission" in the queue: take it down (Facebook only; TikTok in the app). Terms s5 + Privacy + DPA list Zernio,
   Meta and TikTok (`src/legal/legalDocs.js`). Migration `20261114b_social_consent.sql` is queued, not applied.
+  **Every post is watermarked + has sound (owner, 2026-11-22):** photos go out through `api/post-photo.js` (slug + photo
+  number only, 1080x1350, Drevo wordmark on each, the FIRST is a cover with name / price / specs); if it fails nothing is sent.
+  TikTok `autoAddMusic: true`. Drevo's TikTok has NO bio link, so TikTok/Instagram text says `search "<car>" on drevo.my`
+  (plain text, `findLine`) and ends with `hashtags(car)` (row facts only, never "murah"); Facebook gets 3.
   Key in `ZERNIO_API_KEY`. Text rules live in ONE file, `supabase/functions/_shared/postCaption.js`
   (`npm run test:postcaption`), shared by the sheet and the server. Zernio cannot edit a published post and does
   not check lengths. Posts of the last 30 days are found by a hashed owner tag (no table); limits: 10 live posts

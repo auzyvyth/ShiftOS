@@ -69,12 +69,16 @@ async function zernio(method: string, path: string, body?: unknown, timeoutMs = 
   return { ok: res.ok, status: res.status, data };
 }
 
-// Zernio reads media by URL. Our car photos can be WebP (see-through cut-outs), which
-// Zernio does not take (JPEG, PNG, GIF only), so each one goes through the same free
-// resizer the site uses, asked for JPEG on a grey studio background.
-function jpegUrl(url: string) {
-  const stripped = url.replace(/^https?:\/\//, "");
-  return `https://wsrv.nl/?url=${encodeURIComponent("ssl:" + stripped)}&w=1600&q=85&output=jpg&bg=e5e7eb&we`;
+// Zernio reads media by URL. Every photo goes through OUR resizer, api/post-photo.js (owner,
+// 2026-11-22: "watermark every post"): a 1080x1350 JPEG with the Drevo wordmark, and the FIRST
+// photo is a cover with the car's name, price and specs. It takes the car's slug + photo number
+// only. `v` changes with the photo file, so an edited photo is a new URL for Zernio's cache.
+function postPhotoUrl(slug: string, index: number, original: string, cover: boolean) {
+  let h = 0;
+  for (const c of original) h = (h * 31 + c.charCodeAt(0)) | 0;
+  const q = new URLSearchParams({ car: slug, i: String(index), v: (h >>> 0).toString(36) });
+  if (cover) q.set("cover", "1");
+  return `${SITE_URL}/api/post-photo?${q.toString()}`;
 }
 
 function shape(post: any) {
@@ -238,20 +242,22 @@ serve(async (req) => {
       if (car.dealer_id !== user.id && car.social_consent !== true) return json({ error: "no_consent" }, 403, origin);
       if (car.status !== "available" || car.new_car_model_id) return json({ error: "car_not_live" }, 409, origin);
 
-      const originals: string[] = (Array.isArray(car.images) ? car.images : [])
-        .filter((u: unknown) => typeof u === "string" && PUBLIC_PHOTO.test(u as string))
+      // Photo numbers are positions in car.images (what api/post-photo reads), so keep them.
+      const picked = (Array.isArray(car.images) ? car.images : [])
+        .map((u: unknown, i: number) => ({ u, i }))
+        .filter((x: any) => typeof x.u === "string" && PUBLIC_PHOTO.test(x.u))
         .slice(0, MAX_PHOTOS);
-      // Ask the resizer for JPEGs; if its first answer is not a JPEG (service down), fall
-      // back to the originals minus WebP, which Zernio would refuse.
-      let photos = originals.map(jpegUrl);
+      const photos = picked.map((x: any, n: number) => postPhotoUrl(car.slug, x.i, x.u, n === 0));
+      // Every post is watermarked: if the cover will not render, nothing is sent (never the
+      // bare originals). Also warms the cache before Zernio asks.
       if (photos.length) {
         let good = false;
         try {
-          const probe = await fetch(photos[0], { signal: AbortSignal.timeout(12000) });
+          const probe = await fetch(photos[0], { signal: AbortSignal.timeout(20000) });
           good = probe.ok && (probe.headers.get("content-type") || "").includes("image/jpeg");
           await probe.body?.cancel();
         } catch { /* fall through */ }
-        if (!good) photos = originals.filter((u) => !/\.webp(\?|$)/i.test(u));
+        if (!good) return json({ error: "photo_failed" }, 502, origin);
       }
 
       const acc = await loadAccounts();
@@ -284,7 +290,9 @@ serve(async (req) => {
           privacyLevel: levels.includes(String(tt.privacy)) ? String(tt.privacy) : (levels.includes("SELF_ONLY") ? "SELF_ONLY" : levels[0]),
           allowComment: tt.allow_comment === true,
           commercialContentType: "none",
-          autoAddMusic: false,
+          // A photo post with no sound plays silent in the feed (owner, 2026-11-22). TikTok picks a
+          // recommended track from its own library; it can be changed in the app afterwards.
+          autoAddMusic: true,
           photoCoverIndex: 0,
           // Inbox: choosing "My TikTok inbox" and pressing the confirm step IS the consent to send
           // it there; Zernio's example for an inbox post sends both flags true.
