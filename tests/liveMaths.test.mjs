@@ -2,7 +2,8 @@
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateNeedsAsk, rebateKey, carLabel,
   maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
-  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX } from '../src/utils/liveMaths.js';
+  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX,
+  orderedBrands, brandGroups, walkOrder, moveBrand } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -320,5 +321,12 @@ is('rebate ask: a normal RM3,000 off RM73,400', rebateNeedsAsk(73400, 3000), fal
 is('rebate ask: exactly 20% is fine', rebateNeedsAsk(50000, 10000), false);
 is('rebate ask: just over 20% asks', rebateNeedsAsk(50000, 10001), true);
 is('rebate ask: no price, no ask', rebateNeedsAsk(0, 5000), false);
+const brl = [{ brand: 'Toyota' }, { brand: 'Toyota' }, { brand: 'Perodua' }, { brand: 'Proton' }, { brand: 'Toyota' }, { brand: '' }];
+is('brands: page order with nothing saved', orderedBrands(brl, []), ['Toyota', 'Perodua', 'Proton', 'Other']);
+is('brands: saved first, rest after', orderedBrands(brl, ['Proton', 'Honda']), ['Proton', 'Toyota', 'Perodua', 'Other']);
+is('brands: groups keep page order', brandGroups(brl, ['Proton'])[1], { brand: 'Toyota', rows: [0, 1, 4] });
+is('brands: walk goes brand by brand', walkOrder(brl, ['Proton']), [3, 0, 1, 4, 2, 5]);
+is('brands: move up', moveBrand(['A', 'B', 'C'], 'C', -1), ['A', 'C', 'B']);
+is('brands: top cannot go up', moveBrand(['A', 'B'], 'A', -1), ['A', 'B']);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

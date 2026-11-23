@@ -2423,6 +2423,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Search takes `#7` or a name. Keyboard: digits then Enter opens that #N (`typedNo`, clears after
   3s). One row per CAR (a model card is one row; variants stay chips). A sharer of the WHOLE
   screen in LIVE Studio shows the list too: they share the presenter window only.
+  **Brand priority (LIVE-BRANDS, owner 2026-11-23):** the list is grouped by brand (tap to open; the
+  car on screen keeps its brand open), each brand has up/down arrows, order kept on the device
+  (`xd_live_brand_order`; `orderedBrands` / `brandGroups` / `walkOrder` in liveMaths.js). Next/Back
+  walk brand by brand. "#N" NEVER changes: it is the mini page's number, so stream and page agree.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
