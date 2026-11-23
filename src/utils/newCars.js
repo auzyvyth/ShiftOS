@@ -6,7 +6,7 @@
 // never disagree about which number a buyer sees. A null price means "not entered
 // for this zone" and must render as "ask", never as the Peninsular number.
 
-export const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD", "Honda"];
+export const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD", "Honda", "Jaecoo"];
 
 export const PRICE_ZONES = [
   { key: "peninsular",    col: "price_peninsular",    label: "Peninsular" },
