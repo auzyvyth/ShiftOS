@@ -3,7 +3,7 @@
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateNeedsAsk, rebateKey, carLabel,
   maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
   dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX,
-  orderedBrands, brandGroups, walkOrder, moveBrand, moveBrandIds, moveCarIds, applyCarOrder } from '../src/utils/liveMaths.js';
+  orderedBrands, brandGroups, walkOrder, moveBrand, moveBrandIds, moveCarIds, applyCarOrder, brandKey, brandFromParam } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -338,5 +338,10 @@ is('order: saved first, new after', applyCarOrder(brl2, ['c3', 'c0']).map((c) =>
 is('order: nothing saved = unchanged', applyCarOrder(brl2, []).map((c) => c.id), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5']);
 is('brands: move up', moveBrand(['A', 'B', 'C'], 'C', -1), ['A', 'C', 'B']);
 is('brands: top cannot go up', moveBrand(['A', 'B'], 'A', -1), ['A', 'B']);
+is('brand key: plain', brandKey('Proton'), 'proton');
+is('brand key: two words', brandKey(' Mercedes Benz '), 'mercedes-benz');
+is('brand link: finds the brand', brandFromParam(brl2, 'PROTON'), 'Proton');
+is('brand link: unknown = whole page', brandFromParam(brl2, 'bmw'), null);
+is('brand link: empty = whole page', brandFromParam(brl2, ''), null);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
