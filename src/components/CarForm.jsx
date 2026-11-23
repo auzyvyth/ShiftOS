@@ -1909,7 +1909,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     }
     const mileage = parseInt(form.mileage);
     const basePrice = form.basePrice ? parseFloat(form.basePrice) : 0;
-    const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
+    const sellingPrice = parseFloat(form.sellingPrice) > 0 ? parseFloat(form.sellingPrice) : null;
     const year = parseInt(form.year);
     const engineCc = form.engineCc ? parseInt(form.engineCc) : null;
 
