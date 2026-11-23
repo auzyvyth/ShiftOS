@@ -96,6 +96,7 @@ import { runInviteShare } from '../referral/InviteStrip';
 
 // Brand order for the Jump list (LIVE-BRANDS), kept on this device only.
 const BRAND_ORDER_KEY = 'xd_live_brand_order';
+const BUDGET_HIDE_KEY = 'xd_live_budget_hide';
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 // Ringgit with the unit set small (.lp-rm) so the digits carry the weight.
 // The phone size the desktop stage is laid out at before zooming: the size the
@@ -230,6 +231,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     try { const v = JSON.parse(localStorage.getItem(BRAND_ORDER_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
   });
   const [openBrands, setOpenBrands] = useState(() => new Set());
+  // Budget brand filter (LIVE-BUDGET-BRANDS, owner 2026-11-23): the brands the
+  // seller HID from the Budget tab, on this device. Stored as hidden, so a
+  // brand added later shows by default.
+  const [budgetHidden, setBudgetHidden] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem(BUDGET_HIDE_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+  });
   const [imgIdx, setImgIdx] = useState(0);
   // Full view of the car photo. It fills the STAGE, not the browser window, so
   // it is never wider than the calculator (owner, 2026-10-22): on a phone that
@@ -897,7 +904,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // A model card is priced once per variant, each named, so "fits" says WHICH
   // X50 the budget buys, not the cheapest one under the model's name. Its cc
   // rides along from the variant's specs so insurance is added here too.
+  const brands = orderedBrands(listings, brandOrder);
+  // Brands shown in Budget: never none (hiding the last one is refused below).
+  const budgetBrands = brands.filter((b) => !budgetHidden.includes(b));
+  const brandFiltered = budgetBrands.length < brands.length;
+  const toggleBudgetBrand = (b) => {
+    const hide = !budgetHidden.includes(b);
+    if (hide && budgetBrands.length <= 1) return;
+    saveHidden(hide ? [...budgetHidden, b] : budgetHidden.filter((x) => x !== b));
+  };
+  const saveHidden = (next) => {
+    setBudgetHidden(next);
+    try { localStorage.setItem(BUDGET_HIDE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  };
+  const showAllBrands = () => saveHidden([]);
+  // From "All brands", a tap isolates that brand (one tap to "Proton only");
+  // after that, each tap hides or shows one brand.
+  const pickBudgetBrand = (b) => (brandFiltered ? toggleBudgetBrand(b) : saveHidden(brands.filter((x) => x !== b)));
   const budgetCars = listings.flatMap((c, i) => {
+    if (brandFiltered && !budgetBrands.includes(brandName(c))) return [];
     const vs = c.is_model_card ? (cardInfos[c.id]?.variants || []).filter((v) => v.price != null) : [];
     if (!vs.length) return [{ ...c, _n: i + 1 }];
     return vs.map((v) => ({
@@ -930,7 +955,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   groups.side = [...groups.near, ...groups.over];
   // Rows per page: what fits the stage with no scroll (desktop stage vs phone).
   const pageSize = deskZoom ? { fit: 4, side: 3 } : { fit: 3, side: 2 };
-  const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears].join('|');
+  const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears, budgetBrands.join(',')].join('|');
   const curPage = (st) => (budgetPage.key === pageKey ? budgetPage[st] : 0);
   const pageOf = (st) => {
     const pages = Math.max(1, Math.ceil(groups[st].length / pageSize[st]));
@@ -1027,7 +1052,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // The seller's settings are one line; Change opens them in a pop-up.
   const budgetSetLine = (
     <div className="lp-bsetline">
-      <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
+      <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}
+        {brandFiltered && <> · <b>{budgetBrands.length === 1 ? t.brandOnly(budgetBrands[0]) : t.brandsOf(budgetBrands.length, brands.length)}</b></>}</span>
       <button type="button" className="lp-bchange" onClick={() => setBudgetSetOpen(true)}>{t.changeSet}</button>
     </div>
   );
@@ -1057,7 +1083,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const pickQn = pickQ.trim().replace(/^#\s*/, '').toLowerCase();
   const pickRows = listings.map((c, i) => ({ c, i })).filter(({ c, i }) => !pickQn
     || (/^[0-9]+$/.test(pickQn) ? String(i + 1) === pickQn : carLabel(c).toLowerCase().includes(pickQn)));
-  const brands = orderedBrands(listings, brandOrder);
   const brandRows = brandGroups(listings, brandOrder);
   const shiftBrand = (b, d) => {
     const next = moveBrand(brands, b, d);
@@ -1546,6 +1571,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bchange { flex-shrink: 0; min-height: 34px; padding: 0 16px; border: 1.5px solid #0f1115; border-radius: 999px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; cursor: pointer; }
         .lp-modal .lp-bsetpop { max-width: 460px; }
         .lp-bsetpop > .lp-wide { display: flex; flex-direction: column; gap: 6px; }
+        .lp-bbrands { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+        .lp-bbrands .lp-chip { width: auto; min-height: 40px; padding: 0 10px; }
+        .lp-bbrands .lp-chip:first-child { grid-column: 1 / -1; }
         .lp-bsettitle { flex: 1; margin: 0; font-size: 18px; font-weight: 800; color: #0f1115; }
         .lp-bsetpop > .lp-bdone { display: flex; align-items: center; justify-content: center; }
         .lp-bdone { min-height: 46px; border: none; border-radius: 12px; background: #0f1115; color: #fff; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
@@ -2210,6 +2238,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 ))}
               </div>
             </div>
+            {/* Which brands Budget shows. Tap to hide or show; the last one stays. */}
+            {brands.length > 1 && (
+              <div className="lp-wide">
+                <span className="lp-lbl">{t.brandsLbl}</span>
+                <div className="lp-bbrands lp-ink" role="group" aria-label={t.brandsLbl}>
+                  <button type="button" className="lp-chip" aria-pressed={!brandFiltered} onClick={showAllBrands}>{t.allBrands}</button>
+                  {brands.map((b) => (
+                    <button key={b} type="button" className="lp-chip" aria-pressed={brandFiltered && budgetBrands.includes(b)}
+                      onClick={() => pickBudgetBrand(b)}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Interest rate: the same saved setting as Adjust > Financing. */}
             {rateGroups.map((g) => rateRow(g, 'lp-brate'))}
             <button type="button" className="lp-bdone lp-wide" onClick={() => setBudgetSetOpen(false)}>{t.done}</button>
