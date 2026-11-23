@@ -26,6 +26,7 @@ import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { pageAccent } from '../utils/pageAccent';
 import { aboutFacts } from '../utils/agentAbout';
+import { applyCarOrder } from '../utils/liveMaths';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -446,6 +447,17 @@ export default function SalesmanProfilePage() {
         } catch { /* keep the default order */ }
         if (cancelled) return;
       }
+      // LIVE-ORDER: the seller's own arrangement of their "#N" numbers (set in the
+      // Live presenter), applied last. Its own call: a slow or missing function
+      // just leaves the order above.
+      try {
+        const or = await withTimeout(publicClient.rpc('get_agent_car_order', { p_slug: slug }), 6000);
+        if (!or?.error && Array.isArray(or?.data) && or.data.length) {
+          const sorted = applyCarOrder(lst, or.data);
+          lst.splice(0, lst.length, ...sorted);
+        }
+      } catch { /* keep the order above */ }
+      if (cancelled) return;
 
       const sold = Number(soldStatsRes.data?.sold_count) || 0;
       setSoldCount(sold);
@@ -562,6 +574,23 @@ export default function SalesmanProfilePage() {
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  // LIVE-ORDER: the seller arranged their "#N" numbers in the Live presenter. The
+  // page (and so the presenter, the Live now card and every viewer's page) takes
+  // the new order at once; the account saves it. A failed save puts it back.
+  const saveCarOrder = async (ids) => {
+    const before = listings;
+    const next = applyCarOrder(before, ids);
+    setListings(next);
+    try {
+      const { data, error } = await withTimeout(supabase.rpc('set_my_car_order', { p_ids: next.map((c) => c.id) }), 8000);
+      if (error || !data?.ok) throw new Error('not saved');
+    } catch {
+      setListings(before);
+      return false;
+    }
+    writeAgentCache(slug, { profile, dealer, listings: next, soldCount });
+    return true;
+  };
   // PUSH-ONBOARD (owner, 2026-10-31): sellers mostly use Live, and viewers
   // WhatsApp, chat and book during and after it, so the alerts ask sits in
   // front of it, ONCE A DAY per device until alerts are on. Its button closes
@@ -1332,6 +1361,7 @@ export default function SalesmanProfilePage() {
       {presenting && (
         <Suspense fallback={null}>
           <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
+            onReorder={isOwner ? saveCarOrder : undefined}
             sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)}
             officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)}
             // Lite page = Lite seller = the basic presenter (LIVE-BASIC). page_basic

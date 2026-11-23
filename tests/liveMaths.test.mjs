@@ -3,7 +3,7 @@
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, rebateNeedsAsk, rebateKey, carLabel,
   maxTenureYears, tenuresFor, savedRebates, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
   dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX,
-  orderedBrands, brandGroups, walkOrder, moveBrand } from '../src/utils/liveMaths.js';
+  orderedBrands, brandGroups, walkOrder, moveBrand, moveBrandIds, moveCarIds, applyCarOrder } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -325,7 +325,17 @@ const brl = [{ brand: 'Toyota' }, { brand: 'Toyota' }, { brand: 'Perodua' }, { b
 is('brands: page order with nothing saved', orderedBrands(brl, []), ['Toyota', 'Perodua', 'Proton', 'Other']);
 is('brands: saved first, rest after', orderedBrands(brl, ['Proton', 'Honda']), ['Proton', 'Toyota', 'Perodua', 'Other']);
 is('brands: groups keep page order', brandGroups(brl, ['Proton'])[1], { brand: 'Toyota', rows: [0, 1, 4] });
-is('brands: walk goes brand by brand', walkOrder(brl, ['Proton']), [3, 0, 1, 4, 2, 5]);
+const brl2 = brl.map((c, i) => ({ ...c, id: 'c' + i }));
+is('walk: brand by brand, page order', walkOrder(brl2), [0, 1, 4, 2, 3, 5]);
+is('walk: hidden brands skipped', walkOrder(brl2, ['Toyota', 'Other']), [2, 3]);
+is('walk: all hidden = all shown', walkOrder(brl2, ['Toyota', 'Perodua', 'Proton', 'Other']), [0, 1, 4, 2, 3, 5]);
+is('ids: Proton up to first', moveBrandIds(brl2, 'Proton', -1).slice(0, 3), ['c0', 'c1', 'c4']);
+is('ids: Proton to top', moveBrandIds(moveBrandIds(brl2, 'Proton', -1).map((id) => brl2.find((c) => c.id === id)), 'Proton', -1)[0], 'c3');
+is('ids: car down within brand', moveCarIds(brl2, 0, 1), ['c1', 'c0', 'c4', 'c2', 'c3', 'c5']);
+is('ids: car cannot leave its brand', moveCarIds(brl2, 4, 1), null);
+is('ids: first car cannot go up', moveCarIds(brl2, 0, -1), null);
+is('order: saved first, new after', applyCarOrder(brl2, ['c3', 'c0']).map((c) => c.id), ['c3', 'c0', 'c1', 'c2', 'c4', 'c5']);
+is('order: nothing saved = unchanged', applyCarOrder(brl2, []).map((c) => c.id), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5']);
 is('brands: move up', moveBrand(['A', 'B', 'C'], 'C', -1), ['A', 'C', 'B']);
 is('brands: top cannot go up', moveBrand(['A', 'B'], 'A', -1), ['A', 'B']);
 console.log(`${pass} passed, ${fail} failed`);
