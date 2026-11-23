@@ -2423,15 +2423,17 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Search takes `#7` or a name. Keyboard: digits then Enter opens that #N (`typedNo`, clears after
   3s). One row per CAR (a model card is one row; variants stay chips). A sharer of the WHOLE
   screen in LIVE Studio shows the list too: they share the presenter window only.
-  **Brand priority (LIVE-BRANDS, owner 2026-11-23):** the list is grouped by brand (tap to open; the
-  car on screen keeps its brand open), each brand has up/down arrows, order kept on the device
-  (`xd_live_brand_order`; `orderedBrands` / `brandGroups` / `walkOrder` in liveMaths.js). Next/Back
-  walk brand by brand. "#N" NEVER changes: it is the mini page's number, so stream and page agree.
-  **Budget brand filter (LIVE-BUDGET-BRANDS, owner 2026-11-23):** Budget settings pop-up has a Brands row
-  (All brands + one chip per brand). From All, a tap isolates that brand; after that each tap hides/shows one;
-  the last brand cannot be hidden. Saved as HIDDEN brands on the device (`xd_live_budget_hide`), so a new
-  brand shows by default. Filters `budgetCars`, so List and Viewer both follow it; the summary line says
-  "Proton only" / "2 of 4 brands". Cars screen and Jump list are never filtered.
+  **The seller arranges their own #N (LIVE-ORDER, owner 2026-11-23, migration `20261123a_live_car_order.sql`, QUEUED):**
+  the Jump list's Arrange mode moves brands and cars up/down; the order is saved on the ACCOUNT
+  (`profiles.car_order`, written only by `set_my_car_order`, read by `get_agent_car_order`, applied last on
+  /s/<slug> via `applyCarOrder`), so stream, page and the Live now card keep one numbering. A move is
+  optimistic and reverts if the save fails (`saveCarOrder`, SalesmanProfilePage.jsx). Cars regroup brand by
+  brand; Next/Back follow the list. The device-only brand order of the morning (`xd_live_brand_order`) is gone.
+  **Brand focus (LIVE-FOCUS, owner 2026-11-23: a customer shown Proton must not see other models):** the eye in
+  Arrange, or the Brands row in Budget settings, hides brands (`xd_live_hide_brands`, device only, the last one
+  cannot be hidden). Hidden brands leave Next/Back (`walkOrder`), the Jump list, search and Budget; numbers never
+  change. A hidden car on screen jumps to the first car on show. The desktop list folds to one small button
+  (`xd_live_list_folded`). The public page still lists every car.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.

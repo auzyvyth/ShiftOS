@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Contact, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Contact, Eye, EyeOff, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
@@ -11,7 +11,7 @@ import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, rebateNeedsAsk, rebateKey, carLabel, isLocalNew, LOCAL_NEW_EIR, savedRebates, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
   tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT, revealPick, viewerHandle, HANDLE_MAX,
-  brandName, orderedBrands, brandGroups, walkOrder, moveBrand,
+  brandName, orderedBrands, brandGroups, walkOrder, moveBrandIds, moveCarIds,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -95,8 +95,10 @@ import { runInviteShare } from '../referral/InviteStrip';
 // the seller is an advisor, so a new car's note names the price as official.
 
 // Brand order for the Jump list (LIVE-BRANDS), kept on this device only.
-const BRAND_ORDER_KEY = 'xd_live_brand_order';
-const BUDGET_HIDE_KEY = 'xd_live_budget_hide';
+// Brands the seller hid (LIVE-FOCUS) and whether the desktop list is folded away,
+// both on this device only.
+const HIDE_BRANDS_KEY = 'xd_live_hide_brands';
+const LIST_FOLDED_KEY = 'xd_live_list_folded';
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 // Ringgit with the unit set small (.lp-rm) so the digits carry the weight.
 // The phone size the desktop stage is laid out at before zooming: the size the
@@ -203,7 +205,7 @@ const fmtPhone = (raw) => {
 // salary guide, offer, variant extras, the car list, colour and comment line
 // are Premium. The upsell is in Settings and the
 // report, never on the stage (viewers see the stage).
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false, canInvite = false }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false, canInvite = false, onReorder }) {
   // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
   // Not for the embedded demo on the marketing page, which is not a real live.
   useEffect(() => {
@@ -225,17 +227,19 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [typedNo, setTypedNo] = useState('');
   const [gutter, setGutter] = useState(0);
   const pickListRef = useRef(null);
-  // Brand priority (LIVE-BRANDS): the seller's order, on this device only.
-  // "#N" never changes; the list groups and Next walks brand by brand.
-  const [brandOrder, setBrandOrder] = useState(() => {
-    try { const v = JSON.parse(localStorage.getItem(BRAND_ORDER_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
-  });
   const [openBrands, setOpenBrands] = useState(() => new Set());
-  // Budget brand filter (LIVE-BUDGET-BRANDS, owner 2026-11-23): the brands the
-  // seller HID from the Budget tab, on this device. Stored as hidden, so a
-  // brand added later shows by default.
-  const [budgetHidden, setBudgetHidden] = useState(() => {
-    try { const v = JSON.parse(localStorage.getItem(BUDGET_HIDE_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+  // LIVE-ORDER: "Arrange" mode in the Jump list, where the seller moves brands and
+  // cars up/down. The order IS the "#N" numbers, saved on the account (onReorder).
+  const [arrange, setArrange] = useState(false);
+  // LIVE-FOCUS (owner, 2026-11-23): the brands the seller HID, so a customer being
+  // shown Proton never sees the other models. Hidden brands leave Next/Back, the
+  // Jump list and Budget. Stored as hidden, so a brand added later shows.
+  const [hiddenBrands, setHiddenBrands] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem(HIDE_BRANDS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+  });
+  // The desktop list beside the stage can be folded to one small button.
+  const [listFolded, setListFolded] = useState(() => {
+    try { return localStorage.getItem(LIST_FOLDED_KEY) === '1'; } catch { return false; }
   });
   const [imgIdx, setImgIdx] = useState(0);
   // Full view of the car photo. It fills the STAGE, not the browser window, so
@@ -622,7 +626,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
   const insAmt = ins || 0;
 
-  const walk = walkOrder(listings, brandOrder);
+  // Brands present (list order) and the ones shown (never none).
+  const brands = orderedBrands(listings, []);
+  const shownBrands = brands.filter((b) => !hiddenBrands.includes(b));
+  const focusOn = shownBrands.length > 0 && shownBrands.length < brands.length;
+  const visBrands = focusOn ? shownBrands : brands;
+  const walk = walkOrder(listings, focusOn ? hiddenBrands : []);
   const walkKey = walk.join(',');
   const go = useCallback((d) => {
     setIdx((i) => {
@@ -638,6 +647,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setInsEdit(false);
     setRateEdit(false);
   }, [walkKey]);
+
+  // Arranging renumbers the cars: keep the same CAR on screen, at its new #N.
+  const curIdRef = useRef(null);
+  useEffect(() => { curIdRef.current = listings[idx]?.id ?? null; }, [idx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const orderKey = listings.map((c) => c.id).join(',');
+  useEffect(() => {
+    const at = listings.findIndex((c) => c.id === curIdRef.current);
+    if (at >= 0) setIdx(at);
+  }, [orderKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Hiding the brand on screen moves to the first car still on show.
+  useEffect(() => {
+    if (!walk.length || walk.includes(idx)) return;
+    setIdx(walk[0]);
+    setImgIdx(0);
+  }, [walkKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Straight to car i, sliding in from the side it sits on.
   const goTo = useCallback((i) => {
@@ -904,25 +928,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // A model card is priced once per variant, each named, so "fits" says WHICH
   // X50 the budget buys, not the cheapest one under the model's name. Its cc
   // rides along from the variant's specs so insurance is added here too.
-  const brands = orderedBrands(listings, brandOrder);
-  // Brands shown in Budget: never none (hiding the last one is refused below).
-  const budgetBrands = brands.filter((b) => !budgetHidden.includes(b));
-  const brandFiltered = budgetBrands.length < brands.length;
-  const toggleBudgetBrand = (b) => {
-    const hide = !budgetHidden.includes(b);
-    if (hide && budgetBrands.length <= 1) return;
-    saveHidden(hide ? [...budgetHidden, b] : budgetHidden.filter((x) => x !== b));
-  };
   const saveHidden = (next) => {
-    setBudgetHidden(next);
-    try { localStorage.setItem(BUDGET_HIDE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+    setHiddenBrands(next);
+    try { localStorage.setItem(HIDE_BRANDS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  };
+  // Hide or show one brand; the last brand showing cannot be hidden.
+  const toggleBrandShown = (b) => {
+    const hide = !hiddenBrands.includes(b);
+    if (hide && visBrands.filter((x) => x !== b).length === 0) return;
+    saveHidden(hide ? [...hiddenBrands.filter((x) => brands.includes(x)), b] : hiddenBrands.filter((x) => x !== b));
   };
   const showAllBrands = () => saveHidden([]);
+  const focusLabel = shownBrands.length === 1 ? t.brandOnly(shownBrands[0]) : t.brandsOf(shownBrands.length, brands.length);
   // From "All brands", a tap isolates that brand (one tap to "Proton only");
   // after that, each tap hides or shows one brand.
-  const pickBudgetBrand = (b) => (brandFiltered ? toggleBudgetBrand(b) : saveHidden(brands.filter((x) => x !== b)));
+  const pickBudgetBrand = (b) => (focusOn ? toggleBrandShown(b) : saveHidden(brands.filter((x) => x !== b)));
   const budgetCars = listings.flatMap((c, i) => {
-    if (brandFiltered && !budgetBrands.includes(brandName(c))) return [];
+    if (focusOn && !shownBrands.includes(brandName(c))) return [];
     const vs = c.is_model_card ? (cardInfos[c.id]?.variants || []).filter((v) => v.price != null) : [];
     if (!vs.length) return [{ ...c, _n: i + 1 }];
     return vs.map((v) => ({
@@ -955,7 +977,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   groups.side = [...groups.near, ...groups.over];
   // Rows per page: what fits the stage with no scroll (desktop stage vs phone).
   const pageSize = deskZoom ? { fit: 4, side: 3 } : { fit: 3, side: 2 };
-  const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears, budgetBrands.join(',')].join('|');
+  const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears, visBrands.join(',')].join('|');
   const curPage = (st) => (budgetPage.key === pageKey ? budgetPage[st] : 0);
   const pageOf = (st) => {
     const pages = Math.max(1, Math.ceil(groups[st].length / pageSize[st]));
@@ -1053,7 +1075,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const budgetSetLine = (
     <div className="lp-bsetline">
       <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}
-        {brandFiltered && <> · <b>{budgetBrands.length === 1 ? t.brandOnly(budgetBrands[0]) : t.brandsOf(budgetBrands.length, brands.length)}</b></>}</span>
+        {focusOn && <> · <b>{focusLabel}</b></>}</span>
       <button type="button" className="lp-bchange" onClick={() => setBudgetSetOpen(true)}>{t.changeSet}</button>
     </div>
   );
@@ -1081,29 +1103,50 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const canPick = !basic && !embedded && !report && listings.length >= 3;
   const pickRail = canPick && !!deskZoom && gutter >= 200;
   const pickQn = pickQ.trim().replace(/^#\s*/, '').toLowerCase();
-  const pickRows = listings.map((c, i) => ({ c, i })).filter(({ c, i }) => !pickQn
-    || (/^[0-9]+$/.test(pickQn) ? String(i + 1) === pickQn : carLabel(c).toLowerCase().includes(pickQn)));
-  const brandRows = brandGroups(listings, brandOrder);
-  const shiftBrand = (b, d) => {
-    const next = moveBrand(brands, b, d);
-    setBrandOrder(next);
-    try { localStorage.setItem(BRAND_ORDER_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  // Search looks only at brands on show (a hidden brand stays hidden).
+  const pickRows = listings.map((c, i) => ({ c, i }))
+    .filter(({ c }) => arrange || visBrands.includes(brandName(c)))
+    .filter(({ c, i }) => !pickQn
+      || (/^[0-9]+$/.test(pickQn) ? String(i + 1) === pickQn : carLabel(c).toLowerCase().includes(pickQn)));
+  // Arrange shows every brand (with its eye); normal mode only the ones on show.
+  const brandRows = brandGroups(listings, []).filter((g) => arrange || visBrands.includes(g.brand));
+  const canArrange = !!onReorder;
+  // The page reorders at once and saves; a failed save puts the old order back.
+  const reorderTo = async (ids) => {
+    if (!ids) return;
+    const ok = await onReorder(ids);
+    if (ok === false) toast.error(t.orderFailed);
   };
   // The car on screen keeps its brand open, so the list always shows where you are.
   const curBrand = car ? brandName(car) : null;
   const isOpen = (b) => openBrands.has(b) !== (b === curBrand);
   const toggleBrand = (b) => setOpenBrands((s) => { const n = new Set(s); if (n.has(b)) n.delete(b); else n.add(b); return n; });
-  const pickRow = (c, i, grouped = false) => {
+  const carText = (c, grouped) => (
+    <span className="lp-pick-name">
+      <b>{[c.model, c.variant].filter(Boolean).join(' ')}</b>
+      <small>{(grouped ? [c.year] : [c.year, c.brand]).filter(Boolean).join(' ')}</small>
+    </span>
+  );
+  const pickRow = (c, i, grouped = false, gRows = null) => {
     const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
+    const thumb = <span className="lp-pick-img">{img && <img src={cdnImg(img, 120, 60)} alt="" loading="lazy" decoding="async" onError={imgFallback(img)} />}</span>;
+    if (arrange) {
+      const k = gRows ? gRows.indexOf(i) : -1;
+      return (
+        <div key={c.id || i} className="lp-pick-row lp-pick-arr">
+          <span className="lp-badge">#{i + 1}</span>
+          {carText(c, grouped)}
+          <button type="button" className="lp-brand-mv" aria-label={t.carUp} disabled={k <= 0} onClick={() => reorderTo(moveCarIds(listings, i, -1))}><ChevronUp size={16} /></button>
+          <button type="button" className="lp-brand-mv" aria-label={t.carDown} disabled={k < 0 || k >= gRows.length - 1} onClick={() => reorderTo(moveCarIds(listings, i, 1))}><ChevronDown size={16} /></button>
+        </div>
+      );
+    }
     return (
       <button key={c.id || i} type="button" className="lp-pick-row" aria-current={i === idx && mode === 'cars'} onClick={() => goTo(i)}>
         <span className="lp-badge">#{i + 1}</span>
-        <span className="lp-pick-img">{img && <img src={cdnImg(img, 120, 60)} alt="" loading="lazy" decoding="async" onError={imgFallback(img)} />}</span>
+        {thumb}
         {/* Model + variant first: that is what the seller is looking for. */}
-        <span className="lp-pick-name">
-          <b>{[c.model, c.variant].filter(Boolean).join(' ')}</b>
-          <small>{(grouped ? [c.year] : [c.year, c.brand]).filter(Boolean).join(' ')}</small>
-        </span>
+        {carText(c, grouped)}
       </button>
     );
   };
@@ -1115,39 +1158,70 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const pickBody = (
     <>
       <div className="lp-pick-h">
-        <b>{t.jumpTitle}</b>
-        {pickRail && <span><Lock size={11} /> {t.jumpOnlyYou}</span>}
+        <b>{arrange ? t.arrangeTitle : t.jumpTitle}</b>
+        <span className="lp-pick-acts">
+          {canArrange && (
+            <button type="button" className="lp-pick-btn" aria-pressed={arrange} onClick={() => { setArrange((v) => !v); setPickQ(''); }}>
+              {arrange ? t.done : <><ArrowUpDown size={13} /> {t.arrange}</>}
+            </button>
+          )}
+          {pickRail && !arrange && (
+            <button type="button" className="lp-pick-btn lp-pick-ic" aria-label={t.foldList} title={t.foldList}
+              onClick={() => { setListFolded(true); try { localStorage.setItem(LIST_FOLDED_KEY, '1'); } catch { /* private mode */ } }}>
+              <EyeOff size={14} />
+            </button>
+          )}
+        </span>
       </div>
-      <label className="lp-pick-q">
-        <Search size={15} />
-        <input type="text" value={pickQ} placeholder={t.jumpSearch} aria-label={t.jumpSearch}
-          onChange={(e) => setPickQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && pickRows[0]) { goTo(pickRows[0].i); e.currentTarget.blur(); }
-            if (e.key === 'Escape') { e.stopPropagation(); setPickQ(''); e.currentTarget.blur(); }
-          }} />
-      </label>
+      {arrange ? <p className="lp-pick-hint">{t.arrangeHint}</p> : (
+        <>
+          {focusOn && (
+            <button type="button" className="lp-pick-focus" onClick={showAllBrands}>
+              <EyeOff size={13} /> <span>{t.focusShowing(focusLabel)}</span> <b>{t.showAll}</b>
+            </button>
+          )}
+          <label className="lp-pick-q">
+            <Search size={15} />
+            <input type="text" value={pickQ} placeholder={t.jumpSearch} aria-label={t.jumpSearch}
+              onChange={(e) => setPickQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pickRows[0]) { goTo(pickRows[0].i); e.currentTarget.blur(); }
+                if (e.key === 'Escape') { e.stopPropagation(); setPickQ(''); e.currentTarget.blur(); }
+              }} />
+          </label>
+        </>
+      )}
       <div className="lp-pick-list" ref={pickListRef}>
-        {pickQn || brands.length < 2 ? pickRows.map(({ c, i }) => pickRow(c, i)) : brandRows.map((g, gi) => {
-          const open = isOpen(g.brand);
+        {(pickQn || (!arrange && brandRows.length < 2)) ? pickRows.map(({ c, i }) => pickRow(c, i)) : brandRows.map((g, gi) => {
+          const open = arrange ? openBrands.has(g.brand) : isOpen(g.brand);
+          const hidden = focusOn && !shownBrands.includes(g.brand);
           return (
-            <div key={g.brand} className="lp-bgrp">
+            <div key={g.brand} className={`lp-bgrp${hidden ? ' lp-bgrp-off' : ''}`}>
               <div className="lp-brand-h">
                 <button type="button" className="lp-brand-t" aria-expanded={open} onClick={() => toggleBrand(g.brand)}>
                   <ChevronRight size={15} className="lp-brand-cv" />
                   <b>{g.brand}</b>
                   <small>{g.rows.length}</small>
                 </button>
-                <button type="button" className="lp-brand-mv" aria-label={t.brandUp(g.brand)} disabled={gi === 0} onClick={() => shiftBrand(g.brand, -1)}><ChevronUp size={16} /></button>
-                <button type="button" className="lp-brand-mv" aria-label={t.brandDown(g.brand)} disabled={gi === brandRows.length - 1} onClick={() => shiftBrand(g.brand, 1)}><ChevronDown size={16} /></button>
+                {arrange && (
+                  <>
+                    <button type="button" className="lp-brand-mv" aria-pressed={!hidden}
+                      aria-label={hidden ? t.brandShow(g.brand) : t.brandHide(g.brand)} title={hidden ? t.brandShow(g.brand) : t.brandHide(g.brand)}
+                      onClick={() => toggleBrandShown(g.brand)}>
+                      {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button type="button" className="lp-brand-mv" aria-label={t.brandUp(g.brand)} disabled={gi === 0} onClick={() => reorderTo(moveBrandIds(listings, g.brand, -1))}><ChevronUp size={16} /></button>
+                    <button type="button" className="lp-brand-mv" aria-label={t.brandDown(g.brand)} disabled={gi === brandRows.length - 1} onClick={() => reorderTo(moveBrandIds(listings, g.brand, 1))}><ChevronDown size={16} /></button>
+                  </>
+                )}
               </div>
-              {open && <div className="lp-brand-rows">{g.rows.map((i) => pickRow(listings[i], i, true))}</div>}
+              {open && <div className="lp-brand-rows">{g.rows.map((i) => pickRow(listings[i], i, true, g.rows))}</div>}
             </div>
           );
         })}
         {!pickRows.length && <p className="lp-pick-none">{t.jumpNone}</p>}
       </div>
-      {pickRail && (
+      {pickRail && !arrange && (
         <p className="lp-pick-f" aria-live="polite">
           {typedNo ? <b>{typedOk ? t.jumpGo(typedNo) : t.jumpNoCar(typedNo)}</b> : t.jumpKeys}
         </p>
@@ -1710,6 +1784,24 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brand-mv:hover:not(:disabled) { background: #E9E7E3; }
         .lp-brand-mv:disabled { opacity: .3; cursor: default; }
         .lp-brand-rows { display: flex; flex-direction: column; gap: 2px; padding: 0 0 6px; }
+        .lp-pick-acts { display: inline-flex; align-items: center; gap: 6px; }
+        .lp-pick-btn { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: none; border-radius: 8px; background: #F4F3F1; color: #111827; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .lp-pick-btn[aria-pressed="true"] { background: #111827; color: #fff; }
+        .lp-pick-ic { width: 30px; padding: 0; justify-content: center; color: #6b7280; }
+        .lp-pick-hint { margin: 0 14px 8px; font-size: 12px; line-height: 1.4; color: #6b7280; }
+        .lp-pick-focus { display: flex; align-items: center; gap: 6px; margin: 0 12px 8px; padding: 7px 10px; border: none; border-radius: 10px; background: #F4F3F1; color: #374151; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+        .lp-pick-focus span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-pick-focus b { color: #111827; white-space: nowrap; }
+        .lp-pick-arr { cursor: default; gap: 6px; padding: 4px 4px 4px 8px; min-height: 44px; }
+        .lp-pick-arr .lp-brand-mv { width: 28px; }
+        .lp-pick-h { flex-wrap: wrap; row-gap: 6px; }
+        .lp-pick-h > b { flex: 1 1 auto; }
+        .lp-pick .lp-brand-mv { width: 28px; }
+        .lp-pick .lp-brand-t { padding: 0 2px; gap: 4px; }
+        .lp-pick-arr:hover { background: none; }
+        .lp-bgrp-off .lp-brand-t b, .lp-bgrp-off .lp-brand-rows { opacity: .45; }
+        .lp-brand-mv[aria-pressed="false"] { color: #9ca3af; }
+        .lp-pick-unfold { position: absolute; top: 16px; right: 16px; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center; border: none; border-radius: 12px; background: #fff; color: #6b7280; box-shadow: 0 1px 2px rgba(17,24,39,.08); cursor: pointer; }
         .lp-pick-none { margin: 12px 8px; font-size: 14px; color: #6b7280; }
         .lp-pick-f { margin: 0; padding: 10px 14px; border-top: 1px solid rgba(33,31,30,.08); font-size: 12px; line-height: 1.4; color: #6b7280; }
         .lp-pick-f b { color: #111827; font-size: 14px; }
@@ -2243,9 +2335,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <div className="lp-wide">
                 <span className="lp-lbl">{t.brandsLbl}</span>
                 <div className="lp-bbrands lp-ink" role="group" aria-label={t.brandsLbl}>
-                  <button type="button" className="lp-chip" aria-pressed={!brandFiltered} onClick={showAllBrands}>{t.allBrands}</button>
+                  <button type="button" className="lp-chip" aria-pressed={!focusOn} onClick={showAllBrands}>{t.allBrands}</button>
                   {brands.map((b) => (
-                    <button key={b} type="button" className="lp-chip" aria-pressed={brandFiltered && budgetBrands.includes(b)}
+                    <button key={b} type="button" className="lp-chip" aria-pressed={focusOn && shownBrands.includes(b)}
                       onClick={() => pickBudgetBrand(b)}>
                       {b}
                     </button>
@@ -2430,8 +2522,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       )}
       </div>
-      {pickRail && (
+      {pickRail && !listFolded && (
         <aside className="lp-pick" style={{ width: Math.min(300, gutter - 32) }} aria-label={t.jumpTitle}>{pickBody}</aside>
+      )}
+      {pickRail && listFolded && (
+        // Folded: one small button, so a customer at the screen sees no other models.
+        <button type="button" className="lp-pick-unfold" aria-label={t.unfoldList} title={t.unfoldList}
+          onClick={() => { setListFolded(false); try { localStorage.removeItem(LIST_FOLDED_KEY); } catch { /* private mode */ } }}>
+          <List size={18} />
+        </button>
       )}
     </div>
   );
