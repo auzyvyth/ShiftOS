@@ -462,15 +462,15 @@ export function variantExtras(variants, current, max = 4) {
   return { over: below.variant, seats, items: items.slice(0, seats ? max - 1 : max) };
 }
 
-// Brand priority for the Live presenter's "Jump to a car" list (LIVE-BRANDS,
-// owner 2026-11-23: a Proton advisor wanted Proton on top of a Toyota-first list).
-// The seller orders BRANDS with up/down; it is kept on the device only. "#N"
-// never changes (it is the mini page's number, the viewers' reference); only
-// the list's grouping and the order Next walks the cars follow it.
+// Car order + brand focus for the Live presenter (LIVE-ORDER / LIVE-FOCUS, owner
+// 2026-11-23). "#N" is a car's position in the mini page's list, and the seller
+// arranges that list themselves (saved on the account, profiles.car_order), so the
+// stream and the page always agree. Brands group by first appearance in that list.
+// Hidden brands (the seller's focus, on the device) drop out of Next/Back, the Jump
+// list and Budget; the numbers never change.
 export const brandName = (c) => String(c?.brand || '').trim() || 'Other';
 
-// Brands present in `listings`, saved order first, then the rest in the order
-// they first appear (the page's order).
+// Brands in `listings`, saved order first (if any), then first appearance.
 export function orderedBrands(listings, saved) {
   const present = [];
   (listings || []).forEach((c) => { const b = brandName(c); if (!present.includes(b)) present.push(b); });
@@ -478,7 +478,7 @@ export function orderedBrands(listings, saved) {
   return [...pinned, ...present.filter((b) => !pinned.includes(b))];
 }
 
-// [{ brand, rows: [index in listings] }], each brand's cars keep the page order.
+// [{ brand, rows: [index in listings] }], each brand's cars keep the list order.
 export function brandGroups(listings, saved) {
   return orderedBrands(listings, saved).map((brand) => ({
     brand,
@@ -486,10 +486,15 @@ export function brandGroups(listings, saved) {
   }));
 }
 
-// The order Next / Back walk the cars: brand by brand.
-export const walkOrder = (listings, saved) => brandGroups(listings, saved).flatMap((g) => g.rows);
+// The order Next / Back walk the cars: brand by brand, hidden brands skipped.
+// Never empty while there are cars: if every brand were hidden, all show.
+export function walkOrder(listings, hidden = []) {
+  const all = brandGroups(listings, []).flatMap((g) => g.rows);
+  const shown = all.filter((i) => !hidden.includes(brandName(listings[i])));
+  return shown.length ? shown : all;
+}
 
-// Move one brand up (-1) or down (+1); returns the new full order.
+// Move one brand up (-1) or down (+1) in a list of brand names.
 export function moveBrand(order, brand, d) {
   const i = order.indexOf(brand);
   const j = i + d;
@@ -497,4 +502,45 @@ export function moveBrand(order, brand, d) {
   const next = [...order];
   [next[i], next[j]] = [next[j], next[i]];
   return next;
+}
+
+// The full id list after moving a whole brand up/down: the cars regroup brand by
+// brand, so after any arrange each brand's cars sit together.
+export function moveBrandIds(listings, brand, d) {
+  const order = moveBrand(orderedBrands(listings, []), brand, d);
+  return brandGroups(listings, order).flatMap((g) => g.rows.map((i) => listings[i].id));
+}
+
+// The full id list after moving car i up/down WITHIN its brand (brands regrouped
+// first). null when it cannot move.
+export function moveCarIds(listings, i, d) {
+  const ids = brandGroups(listings, []).flatMap((g) => g.rows.map((k) => listings[k].id));
+  const at = ids.indexOf(listings[i]?.id);
+  const to = at + d;
+  if (at < 0 || to < 0 || to >= ids.length) return null;
+  const byId = new Map(listings.map((c) => [c.id, c]));
+  if (brandName(byId.get(ids[to])) !== brandName(listings[i])) return null;
+  [ids[at], ids[to]] = [ids[to], ids[at]];
+  return ids;
+}
+
+// Puts a saved id order onto a list of cars: saved ones first in that order, the
+// rest (new cars) after, in their own order.
+export function applyCarOrder(list, order) {
+  if (!Array.isArray(order) || !order.length) return list;
+  const rank = new Map(order.map((id, k) => [id, k]));
+  return [...list].sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
+}
+
+// One-brand page links (PAGE-BRAND, owner 2026-11-23): /s/<slug>?brand=proton shows
+// only that brand, for a seller who sends Proton buyers a Proton-only page. The key
+// is the brand in lower case, words joined by "-" ("Mercedes Benz" -> mercedes-benz).
+export const brandKey = (b) => String(b || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// The brand a ?brand= value names among these cars, or null (a wrong or old link
+// shows the whole page rather than an empty one).
+export function brandFromParam(listings, param) {
+  const k = brandKey(param);
+  if (!k) return null;
+  return orderedBrands(listings, []).find((b) => brandKey(b) === k) || null;
 }

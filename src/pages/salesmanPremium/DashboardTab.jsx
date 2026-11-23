@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calculator, Car, ChevronRight, Share2 } from "lucide-react";
+import { Calculator, Car, ChevronRight, Link2, Share2 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { normalizePhone } from "../../lib/phone";
+import { toast } from "sonner";
+import { orderedBrands, brandKey } from "../../utils/liveMaths";
 import { premiumDark as P } from "../../theme/tokens";
 import { ROOT_DOMAIN, SITE_URL } from "../../config/site";
 import ShareMenu from "../../components/ShareMenu";
@@ -161,6 +163,13 @@ export default function DashboardTab({
  const sub = { margin: "2px 0 0", fontSize: 12, color: P.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
  const rowBtn = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: P.radius.row, background: P.raised, border: "none", color: P.text, cursor: "pointer", fontFamily: "inherit" };
  const pageUrl = profile?.slug ? `${SITE_URL}/s/${profile.slug}` : null;
+ // PAGE-BRAND: one link per brand (?brand=proton shows only that brand), for a
+ // seller with 2+ brands on sale. Tap copies it; nothing else to set up.
+ const liveBrands = orderedBrands((myListings || []).filter((c) => ["available", "reserved"].includes(c.status)), []);
+ const copyBrandLink = async (b) => {
+ try { await navigator.clipboard.writeText(`${pageUrl}?brand=${brandKey(b)}`); toast.success(t("salesmanPremium.dash.brandLinkCopied", { brand: b })); }
+ catch { toast.error(`${pageUrl}?brand=${brandKey(b)}`); }
+ };
 
  const greeting = (
  <section style={{ gridArea: "hero", ...card, background: P.hero, padding: isMobile ? 22 : "28px 30px", display: "flex", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", gap: 16 }}>
@@ -215,6 +224,20 @@ export default function DashboardTab({
  <span style={{ fontWeight: 600, color: P.text, fontVariantNumeric: "tabular-nums" }}>{shareVisits(minipageStats.byChannel)}</span>
  {t("salesmanPremium.dash.shareVisits")}
  </p>
+ )}
+ {liveBrands.length > 1 && (
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: P.text }}>{t("salesmanPremium.dash.brandLinks")}</p>
+ <p style={{ margin: 0, fontSize: 12, color: P.textSec }}>{t("salesmanPremium.dash.brandLinksHint")}</p>
+ <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+ {liveBrands.map((b) => (
+ <button key={b} type="button" className="pd-press" onClick={() => copyBrandLink(b)}
+ style={{ height: 36, display: "inline-flex", alignItems: "center", gap: 6, padding: "0 14px", borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.text, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+ <Link2 size={13} color={P.textSec} /> {b}
+ </button>
+ ))}
+ </div>
+ </div>
  )}
  {/* Loan calculator, one tap from home: opens the Live presentation
  (?live=1, SalesmanProfilePage), the calculator sellers use on camera. */}
