@@ -204,14 +204,16 @@ export default function DashboardTab({
  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ROOT_DOMAIN}/s/{profile.slug}</span>
  <ChevronRight size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
  </a>
- <span className="lk-wrap-red" style={{ display: "inline-flex", flexShrink: 0, borderRadius: P.radius.pill }}>
+ {/* Quiet pill, same tone as the page link beside it (owner, 2026-11-23:
+ the red raised key was too loud). No red key here. */}
+ <span style={{ display: "inline-flex", flexShrink: 0, borderRadius: P.radius.pill }}>
  <ShareMenu
  baseUrl={pageUrl}
  refSlug={profile.slug}
  waCaption={(url) => `Check out my car listings on Drevo:\n${url}`}
  dark
  label={t("salesmanPremium.dash.share")}
- style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 14 }}
+ style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, border: "none", background: P.raised, color: P.text, fontSize: 14 }}
  />
  </span>
  </div>
