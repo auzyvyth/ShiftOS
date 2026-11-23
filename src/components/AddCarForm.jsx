@@ -389,7 +389,7 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
           mileage: num(form.mileage), plate_number: form.plate_number || null,
           vin_number: form.vin_number || null, is_recon: form.is_recon,
           condition: form.condition,
-          selling_price: num(form.asking_price),
+          selling_price: num(form.asking_price) > 0 ? num(form.asking_price) : null,
           base_price: num(form.purchase_price),
           purchase_price: num(form.purchase_price),
           recon_cost: num(form.recon_cost),

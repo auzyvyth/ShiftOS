@@ -437,7 +437,7 @@ export default function ImportStockPage() {
         return {
           slug,
           brand, model, variant, year,
-          selling_price:  clampInt(r.price, 0, 20000000),
+          selling_price:  clampInt(r.price, 1, 20000000),
           mileage:        clampInt(r.mileage, 0, 1500000),
           colour:         sanitizeText(r.color, 60),
           transmission:   sanitizeText(r.transmission, 20),
