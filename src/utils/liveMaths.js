@@ -461,3 +461,40 @@ export function variantExtras(variants, current, max = 4) {
     ? current.specs.seats : null;
   return { over: below.variant, seats, items: items.slice(0, seats ? max - 1 : max) };
 }
+
+// Brand priority for the Live presenter's "Jump to a car" list (LIVE-BRANDS,
+// owner 2026-11-23: a Proton advisor wanted Proton on top of a Toyota-first list).
+// The seller orders BRANDS with up/down; it is kept on the device only. "#N"
+// never changes (it is the mini page's number, the viewers' reference); only
+// the list's grouping and the order Next walks the cars follow it.
+export const brandName = (c) => String(c?.brand || '').trim() || 'Other';
+
+// Brands present in `listings`, saved order first, then the rest in the order
+// they first appear (the page's order).
+export function orderedBrands(listings, saved) {
+  const present = [];
+  (listings || []).forEach((c) => { const b = brandName(c); if (!present.includes(b)) present.push(b); });
+  const pinned = (Array.isArray(saved) ? saved : []).filter((b) => present.includes(b));
+  return [...pinned, ...present.filter((b) => !pinned.includes(b))];
+}
+
+// [{ brand, rows: [index in listings] }], each brand's cars keep the page order.
+export function brandGroups(listings, saved) {
+  return orderedBrands(listings, saved).map((brand) => ({
+    brand,
+    rows: (listings || []).map((c, i) => (brandName(c) === brand ? i : -1)).filter((i) => i >= 0),
+  }));
+}
+
+// The order Next / Back walk the cars: brand by brand.
+export const walkOrder = (listings, saved) => brandGroups(listings, saved).flatMap((g) => g.rows);
+
+// Move one brand up (-1) or down (+1); returns the new full order.
+export function moveBrand(order, brand, d) {
+  const i = order.indexOf(brand);
+  const j = i + d;
+  if (i < 0 || j < 0 || j >= order.length) return order;
+  const next = [...order];
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+}
