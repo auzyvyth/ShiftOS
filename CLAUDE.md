@@ -2427,6 +2427,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   car on screen keeps its brand open), each brand has up/down arrows, order kept on the device
   (`xd_live_brand_order`; `orderedBrands` / `brandGroups` / `walkOrder` in liveMaths.js). Next/Back
   walk brand by brand. "#N" NEVER changes: it is the mini page's number, so stream and page agree.
+  **Budget brand filter (LIVE-BUDGET-BRANDS, owner 2026-11-23):** Budget settings pop-up has a Brands row
+  (All brands + one chip per brand). From All, a tap isolates that brand; after that each tap hides/shows one;
+  the last brand cannot be hidden. Saved as HIDDEN brands on the device (`xd_live_budget_hide`), so a new
+  brand shows by default. Filters `budgetCars`, so List and Viewer both follow it; the summary line says
+  "Proton only" / "2 of 4 brands". Cars screen and Jump list are never filtered.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
