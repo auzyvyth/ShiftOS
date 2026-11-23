@@ -58,32 +58,47 @@ function getSubdomain(host) {
 
 const sbHeaders = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
 
-async function sbFetch(path) {
+// A slow or failing database is NOT "this page does not exist". Each read gets
+// DB_TIMEOUT_MS; a timeout, a network error or a 5xx throws DbUnavailable, and
+// the handler answers 503 + Retry-After (Google retries and keeps the page).
+// Returning [] here used to turn a database stall into a 404 for a live car, and a
+// read with no time limit left Google waiting ("server connectivity" failures).
+const DB_TIMEOUT_MS = 6000;
+class DbUnavailable extends Error {}
+
+async function sbRequest(url, init = {}) {
+  let res;
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: sbHeaders });
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    res = await fetch(url, { ...init, signal: AbortSignal.timeout(DB_TIMEOUT_MS) });
   } catch {
-    return [];
+    throw new DbUnavailable();
   }
+  if (res.status >= 500) throw new DbUnavailable();
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function sbFetch(path) {
+  const data = await sbRequest(`${SUPABASE_URL}/rest/v1/${path}`, { headers: sbHeaders });
+  return Array.isArray(data) ? data : [];
 }
 
 // RPC caller — needed for SECURITY DEFINER functions like get_salesman_by_slug,
 // which is the only anon-safe path to a salesman profile (RLS blocks anon from
 // reading the profiles table directly, so a plain sbFetch would come back empty).
 async function sbRpc(fn, body) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-      method: "POST",
-      headers: { ...sbHeaders, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (Array.isArray(data)) return data;
-    return data ? [data] : [];
-  } catch {
-    return [];
-  }
+  const data = await sbRequest(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { ...sbHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (Array.isArray(data)) return data;
+  // A PostgREST error body ({code, message}) is not a row.
+  if (data && typeof data === "object" && "code" in data && "message" in data) return [];
+  return data ? [data] : [];
 }
 
 async function getSalesmanData(slug) {
@@ -1041,6 +1056,18 @@ const APP_ONLY = [
 ];
 
 export default async function handler(req) {
+  try {
+    return await render(req);
+  } catch (e) {
+    if (!(e instanceof DbUnavailable)) throw e;
+    return new Response("Temporarily unavailable", {
+      status: 503,
+      headers: { "Retry-After": "300", "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+}
+
+async function render(req) {
   const url = new URL(req.url);
   const pathname = (url.searchParams.get("path") || url.pathname).replace(/\/+$/, "") || "/";
   const ua = req.headers.get("user-agent") ?? "";
