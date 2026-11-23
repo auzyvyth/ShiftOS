@@ -975,7 +975,9 @@ export default function SalesmanProfilePage() {
         .ap-seg button { font-size: 12px; font-weight: 600; padding: 7px 12px; border: none; background: none; color: #4b5563; cursor: pointer; font-family: inherit; }
         .ap-seg button[aria-pressed="true"] { background: #0f1115; color: #fff; }
         .ap-docs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; margin: -6px 0 16px; }
-        .ap-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+        /* CARDS-SMALL (owner, 2026-11-23): two across on a phone, three from 640px. */
+        .ap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        @media (min-width: 640px) { .ap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
         .ap-brands { display: flex; gap: 8px; margin: -4px 0 18px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .ap-brands::-webkit-scrollbar { display: none; }
         .ap-brands button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 999px; background: #fff; color: #374151; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -985,8 +987,8 @@ export default function SalesmanProfilePage() {
         .ap-bblock + .ap-bblock { margin-top: 28px; }
         .ap-bhead { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #111827; }
         .ap-bhead span { font-weight: 500; color: #9ca3af; font-variant-numeric: tabular-nums; }
-        .ap-car { flex: 1 1 280px; max-width: 100%; overflow: hidden; text-decoration: none; display: block; transition: box-shadow .2s, transform .2s; }
-        .ap-car:hover { box-shadow: 0 12px 32px rgba(15,23,42,.14); transform: translateY(-3px); }
+        .ap-car { min-width: 0; overflow: hidden; text-decoration: none; display: block; transition: box-shadow .2s, transform .2s; }
+        .ap-car:hover { box-shadow: 0 8px 22px rgba(15,23,42,.12); transform: translateY(-2px); }
         .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
         .ap-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: ap-pulse 1.4s ease-in-out infinite; }
@@ -996,17 +998,26 @@ export default function SalesmanProfilePage() {
         @media (prefers-reduced-motion: reduce) { .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: none; } }
         .ap-nophoto { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #9ca3af; }
         .ap-ov { position: absolute; background: rgba(15,17,21,.78); color: #fff; font-size: 11px; font-weight: 600; padding: 4px 7px; border-radius: 4px; font-variant-numeric: tabular-nums; }
-        .ap-tl { left: 10px; top: 10px; } .ap-br { right: 10px; bottom: 10px; }
-        .ap-cb { padding: 14px 16px 16px; }
-        .ap-cn { font-size: 15px; font-weight: 600; line-height: 1.3; color: #111827; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .ap-cs { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: #6b7280; margin-top: 6px; font-variant-numeric: tabular-nums; }
-        .ap-cs span + span::before { content: ''; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: #9ca3af; margin-right: 10px; vertical-align: middle; }
-        .ap-pr { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.06); }
-        .ap-pr b { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f1115; }
-        .ap-mo { display: block; font-size: 12px; color: #6b7280; margin-top: 2px; font-variant-numeric: tabular-nums; }
-        .ap-mo b { display: inline; font-size: 12px; font-weight: 600; color: #111827; }
-        .ap-st { font-size: 12px; color: #4b5563; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .ap-tl { left: 8px; top: 8px; } .ap-br { right: 8px; bottom: 8px; }
+        .ap-cb { padding: 10px 12px 12px; }
+        .ap-cn { font-size: 14px; font-weight: 600; line-height: 1.3; color: #111827; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ap-cs { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 11px; color: #6b7280; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .ap-cs span + span::before { content: ''; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: #9ca3af; margin-right: 8px; vertical-align: middle; }
+        .ap-pr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 4px 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-pr b { display: block; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f1115; }
+        .ap-mo { display: block; font-size: 11px; color: #6b7280; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .ap-mo b { display: inline; font-size: 11px; font-weight: 600; color: #111827; }
+        .ap-st { font-size: 11px; color: #4b5563; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .ap-st i { width: 6px; height: 6px; border-radius: 50%; }
+        @media (max-width: 639px) {
+          .ap-ov { font-size: 10px; padding: 3px 6px; }
+          .ap-br { display: none; }
+          .ap-cb { padding: 8px 10px 10px; }
+          .ap-cn { font-size: 13px; }
+          .ap-pr b { font-size: 15px; }
+          .ap-mo b { font-size: 11px; }
+          .ap-st { display: none; }
+        }
         .ap-live { padding: 14px; margin-bottom: 8px; }
         .ap-live-h { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #111827; margin-bottom: 12px; }
         .ap-live-h i { width: 6px; height: 6px; border-radius: 50%; background: #dc2626; }
@@ -1094,7 +1105,6 @@ export default function SalesmanProfilePage() {
           .ap-cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 48px; align-items: start; }
           .ap-left { position: sticky; top: 112px; } /* room for the photo that sits above the card */
           .ap-id { padding: 24px; }
-          .ap-car { flex: 0 0 calc(50% - 8px); max-width: calc(50% - 8px); }
           .ap-sticky { display: none; }
           .ap-foot { padding-bottom: 48px; }
         }
