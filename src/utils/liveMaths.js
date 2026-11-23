@@ -531,3 +531,16 @@ export function applyCarOrder(list, order) {
   const rank = new Map(order.map((id, k) => [id, k]));
   return [...list].sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
 }
+
+// One-brand page links (PAGE-BRAND, owner 2026-11-23): /s/<slug>?brand=proton shows
+// only that brand, for a seller who sends Proton buyers a Proton-only page. The key
+// is the brand in lower case, words joined by "-" ("Mercedes Benz" -> mercedes-benz).
+export const brandKey = (b) => String(b || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// The brand a ?brand= value names among these cars, or null (a wrong or old link
+// shows the whole page rather than an empty one).
+export function brandFromParam(listings, param) {
+  const k = brandKey(param);
+  if (!k) return null;
+  return orderedBrands(listings, []).find((b) => brandKey(b) === k) || null;
+}

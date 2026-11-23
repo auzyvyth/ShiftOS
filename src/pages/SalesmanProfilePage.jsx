@@ -26,7 +26,7 @@ import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { pageAccent } from '../utils/pageAccent';
 import { aboutFacts } from '../utils/agentAbout';
-import { applyCarOrder } from '../utils/liveMaths';
+import { applyCarOrder, brandFromParam, orderedBrands, brandName } from '../utils/liveMaths';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -283,6 +283,13 @@ export default function SalesmanProfilePage() {
   const [liveListingId, setLiveListingId] = useState(null);
   // Newest (the query order, which is also the #N order) or cheapest first.
   const [sortBy, setSortBy] = useState('newest');
+  // PAGE-BRAND (owner, 2026-11-23): ?brand=proton = a Proton-only page, the link a
+  // seller sends Proton buyers so other models never confuse them. Without it, a
+  // seller with 2+ brands gets brand tabs and the cars grouped brand by brand.
+  const [brandParam] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('brand') || ''; } catch { return ''; }
+  });
+  const [brandTab, setBrandTab] = useState('all');
   // Review tally handed up by ReviewsSection (onSummary) for the stats row, so
   // the page does not query reviews a second time.
   const [reviewSummary, setReviewSummary] = useState(null);
@@ -397,6 +404,7 @@ export default function SalesmanProfilePage() {
         trackEvent(supabase, 'minipage_view', {
           salesman_slug: slug,
           dealer_id: p.dealer_id || p.id,
+          ...(brandParam ? { metadata: { brand: brandParam.toLowerCase().slice(0, 40) } } : {}),
         });
       }
 
@@ -693,6 +701,17 @@ export default function SalesmanProfilePage() {
   const sortedListings = sortBy === 'price'
     ? [...listings].sort((a, b) => (Number(a.selling_price) || Infinity) - (Number(b.selling_price) || Infinity))
     : listings;
+  // PAGE-BRAND: a one-brand link locks the page to that brand (a wrong brand in the
+  // link shows the whole page); otherwise the tab picks. "#N" never changes.
+  const pageBrands = orderedBrands(listings, []);
+  const lockedBrand = brandFromParam(listings, brandParam);
+  const pickedBrand = lockedBrand || (brandTab !== 'all' && pageBrands.includes(brandTab) ? brandTab : null);
+  const shownListings = pickedBrand ? sortedListings.filter((c) => brandName(c) === pickedBrand) : sortedListings;
+  const showBrandTabs = !lockedBrand && pageBrands.length > 1;
+  // All brands on show: one block per brand, in the seller's order.
+  const brandBlocks = !pickedBrand && pageBrands.length > 1
+    ? pageBrands.map((b) => ({ brand: b, cars: sortedListings.filter((c) => brandName(c) === b) }))
+    : null;
 
   // The dealership's own address (linked salesmen only) — a full free-text
   // address if the dealer set one, else fall back to city/state.
@@ -759,7 +778,7 @@ export default function SalesmanProfilePage() {
   // Only real numbers: Sold hides at 0, rating hides with no reviews.
   const stats = [
     // A count that is still loading is a dash, never a 0.
-    { key: 'sale', n: loading ? '–' : listings.length, l: 'For sale' },
+    { key: 'sale', n: loading ? '–' : (lockedBrand ? shownListings : listings).length, l: 'For sale' },
     soldCount > 0 && { key: 'sold', n: soldCount, l: 'Sold' },
     hasReviews && { key: 'rating', n: reviewSummary.avg.toFixed(1), suffix: '/5', l: `${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}` },
   ].filter(Boolean);
@@ -957,6 +976,15 @@ export default function SalesmanProfilePage() {
         .ap-seg button[aria-pressed="true"] { background: #0f1115; color: #fff; }
         .ap-docs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; margin: -6px 0 16px; }
         .ap-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+        .ap-brands { display: flex; gap: 8px; margin: -4px 0 18px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .ap-brands::-webkit-scrollbar { display: none; }
+        .ap-brands button { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 999px; background: #fff; color: #374151; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .ap-brands button span { font-weight: 500; color: #9ca3af; font-variant-numeric: tabular-nums; }
+        .ap-brands button[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .ap-brands button[aria-pressed="true"] span { color: rgba(255,255,255,.6); }
+        .ap-bblock + .ap-bblock { margin-top: 28px; }
+        .ap-bhead { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #111827; }
+        .ap-bhead span { font-weight: 500; color: #9ca3af; font-variant-numeric: tabular-nums; }
         .ap-car { flex: 1 1 280px; max-width: 100%; overflow: hidden; text-decoration: none; display: block; transition: box-shadow .2s, transform .2s; }
         .ap-car:hover { box-shadow: 0 12px 32px rgba(15,23,42,.14); transform: translateY(-3px); }
         .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
@@ -1015,6 +1043,7 @@ export default function SalesmanProfilePage() {
            phone's bottom bar, photo ring gap) 3%, so it reads as one tinted page. */
         .ap--pro { --ap-bg: color-mix(in srgb, var(--ap-a) 9%, #F7F6F2); --ap-surf: color-mix(in srgb, var(--ap-a) 3%, #fff); background: var(--ap-bg); }
         .ap--pro .ap-card, .ap--pro .ap-seg, .ap--pro .ap-ico, .ap--pro .ap-av { background-color: var(--ap-surf); }
+        .ap--pro .ap-brands button:not([aria-pressed="true"]) { background-color: var(--ap-surf); }
         .ap--pro .ap-sticky { background: var(--ap-surf); }
         /* No cover yet: the banner is the seller's colour (the wave bands go soft
            white on it), so a Premium page reads as one before any upload. */
@@ -1272,14 +1301,24 @@ export default function SalesmanProfilePage() {
               )}
 
               <div className="ap-sec">
-                <h2>{profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{listings.length > 0 && <> <span>{listings.length}</span></>}</h2>
-                {listings.length > 1 && (
+                <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
+                {shownListings.length > 1 && (
                   <div className="ap-seg" role="group" aria-label="Sort cars">
                     <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
                     <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
                   </div>
                 )}
               </div>
+              {showBrandTabs && (
+                <div className="ap-brands" role="group" aria-label="Brands">
+                  <button type="button" aria-pressed={!pickedBrand} onClick={() => setBrandTab('all')}>All <span>{listings.length}</span></button>
+                  {pageBrands.map((b) => (
+                    <button key={b} type="button" aria-pressed={pickedBrand === b} onClick={() => setBrandTab(b)}>
+                      {b} <span>{listings.filter((c) => brandName(c) === b).length}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Only cars a superadmin checked (car_listings.docs_verified). */}
               {docsLine && (
                 <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
@@ -1289,7 +1328,7 @@ export default function SalesmanProfilePage() {
                   A Lite page (page_basic) shows exactly what it showed before. */}
               {!profile.page_basic && listings.length > 0 && (
                 <BudgetFinder
-                  listings={listings}
+                  listings={pickedBrand ? shownListings : listings}
                   firstName={firstName}
                   hasWa={hasWa}
                   waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
@@ -1311,9 +1350,20 @@ export default function SalesmanProfilePage() {
                     </div>
                   ))}
                 </div>
-              ) : listings.length > 0 ? (
+              ) : brandBlocks ? (
+                brandBlocks.map((g) => (
+                  <section key={g.brand} className="ap-bblock" aria-label={`${g.brand} cars`}>
+                    <h3 className="ap-bhead">{g.brand} <span>{g.cars.length}</span></h3>
+                    <div className="ap-grid">
+                      {g.cars.map((car) => (
+                        <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
+                      ))}
+                    </div>
+                  </section>
+                ))
+              ) : shownListings.length > 0 ? (
                 <div className="ap-grid">
-                  {sortedListings.map((car) => (
+                  {shownListings.map((car) => (
                     <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
                   ))}
                 </div>
@@ -1342,7 +1392,7 @@ export default function SalesmanProfilePage() {
         {waHref && (
           <div className="ap-sticky">
             <div className="ap-mini">{profile.avatar_url ? <img src={cdnImg(profile.avatar_url, 96, 80)} alt="" /> : initial}</div>
-            <p className="ap-who"><b>{profile.full_name}</b>{replyLabel || (loading ? '' : `${listings.length} ${listings.length === 1 ? 'car' : 'cars'} for sale`)}</p>
+            <p className="ap-who"><b>{profile.full_name}</b>{replyLabel || (loading ? '' : `${(lockedBrand ? shownListings : listings).length} ${(lockedBrand ? shownListings : listings).length === 1 ? 'car' : 'cars'} for sale`)}</p>
             <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}WhatsApp</a>
           </div>
         )}
