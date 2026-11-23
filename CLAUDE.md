@@ -2433,7 +2433,13 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Arrange, or the Brands row in Budget settings, hides brands (`xd_live_hide_brands`, device only, the last one
   cannot be hidden). Hidden brands leave Next/Back (`walkOrder`), the Jump list, search and Budget; numbers never
   change. A hidden car on screen jumps to the first car on show. The desktop list folds to one small button
-  (`xd_live_list_folded`). The public page still lists every car.
+  (`xd_live_list_folded`). The public page still lists every car, grouped by brand (PAGE-BRAND below).
+  **The page by brand (PAGE-BRAND, owner 2026-11-23):** /s/<slug> with 2+ brands shows brand tabs (All · Proton · ...)
+  and, on All, one block per brand in the seller's order. `?brand=proton` (`brandKey` / `brandFromParam`, liveMaths.js)
+  locks the page to that brand: no tabs, header + "for sale" counts follow it, a wrong brand shows the whole page. Not
+  a hard lock (deleting the query shows all); the canonical stays /s/<slug>, and `minipage_view` carries
+  `metadata.brand`. Premium dashboard "Your page" card copies one link per brand (`DashboardTab.jsx`, 2+ live brands).
+  "#N" never changes in any view.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
