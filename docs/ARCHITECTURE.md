@@ -5,7 +5,7 @@ The one picture of the whole system. Diagrams are Mermaid (GitHub draws them).
 family, a background job or an outside service.** If it drifts, it is worse than
 nothing. Rules and gotchas live in `CLAUDE.md`; this file is the map, not the rules.
 
-Last checked against the live system: 2026-10-16.
+Last checked against the live system: 2026-10-16 (diagram 1b, the tab map, checked against the code 2026-11-24).
 
 ---
 
@@ -91,6 +91,64 @@ may include the owner's own test accounts):
 
 Activity, same 30 days: 53 live cars, 36 leads, 5 chats, 4 cars sold, 0 subscription
 payments logged (ever).
+
+---
+
+## 1b. Every tab, and what it connects to
+
+Tabs as of 2026-11-24 (read from the nav arrays: `NAV_GROUPS` in `DashboardPage.jsx`,
+`navTabs` in `SalesmanPremium.jsx`, `VALID_LITE_TABS` in `SalesmanLite.jsx`, `NAV` in `AdminPage.jsx`).
+
+```mermaid
+flowchart TB
+  subgraph DEALER["Dealer dashboard /dashboard"]
+    direction LR
+    D1[Overview] ~~~ D2[Revenue] ~~~ D3[Traffic] ~~~ D4["Leads / CRM"] ~~~ D5[Inventory] ~~~ D6[Sold] ~~~ D7[Storefront] ~~~ D8[Team]
+  end
+  subgraph PREM["Salesman Premium /salesman-premium"]
+    direction LR
+    P1[Dashboard] ~~~ P2[Listings] ~~~ P3[Inbox] ~~~ P4[Leads] ~~~ P5[Feedback] ~~~ P6[Sold] ~~~ P7[Analytics] ~~~ P8[Loans] ~~~ P9[Outreach] ~~~ P10[Settings]
+  end
+  subgraph LITE["Salesman Lite /salesman-lite"]
+    direction LR
+    L1[Dashboard] ~~~ L2[Listings] ~~~ L3[Leads] ~~~ L4[Inbox] ~~~ L5[Performance] ~~~ L6[Settings]
+  end
+  subgraph PLAT["Platform console /platform"]
+    direction LR
+    C1[Work] ~~~ C2[People] ~~~ C3[Marketplace] ~~~ C4[Money] ~~~ C5[Safety]
+  end
+
+  CAR[("Cars<br/>car_listings")]
+  STK[("Dealer cost<br/>stock_units")]
+  PNL{{"carPnl()<br/>one profit engine"}}
+  LEAD[("Leads<br/>resolve_lead_salesman")]
+  CHAT[("Chats<br/>chat_threads")]
+  WON{{"Won trigger<br/>auto_create_customer_on_won"}}
+  CUST[("Customers + handover steps")]
+  NOTIF[("Notifications<br/>= push")]
+
+  D5 --> CAR
+  D5 --> STK --> PNL
+  D1 & D2 --> PNL
+  D3 & D7 --> CAR
+  D4 & D8 --> LEAD
+  D6 --> CUST
+
+  P2 & P5 & L2 --> CAR
+  P4 & P7 & P8 & L3 & L5 --> LEAD
+  P3 & L4 --> CHAT --> LEAD
+  P1 --> LEAD
+  P6 --> CUST
+  P9 --> NOTIF
+
+  LEAD --> WON --> CUST
+  WON -->|car = sold| CAR
+  LEAD --> NOTIF
+
+  C1 -->|approve cars, sellers, posts| CAR
+  C2 & C5 --> NOTIF
+  C3 --> CAR
+```
 
 ---
 
