@@ -77,6 +77,24 @@
 - **Crawler 503 not 404** (`ac73738`, staging): `api/og.js` DB reads stop after 6s; a slow/failing DB answers 503 + Retry-After, never 404. Needs owner's go.
 - Leftover branch `temp/car-number-checks` on GitHub (session could not delete it).
 
+## FUTURE: ranked backlog (owner 2026-11-24: "put the good ones in future todo list")
+Rule: no new major feature unless it improves acquisition, activation, retention or revenue.
+Ranked by return (value / cost). Full notes per item: search its IDEA number below.
+1. [ ] **IDEA-62, minimal: one "Pay RM35" button that confirms itself.** 3 payments ever; paying today = save DuitNow QR, open bank app, pick image, pay, WhatsApp the owner, wait (`PremiumPayBox.jsx`). Provider webhook calls the existing `record_subscription_payment`. Owner picks provider / company / bank; research fees, FPX, auto-renew rules first.
+2. [ ] **IDEA-55: Puspakom fee + GiCheck link in the handover checklist.** Fix, ~1 day (`postSaleSteps.js:37,45`).
+3. [ ] **IDEA-54: EV road tax.** Fix, ~1 day (`ownership.js:51` shows nothing for EVs); only from JPJ's official kW table.
+4. [ ] **IDEA-63: self-serve signup again.** `href` back to signup in the 10 `OPS_WHATSAPP` places; WhatsApp only in in-app browsers.
+5. [ ] **IDEA-57: QR window sticker for Lite + Premium.** Reuse `WindowSticker.jsx`.
+6. [ ] **IDEA-56 + IDEA-50: "Before you pay" checklist + recall links.** Link out only, never claim a car is clean.
+7. [ ] **IDEA-48: "which cars are selling" for Lite + Premium.** Reuse `MarketDemandTab.jsx`; say NEW registrations.
+8. [ ] **IDEA-58: deposit receipt PDF for Lite + Premium.** Lawyer checks the wording once.
+9. [ ] **IDEA-67: monthly numbers email to the owner.**
+10. [ ] **IDEA-64: "ops staff" console role** (Social queue had 179 waiting on 2026-11-23).
+11. [ ] **IDEA-51: road tax + insurance reminders for buyers** (PDPA opt-in).
+12. [ ] **IDEA-60: e-invoice note for dealers** (exempt under RM3m since 1 Sep 2026).
+Later, once money flows: IDEA-26 (beat Carlist for sellers), IDEA-46 (My Garage, needs buyers who bought on Drevo), IDEA-65 (review by rules), IDEA-66 (Done for you as a checklist), IDEA-68 (releases without the owner), IDEA-49 (live fuel price), IDEA-59 (Chinese for buyers).
+**Not now, and why:** IDEA-39 + IDEA-2 (AI must never message a buyer; Meta's 2026 WhatsApp terms; owner said no WhatsApp 2026-11-16), IDEA-7 + IDEA-3 (all AI switched off, `AI_FEATURES_ENABLED = false`, no credits; the stock-list import already fills most fields), IDEA-61 (insurance referral may be regulated broking: legal check first), IDEA-35 (AI car photos: trust risk), IDEA-10 / IDEA-11 / IDEA-33 (need buyer traffic, partners or data access we do not have).
+
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
 (price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 3 owner switches staff on/off: migration `20261117a` APPLIED 2026-11-17 09:5x UTC (owner "do it now", nobody live) and
