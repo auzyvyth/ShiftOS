@@ -1,0 +1,23 @@
+{
+  "_": "Calculator ad v2. ONE timing source for picture (CalcAd.jsx) and sound (make-audio-calc2.py). Seconds.",
+  "fps": 30,
+  "dur": 48.6,
+  "beats": [
+    ["excel1", 0.0, "Masih kira loan|guna *Excel?*", "Still working out loans in Excel?"],
+    ["excel2", 2.3, "Ada yang bayar|sehingga *RM300.*", "Some sellers paid up to RM300 for one."],
+    ["excel3", 4.3, "Excel ada|*asasnya.*", "Excel has the basics."],
+    ["retype", 6.0, "Setiap soalan,|taip *semula.*", "Every new question, you type it all again."],
+    ["flood", 8.0, "Penonton tanya.|Excel tiada *jawapan.*", "Viewers ask. Excel has no answer."],
+    ["calc", 10.6, "Satu tekan.|Terus *dijawab.*", "One tap. Answered on the spot."],
+    ["calc2", 15.4, "Insurans, NCD,|*jumlah* & faedah.", "Insurance, NCD, total paid and interest, all there."],
+    ["budget", 19.6, "Gaji penonton masuk,|kereta *muat* keluar.", "Type a viewer's pay. The cars that fit appear."],
+    ["bands", 23.4, "Selesa, Ketat,|*Membebankan.*", "Commitments come off first. Sorted for you."],
+    ["viewer", 27.6, "Mod Penonton:|satu nama, satu *jawapan.*", "Viewer mode: one name, one answer."],
+    ["next", 33.6, "Seterusnya,|terus *dijawab.*", "Next in the queue, answered live."],
+    ["guide", 37.6, "Panduan bajet.|Keputusan di tangan *bank.*", "A budget guide. The bank decides."],
+    ["plans", 39.8, "Mula *percuma.*|Penuh di *Premium.*", "Start free. The full version is in Premium."],
+    ["cta", 44.6, "", "Try Premium free for 7 days."]
+  ],
+  "takes": { "calc": 10.6, "budget": 19.6, "viewer": 27.6 },
+  "hits": { "drop": 0.35, "tag": 2.55, "crumple": 10.15, "phone": 10.6, "flip": 19.3, "swipe": 27.4, "plans": 39.8, "wipe": 44.3, "logo": 44.75 }
+}

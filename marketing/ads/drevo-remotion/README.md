@@ -15,6 +15,7 @@ The Claude skill `.claude/skills/drevo-ad/SKILL.md` walks a session through all 
 |---|---|---|---|---|---|---|
 | Premium (features tour) | `DrevoAd-ms`, `DrevoAd-en` | 49.8 s | `src/timeline.json` | `COPY` in `src/lib.js` | `make-audio.cjs` | `final/drevo-premium-<lang>.mp4` |
 | Renewals (insurance + road tax) | `Renewals-ms`, `Renewals-en` | 22.8 s | `src/renewals/timeline.json` | `COPY` in `src/renewals/Renewals.jsx` | `make-audio-renewals.cjs` | `final/drevo-renewals-<lang>.mp4` |
+| Calculator v2 (Excel to Live calculator, BM + EN pill) | `CalcAd-ms` | 48.6 s | `src/calc2/timeline.json` | `beats` in the same file | `make-audio-calc2.py` | not committed (render) |
 
 Briefs (script in words, data checks, what was fixed first): `briefs/`. Post captions: `final/captions.md`.
 The finished MP4s are kept off `main` / `staging` (66 MB in a public repo's history): get them from branch
@@ -44,6 +45,8 @@ node_modules/.bin/vite --config harness/vite.config.mjs &     # harness on :5199
 node harness/record.cjs calc ms public/takes      # + calc en, budget ms, budget en
 cp public/takes/*.clicks.json src/
 node harness/tools.cjs                            # public/real/: posters + cut-out
+for t in calc budget viewer; do node harness/record-phone.cjs $t ms public/takes2; done   # calculator ad v2 (phone size)
+# then: first/last frame PNGs per take (ffmpeg, see src/calc2/CalcAd.jsx Screen) + python3 make-audio-calc2.py
 node harness/sold.cjs                             # public/real/sold-*.png + src/renewals/rects.json
 
 # sound

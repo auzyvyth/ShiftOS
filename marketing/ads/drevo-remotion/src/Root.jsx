@@ -4,6 +4,7 @@ import { Ad } from './Ad';
 import { FPS, W, H, DUR, sec } from './lib';
 import { RenewalsAd, R_DUR } from './renewals/Renewals';
 import { Sizzle, S_FPS, S_DUR } from './sizzle/Sizzle';
+import { CalcAd, C_FPS, C_DUR } from './calc2/CalcAd';
 
 export const Root = () => (
   <>
@@ -12,5 +13,6 @@ export const Root = () => (
     <Composition id="Renewals-ms" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms' }} />
     <Composition id="Renewals-en" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
     <Composition id="Sizzle" component={Sizzle} durationInFrames={S_DUR} fps={S_FPS} width={1080} height={1920} defaultProps={{ audio: true }} />
+    <Composition id="CalcAd-ms" component={CalcAd} durationInFrames={C_DUR} fps={C_FPS} width={1080} height={1920} defaultProps={{ audio: true }} />
   </>
 );
