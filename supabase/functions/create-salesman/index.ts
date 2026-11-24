@@ -40,7 +40,7 @@ const esc = (v: unknown) =>
 // bad value is a clear invalid_input instead of a failed profile write, which
 // deletes the half-made login and reads "profile_creation_failed".
 const SELLER_TYPES = ["broker", "new_car", "private"];
-const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD"];
+const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD", "Honda", "Jaecoo"];
 
 // What a platform-set-up page holds, as label/value rows for the setup email,
 // so the seller sees exactly what was filled in for them. Built from the

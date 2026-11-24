@@ -5,5 +5,5 @@
 // The other files in /public/brands are not listed on purpose: nobody has checked them.
 export const LOGOS = {
   Proton: '/brands/proton.png', Perodua: '/brands/perodua.png', Toyota: '/brands/toyota.svg',
-  BYD: '/brands/byd.png', Honda: '/brands/honda.svg',
+  BYD: '/brands/byd.png', Honda: '/brands/honda.svg', Jaecoo: '/brands/jaecoo.png',
 };
