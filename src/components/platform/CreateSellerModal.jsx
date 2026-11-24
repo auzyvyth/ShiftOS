@@ -35,7 +35,9 @@ function slugify(s) {
 
 const ERRORS = {
   email_taken: "That email already has an account. Find it in Accounts instead.",
-  invalid_input: "Name and email are required.",
+  // The server also answers invalid_input for a plan, how-they-sell or brand value it does not
+  // accept (a stale deploy refused the new Jaecoo brand, 2026-11-24), so do not blame name/email.
+  invalid_input: "The server refused one of the answers (name, email, plan, how they sell or brand). Check them and try again.",
   forbidden: "Only a platform admin can do this.",
   profile_creation_failed: "The account could not be saved. Check that the page link is free and try again.",
 };
