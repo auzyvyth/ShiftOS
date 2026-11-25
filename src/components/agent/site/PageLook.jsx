@@ -15,11 +15,11 @@ import React from 'react';
 export default function PageLook() {
   return (
     <style>{`
-      /* The light ground is the seller's pick (GROUNDS in pageSite.js), a soft top-to-bottom gradient.
-         The page root sets --pl-g1 / --pl-g2 / --pl-tile inline; these are the White defaults. */
+      /* The light ground is the seller's own two colours + fade direction (groundPaint in pageSite.js, kept
+         light so text stays readable). The page root sets --pl-g1 / --pl-g2 / --pl-gangle / --pl-tile inline. */
       .ap.ap--pro { --pl-g1: #ffffff; --pl-g2: #f6f5f1; --pl-tile: #f1f0eb; --ap-bg: var(--pl-g1); --ap-surf: var(--pl-tile);
         --pl-ink: #0f1115; --pl-tile2: rgba(15,17,21,.06); --pl-mute: #6b7280; --pl-d1: #0f1115; --pl-d2: #181b21; --pl-d3: #22262e;
-        background: linear-gradient(180deg, var(--pl-g1) 0%, var(--pl-g2) 100%); }
+        background: linear-gradient(var(--pl-gangle, 180deg), var(--pl-g1) 0%, var(--pl-g2) 100%); }
 
       /* Headings: one system */
       .ap--pro .ap-sec { margin: 56px 0 16px; }
