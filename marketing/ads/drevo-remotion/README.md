@@ -89,3 +89,10 @@ The browser is Playwright's Chromium (`remotion.config.js` points at it). Never 
 | `tools/stills.cjs`, `tools/palette.py` | Stills and the colour check |
 | `public/` | Fonts, photos; `takes/`, `real/`, `audio/` are generated and gitignored |
 | `final/` | Finished videos, stills sheets, captions |
+
+## Dashboard pan (DashPan-ms / DashPan-en)
+The real Premium Dashboard tab on a sample seller, lying in 3D; the camera glides box to box.
+1. `npm i --no-save recharts@3` (the dashboard's chart; not in this folder's package.json)
+2. Harness on :5199, then `node harness/dash.cjs` -> `public/real/dash-<lang>.png` + `src/dash/rects.json`
+3. `python3 make-audio-dash.py`, then loudnorm to `public/audio/dash.wav` (same as the other ads)
+4. `npx remotion render src/index.js DashPan-ms out.mp4`. Timing: `src/dash/timeline.json` only.
