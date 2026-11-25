@@ -1,0 +1,12 @@
+{
+  "_": "The Premium tour: the scenes joined. ONE timing source for the joined picture and sound. Every segment is a whole number of bars (64 frames at 112.5 bpm), so each cut lands on a downbeat and the music never stumbles. A red chapter card covers the first `card` frames of every topic after the first (the scene's clock runs under it).",
+  "fps": 30, "bpm": 112.5, "bar": 64, "card": 16,
+  "segments": [
+    { "id": "dash",   "len": 192, "topic": null },
+    { "id": "broker", "len": 256, "topic": { "ms": "Stok dealer", "en": "Dealer stock" } },
+    { "id": "mini",   "len": 256, "topic": { "ms": "Page anda", "en": "Your page" } },
+    { "id": "live",   "len": 320, "topic": { "ms": "Live", "en": "Live" } },
+    { "id": "loan",   "len": 320, "topic": { "ms": "Semakan loan", "en": "Loan check" } },
+    { "id": "end",    "len": 96,  "topic": null }
+  ]
+}

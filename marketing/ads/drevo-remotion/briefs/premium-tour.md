@@ -1,5 +1,8 @@
 # Premium tour ad (owner's brief, 2026-11-25): script, gate 2
 
+JOINED (2026-11-25): `Tour-ms` / `Tour-en`, 48 s, src/tour (order and bar lengths in src/tour/timeline.json).
+Not in it yet: scene 5 (views by social platform). End card has no price on purpose (founding-price wording).
+
 Order from the owner: dashboard (done) -> dealer stock as a broker -> mini page -> live presentation ->
 views from social media -> loan check sent to the buyer on WhatsApp -> the buyer's loan page.
 Look: the dark 3D world of the dashboard pan (owner's reference). Every topic change = a hit on a downbeat
