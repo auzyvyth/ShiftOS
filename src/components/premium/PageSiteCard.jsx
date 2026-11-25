@@ -70,11 +70,11 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
   const card = { background: PD.card, borderRadius: PD.radius.card, padding: 18 };
   const h = { margin: 0, fontSize: 14, fontWeight: 700, color: PD.text };
   const hint = { margin: '4px 0 12px', fontSize: 12.5, lineHeight: 1.5, color: PD.textMuted };
-  const input = { width: '100%', minWidth: 0, height: 44, padding: '0 12px', borderRadius: PD.radius.row, border: 'none', background: PD.raised, color: PD.text, fontFamily: 'inherit', fontSize: 14, outline: 'none' };
+  const input = { boxSizing: 'border-box', width: '100%', minWidth: 0, height: 44, padding: '0 12px', borderRadius: PD.radius.row, border: 'none', background: PD.raised, color: PD.text, fontFamily: 'inherit', fontSize: 14, outline: 'none' };
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
   const icon = { ...btn, width: 44, padding: 0, background: PD.raised, color: PD.textSec };
-  const row = { background: PD.raised, borderRadius: PD.radius.row, padding: 12, display: 'grid', gap: 8 };
+  const row = { boxSizing: 'border-box', background: PD.raised, borderRadius: PD.radius.row, padding: 12, display: 'grid', gap: 8 };
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -106,9 +106,9 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
             return (
               <div key={i} style={row}>
                 <input aria-label="Model" placeholder="Model, e.g. Yaris 1.5G" maxLength={40} value={p.model || ''} onChange={(e) => setPromo(i, { model: e.target.value })} style={input} />
-                <input aria-label="What you offer" placeholder="What you offer, e.g. Free tint and coating" maxLength={80} value={p.text || ''} onChange={(e) => setPromo(i, { text: e.target.value })} style={input} />
+                <input aria-label="What you offer" placeholder="What you offer" maxLength={80} value={p.text || ''} onChange={(e) => setPromo(i, { text: e.target.value })} style={input} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
-                  <input aria-label="From price (optional)" placeholder="From RM (optional)" inputMode="numeric" value={p.price ?? ''} onChange={(e) => setPromo(i, { price: e.target.value.replace(/\D/g, '').slice(0, 7) })} style={input} />
+                  <input aria-label="From price (optional)" placeholder="From RM" inputMode="numeric" value={p.price ?? ''} onChange={(e) => setPromo(i, { price: e.target.value.replace(/\D/g, '').slice(0, 7) })} style={input} />
                   <input aria-label="Last day" type="date" min={today} max={addDays(today, PROMO_DAYS_MAX)} value={p.until || ''} onChange={(e) => setPromo(i, { until: e.target.value })} style={{ ...input, colorScheme: 'dark' }} />
                 </div>
                 {pr && <p style={{ margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
@@ -134,7 +134,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
                 <input aria-label="Town" placeholder="Town, e.g. Marang" maxLength={40} value={t.town || ''} onChange={(e) => setTown(i, { town: e.target.value })} style={input} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
                   <input aria-label="Distance in km" placeholder="Distance (km)" inputMode="numeric" value={t.km ?? ''} onChange={(e) => setTown(i, { km: e.target.value.replace(/\D/g, '').slice(0, 4) })} style={input} />
-                  <input aria-label="Drive time in minutes" placeholder="Minutes (optional)" inputMode="numeric" value={t.min ?? ''} onChange={(e) => setTown(i, { min: e.target.value.replace(/\D/g, '').slice(0, 4) })} style={input} />
+                  <input aria-label="Drive time in minutes" placeholder="Minutes" inputMode="numeric" value={t.min ?? ''} onChange={(e) => setTown(i, { min: e.target.value.replace(/\D/g, '').slice(0, 4) })} style={input} />
                 </div>
                 {pr && <p style={{ margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
                 <button type="button" onClick={() => set({ delivery: { ...draft.delivery, items: draft.delivery.items.filter((_, j) => j !== i) } })} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}><Trash2 size={14} /> Remove</button>
