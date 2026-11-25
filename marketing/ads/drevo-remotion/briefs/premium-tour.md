@@ -35,21 +35,21 @@ D. **Settled (owner, 2026-11-25): white world with a hint of red** ("the black b
    Every scene's BG is white, fog is white, captions ink + red. The phones and the dashboard stay dark (the real app).
 E. Loan wording: never approval, never a score. The scene says "the bank decides" (the app's own line).
 
-## Post captions (2026-11-25, rewritten: benefits, the reader in the moment)
+## Post captions (2026-11-25, v3: the benefit, lived by the reader)
 **BM:**
-Viewer tanya "gaji RM4k, boleh ambil kereta apa?" masa anda live. Anda jawab terus, depan semua penonton.
-Buyer nak tengok kereta lain? Hantar satu link. Semua kereta anda ada, siap anggaran bulanan.
-Stok sendiri sikit? Jual kereta dealer dari page anda. Buyer yang anda daftar dipegang untuk anda 14 hari.
-Sebelum fail sampai ke bank, anda dah tahu apa nak dibetulkan. Buyer pula tahu dokumen apa nak bawa.
-Dan setiap pagi, anda tahu kereta mana orang tengok, dan siapa yang tekan WhatsApp.
-Cuba Drevo Premium 7 hari percuma di drevo.my
+Bayangkan malam ni anda live. Viewer tanya "gaji RM4k, dapat kereta apa?" dan anda jawab dalam 3 saat, dengan angka. Dia terus WhatsApp anda, bukan SA lain.
+Esok pagi anda bangun, page anda dah kerja semalaman. Anda tahu siapa yang berminat, dan siapa nak call dulu.
+Stok sikit? Bukan masalah lagi. Kereta dealer pun anda boleh jual, dan buyer anda tetap buyer anda.
+Dan bila buyer apply loan, anda tak lagi kejar dokumen atau tunggu 5 bank tolak. Fail dia dah siap sebelum sampai bank.
+Kurang kerja leceh, lebih masa untuk closing.
+Cuba Drevo Premium 7 hari percuma. drevo.my
 #jurujualkereta #SAkereta #keretaterpakai #recon #loankereta #drevo
 
 **EN:**
-A viewer asks "RM4k salary, what can I get?" while you're live. You answer on the spot, in front of everyone.
-A buyer wants to see more? Send one link. Every car you have, with the monthly.
-Short on your own stock? Sell a dealer's cars from your page. The buyer you register is held for you for 14 days.
-Before the file reaches a bank, you already know what to fix, and your buyer knows what documents to bring.
-And every morning, you know which car people looked at, and who tapped WhatsApp.
-Try Drevo Premium free for 7 days at drevo.my
+Picture tonight's live. A viewer asks "RM4k salary, what can I drive?" and you answer in 3 seconds, with real numbers. They WhatsApp you, not the next SA.
+Tomorrow morning, your page has been working all night. You know who's interested, and who to call first.
+Low on stock? Not a problem anymore. Sell a dealer's cars too, and your buyer stays your buyer.
+And when your buyer applies for a loan, no more chasing documents or waiting for 5 banks to say no. The file is ready before it reaches a bank.
+Less chasing. More closing.
+Try Drevo Premium free for 7 days. drevo.my
 #carsales #carsalesadvisor #usedcars #carloan #malaysia #drevo
