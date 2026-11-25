@@ -35,7 +35,7 @@ export default function PromoBoard({ site, firstName, hasWa, waUrlFor, waIcon, o
           <p>Set by {firstName}. Each one disappears on its last day.</p>
         </div>
       </div>
-      <div className="ps-card">
+      <div className="ps-promos">
         {promos.map((p, i) => {
           const left = daysLeft(p.until, today);
           return (

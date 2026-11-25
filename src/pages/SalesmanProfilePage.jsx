@@ -23,6 +23,7 @@ import { starterTodoKeys } from '../components/onboarding/StarterTasks';
 import PageCalculator from '../components/agent/PageCalculator';
 import PageNav from '../components/agent/PageNav';
 import SiteStyle from '../components/agent/site/SiteStyle';
+import PageLook from '../components/agent/site/PageLook';
 import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
 import ModelPicker from '../components/agent/site/ModelPicker';
 import DeliveryBlock from '../components/agent/site/DeliveryBlock';
@@ -873,13 +874,13 @@ export default function SalesmanProfilePage() {
     <>
               {/* Seller reviews (same feature as CarDetailPage, seller-scoped). Its
                   tally feeds the stats row via onSummary. */}
-              <ReviewsSection
+              <div className="ap-reviews"><ReviewsSection
                 dealerId={profile.id}
                 sellerName={profile.full_name || firstName || 'this seller'}
                 isXdrive
                 th={LIGHT_REVIEW_TH}
                 onSummary={setReviewSummary}
-              />
+              /></div>
     </>
   );
   const facts = aboutFacts(about);
@@ -1455,6 +1456,7 @@ export default function SalesmanProfilePage() {
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
               marketplace's warm wave bands (colour lives here and nowhere else). */}
           {pro && <SiteStyle />}
+          {pro && <PageLook />}
           {pro ? heroPro : <div className="ap-cover">
             {profile.cover_url ? (
               <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />

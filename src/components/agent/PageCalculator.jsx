@@ -56,14 +56,16 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
   if (!cars.length) return null;
 
   return (
-    <div style={{ containerType: 'inline-size' }}>
-    <section id="ap-calc" className="pc ap-card" aria-label="Monthly instalment calculator">
+    <div id="ap-calc" className="pc-wrap" style={{ containerType: 'inline-size', scrollMarginTop: 72 }}>
+    <div className="ps-head">
+      <div>
+        <h2>Work out your monthly</h2>
+        <p>Before you talk to the bank. Pick a car, set the deposit and years, see the instalment.</p>
+      </div>
+    </div>
+    <section className="pc ap-card" aria-label="Monthly instalment calculator">
       <style>{`
         .pc { padding: 20px 16px 18px; margin: 0 0 24px; scroll-margin-top: 72px; overflow: hidden; }
-        .pc-eb { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; }
-        .pc-eb i { display: block; width: 22px; height: 3px; border-radius: 2px; background: var(--ap-a, #dc2626); }
-        .pc h2 { margin: 8px 0 4px; font-size: clamp(22px, 5.2vw, 30px); line-height: 1.12; font-weight: 900; letter-spacing: -.02em; color: #0f1115; }
-        .pc-sub { margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #4b5563; }
         .pc-tabs { display: flex; gap: 4px; padding: 4px; background: #F1F0EC; border-radius: 12px; margin-bottom: 16px; }
         .pc-tabs button { flex: 1; height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 800; color: #4b5563; cursor: pointer; }
         .pc-tabs button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
@@ -98,7 +100,6 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-seg button[aria-checked="true"] { background: #0f1115; color: #fff; box-shadow: 0 2px 6px rgba(15,17,21,.25); }
         .pc-ctl { display: flex; flex-direction: column; gap: 16px; }
         .pc-out { background: #0f1115; color: #fff; border-radius: 18px; padding: 20px 18px 18px; position: relative; overflow: hidden; }
-        .pc-out::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, var(--ap-a, #dc2626), var(--ap-a2, #991b1b)); }
         .pc-k { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.62); }
         .pc-big { margin: 6px 0 2px; white-space: nowrap; font-size: clamp(38px, 10vw, 52px); line-height: 1; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
         .pc-big small { display: block; margin: 6px 0 0; font-size: 14px; font-weight: 700; letter-spacing: 0; color: rgba(255,255,255,.7); }
@@ -113,8 +114,6 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-none { margin: 0; padding: 20px 4px; font-size: 14px; color: rgba(255,255,255,.8); }
         @container (max-width: 639px) {
           .pc { padding: 14px 12px 12px; margin-bottom: 16px; }
-          .pc h2 { margin: 6px 0 8px; font-size: 22px; }
-          .pc-sub { display: none; }
           .pc-tabs { margin-bottom: 10px; }
           .pc-tabs button { height: 38px; font-size: 13px; }
           .pc-pick { gap: 8px; margin: 0 -12px 10px; padding: 2px 12px 4px; }
@@ -149,10 +148,6 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
           .pc-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; gap: 24px; }
         }
       `}</style>
-
-      <p className="pc-eb"><i />Calculator</p>
-      <h2>Work out your monthly</h2>
-      <p className="pc-sub">Before you talk to the bank. Pick a car, set the deposit and years, see the instalment.</p>
 
       <div className="pc-tabs" role="group" aria-label="Calculator mode">
         <button type="button" aria-pressed={tab === 'car'} onClick={() => setTab('car')}>Pick a car</button>

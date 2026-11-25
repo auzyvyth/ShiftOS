@@ -1960,7 +1960,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   never two free picks (they clash). Stored as ONE hex in `profiles.brand_color` (the first colour; a
   preset is found again by it), because the TikTok Studio reads and writes that column as a plain hex.
   The gradient is for the BANNER and photo ring only; buttons and ticks are ONE colour (owner: two-colour
-  buttons "look cheap"), and the WHOLE page takes the colour lightly (`.ap--pro`: background 9%, cards and white surfaces 3%). `brand_color` has a DB DEFAULT
+  buttons "look cheap"). **The page wash is GONE (owner, 2026-11-25: "60% white, 30% dark, 10% red, remove the upper lines"):** `src/components/agent/site/PageLook.jsx` (Premium only, every rule under `.ap--pro`) = white ground + light warm-grey tiles (no card shadows), ink `#0f1115` on the big objects (hero, promo strip, Pick your model, calculator; selected = WHITE on dark, INK on light), the seller's accent ONLY on main buttons, the slider fill and an "ends soon" word. No accent bars / dashes / rules above blocks; one heading system (Bebas H2 + one muted line); radius cards 16 / buttons 12 / chips 8, no pills on text. `brand_color` has a DB DEFAULT
   of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
   **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
   with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then

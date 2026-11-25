@@ -127,7 +127,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
     setTimeout(() => stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
   return (
-    <section className="ps" id="ap-models" aria-label="Pick your model">
+    <section className="ps ps-dark" id="ap-models" aria-label="Pick your model">
       <div className="ps-head">
         <div>
           <h2>Pick your model</h2>
