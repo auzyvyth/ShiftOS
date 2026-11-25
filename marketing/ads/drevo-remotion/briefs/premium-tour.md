@@ -9,8 +9,8 @@ Look: the dark 3D world of the dashboard pan (owner's reference). Every topic ch
 |---|---|---|---|---|---|
 | 1 | 0-10 s | Premium Dashboard in 3D, camera box to box | Berapa orang *tekan WhatsApp.* ... | How many *tapped WhatsApp.* ... | BUILT (DashPan) |
 | 2 | 10-18 s | Premium "Dealer stock" tab: a dealer's cars on your page, register a buyer | Jual stok dealer, *dari page anda.* | Sell dealer stock *from your page.* | BUILT (BrokerScene). Sample dealer, example commissions RM 300-500; the tab is English in the app |
-| 3 | 18-25 s | The Premium mini page /s/<slug> (banner, cars, budget finder) | Satu link, *semua kereta anda.* | One link, *all your cars.* | NOT BUILT |
-| 4 | 25-33 s | Live presentation: #N, monthly rolling, deposit chips | Kira *depan penonton.* | Work it out *live.* | NOT BUILT (CalcAd footage reusable) |
+| 3 | 18-25 s | The Premium mini page /s/<slug> (banner, cars, budget finder) | Satu link, *semua kereta anda.* | One link, *all your cars.* | BUILT (MiniScene). The page is English in the app except a few lines |
+| 4 | 25-33 s | Live presentation: #N, monthly rolling, deposit chips | Kira *depan penonton.* | Work it out *live.* | BUILT (LiveScene), takes re-recorded at 3x |
 | 5 | 33-40 s | Analytics > by platform (TikTok / Facebook / WhatsApp / shared link) | Tahu pembeli datang *dari mana.* | Know where buyers *come from.* | NOT BUILT |
 | 6 | 40-51 s | Loan check -> what to fix -> documents -> WhatsApp -> buyer opens their loan page | Semak dulu, *sebelum bank.* ... | Check first, *before the bank.* ... | BUILT FIRST (LoanScene) |
 | 7 | 51-55 s | Logo, "Cuba Premium 7 hari percuma", RM35/bulan (founding price, planConfig.js) | Cuba Premium *7 hari percuma.* | Try Premium *free for 7 days.* | NOT BUILT |

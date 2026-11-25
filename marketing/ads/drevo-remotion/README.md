@@ -96,3 +96,14 @@ The real Premium Dashboard tab on a sample seller, lying in 3D; the camera glide
 2. Harness on :5199, then `node harness/dash.cjs` -> `public/real/dash-<lang>.png` + `src/dash/rects.json`
 3. `python3 make-audio-dash.py`, then loudnorm to `public/audio/dash.wav` (same as the other ads)
 4. `npx remotion render src/index.js DashPan-ms out.mp4`. Timing: `src/dash/timeline.json` only.
+
+## Scenes for the Premium tour (briefs/premium-tour.md), each its own composition, joined later
+All share the 3D phone, taps, outlines, camera and captions exported from `src/loan/LoanScene.jsx`, the
+112.5 bpm grid (16 frames a beat) and a `make-audio-<scene>.py` that reads the scene's `timeline.json`.
+| Scene | Comp | Footage (real component, sample data) |
+|---|---|---|
+| Dashboard | DashPan-ms/en | `harness/dash.cjs` |
+| Dealer stock (broker) | Broker-ms/en | `harness/broker.cjs` |
+| Mini page | Mini-ms/en | `harness/minipage.cjs` |
+| Live presentation | Live-ms/en | `node harness/record-phone.cjs <calc|viewer> ms public/takes3` (now records at 3x) |
+| Loan check | Loan-ms/en | `harness/loan.cjs` |

@@ -64,7 +64,7 @@ const TAKES = {
   fs.mkdirSync(outDir, { recursive: true });
   const frameDir = path.join(outDir, `.${take}-${lang}-frames`);
   fs.rmSync(frameDir, { recursive: true, force: true }); fs.mkdirSync(frameDir);
-  const b = await chromium.launch();
+  const b = await chromium.launch({ args: ['--force-device-scale-factor=' + DSF] }); // else the screencast comes out at 1x
   const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: DSF, hasTouch: true, isMobile: true });
   await p.goto(`http://localhost:5199/?lang=${lang}`);
   await p.waitForSelector('.lp');

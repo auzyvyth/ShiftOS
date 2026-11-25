@@ -1,0 +1,10 @@
+{
+  "_": "Mini page scene. ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat. Frames. Shots and positions from harness/minipage.cjs (the real SalesmanProfilePage, sample seller).",
+  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 304,
+  "outlineCard": 12,
+  "scrollCars": [40, 56], "outlineCar": 60,
+  "scrollBudget": [96, 110], "tapBudget": 112, "budget": 116, "outlineFit": 126,
+  "tapWa": 176,
+  "scrollWhy": [200, 216], "outlineWhy": 220,
+  "captions": [0, 48, 112, 176, 208]
+}

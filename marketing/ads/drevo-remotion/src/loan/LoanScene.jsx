@@ -34,11 +34,11 @@ const LINK_MSG = "Hi Nadia, here's your car loan page — where each bank stands
 
 // ---------- phone: 390x844 screen at S, standing in 3D ----------
 export const S = 1.25, SW = 390 * S, SH = 844 * S, BEZ = 16;
-export const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0 }) => (
-  <div style={{ position: 'absolute', left: x - SW / 2 - BEZ, top: y, width: SW + 2 * BEZ, height: SH + 2 * BEZ, borderRadius: 64,
+export const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0, w = SW, h = SH }) => (
+  <div style={{ position: 'absolute', left: x - w / 2 - BEZ, top: y, width: w + 2 * BEZ, height: h + 2 * BEZ, borderRadius: 64,
     background: '#16181d', boxShadow: `0 60px 120px rgba(0,0,0,0.75), 0 0 0 2px #2a2d34, 0 0 ${90 * glow}px rgba(220,38,38,${0.45 * glow})`,
     transform: `translateZ(${z}px) rotateY(${ry}deg) rotateX(${rx}deg)`, transformStyle: 'preserve-3d' }}>
-    <div style={{ position: 'absolute', left: BEZ, top: BEZ, width: SW, height: SH, borderRadius: 50, overflow: 'hidden', background: '#0b0c0f' }}>
+    <div style={{ position: 'absolute', left: BEZ, top: BEZ, width: w, height: h, borderRadius: 50, overflow: 'hidden', background: '#0b0c0f' }}>
       {children}
     </div>
   </div>

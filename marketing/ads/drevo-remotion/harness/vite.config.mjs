@@ -19,7 +19,7 @@ export default defineConfig({
     ],
   },
   publicDir: path.join(repo, 'public'),
-  build: { rollupOptions: { input: ['index.html', 'tools.html', 'sold.html', 'dash.html', 'loan.html', 'broker.html'].map((f) => path.join(here, f)) } },
+  build: { rollupOptions: { input: ['index.html', 'tools.html', 'sold.html', 'dash.html', 'loan.html', 'broker.html', 'minipage.html'].map((f) => path.join(here, f)) } },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['onnxruntime-web'] },
   server: { port: 5199, strictPort: true, fs: { allow: [repo] } },

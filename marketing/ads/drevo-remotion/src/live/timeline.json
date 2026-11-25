@@ -1,0 +1,7 @@
+{
+  "_": "Live presentation scene. ONE timing source. 112.5 bpm = 16 frames a beat. Frames. Footage = the real LivePresenter recorded by harness/record-phone.cjs (public/takes3, 1200x2340). Each take plays from `from` (seconds into the recording) for `len` frames; taps come from its clicks.json.",
+  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 320,
+  "calc": { "at": 0, "from": 0.5, "len": 152 },
+  "viewer": { "at": 152, "from": 0.4, "len": 168 },
+  "captions": [0, 64, 152, 240]
+}

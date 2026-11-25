@@ -9,6 +9,8 @@ import { Counts, N_FPS, N_DUR } from './counts/Counts';
 import { DashPan, D_FPS, D_DUR } from './dash/DashPan';
 import { LoanScene, L_FPS, L_DUR } from './loan/LoanScene';
 import { BrokerScene, B_FPS, B_DUR } from './broker/BrokerScene';
+import { MiniScene, M_FPS, M_DUR } from './mini/MiniScene';
+import { LiveScene, V_FPS, V_DUR } from './live/LiveScene';
 
 export const Root = () => (
   <>
@@ -25,6 +27,10 @@ export const Root = () => (
     <Composition id="Loan-en" component={LoanScene} durationInFrames={L_DUR} fps={L_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
     <Composition id="Broker-ms" component={BrokerScene} durationInFrames={B_DUR} fps={B_FPS} width={1080} height={1920} defaultProps={{ lang: 'ms', audio: true }} />
     <Composition id="Broker-en" component={BrokerScene} durationInFrames={B_DUR} fps={B_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
+    <Composition id="Mini-ms" component={MiniScene} durationInFrames={M_DUR} fps={M_FPS} width={1080} height={1920} defaultProps={{ lang: 'ms', audio: true }} />
+    <Composition id="Mini-en" component={MiniScene} durationInFrames={M_DUR} fps={M_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
+    <Composition id="Live-ms" component={LiveScene} durationInFrames={V_DUR} fps={V_FPS} width={1080} height={1920} defaultProps={{ lang: 'ms', audio: true }} />
+    <Composition id="Live-en" component={LiveScene} durationInFrames={V_DUR} fps={V_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
     <Composition id="CalcAd-vo" component={CalcAd} durationInFrames={C_DUR} fps={C_FPS} width={1080} height={1920} defaultProps={{ audio: true, vo: true }} />
   </>
 );
