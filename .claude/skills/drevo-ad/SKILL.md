@@ -10,6 +10,8 @@ pushback before work starts, and judges the result frame by frame. Two ads exist
 `marketing/ads/drevo-remotion/` (Premium features tour, renewals reminder).
 
 ## Read first, every time (they are short)
+0. `marketing/ads/drevo-remotion/MOTION_DESIGN.md`: the newest rules (2026-11-25): one continuous shot, white
+   world, hook on frame 0, tuned sounds on a beat grid, sharp real-screen capture. Newer than the files below.
 1. `marketing/ads/drevo-remotion/STYLE.md`: the owner's rules on one page
 2. `marketing/ads/drevo-remotion/LESSONS.md`: what went wrong before
 3. `marketing/ads/drevo-remotion/DESIGN.md`: colour, type, layout bands, safe area, components, real-product rules

@@ -58,3 +58,15 @@ mistakes, so the next one starts from them instead of repeating them.
    Found only while writing `DESIGN.md`; fix in the next render (move it to about y 1380).
 10. **An ad needs its own sound script.** The first full-render request found the renewals ad silent.
     Write the audio cues as soon as the timing is fixed, from the same timing file.
+
+## Premium tour (2026-11-25), full rules in MOTION_DESIGN.md
+1. **"No cut offs."** Hard cuts with red cards felt choppy; one shot (map -> glide into a part -> back out) won.
+2. **Black hid the app.** The dark world made dark app screens disappear; white with a hint of red fixed it.
+3. **No hook = no viewers.** Opening on a logo and a map said nothing for 3 s. Name the viewer on frame 0.
+4. **Whooshes annoyed the owner.** Replace every noise whoosh with a tuned hit (thock, bell, reversed swell).
+5. **Pixelated close-ups.** Capture at 3-4x; force the device scale for screencasts; lay 3D pages out 4x.
+6. **Gliding the camera centre swung the shot** across the map. Pin the target's screen position instead.
+7. **Example commissions were too high** (RM 3,000). Keep sample money modest and labelled.
+8. **Music restarted at every join** when scenes were glued. One music bed + effects-only stems per scene.
+9. **The app is English in places** (broker tab, seller page, buyer's loan page): the BM cut shows English.
+10. **Audit your own render** (contact sheet, 10 fps transitions, loudness per second) before asking the owner.

@@ -1,5 +1,9 @@
 # Drevo ad style (owner-approved, 2026-11-03)
 
+> **Newer: `MOTION_DESIGN.md` (2026-11-25).** Where they differ it wins: the Premium tour has no chapter cards
+> (a red outline on a map marks each topic, one continuous shot), and the owner allowed a voice-over in the
+> calculator ad. The colour rule below still holds: white world, red accents, the dark app as the 10%.
+
 The rules every Drevo marketing video follows, on one page. The detail behind each rule:
 `DESIGN.md` (look: colour, type, layout, safe area, components, real product) and
 `AnimationStyle.md` (motion and sound). Mistakes to avoid: `LESSONS.md`. Build and render: `README.md`.

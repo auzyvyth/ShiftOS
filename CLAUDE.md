@@ -336,7 +336,7 @@ Project ID: lemdkdizdlcirhbzqlos
 
 ## Marketing videos (ads) — use the `drevo-ad` skill
 Any ad or promo video: load `.claude/skills/drevo-ad/SKILL.md`. It points at the docs in
-`marketing/ads/drevo-remotion/`: `STYLE.md` (owner's rules on one page: 60% white / 30% red / 10%
+`marketing/ads/drevo-remotion/`: `MOTION_DESIGN.md` (newest, 2026-11-25: one continuous shot, white world, hook on frame 0, tuned sounds on a beat grid), `STYLE.md` (owner's rules on one page: 60% white / 30% red / 10%
 black, hard-cut red chapter card at every topic change, real app footage only, Remotion), `LESSONS.md`
 (mistakes per ad + the approval steps: script -> stills -> first 5 s -> full render), `DESIGN.md`
 (look, safe area, components), `AnimationStyle.md` (motion + sound) and `README.md` (commands). That
