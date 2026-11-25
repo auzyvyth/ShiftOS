@@ -2423,7 +2423,7 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Search takes `#7` or a name. Keyboard: digits then Enter opens that #N (`typedNo`, clears after
   3s). One row per CAR (a model card is one row; variants stay chips). A sharer of the WHOLE
   screen in LIVE Studio shows the list too: they share the presenter window only.
-  **The seller arranges their own #N (LIVE-ORDER, owner 2026-11-23, migration `20261123a_live_car_order.sql`, QUEUED):**
+  **The seller arranges their own #N (LIVE-ORDER, owner 2026-11-23, migration `20261123a_live_car_order.sql`, APPLIED 2026-11-23 13:20 MYT on the owner's "apply it now"):**
   the Jump list's Arrange mode moves brands and cars up/down; the order is saved on the ACCOUNT
   (`profiles.car_order`, written only by `set_my_car_order`, read by `get_agent_car_order`, applied last on
   /s/<slug> via `applyCarOrder`), so stream, page and the Live now card keep one numbering. A move is

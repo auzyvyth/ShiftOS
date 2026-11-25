@@ -100,7 +100,9 @@ export function captchaErrorMessage() {
   if (lastErrorCode && lastErrorCode.startsWith('1101')) {
     return `Sign-in is blocked on ${host} — the Turnstile site key this build was made with isn't valid. Use drevo.my.`;
   }
-  return CAPTCHA_ERROR_MESSAGE;
+  // Name the Cloudflare code when there is one: "300xxx/600xxx" = the browser failed the
+  // challenge (old Chrome, wrong clock, extension), and it is the only clue to which.
+  return lastErrorCode ? `${CAPTCHA_ERROR_MESSAGE} (code ${lastErrorCode})` : CAPTCHA_ERROR_MESSAGE;
 }
 
 /** True when Supabase rejected the call for a captcha reason rather than a bad credential. */
@@ -317,14 +319,13 @@ function getToken() {
     return Promise.resolve(token);
   }
 
-  // The widget errored and is sitting idle. Waiting on it would burn the full
-  // timeout for a token that is never coming, so hand back nothing now, let
-  // Supabase answer, and reset in the background so the next attempt has a
-  // real chance.
-  if (failed) {
-    rearm();
-    return Promise.resolve(undefined);
-  }
+  // The widget errored earlier and is sitting idle. It used to hand back nothing
+  // here, so the FIRST press after any hiccup always failed with "couldn't verify
+  // you're human" and only the second worked (owner, 2026-11-24: "I keep running
+  // into it"). Now the press restarts the check and waits for it; a check that
+  // fails again answers at once (the error callback resolves the wait), so a real
+  // block does not cost the full timeout.
+  if (failed) rearm();
 
   // Nothing parked yet. Wait for the in-flight challenge rather than firing a
   // second one — reset() here would abandon the challenge already running and
