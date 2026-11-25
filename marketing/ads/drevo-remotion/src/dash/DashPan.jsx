@@ -122,7 +122,7 @@ const Caption = ({ lines, at, out }) => {
   );
 };
 
-export const DashPan = ({ lang = 'ms', audio = true }) => {
+export const DashPan = ({ lang = 'ms', audio = true, entered = false }) => {
   const f = useCurrentFrame();
   const C = COPY[lang];
   const img = staticFile(`real/dash-${lang}.png`);
@@ -133,7 +133,7 @@ export const DashPan = ({ lang = 'ms', audio = true }) => {
   const focused = TL.boxes.findIndex((d, i) => f >= d - 4 && f < (TL.boxes[i + 1] ?? TL.pullback) - TL.travel + 8);
   const dimTo = f >= TL.boxes[0] - 6 && f < TL.pullback - 6 ? 0.55 : 0;
   const dim = interpolate(f, [TL.boxes[0] - 10, TL.boxes[0]], [0, 1], cl) * interpolate(f, [TL.pullback - 14, TL.pullback], [1, 0], cl) * dimTo;
-  const enter = interpolate(f, [0, 22], [0, 1], cl);
+  const enter = entered ? 1 : interpolate(f, [0, 22], [0, 1], cl);
   const endFade = interpolate(f, [TL.logo, TL.logo + 18], [1, 0.28], cl);
   const logo = spring({ frame: f - TL.logo, fps: D_FPS, config: { damping: 12, mass: 0.8, stiffness: 140 } });
   const drift = Math.sin(f / 70) * 160;

@@ -160,12 +160,12 @@ export const camAt = (keys, f) => {
   return { x: a[1] + (b[1] - a[1]) * t, y: a[2] + (b[2] - a[2]) * t, z: Math.exp(Math.log(a[3]) + (Math.log(b[3]) - Math.log(a[3])) * t) };
 };
 
-export const LoanScene = ({ lang = 'ms', audio = true }) => {
+export const LoanScene = ({ lang = 'ms', audio = true, entered = false }) => {
   const f = useCurrentFrame();
   const R = RECTS[lang], C = COPY[lang];
   const img = (n) => staticFile(`real/loan-${n}-${lang}.png`);
   // seller phone: swings in, holds, then steps back left when the message goes out
-  const enter = sp(f, TL.enter, { damping: 16, mass: 0.9, stiffness: 110 });
+  const enter = entered ? 1 : sp(f, TL.enter, { damping: 16, mass: 0.9, stiffness: 110 });
   const away = interpolate(f, [TL.swap, TL.swap + 16], [0, 1], { ...cl, easing: Easing.bezier(0.65, 0, 0.25, 1) });
   const buyerIn = interpolate(f, [TL.swap, TL.swap + 16], [0, 1], { ...cl, easing: Easing.bezier(0.65, 0, 0.25, 1) });
   const float = Math.sin(f / 26) * 1.5;

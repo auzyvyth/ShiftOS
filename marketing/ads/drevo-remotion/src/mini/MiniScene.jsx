@@ -20,7 +20,7 @@ const COPY = {
 };
 const FOCUS_Y = 1120;
 
-export const MiniScene = ({ lang = 'ms', audio = true }) => {
+export const MiniScene = ({ lang = 'ms', audio = true, entered = false }) => {
   const f = useCurrentFrame();
   const R = RECTS[lang], C = COPY[lang];
   const img = (n) => staticFile(`real/mini-${n}-${lang}.png`);
@@ -43,7 +43,7 @@ export const MiniScene = ({ lang = 'ms', audio = true }) => {
   const cam = camAt(KEYS, f);
   const PY = 450;
   const sx = 540 - SW / 2 + cam.x * S, sy = PY + BEZ + cam.y * S;
-  const enter = spring({ frame: f, fps: M_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
+  const enter = entered ? 1 : spring({ frame: f, fps: M_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
   const float = Math.sin(f / 26) * 1.5;
   const inBudget = f >= TL.budget && f < TL.scrollWhy[0];
   return (

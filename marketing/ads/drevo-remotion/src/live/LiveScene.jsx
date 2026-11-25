@@ -41,7 +41,7 @@ const Take = ({ take, name }) => (
   </Sequence>
 );
 
-export const LiveScene = ({ lang = 'ms', audio = true }) => {
+export const LiveScene = ({ lang = 'ms', audio = true, entered = false }) => {
   const f = useCurrentFrame();
   const C = COPY[lang];
   const PY = 470;
@@ -51,7 +51,7 @@ export const LiveScene = ({ lang = 'ms', audio = true }) => {
     [v + 4, 200, 390, 1], [v + 40, 200, 200, 1.4], [v + 80, 200, 200, 1.4], [v + 100, 200, 470, 1.45], [TL.dur - 18, 200, 470, 1.45], [TL.dur, 200, 390, 1.05]];
   const cam = camAt(KEYS, f);
   const sx = 540 - PW / 2 + cam.x * K, sy = PY + BEZ + cam.y * K;
-  const enter = spring({ frame: f, fps: V_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
+  const enter = entered ? 1 : spring({ frame: f, fps: V_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
   const swap = interpolate(f, [v - 4, v + 6], [0, 1], cl);
   const float = Math.sin(f / 26) * 1.5;
   return (

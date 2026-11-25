@@ -92,6 +92,11 @@ end = int(T(TL['logo'] + 30) * SR); mus[end:] *= np.exp(-np.arange(N - end) / SR
 out = np.tanh(1.1 * (mus + fx)); out = out[:int(DUR * SR)]
 out /= max(1e-9, np.abs(out).max()) / .89
 st = np.stack([out, np.roll(out, 24)], 1)
+# effects alone (no music), same gain as the mix: the joined tour lays these over ONE music bed
+_g = .89 / max(1e-9, np.abs(np.tanh(1.1 * (mus + fx))[:int(DUR * SR)]).max())
+_fx = np.tanh(1.1 * fx)[:int(DUR * SR)] * _g; _fx = np.stack([_fx, np.roll(_fx, 24)], 1)
+with wave.open('public/audio/dash-fx.wav', 'wb') as w:
+    w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((_fx * 32767).astype('<i2').tobytes())
 with wave.open('public/audio/dash-raw.wav', 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((st * 32767).astype('<i2').tobytes())
 print('ok', DUR)

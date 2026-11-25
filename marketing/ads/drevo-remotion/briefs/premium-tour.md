@@ -1,6 +1,8 @@
 # Premium tour ad (owner's brief, 2026-11-25): script, gate 2
 
-JOINED (2026-11-25): `Tour-ms` / `Tour-en`, 48 s, src/tour (order and bar lengths in src/tour/timeline.json).
+JOINED as ONE shot (owner, 2026-11-25: "no cut offs"): `Tour-ms` / `Tour-en`, 54 s, src/tour. The Drevo logo, a map of the five
+parts around it, then for each part: outline, glide in (the node IS the clip), play, glide back out. One music bed under
+all of it (make-audio-tour.py), each clip's own effects laid in. Red chapter cards are gone: the outline does their job.
 Not in it yet: scene 5 (views by social platform). End card has no price on purpose (founding-price wording).
 
 Order from the owner: dashboard (done) -> dealer stock as a broker -> mini page -> live presentation ->

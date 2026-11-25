@@ -32,11 +32,11 @@ const KEYS = [
   [TL.buyers + 10, 195, mid(R.buyer), 1.6], [TL.dur - 24, 195, mid(R.buyer), 1.6], [TL.dur, 195, 430, 1.05],
 ];
 
-export const BrokerScene = ({ lang = 'ms', audio = true }) => {
+export const BrokerScene = ({ lang = 'ms', audio = true, entered = false }) => {
   const f = useCurrentFrame();
   const C = COPY[lang];
   const img = (n) => staticFile(`real/broker-${n}.png`);
-  const enter = spring({ frame: f, fps: B_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
+  const enter = entered ? 1 : spring({ frame: f, fps: B_FPS, config: { damping: 16, mass: 0.9, stiffness: 110 } });
   const cam = camAt(KEYS, f);
   const PY = 450;
   const sx = 540 - SW / 2 + cam.x * S, sy = PY + BEZ + cam.y * S;
