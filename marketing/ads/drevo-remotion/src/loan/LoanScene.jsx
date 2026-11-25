@@ -33,8 +33,8 @@ const COPY = {
 const LINK_MSG = "Hi Nadia, here's your car loan page — where each bank stands and what documents are still needed. It updates as things move:";
 
 // ---------- phone: 390x844 screen at S, standing in 3D ----------
-const S = 1.25, SW = 390 * S, SH = 844 * S, BEZ = 16;
-const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0 }) => (
+export const S = 1.25, SW = 390 * S, SH = 844 * S, BEZ = 16;
+export const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0 }) => (
   <div style={{ position: 'absolute', left: x - SW / 2 - BEZ, top: y, width: SW + 2 * BEZ, height: SH + 2 * BEZ, borderRadius: 64,
     background: '#16181d', boxShadow: `0 60px 120px rgba(0,0,0,0.75), 0 0 0 2px #2a2d34, 0 0 ${90 * glow}px rgba(220,38,38,${0.45 * glow})`,
     transform: `translateZ(${z}px) rotateY(${ry}deg) rotateX(${rx}deg)`, transformStyle: 'preserve-3d' }}>
@@ -43,16 +43,17 @@ const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0 }) => (
     </div>
   </div>
 );
-const Shot = ({ src, y = 0, h = 844 }) => <Img src={src} style={{ position: 'absolute', left: 0, top: -y * S, width: SW, height: h * S }} />;
+export const Shot = ({ src, y = 0, h = 844 }) => <Img src={src} style={{ position: 'absolute', left: 0, top: -y * S, width: SW, height: h * S }} />;
 // a new screen slides over the old one, like app navigation
-const Push = ({ at, children }) => {
+export const Push = ({ at, children, up = false, fade = false }) => {
   const f = useCurrentFrame();
   if (f < at) return null;
   const p = interpolate(f, [at, at + 10], [0, 1], { ...cl, easing: out });
-  return <div style={{ position: 'absolute', inset: 0, transform: `translateX(${(1 - p) * SW}px)`, boxShadow: '-20px 0 40px rgba(0,0,0,0.5)' }}>{children}</div>;
+  const move = fade ? 'none' : up ? `translateY(${(1 - p) * SH * 0.6}px)` : `translateX(${(1 - p) * SW}px)`;
+  return <div style={{ position: 'absolute', inset: 0, transform: move, opacity: fade || up ? Math.min(1, p * 1.5) : 1, boxShadow: fade ? 'none' : '-20px 0 40px rgba(0,0,0,0.5)' }}>{children}</div>;
 };
 // a tap: the button dims for a moment and a red ring opens from it
-const Tap = ({ at, r }) => {
+export const Tap = ({ at, r }) => {
   const f = useCurrentFrame();
   if (!r || f < at - 2 || f > at + 18) return null;
   const p = interpolate(f, [at, at + 16], [0, 1], { ...cl, easing: out });
@@ -67,7 +68,7 @@ const Tap = ({ at, r }) => {
   );
 };
 // a red outline drawn around a block, inside the screen
-const Outline = ({ at, r, until }) => {
+export const Outline = ({ at, r, until }) => {
   const f = useCurrentFrame();
   if (!r || f < at - 1 || (until && f > until + 8)) return null;
   const d = interpolate(f, [at, at + 12], [0, 1], { ...cl, easing: out });
@@ -117,7 +118,7 @@ const Chat = ({ lang }) => {
 };
 
 // ---------- caption ----------
-const Caption = ({ lines, at, until }) => {
+export const Caption = ({ lines, at, until }) => {
   const f = useCurrentFrame();
   if (f < at || (until && f > until + 8)) return null;
   const gone = until ? interpolate(f, [until, until + 6], [0, 1], cl) : 0;
@@ -151,8 +152,8 @@ const camKeys = (R, scrollMax) => [
   [TL.outlineBanks + 2, 195, R.banks.y - scrollMax + R.banks.h / 2, 1.5], [TL.dur - 28, 195, R.banks.y - scrollMax + R.banks.h / 2, 1.5],
   [TL.dur, 195, 430, 1.0],
 ];
-const glide = Easing.bezier(0.65, 0, 0.25, 1);
-const camAt = (keys, f) => {
+export const glide = Easing.bezier(0.65, 0, 0.25, 1);
+export const camAt = (keys, f) => {
   let i = 0; while (i < keys.length - 2 && f >= keys[i + 1][0]) i++;
   const a = keys[i], b = keys[i + 1];
   const t = glide(Math.min(1, Math.max(0, (f - a[0]) / (b[0] - a[0]))));

@@ -1,0 +1,10 @@
+{
+  "_": "Broker (dealer stock) scene. ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat. Frames. Screens and taps from harness/broker.cjs (the real BrokerStock, sample dealer).",
+  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 304,
+  "outlineCar": 16, "earn": 32,
+  "tapAdd": 56, "added": 60,
+  "tapRegister": 96, "sheet": 100,
+  "tapSubmit": 144, "held": 148, "outlineHeld": 156,
+  "buyers": 208, "outlineBuyer": 216,
+  "captions": [0, 52, 96, 144, 208]
+}

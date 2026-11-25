@@ -8,7 +8,7 @@ Look: the dark 3D world of the dashboard pan (owner's reference). Every topic ch
 | # | Time | Picture (real screen, harness) | BM headline | EN headline | Status |
 |---|---|---|---|---|---|
 | 1 | 0-10 s | Premium Dashboard in 3D, camera box to box | Berapa orang *tekan WhatsApp.* ... | How many *tapped WhatsApp.* ... | BUILT (DashPan) |
-| 2 | 10-18 s | Premium "Dealer stock" tab: a dealer's cars on your page, register a buyer | Jual stok dealer, *dari page anda.* | Sell dealer stock *from your page.* | NOT BUILT, see flag A |
+| 2 | 10-18 s | Premium "Dealer stock" tab: a dealer's cars on your page, register a buyer | Jual stok dealer, *dari page anda.* | Sell dealer stock *from your page.* | BUILT (BrokerScene). Sample dealer, example commissions RM 300-500; the tab is English in the app |
 | 3 | 18-25 s | The Premium mini page /s/<slug> (banner, cars, budget finder) | Satu link, *semua kereta anda.* | One link, *all your cars.* | NOT BUILT |
 | 4 | 25-33 s | Live presentation: #N, monthly rolling, deposit chips | Kira *depan penonton.* | Work it out *live.* | NOT BUILT (CalcAd footage reusable) |
 | 5 | 33-40 s | Analytics > by platform (TikTok / Facebook / WhatsApp / shared link) | Tahu pembeli datang *dari mana.* | Know where buyers *come from.* | NOT BUILT |
@@ -16,8 +16,8 @@ Look: the dark 3D world of the dashboard pan (owner's reference). Every topic ch
 | 7 | 51-55 s | Logo, "Cuba Premium 7 hari percuma", RM35/bulan (founding price, planConfig.js) | Cuba Premium *7 hari percuma.* | Try Premium *free for 7 days.* | NOT BUILT |
 
 ## Flags for the owner (decide before scenes 2 and 6 ship)
-A. **Brokers: CLAUDE.md says "never sell it before a real dealer's stock is connected".** If no dealer is
-   connected yet, scene 2 promises something a seller cannot use today. Options: wait, or cut scene 2.
+A. **Brokers: settled (owner, 2026-11-25).** The owner's own dealer account holds 208 live cars with two brokers
+   connected, so a seller who joins finds real stock. Open: rename the dealer from "XDRIVE"; never a fake "was" price.
 B. **Scene 6 is two steps in the app, shown as one flow.** The loan check's own WhatsApp message is the
    document list (text, real). The LINK to the buyer's loan page is sent from the bank application that the
    loan check opens ("Start the bank application" -> "Share with buyer"). The scene shows both messages, so

@@ -8,6 +8,7 @@ import { CalcAd, C_FPS, C_DUR } from './calc2/CalcAd';
 import { Counts, N_FPS, N_DUR } from './counts/Counts';
 import { DashPan, D_FPS, D_DUR } from './dash/DashPan';
 import { LoanScene, L_FPS, L_DUR } from './loan/LoanScene';
+import { BrokerScene, B_FPS, B_DUR } from './broker/BrokerScene';
 
 export const Root = () => (
   <>
@@ -22,6 +23,8 @@ export const Root = () => (
     <Composition id="DashPan-en" component={DashPan} durationInFrames={D_DUR} fps={D_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
     <Composition id="Loan-ms" component={LoanScene} durationInFrames={L_DUR} fps={L_FPS} width={1080} height={1920} defaultProps={{ lang: 'ms', audio: true }} />
     <Composition id="Loan-en" component={LoanScene} durationInFrames={L_DUR} fps={L_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
+    <Composition id="Broker-ms" component={BrokerScene} durationInFrames={B_DUR} fps={B_FPS} width={1080} height={1920} defaultProps={{ lang: 'ms', audio: true }} />
+    <Composition id="Broker-en" component={BrokerScene} durationInFrames={B_DUR} fps={B_FPS} width={1080} height={1920} defaultProps={{ lang: 'en', audio: true }} />
     <Composition id="CalcAd-vo" component={CalcAd} durationInFrames={C_DUR} fps={C_FPS} width={1080} height={1920} defaultProps={{ audio: true, vo: true }} />
   </>
 );
