@@ -46,6 +46,7 @@ const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
 const UsedCarsHubPage = lazy(() => import("./pages/UsedCarsHubPage"));
 const NewCarModelPage = lazy(() => import("./pages/NewCarModelPage"));
 const BrandLoanPage = lazy(() => import("./pages/BrandLoanPage"));
+const BrandHubPage = lazy(() => import("./pages/BrandHubPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
@@ -199,6 +200,7 @@ function App() {
           <Route path="/used-cars" element={<UsedCarsHubPage />} />
           <Route path="/used-cars/:brand" element={<UsedCarsHubPage />} />
           <Route path="/used-cars/:brand/:model" element={<UsedCarsHubPage />} />
+          <Route path="/new-cars/:brand" element={<BrandHubPage />} />
           <Route path="/new-cars/:brand/:model" element={<NewCarModelPage />} />
           <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />

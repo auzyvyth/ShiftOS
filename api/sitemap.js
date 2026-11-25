@@ -4,6 +4,7 @@ import { ARTICLE_PAGES } from "../src/config/articlePages.generated.js";
 import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelHubs.js";
 import { newModelPath } from "../src/utils/newCars.js";
 import { loanPath } from "../src/utils/brandLoan.js";
+import { hubPath } from "../src/utils/brandHub.js";
 export const config = { runtime: "edge" };
 
 import { ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
@@ -230,6 +231,8 @@ export default async function handler(req) {
         if (!r.brand || loanSeen.has(r.brand)) continue;
         loanSeen.add(r.brand);
         staticRoutes.push({ path: loanPath(r.brand), changefreq: "weekly", priority: "0.8" });
+        // BRAND-HUB: /new-cars/:brand, the page that should rank for "<brand> price Malaysia".
+        staticRoutes.push({ path: hubPath(r.brand), changefreq: "daily", priority: "0.9" });
       }
     } catch (_) {}
   }

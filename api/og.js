@@ -22,6 +22,7 @@ import { CALC_META } from "../src/config/calculatorCopy.js";
 import { LOAN_TENURES, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan, modelGuide, loanSections } from "../src/utils/brandLoan.js";
 import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, modelDisplayName, newModelPath, NEW_CAR_BRANDS } from "../src/utils/newCars.js";
+import { hubPath as brandHubPath, hubModels as brandHubModels, hubGroups as brandHubGroups, hubFaqs as brandHubFaqs, hubCopy as brandHubCopy, hubJsonLd as brandHubJsonLd } from "../src/utils/brandHub.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 import { dealerSchema } from "../src/utils/dealerSchema.js";
 import { OG_IMAGES } from "../src/config/ogImages.js";
@@ -329,6 +330,33 @@ function buildNewModelHtml(brand, rows, advisors) {
     <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
   </main>`;
   return htmlShell({ title: copy.title, description: copy.description, canonical, body });
+}
+
+// BRAND-HUB: /new-cars/:brand. Same copy as BrandHubPage (brandHub.js). Prices, photos and links only.
+function buildBrandHubHtml(brand, models) {
+  const copy = brandHubCopy(brand, models);
+  const faqs = brandHubFaqs(brand, models);
+  const groups = brandHubGroups(brand, models);
+  const cards = models.map((m) => `<li>${m.photo ? `<img src="${esc(m.photo)}" alt="${esc(m.name)}" width="400" height="225" /> ` : ""}<a href="${SITE_URL}${m.path}">${esc(m.name)}</a> from ${esc(newRm(m.from))} (${m.nVariants} ${m.nVariants === 1 ? "variant" : "variants"})</li>`).join("");
+  const secs = groups.map((g) => `<h2>${esc(g.h2)}</h2><p>${esc(g.text)}</p><ul>${g.ms.map((m) => `<li><a href="${SITE_URL}${m.path}">${esc(m.name)}</a></li>`).join("")}</ul>`).join("");
+  const faqHtml = faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("");
+  const others = NEW_CAR_BRANDS.filter((b) => b !== brand).map((b) => `<li><a href="${SITE_URL}${brandHubPath(b)}">New ${esc(b)}</a></li>`).join("");
+  const body = `  <main>
+    <h1>${esc(copy.h1)}</h1>
+    <p>${esc(copy.intro)}</p>
+    <h2>All ${esc(brand)} models</h2>
+    <ul>${cards}</ul>
+    <p>Prices are official, for Peninsular Malaysia, on the road without insurance.</p>
+    ${secs}
+    <h2>${esc(copy.malay.h2)}</h2>
+    <p>${esc(copy.malay.text)} <a href="${SITE_URL}${copy.malay.loanHref}">${esc(copy.malay.loanLabel)}</a></p>
+    <h2>${esc(brand)} questions</h2>
+    ${faqHtml}
+    <h2>Other new car brands</h2>
+    <ul>${others}</ul>
+  </main>`;
+  const image = models.find((m) => m.photo)?.photo || undefined;
+  return htmlShell({ title: copy.title, description: copy.description, canonical: `${SITE_URL}${brandHubPath(brand)}`, jsonLd: brandHubJsonLd(brand, models, faqs, SITE_URL), body, ...(image ? { image } : {}) });
 }
 
 // LOAN-SEO: /kalkulator-loan/:brand. Same copy + maths as BrandLoanPage (brandLoan.js).
@@ -1244,6 +1272,19 @@ async function render(req) {
 
   // 4b2. New-car model pages (NEWCAR-1) -- marketplace only. A model with no
   // active price row is not a page (404, never an empty soft-404).
+  // BRAND-HUB: /new-cars/:brand (404 for a brand with no priced model). Same words as BrandHubPage.
+  const brandHubMatch = pathname.match(/^\/new-cars\/([^/]+)$/);
+  if (brandHubMatch) {
+    if (subdomain) return new Response("Not found", { status: 404 });
+    const bhBrand = brandFromSlug(decodeURIComponent(brandHubMatch[1]));
+    if (!bhBrand) return new Response("Not found", { status: 404 });
+    const bhRows = await sbFetch(`new_car_models?brand=eq.${encodeURIComponent(bhBrand)}&is_active=eq.true&select=id,brand,model,variant,body_type,fuel_type,price_peninsular,is_active,specs`);
+    const bhMedia = await sbFetch(`new_car_model_media?brand=eq.${encodeURIComponent(bhBrand)}&select=model,images`);
+    const bhMods = brandHubModels(bhBrand, bhRows, Object.fromEntries(bhMedia.map((x) => [x.model, x.images || []])));
+    if (!bhMods.length) return new Response("Not found", { status: 404 });
+    return html(buildBrandHubHtml(bhBrand, bhMods));
+  }
+
   const ncMatch = pathname.match(/^\/new-cars\/([^/]+)\/([^/]+)$/);
   if (ncMatch) {
     if (subdomain) return new Response("Not found", { status: 404 });

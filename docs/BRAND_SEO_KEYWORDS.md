@@ -1,0 +1,766 @@
+# Brand page keywords (2026-11-25)
+
+Source: Google Malaysia results for each brand's price list, models, hybrid / EV / instalment and Malay
+("harga kereta <brand>") searches. Who ranks: ZigWheels, Paultan, Carlist, SoyaCincau, PCauto, Motorist,
+Bateriku, and the brands' own sites. The patterns that kept appearing:
+
+- `<brand> price malaysia 2026`, `<brand> price list`, `<brand> models`, `new <brand>`, `<brand> cars price`
+- `<brand> <body>` pages (SUV, sedan, MPV, 5 / 7 seater), `<brand> hybrid`, `<brand> EV`, `<brand> under RMxxk`
+- `<model> price`, `<model> variants`, `<model> specs`, `<model> review`, `<model> vs <rival>`
+- Malay: `harga kereta <brand> 2026`, `senarai harga <brand>`, `ansuran bulanan <model>`
+- News intent (price cut, launch, rebate, Merdeka promo): NOT answered by these pages on purpose, promos expire and
+  the database holds none.
+
+Each keyword below is answered by something real on the brand page or its model / loan pages
+(`/new-cars/<brand>`, `/new-cars/<brand>/<model>`, `/kalkulator-loan/<brand>`). Built by `brandKeywords()` in
+`src/utils/brandHub.js` from the price list; re-run `node tools/brand-seo/keywords.mjs` when models change.
+Search volumes are not in this file: no keyword tool was available, so nothing here is ranked by volume.
+
+
+## Proton (9 models, 122 keywords) - /new-cars/proton
+
+- proton price malaysia
+- proton price malaysia 2026
+- proton price list
+- proton price list 2026
+- proton cars price malaysia
+- proton models malaysia
+- new proton malaysia
+- new proton price
+- proton car price
+- proton otr price
+- proton on the road price
+- proton loan calculator
+- proton car loan
+- proton monthly instalment
+- proton down payment
+- proton cheapest model
+- proton all models
+- harga kereta proton
+- harga kereta proton 2026
+- senarai harga proton
+- harga proton baru
+- kereta proton baru
+- kalkulator loan proton
+- ansuran bulanan proton
+- proton sedan
+- proton sedan price malaysia
+- proton suv
+- proton suv price malaysia
+- proton hybrid
+- proton hybrid price malaysia
+- proton ev
+- proton electric car malaysia
+- proton ev price malaysia
+- proton 7 seater
+- proton mpv
+- proton under RM50k
+- proton car below rm50k
+- proton under RM80k
+- proton car below rm80k
+- proton under RM100k
+- proton car below rm100k
+- proton saga price malaysia
+- proton saga price 2026
+- proton saga variants
+- proton saga specs
+- proton saga review
+- harga proton saga
+- proton saga loan
+- proton saga instalment
+- proton saga vs
+- proton persona price malaysia
+- proton persona price 2026
+- proton persona variants
+- proton persona specs
+- proton persona review
+- harga proton persona
+- proton persona loan
+- proton persona instalment
+- proton persona vs
+- proton e.mas 5 price malaysia
+- proton e.mas 5 price 2026
+- proton e.mas 5 variants
+- proton e.mas 5 specs
+- proton e.mas 5 review
+- harga proton e.mas 5
+- proton e.mas 5 loan
+- proton e.mas 5 instalment
+- proton e.mas 5 vs
+- proton s70 price malaysia
+- proton s70 price 2026
+- proton s70 variants
+- proton s70 specs
+- proton s70 review
+- harga proton s70
+- proton s70 loan
+- proton s70 instalment
+- proton s70 vs
+- proton x50 price malaysia
+- proton x50 price 2026
+- proton x50 variants
+- proton x50 specs
+- proton x50 review
+- harga proton x50
+- proton x50 loan
+- proton x50 instalment
+- proton x50 vs
+- proton e.mas 7 price malaysia
+- proton e.mas 7 price 2026
+- proton e.mas 7 variants
+- proton e.mas 7 specs
+- proton e.mas 7 review
+- harga proton e.mas 7
+- proton e.mas 7 loan
+- proton e.mas 7 instalment
+- proton e.mas 7 vs
+- proton x70 price malaysia
+- proton x70 price 2026
+- proton x70 variants
+- proton x70 specs
+- proton x70 review
+- harga proton x70
+- proton x70 loan
+- proton x70 instalment
+- proton x70 vs
+- proton x90 price malaysia
+- proton x90 price 2026
+- proton x90 variants
+- proton x90 specs
+- proton x90 review
+- harga proton x90
+- proton x90 loan
+- proton x90 instalment
+- proton x90 vs
+- proton e.mas 7 phev price malaysia
+- proton e.mas 7 phev price 2026
+- proton e.mas 7 phev variants
+- proton e.mas 7 phev specs
+- proton e.mas 7 phev review
+- harga proton e.mas 7 phev
+- proton e.mas 7 phev loan
+- proton e.mas 7 phev instalment
+- proton e.mas 7 phev vs
+
+## Perodua (8 models, 112 keywords) - /new-cars/perodua
+
+- perodua price malaysia
+- perodua price malaysia 2026
+- perodua price list
+- perodua price list 2026
+- perodua cars price malaysia
+- perodua models malaysia
+- new perodua malaysia
+- new perodua price
+- perodua car price
+- perodua otr price
+- perodua on the road price
+- perodua loan calculator
+- perodua car loan
+- perodua monthly instalment
+- perodua down payment
+- perodua cheapest model
+- perodua all models
+- harga kereta perodua
+- harga kereta perodua 2026
+- senarai harga perodua
+- harga perodua baru
+- kereta perodua baru
+- kalkulator loan perodua
+- ansuran bulanan perodua
+- perodua hatchback
+- perodua hatchback price malaysia
+- perodua sedan
+- perodua sedan price malaysia
+- perodua suv
+- perodua suv price malaysia
+- perodua mpv
+- perodua mpv price malaysia
+- perodua ev
+- perodua electric car malaysia
+- perodua ev price malaysia
+- perodua 7 seater
+- perodua under RM50k
+- perodua car below rm50k
+- perodua under RM80k
+- perodua car below rm80k
+- perodua axia price malaysia
+- perodua axia price 2026
+- perodua axia variants
+- perodua axia specs
+- perodua axia review
+- harga perodua axia
+- perodua axia loan
+- perodua axia instalment
+- perodua axia vs
+- perodua bezza price malaysia
+- perodua bezza price 2026
+- perodua bezza variants
+- perodua bezza specs
+- perodua bezza review
+- harga perodua bezza
+- perodua bezza loan
+- perodua bezza instalment
+- perodua bezza vs
+- perodua myvi price malaysia
+- perodua myvi price 2026
+- perodua myvi variants
+- perodua myvi specs
+- perodua myvi review
+- harga perodua myvi
+- perodua myvi loan
+- perodua myvi instalment
+- perodua myvi vs
+- perodua ativa price malaysia
+- perodua ativa price 2026
+- perodua ativa variants
+- perodua ativa specs
+- perodua ativa review
+- harga perodua ativa
+- perodua ativa loan
+- perodua ativa instalment
+- perodua ativa vs
+- perodua alza price malaysia
+- perodua alza price 2026
+- perodua alza variants
+- perodua alza specs
+- perodua alza review
+- harga perodua alza
+- perodua alza loan
+- perodua alza instalment
+- perodua alza vs
+- perodua aruz price malaysia
+- perodua aruz price 2026
+- perodua aruz variants
+- perodua aruz specs
+- perodua aruz review
+- harga perodua aruz
+- perodua aruz loan
+- perodua aruz instalment
+- perodua aruz vs
+- perodua traz price malaysia
+- perodua traz price 2026
+- perodua traz variants
+- perodua traz specs
+- perodua traz review
+- harga perodua traz
+- perodua traz loan
+- perodua traz instalment
+- perodua traz vs
+- perodua qv-e price malaysia
+- perodua qv-e price 2026
+- perodua qv-e variants
+- perodua qv-e specs
+- perodua qv-e review
+- harga perodua qv-e
+- perodua qv-e loan
+- perodua qv-e instalment
+- perodua qv-e vs
+
+## Toyota (15 models, 182 keywords) - /new-cars/toyota
+
+- toyota price malaysia
+- toyota price malaysia 2026
+- toyota price list
+- toyota price list 2026
+- toyota cars price malaysia
+- toyota models malaysia
+- new toyota malaysia
+- new toyota price
+- toyota car price
+- toyota otr price
+- toyota on the road price
+- toyota loan calculator
+- toyota car loan
+- toyota monthly instalment
+- toyota down payment
+- toyota cheapest model
+- toyota all models
+- harga kereta toyota
+- harga kereta toyota 2026
+- senarai harga toyota
+- harga toyota baru
+- kereta toyota baru
+- kalkulator loan toyota
+- ansuran bulanan toyota
+- toyota hatchback
+- toyota hatchback price malaysia
+- toyota sedan
+- toyota sedan price malaysia
+- toyota mpv
+- toyota mpv price malaysia
+- toyota suv
+- toyota suv price malaysia
+- toyota pickup
+- toyota pickup price malaysia
+- toyota hybrid
+- toyota hybrid price malaysia
+- toyota ev
+- toyota electric car malaysia
+- toyota ev price malaysia
+- toyota under RM100k
+- toyota car below rm100k
+- toyota under RM150k
+- toyota car below rm150k
+- toyota under RM200k
+- toyota car below rm200k
+- toyota under RM300k
+- toyota car below rm300k
+- toyota yaris price malaysia
+- toyota yaris price 2026
+- toyota yaris variants
+- toyota yaris specs
+- toyota yaris review
+- harga toyota yaris
+- toyota yaris loan
+- toyota yaris instalment
+- toyota yaris vs
+- toyota vios price malaysia
+- toyota vios price 2026
+- toyota vios variants
+- toyota vios specs
+- toyota vios review
+- harga toyota vios
+- toyota vios loan
+- toyota vios instalment
+- toyota vios vs
+- toyota veloz price malaysia
+- toyota veloz price 2026
+- toyota veloz variants
+- toyota veloz specs
+- toyota veloz review
+- harga toyota veloz
+- toyota veloz loan
+- toyota veloz instalment
+- toyota veloz vs
+- toyota yaris cross price malaysia
+- toyota yaris cross price 2026
+- toyota yaris cross variants
+- toyota yaris cross specs
+- toyota yaris cross review
+- harga toyota yaris cross
+- toyota yaris cross loan
+- toyota yaris cross instalment
+- toyota yaris cross vs
+- toyota hilux price malaysia
+- toyota hilux price 2026
+- toyota hilux variants
+- toyota hilux specs
+- toyota hilux review
+- harga toyota hilux
+- toyota hilux loan
+- toyota hilux instalment
+- toyota hilux vs
+- toyota corolla cross price malaysia
+- toyota corolla cross price 2026
+- toyota corolla cross variants
+- toyota corolla cross specs
+- toyota corolla cross review
+- harga toyota corolla cross
+- toyota corolla cross loan
+- toyota corolla cross instalment
+- toyota corolla cross vs
+- toyota corolla price malaysia
+- toyota corolla price 2026
+- toyota corolla variants
+- toyota corolla specs
+- toyota corolla review
+- harga toyota corolla
+- toyota corolla loan
+- toyota corolla instalment
+- toyota corolla vs
+- toyota innova zenix price malaysia
+- toyota innova zenix price 2026
+- toyota innova zenix variants
+- toyota innova zenix specs
+- toyota innova zenix review
+- harga toyota innova zenix
+- toyota innova zenix loan
+- toyota innova zenix instalment
+- toyota innova zenix vs
+- toyota fortuner price malaysia
+- toyota fortuner price 2026
+- toyota fortuner variants
+- toyota fortuner specs
+- toyota fortuner review
+- harga toyota fortuner
+- toyota fortuner loan
+- toyota fortuner instalment
+- toyota fortuner vs
+- toyota urban cruiser price malaysia
+- toyota urban cruiser price 2026
+- toyota urban cruiser variants
+- toyota urban cruiser specs
+- toyota urban cruiser review
+- harga toyota urban cruiser
+- toyota urban cruiser loan
+- toyota urban cruiser instalment
+- toyota urban cruiser vs
+- toyota bz4x price malaysia
+- toyota bz4x price 2026
+- toyota bz4x variants
+- toyota bz4x specs
+- toyota bz4x review
+- harga toyota bz4x
+- toyota bz4x loan
+- toyota bz4x instalment
+- toyota bz4x vs
+- toyota camry price malaysia
+- toyota camry price 2026
+- toyota camry variants
+- toyota camry specs
+- toyota camry review
+- harga toyota camry
+- toyota camry loan
+- toyota camry instalment
+- toyota camry vs
+- toyota harrier price malaysia
+- toyota harrier price 2026
+- toyota harrier variants
+- toyota harrier specs
+- toyota harrier review
+- harga toyota harrier
+- toyota harrier loan
+- toyota harrier instalment
+- toyota harrier vs
+- toyota vellfire price malaysia
+- toyota vellfire price 2026
+- toyota vellfire variants
+- toyota vellfire specs
+- toyota vellfire review
+- harga toyota vellfire
+- toyota vellfire loan
+- toyota vellfire instalment
+- toyota vellfire vs
+- toyota alphard price malaysia
+- toyota alphard price 2026
+- toyota alphard variants
+- toyota alphard specs
+- toyota alphard review
+- harga toyota alphard
+- toyota alphard loan
+- toyota alphard instalment
+- toyota alphard vs
+
+## BYD (6 models, 92 keywords) - /new-cars/byd
+
+- byd price malaysia
+- byd price malaysia 2026
+- byd price list
+- byd price list 2026
+- byd cars price malaysia
+- byd models malaysia
+- new byd malaysia
+- new byd price
+- byd car price
+- byd otr price
+- byd on the road price
+- byd loan calculator
+- byd car loan
+- byd monthly instalment
+- byd down payment
+- byd cheapest model
+- byd all models
+- harga kereta byd
+- harga kereta byd 2026
+- senarai harga byd
+- harga byd baru
+- kereta byd baru
+- kalkulator loan byd
+- ansuran bulanan byd
+- byd suv
+- byd suv price malaysia
+- byd sedan
+- byd sedan price malaysia
+- byd mpv
+- byd mpv price malaysia
+- byd ev
+- byd electric car malaysia
+- byd ev price malaysia
+- byd 7 seater
+- byd under RM100k
+- byd car below rm100k
+- byd under RM150k
+- byd car below rm150k
+- byd atto 2 price malaysia
+- byd atto 2 price 2026
+- byd atto 2 variants
+- byd atto 2 specs
+- byd atto 2 review
+- harga byd atto 2
+- byd atto 2 loan
+- byd atto 2 instalment
+- byd atto 2 vs
+- byd seal 6 price malaysia
+- byd seal 6 price 2026
+- byd seal 6 variants
+- byd seal 6 specs
+- byd seal 6 review
+- harga byd seal 6
+- byd seal 6 loan
+- byd seal 6 instalment
+- byd seal 6 vs
+- byd m6 price malaysia
+- byd m6 price 2026
+- byd m6 variants
+- byd m6 specs
+- byd m6 review
+- harga byd m6
+- byd m6 loan
+- byd m6 instalment
+- byd m6 vs
+- byd atto 3 price malaysia
+- byd atto 3 price 2026
+- byd atto 3 variants
+- byd atto 3 specs
+- byd atto 3 review
+- harga byd atto 3
+- byd atto 3 loan
+- byd atto 3 instalment
+- byd atto 3 vs
+- byd sealion 7 price malaysia
+- byd sealion 7 price 2026
+- byd sealion 7 variants
+- byd sealion 7 specs
+- byd sealion 7 review
+- harga byd sealion 7
+- byd sealion 7 loan
+- byd sealion 7 instalment
+- byd sealion 7 vs
+- byd seal price malaysia
+- byd seal price 2026
+- byd seal variants
+- byd seal specs
+- byd seal review
+- harga byd seal
+- byd seal loan
+- byd seal instalment
+- byd seal vs
+
+## Honda (9 models, 126 keywords) - /new-cars/honda
+
+- honda price malaysia
+- honda price malaysia 2026
+- honda price list
+- honda price list 2026
+- honda cars price malaysia
+- honda models malaysia
+- new honda malaysia
+- new honda price
+- honda car price
+- honda otr price
+- honda on the road price
+- honda loan calculator
+- honda car loan
+- honda monthly instalment
+- honda down payment
+- honda cheapest model
+- honda all models
+- harga kereta honda
+- harga kereta honda 2026
+- senarai harga honda
+- harga honda baru
+- kereta honda baru
+- kalkulator loan honda
+- ansuran bulanan honda
+- honda sedan
+- honda sedan price malaysia
+- honda suv
+- honda suv price malaysia
+- honda hatchback
+- honda hatchback price malaysia
+- honda coupe
+- honda coupe price malaysia
+- honda hybrid
+- honda hybrid price malaysia
+- honda ev
+- honda electric car malaysia
+- honda ev price malaysia
+- honda under RM100k
+- honda car below rm100k
+- honda under RM150k
+- honda car below rm150k
+- honda under RM200k
+- honda car below rm200k
+- honda under RM300k
+- honda car below rm300k
+- honda city price malaysia
+- honda city price 2026
+- honda city variants
+- honda city specs
+- honda city review
+- harga honda city
+- honda city loan
+- honda city instalment
+- honda city vs
+- honda wr-v price malaysia
+- honda wr-v price 2026
+- honda wr-v variants
+- honda wr-v specs
+- honda wr-v review
+- harga honda wr-v
+- honda wr-v loan
+- honda wr-v instalment
+- honda wr-v vs
+- honda city hatchback price malaysia
+- honda city hatchback price 2026
+- honda city hatchback variants
+- honda city hatchback specs
+- honda city hatchback review
+- harga honda city hatchback
+- honda city hatchback loan
+- honda city hatchback instalment
+- honda city hatchback vs
+- honda hr-v price malaysia
+- honda hr-v price 2026
+- honda hr-v variants
+- honda hr-v specs
+- honda hr-v review
+- harga honda hr-v
+- honda hr-v loan
+- honda hr-v instalment
+- honda hr-v vs
+- honda civic price malaysia
+- honda civic price 2026
+- honda civic variants
+- honda civic specs
+- honda civic review
+- harga honda civic
+- honda civic loan
+- honda civic instalment
+- honda civic vs
+- honda e:n1 price malaysia
+- honda e:n1 price 2026
+- honda e:n1 variants
+- honda e:n1 specs
+- honda e:n1 review
+- harga honda e:n1
+- honda e:n1 loan
+- honda e:n1 instalment
+- honda e:n1 vs
+- honda cr-v price malaysia
+- honda cr-v price 2026
+- honda cr-v variants
+- honda cr-v specs
+- honda cr-v review
+- harga honda cr-v
+- honda cr-v loan
+- honda cr-v instalment
+- honda cr-v vs
+- honda prelude price malaysia
+- honda prelude price 2026
+- honda prelude variants
+- honda prelude specs
+- honda prelude review
+- harga honda prelude
+- honda prelude loan
+- honda prelude instalment
+- honda prelude vs
+- honda civic type r price malaysia
+- honda civic type r price 2026
+- honda civic type r variants
+- honda civic type r specs
+- honda civic type r review
+- harga honda civic type r
+- honda civic type r loan
+- honda civic type r instalment
+- honda civic type r vs
+
+## Jaecoo (7 models, 96 keywords) - /new-cars/jaecoo
+
+- jaecoo price malaysia
+- jaecoo price malaysia 2026
+- jaecoo price list
+- jaecoo price list 2026
+- jaecoo cars price malaysia
+- jaecoo models malaysia
+- new jaecoo malaysia
+- new jaecoo price
+- jaecoo car price
+- jaecoo otr price
+- jaecoo on the road price
+- jaecoo loan calculator
+- jaecoo car loan
+- jaecoo monthly instalment
+- jaecoo down payment
+- jaecoo cheapest model
+- jaecoo all models
+- harga kereta jaecoo
+- harga kereta jaecoo 2026
+- senarai harga jaecoo
+- harga jaecoo baru
+- kereta jaecoo baru
+- kalkulator loan jaecoo
+- ansuran bulanan jaecoo
+- jaecoo hybrid
+- jaecoo hybrid price malaysia
+- jaecoo ev
+- jaecoo electric car malaysia
+- jaecoo ev price malaysia
+- jaecoo under RM150k
+- jaecoo car below rm150k
+- jaecoo under RM200k
+- jaecoo car below rm200k
+- jaecoo j5 price malaysia
+- jaecoo j5 price 2026
+- jaecoo j5 variants
+- jaecoo j5 specs
+- jaecoo j5 review
+- harga jaecoo j5
+- jaecoo j5 loan
+- jaecoo j5 instalment
+- jaecoo j5 vs
+- jaecoo j5 ev price malaysia
+- jaecoo j5 ev price 2026
+- jaecoo j5 ev variants
+- jaecoo j5 ev specs
+- jaecoo j5 ev review
+- harga jaecoo j5 ev
+- jaecoo j5 ev loan
+- jaecoo j5 ev instalment
+- jaecoo j5 ev vs
+- jaecoo j7 price malaysia
+- jaecoo j7 price 2026
+- jaecoo j7 variants
+- jaecoo j7 specs
+- jaecoo j7 review
+- harga jaecoo j7
+- jaecoo j7 loan
+- jaecoo j7 instalment
+- jaecoo j7 vs
+- jaecoo j7 phev price malaysia
+- jaecoo j7 phev price 2026
+- jaecoo j7 phev variants
+- jaecoo j7 phev specs
+- jaecoo j7 phev review
+- harga jaecoo j7 phev
+- jaecoo j7 phev loan
+- jaecoo j7 phev instalment
+- jaecoo j7 phev vs
+- omoda c9 price malaysia
+- omoda c9 price 2026
+- omoda c9 variants
+- omoda c9 specs
+- omoda c9 review
+- harga omoda c9
+- omoda c9 loan
+- omoda c9 instalment
+- omoda c9 vs
+- jaecoo j8 price malaysia
+- jaecoo j8 price 2026
+- jaecoo j8 variants
+- jaecoo j8 specs
+- jaecoo j8 review
+- harga jaecoo j8
+- jaecoo j8 loan
+- jaecoo j8 instalment
+- jaecoo j8 vs
+- omoda c9 phev price malaysia
+- omoda c9 phev price 2026
+- omoda c9 phev variants
+- omoda c9 phev specs
+- omoda c9 phev review
+- harga omoda c9 phev
+- omoda c9 phev loan
+- omoda c9 phev instalment
+- omoda c9 phev vs

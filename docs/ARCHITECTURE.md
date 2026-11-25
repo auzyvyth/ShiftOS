@@ -21,7 +21,7 @@ flowchart TB
   end
 
   subgraph Screens["Screens (one React app, src/)"]
-    MK["XDrive marketplace<br/>xdrive.my /, /showroom, /cars/:slug,<br/>/used-cars, /new-cars, /find-me,<br/>/kalkulator-loan/:brand"]
+    MK["XDrive marketplace<br/>xdrive.my /, /showroom, /cars/:slug,<br/>/used-cars, /new-cars/:brand,<br/>/new-cars/:brand/:model, /find-me,<br/>/kalkulator-loan/:brand"]
     MP["Seller mini page<br/>/s/:slug"]
     SF["Dealer storefront<br/>sub.xdrive.my<br/>(section order: dashboard Storefront, Layout;<br/>handover photos: Storefront, Delivery photos)"]
     LITE["Salesman Lite<br/>/salesman-lite"]
