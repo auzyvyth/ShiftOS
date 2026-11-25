@@ -41,6 +41,7 @@ import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
 import { chosenPageColor } from "../utils/pageAccent";
 import HeroPhotoCard from "../components/premium/HeroPhotoCard";
+import PageSiteCard from "../components/premium/PageSiteCard";
 import PageGradientPicker from "../components/premium/PageGradientPicker";
 import { ABOUT_LANGUAGES, ABOUT_LIMITS, aboutPayload, aboutForm as toAboutForm } from "../utils/agentAbout";
 import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
@@ -5856,6 +5857,8 @@ export default function SalesmanPremium() {
  </div>
  {/* PAGE-HERO: the big photo at the top of the public page (cut out on the phone). */}
  <HeroPhotoCard userId={userId} accent={chosenPageColor(profile) || undefined} />
+ {/* PAGE-SITE 2: promos, delivery towns and section order on the public page. */}
+ <PageSiteCard userId={userId} accent={chosenPageColor(profile) || undefined} />
  {/* PAGE-PRO: the page's colour (WhatsApp button, accent line, photo ring).
      Saved on tap; the DB default gold counts as "not chosen" (pageAccent.js). */}
  <div style={card}>

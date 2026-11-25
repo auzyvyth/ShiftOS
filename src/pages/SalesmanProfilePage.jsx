@@ -22,6 +22,11 @@ import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
 import PageCalculator from '../components/agent/PageCalculator';
 import PageNav from '../components/agent/PageNav';
+import SiteStyle from '../components/agent/site/SiteStyle';
+import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
+import ModelPicker from '../components/agent/site/ModelPicker';
+import DeliveryBlock from '../components/agent/site/DeliveryBlock';
+import { cleanSite, visibleSections, activePromos } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -516,6 +521,18 @@ export default function SalesmanProfilePage() {
       .catch(() => { if (!off) setHeroUrl(null); });
     return () => { off = true; };
   }, [slug, profile?.id, profile?.page_basic]);
+  // PAGE-SITE 2: the seller's promos, delivery towns and section order (get_agent_site),
+  // its own call like get_agent_hero: before the migration is applied, or when the
+  // database is slow, the page simply shows its default sections.
+  const [siteRaw, setSiteRaw] = useState(null);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setSiteRaw(null); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_site', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setSiteRaw(!r?.error && r?.data && typeof r.data === 'object' ? r.data : null); })
+      .catch(() => { if (!off) setSiteRaw(null); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
   // A .png/.webp name is not proof of see-through (stock new-car photos are
   // .webp on white): read the pixels. The car stands in front of the seller
   // only when the seller is a cut-out too; in front of a framed photo it crowds.
@@ -998,6 +1015,109 @@ export default function SalesmanProfilePage() {
     </header>
   );
 
+  // The cars grid and the calculator, as values so a Premium page can order them (PAGE-SITE 2).
+  const carsSec = (
+    <>
+              <div className="ap-sec" id="ap-cars">
+                <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
+                {shownListings.length > 1 && (
+                  <div className="ap-seg" role="group" aria-label="Sort cars">
+                    <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
+                    <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
+                  </div>
+                )}
+              </div>
+              {showBrandTabs && (
+                <div className="ap-brands" role="group" aria-label="Brands">
+                  <button type="button" aria-pressed={!pickedBrand} onClick={() => setBrandTab('all')}>All <span>{listings.length}</span></button>
+                  {pageBrands.map((b) => (
+                    <button key={b} type="button" aria-pressed={pickedBrand === b} onClick={() => setBrandTab(b)}>
+                      {b} <span>{listings.filter((c) => brandName(c) === b).length}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
+              {docsLine && (
+                <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
+              )}
+
+              {loading && listings.length === 0 ? (
+                <div className="ap-grid" aria-busy="true" aria-label="Loading cars">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="ap-card ap-car ap-skel">
+                      <div className="ap-ph" />
+                      <div className="ap-cb"><i /><i /><i /></div>
+                    </div>
+                  ))}
+                </div>
+              ) : brandBlocks ? (
+                brandBlocks.map((g) => (
+                  <section key={g.brand} className="ap-bblock" aria-label={`${g.brand} cars`}>
+                    <h3 className="ap-bhead">{g.brand} <span>{g.cars.length}</span></h3>
+                    <div className="ap-grid">
+                      {g.cars.map((car) => (
+                        <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
+                      ))}
+                    </div>
+                  </section>
+                ))
+              ) : shownListings.length > 0 ? (
+                <div className="ap-grid">
+                  {shownListings.map((car) => (
+                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
+                  No cars for sale right now.
+                </div>
+              )}
+    </>
+  );
+  const calcSec = (
+    <>
+              {/* Premium only (PAGE-SITE): the page's one money block, under the cars.
+                  A Lite page (page_basic) shows exactly what it showed before. */}
+              {pro && !profile.page_basic && shownListings.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <PageCalculator
+                    listings={pickedBrand ? shownListings : listings}
+                    firstName={firstName}
+                    hasWa={hasWa}
+                    waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
+                    onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
+                      car_id: car.id,
+                      dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
+                      salesman_slug: slug,
+                      metadata: { source: 'page_calculator' },
+                    })}
+                  />
+                </div>
+              )}
+    </>
+  );
+  const site = cleanSite(siteRaw);
+  const hasModels = pro && listings.some((c) => c.is_model_card);
+  const calcOk = pro && !profile.page_basic && shownListings.length > 0;
+  const siteWa = (source, item) => trackEvent(supabase, 'whatsapp_click', {
+    car_id: item?.id || null,
+    dealer_id: item?.dealer_id || profile?.dealer_id || profile?.id || null,
+    salesman_slug: slug,
+    metadata: { source: `page_${source}` },
+  });
+  const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
+  const siteNodes = {
+    promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    models: <ModelPicker key="models" cars={listings} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
+    calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
+    delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+  };
+  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk }) : [];
+  const siteBody = <>{siteIds.map((id) => siteNodes[id])}</>;
+  const hasPromos = pro && activePromos(site).length > 0;
+
   return (
     <>
       <Helmet>
@@ -1297,6 +1417,7 @@ export default function SalesmanProfilePage() {
         <div className="ap-shell">
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
               marketplace's warm wave bands (colour lives here and nowhere else). */}
+          {pro && <SiteStyle />}
           {pro ? heroPro : <div className="ap-cover">
             {profile.cover_url ? (
               <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
@@ -1309,6 +1430,8 @@ export default function SalesmanProfilePage() {
             )}
             {topButtons}
           </div>}
+
+          {hasPromos && !site.off.includes('promos') && <PromoTicker site={site} />}
 
           <div className="ap-cols">
             {!pro && <div className="ap-left">
@@ -1419,8 +1542,11 @@ export default function SalesmanProfilePage() {
             <div className="ap-right">
               {pro && (
                 <PageNav items={[
-                  shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
-                  shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' },
+                  siteIds.includes('promos') && { id: 'ap-promos', label: 'Promos' },
+                  siteIds.includes('models') && { id: 'ap-models', label: 'Models' },
+                  siteIds.includes('cars') && shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
+                  siteIds.includes('calculator') && shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' },
+                  siteIds.includes('delivery') && { id: 'ap-delivery', label: 'Delivery' },
                   aboutSec && { id: 'ap-about', label: 'About' },
                   whySec && { id: 'ap-why', label: 'Why me' },
                   (trust.recentSales.length > 0) && { id: 'ap-track', label: 'Track record' },
@@ -1453,79 +1579,7 @@ export default function SalesmanProfilePage() {
                 </>
               )}
 
-              <div className="ap-sec" id="ap-cars">
-                <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
-                {shownListings.length > 1 && (
-                  <div className="ap-seg" role="group" aria-label="Sort cars">
-                    <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
-                    <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
-                  </div>
-                )}
-              </div>
-              {showBrandTabs && (
-                <div className="ap-brands" role="group" aria-label="Brands">
-                  <button type="button" aria-pressed={!pickedBrand} onClick={() => setBrandTab('all')}>All <span>{listings.length}</span></button>
-                  {pageBrands.map((b) => (
-                    <button key={b} type="button" aria-pressed={pickedBrand === b} onClick={() => setBrandTab(b)}>
-                      {b} <span>{listings.filter((c) => brandName(c) === b).length}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
-              {docsLine && (
-                <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
-              )}
-
-              {loading && listings.length === 0 ? (
-                <div className="ap-grid" aria-busy="true" aria-label="Loading cars">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="ap-card ap-car ap-skel">
-                      <div className="ap-ph" />
-                      <div className="ap-cb"><i /><i /><i /></div>
-                    </div>
-                  ))}
-                </div>
-              ) : brandBlocks ? (
-                brandBlocks.map((g) => (
-                  <section key={g.brand} className="ap-bblock" aria-label={`${g.brand} cars`}>
-                    <h3 className="ap-bhead">{g.brand} <span>{g.cars.length}</span></h3>
-                    <div className="ap-grid">
-                      {g.cars.map((car) => (
-                        <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
-                      ))}
-                    </div>
-                  </section>
-                ))
-              ) : shownListings.length > 0 ? (
-                <div className="ap-grid">
-                  {shownListings.map((car) => (
-                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
-                  ))}
-                </div>
-              ) : (
-                <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
-                  No cars for sale right now.
-                </div>
-              )}
-              {/* Premium only (PAGE-SITE): the page's one money block, under the cars.
-                  A Lite page (page_basic) shows exactly what it showed before. */}
-              {pro && !profile.page_basic && shownListings.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                  <PageCalculator
-                    listings={pickedBrand ? shownListings : listings}
-                    firstName={firstName}
-                    hasWa={hasWa}
-                    waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
-                    onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
-                      car_id: car.id,
-                      dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
-                      salesman_slug: slug,
-                      metadata: { source: 'page_calculator' },
-                    })}
-                  />
-                </div>
-              )}
+              {pro ? siteBody : <>{carsSec}{calcSec}</>}
               {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
             </div>
           </div>
