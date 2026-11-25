@@ -1,5 +1,5 @@
 -- PAGE-SITE 2 (owner, 2026-11-25): a Premium page can carry the seller's own
--- promos of the month, the seller's own note on each model, delivery towns and the order of its sections. All of it
+-- page background (a curated gradient, `ground`), promos of the month, the seller's own note on each model, delivery towns and the order of its sections. All of it
 -- is ONE small jsonb on the seller's profile, `profiles.page_site`.
 --
 -- The seller's OWN claims, never Drevo prices: every promo must carry an end
@@ -29,6 +29,7 @@ begin
   if jsonb_typeof(p) <> 'object' then return false; end if;
   if length(p::text) > 8000 then return false; end if;
   if coalesce(p->>'v', '1') <> '1' then return false; end if;
+  if p ? 'ground' and not ((p->>'ground') = any (array['white','ivory','stone','sage','sky','blush','accent'])) then return false; end if;
 
   if p ? 'order' then
     if jsonb_typeof(p->'order') <> 'array' or jsonb_array_length(p->'order') > 5 then return false; end if;

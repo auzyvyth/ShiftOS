@@ -15,8 +15,11 @@ import React from 'react';
 export default function PageLook() {
   return (
     <style>{`
-      .ap.ap--pro { --ap-bg: #fff; --ap-surf: #F4F3EF; --pl-ink: #0f1115; --pl-tile: #F4F3EF; --pl-tile2: #ECEAE4;
-        --pl-mute: #6b7280; --pl-d1: #0f1115; --pl-d2: #181b21; --pl-d3: #22262e; background: #fff; }
+      /* The light ground is the seller's pick (GROUNDS in pageSite.js), a soft top-to-bottom gradient.
+         The page root sets --pl-g1 / --pl-g2 / --pl-tile inline; these are the White defaults. */
+      .ap.ap--pro { --pl-g1: #ffffff; --pl-g2: #f6f5f1; --pl-tile: #f1f0eb; --ap-bg: var(--pl-g1); --ap-surf: var(--pl-tile);
+        --pl-ink: #0f1115; --pl-tile2: rgba(15,17,21,.06); --pl-mute: #6b7280; --pl-d1: #0f1115; --pl-d2: #181b21; --pl-d3: #22262e;
+        background: linear-gradient(180deg, var(--pl-g1) 0%, var(--pl-g2) 100%); }
 
       /* Headings: one system */
       .ap--pro .ap-sec { margin: 56px 0 16px; }
@@ -32,8 +35,8 @@ export default function PageLook() {
 
       /* Cards: light tiles, no shadow, no border */
       .ap--pro .ap-card, .ap--pro .ps-card { background: var(--pl-tile); box-shadow: none; border: none; border-radius: 16px; }
-      .ap--pro .ap-car:hover { box-shadow: none; transform: none; background: var(--pl-tile2); }
-      .ap--pro .ap-sticky { background: #fff; box-shadow: 0 -1px 0 rgba(15,17,21,.06); }
+      .ap--pro .ap-car:hover { box-shadow: 0 0 0 1px rgba(15,17,21,.08); transform: none; }
+      .ap--pro .ap-sticky { background: var(--pl-g1); box-shadow: 0 -1px 0 rgba(15,17,21,.06); }
 
       /* Buttons: the main one is the accent key (radius 12, never a pill); the second is ink outline */
       .ap--pro .ap-btn { border-radius: 12px; }
@@ -41,9 +44,9 @@ export default function PageLook() {
       .ap--pro .ps-ghost { border-radius: 12px; border-color: rgba(15,17,21,.22); }
 
       /* Jump chips: no pills, light tiles, no shadow */
-      .ap--pro .pn { background: linear-gradient(#fff 72%, rgba(255,255,255,0)); }
+      .ap--pro .pn { background: linear-gradient(var(--pl-g1) 72%, transparent); }
       .ap--pro .pn a { border-radius: 8px; background: var(--pl-tile); box-shadow: none; font-weight: 700; }
-      .ap--pro .pn a:hover { background: var(--pl-tile2); }
+      .ap--pro .pn a:hover { box-shadow: 0 0 0 1px rgba(15,17,21,.1); }
       .ap--pro .ap-brands button, .ap--pro .ap-seg { border-radius: 8px; }
 
       /* Hero: no rule above the numbers */
@@ -57,7 +60,7 @@ export default function PageLook() {
       .ap--pro .ps-promos { display: grid; gap: 8px; }
       .ap--pro .ps-promos .ps-promo-row { background: var(--pl-tile); border-radius: 14px; border: none; }
       .ap--pro .ps-promo-row + .ps-promo-row { border-top: none; }
-      .ap--pro .ps-pill { border-radius: 6px; background: #fff; }
+      .ap--pro .ps-pill { border-radius: 6px; background: rgba(15,17,21,.05); }
 
       /* Delivery: chips are 8, selected = ink */
       .ap--pro .ps-towns button, .ap--pro .ps-q-o button, .ap--pro .ps-steps button { border-radius: 8px; }
@@ -65,7 +68,7 @@ export default function PageLook() {
       /* About / Why / Track / Find: tiles, ink ticks, no rules */
       .ap--pro .ap-sold div + div { border-top: none; }
       .ap--pro .ap-sold div { padding: 12px 16px; }
-      .ap--pro .ap-sold div:nth-child(even) { background: rgba(255,255,255,.55); }
+      .ap--pro .ap-sold div:nth-child(even) { background: rgba(15,17,21,.03); }
       .ap--pro .ap-about-bio + .ap-facts { border-top: none; padding-top: 8px; }
       .ap--pro .ap-spec svg { background: var(--pl-ink); }
       .ap--pro .ap-promise span { color: rgba(15,17,21,.18); }

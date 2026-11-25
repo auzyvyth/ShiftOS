@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { premiumDark as PD } from '../../theme/tokens';
 import {
   cleanSite, promoProblem, deliveryProblem, noteProblem, siteErrorText, myToday,
-  SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
+  GROUNDS, SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
 } from '../../utils/pageSite';
 
 // Premium Settings > "Your page sections" (PAGE-SITE 2). The seller types their
@@ -84,6 +84,27 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      <div style={card}>
+        <p style={h}>Page background</p>
+        <p style={hint}>The light part of your page, behind your cars and sections. Each one fades gently from top to bottom.</p>
+        <div role="radiogroup" aria-label="Page background" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {GROUNDS.map((g) => {
+            const on = (draft.ground || 'white') === g.id;
+            const swatch = (v) => v.replace(/var\(--ap-a\)/g, accent);
+            return (
+              <button key={g.id} type="button" role="radio" aria-checked={on} onClick={() => set({ ground: g.id === 'white' ? undefined : g.id })}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span aria-hidden="true" style={{ width: 56, height: 56, borderRadius: 12, background: `linear-gradient(180deg, ${swatch(g.top)}, ${swatch(g.bottom)})`,
+                  boxShadow: on ? `0 0 0 2px ${PD.card}, 0 0 0 4px #fff` : 'inset 0 0 0 1px rgba(255,255,255,.12)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 8 }}>
+                  <span style={{ width: 30, height: 12, borderRadius: 4, background: swatch(g.tile) === '#ffffff' ? '#ffffff' : swatch(g.tile), boxShadow: '0 0 0 1px rgba(15,17,21,.08)' }} />
+                </span>
+                <span style={{ fontSize: 12, fontWeight: on ? 700 : 500, color: on ? PD.text : PD.textSec }}>{g.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={card}>
         <p style={h}>Sections on your page</p>
         <p style={hint}>The order buyers scroll through. Switch off what you do not want. A section with nothing in it never shows.</p>

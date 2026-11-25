@@ -27,6 +27,26 @@ export const SECTION_LABEL = {
   delivery: 'Delivery to your town',
 };
 // Sections whose switch means something to the seller (cars + calculator hide on their own when empty).
+// The page's light ground (owner, 2026-11-25: "make the white changeable, a little gradient"). A short
+// CURATED list, never a free colour picker: a free pick turned dealer storefronts into one solid slab.
+// Each is a soft top-to-bottom gradient; `tile` is the card colour that still stands out on it.
+// 'accent' follows the seller's own page colour, very lightly. 'white' is the default and is not saved.
+export const GROUNDS = [
+  { id: 'white', label: 'White', top: '#ffffff', bottom: '#f6f5f1', tile: '#f1f0eb' },
+  { id: 'ivory', label: 'Ivory', top: '#fffdf8', bottom: '#f5eee2', tile: 'rgba(255,255,255,.82)' },
+  { id: 'stone', label: 'Stone', top: '#fbfbfc', bottom: '#eaecf0', tile: '#ffffff' },
+  { id: 'sage', label: 'Sage', top: '#fbfcfa', bottom: '#e7eee7', tile: '#ffffff' },
+  { id: 'sky', label: 'Sky', top: '#fbfdff', bottom: '#e5eef7', tile: '#ffffff' },
+  { id: 'blush', label: 'Blush', top: '#fffbfa', bottom: '#f6e7e3', tile: '#ffffff' },
+  { id: 'accent', label: 'My colour', top: 'color-mix(in srgb, var(--ap-a) 3%, #fff)', bottom: 'color-mix(in srgb, var(--ap-a) 7%, #fff)', tile: '#ffffff' },
+];
+export const groundOf = (id) => GROUNDS.find((g) => g.id === id) || GROUNDS[0];
+// CSS variables for the page root.
+export const groundVars = (id) => {
+  const g = groundOf(id);
+  return { '--pl-g1': g.top, '--pl-g2': g.bottom, '--pl-tile': g.tile };
+};
+
 export const PROMO_MAX = 12;
 export const DELIVERY_MAX = 12;
 export const MODEL_MAX = 40;
@@ -85,7 +105,8 @@ export function cleanSite(raw) {
     items.push({ town, km, ...(min > 0 && min <= MIN_MAX ? { min } : {}) });
     if (items.length >= DELIVERY_MAX) break;
   }
-  return { v: SITE_VERSION, order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items } };
+  const ground = GROUNDS.some((g) => g.id === r.ground) && r.ground !== 'white' ? r.ground : undefined;
+  return { v: SITE_VERSION, ...(ground ? { ground } : {}), order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items } };
 }
 
 // What is wrong with one promo row, in words for the seller, or '' when fine.

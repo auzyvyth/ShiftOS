@@ -27,7 +27,7 @@ import PageLook from '../components/agent/site/PageLook';
 import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
 import ModelPicker from '../components/agent/site/ModelPicker';
 import DeliveryBlock from '../components/agent/site/DeliveryBlock';
-import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN } from '../utils/pageSite';
+import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, groundVars } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -1430,7 +1430,7 @@ export default function SalesmanProfilePage() {
       {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
-      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb, ...groundVars(site.ground) } : undefined}>
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>

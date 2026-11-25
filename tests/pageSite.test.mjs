@@ -1,5 +1,5 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
+import { groundOf, groundVars, flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -54,6 +54,12 @@ is('flow: halves pair, fulls stand alone', ids(flowRows(f(['p', 'half'], ['d', '
 is('flow: a lone half stays alone', ids(flowRows(f(['p', 'half'], ['m', 'full'], ['k', 'half']))), [['p'], ['m'], ['k']]);
 is('flow: three halves = a pair and a single', ids(flowRows(f(['a', 'half'], ['b', 'half'], ['c', 'half']))), [['a', 'b'], ['c']]);
 is('flow: empty', flowRows(null), []);
+
+is('ground kept when known', cleanSite({ ground: 'sage' }).ground, 'sage');
+is('white is the default, not saved', cleanSite({ ground: 'white' }).ground, undefined);
+is('unknown ground dropped', cleanSite({ ground: '#ff0000' }).ground, undefined);
+is('unknown ground reads as white', groundOf('nope').id, 'white');
+is('ground vars', Object.keys(groundVars('sky')), ['--pl-g1', '--pl-g2', '--pl-tile']);
 
 console.log(`pageSite: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
