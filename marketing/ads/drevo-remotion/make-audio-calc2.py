@@ -51,6 +51,21 @@ for d in [H['crumple'], H['flip'], H['wipe']]:  # ducks
     i0, i1 = int((d - .15) * SR), int((d + .5) * SR); mus[i0:i1] *= np.linspace(.35, 1, i1 - i0)
 mus[int(H['wipe'] * SR):] *= np.exp(-np.arange(N - int(H['wipe'] * SR)) / SR / 2.5)
 
+# ---- optional licensed track replaces the synth bed: --track <file> [--track-start <sec>]
+import sys as _s
+if '--track' in _s.argv:
+    import subprocess as _sp
+    path = _s.argv[_s.argv.index('--track') + 1]
+    st = float(_s.argv[_s.argv.index('--track-start') + 1]) if '--track-start' in _s.argv else 0.0
+    raw = _sp.run(['ffmpeg', '-v', 'error', '-ss', str(st), '-i', path, '-t', str(TL['dur'] + 1), '-ac', '1', '-ar', str(SR),
+                   '-af', 'loudnorm=I=-20', '-f', 'f32le', '-'], capture_output=True, check=True).stdout
+    trk = np.frombuffer(raw, dtype='<f4').astype(float)
+    mus = np.zeros(N); mus[:min(N, len(trk))] = trk[:N] * 1.6
+    mus[:int(.4 * SR)] *= np.linspace(0, 1, int(.4 * SR))
+    for d in [H['crumple'], H['flip'], H['wipe']]:  # same dips as the synth bed
+        i0, i1 = int((d - .15) * SR), int((d + .5) * SR); mus[i0:i1] *= np.linspace(.4, 1, i1 - i0)
+    e0 = int((TL['dur'] - 2.2) * SR); mus[e0:] *= np.linspace(1, 0, N - e0)
+
 # ---- effects
 put(fx, whoosh(.5, False), 0.0, .5); put(fx, boom(70, .7), H['drop'], .7); put(fx, click(), H['drop'], .5)
 put(fx, whoosh(.3), H['tag'] - .3, .4); put(fx, lp(noise(.12, .001, .02), .6), H['tag'], 1.2); put(fx, boom(120, .3), H['tag'], .4)
@@ -86,5 +101,5 @@ else:
     out = mus * .55 + fx * .6
 out = out[:int(SR * TL['dur'])]; out /= np.max(np.abs(out)) * 1.05
 pcm = (np.stack([out, out], 1) * 32767).astype('<i2')
-w = wave.open('public/audio/calc2-vo-mix.wav' if VO else 'public/audio/calc2.wav', 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes()); w.close()
+w = wave.open(_s.argv[_s.argv.index('--out') + 1] if '--out' in _s.argv else ('public/audio/calc2-vo-mix.wav' if VO else 'public/audio/calc2.wav'), 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes()); w.close()
 print('vo mix' if VO else 'music + fx', round(len(out) / SR, 2), 's')
