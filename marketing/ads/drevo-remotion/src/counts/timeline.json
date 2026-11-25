@@ -1,0 +1,19 @@
+{
+  "_": "Counts scene (style study of the owner's reference). ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat at 30 fps, 64 a bar. Times are in FRAMES.",
+  "fps": 30,
+  "bpm": 112.5,
+  "beat": 16,
+  "dur": 400,
+  "wipeIn": 0,
+  "words": [16, 24, 32, 40],
+  "chips": [64, 72, 80],
+  "scan": [96, 104, 112],
+  "lines": 124,
+  "pill": 128,
+  "countEnd": 176,
+  "wipeStats": 181,
+  "stats": [192, 224, 256, 288],
+  "wipeEnd": 309,
+  "logo": 320,
+  "tagline": [336, 344, 352]
+}
