@@ -504,6 +504,18 @@ export default function SalesmanProfilePage() {
   // NICKNAME-1: the seller's social media name (get_agent_nickname), every plan. Its own call, so a missing
   // function (database change not applied yet) or a slow database just means no "@name" this time.
   const [nickname, setNickname] = useState('');
+  // PAGE-HERO: the seller's hero photo, its own call (like get_agent_about) so a
+  // missing function before tonight's migration just leaves the profile photo.
+  const [heroUrl, setHeroUrl] = useState(null);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setHeroUrl(null); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_hero', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setHeroUrl(!r?.error && typeof r?.data === 'string' ? r.data : null); })
+      .catch(() => { if (!off) setHeroUrl(null); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
+
   useEffect(() => {
     if (!slug || !profile?.id) { setNickname(''); return undefined; }
     let alive = true;
@@ -928,7 +940,8 @@ export default function SalesmanProfilePage() {
   // is a cut-out (a rectangle in front of a person looks broken). Everything the
   // old side card said is said here, once: name, verified, numbers, WhatsApp.
   const heroCar = listings.find((c) => isSeeThroughPhoto(Array.isArray(c.images) ? c.images[0] : null)) || null;
-  const heroCut = isSeeThroughPhoto(profile.avatar_url);
+  const heroImg = heroUrl || profile.avatar_url;
+  const heroCut = isSeeThroughPhoto(heroImg);
   const heroBio = profile.bio || malayLine;
   const heroPro = pro && (
     <header className={`aph${profile.cover_url ? ' aph--cover' : ''}`}>
@@ -972,8 +985,8 @@ export default function SalesmanProfilePage() {
           </div>
         </div>
         <div className={`aph-pic${heroCut ? ' aph-pic--cut' : ''}${heroCar ? ' aph-pic--car' : ''}`}>
-          {profile.avatar_url
-            ? <img className="aph-me" src={heroCut ? profile.avatar_url : cdnImg(profile.avatar_url, 720, 80)} alt={profile.full_name} />
+          {heroImg
+            ? <img className="aph-me" src={heroCut ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} />
             : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
           {heroCar && <img className="aph-car" src={heroCar.images[0]} alt="" loading="lazy" />}
         </div>
