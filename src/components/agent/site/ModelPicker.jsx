@@ -52,10 +52,14 @@ function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
         )}
       </div>
       <div className="ps-info">
-        <div>
-          <p className="ps-mname">{name}</p>
-          {vname && <p className="ps-mvar">{vname}</p>}
+        <div className="ps-mhead">
+          <div style={{ minWidth: 0 }}>
+            <p className="ps-mname">{name}</p>
+            {vname && <p className="ps-mvar">{vname}</p>}
+          </div>
+          <p className="ps-price">{price > 0 ? rm(price) : 'Ask for the price'}</p>
         </div>
+        {calc && <p className="ps-est">About {rm(calc.monthly)} a month at 10% deposit over 7 years. An estimate: the bank decides.</p>}
         {colours.length > 0 && (
           <div>
             <p className="ps-lbl">Colour <b>{colour ? `· ${colour}` : ''}</b></p>
@@ -73,12 +77,6 @@ function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
             {strip.map((x) => <div key={x.label}><dt>{x.label}</dt><dd>{x.value}</dd></div>)}
           </dl>
         )}
-        <div>
-          <p className="ps-lbl">{vname ? vname : 'From'}</p>
-          <p className="ps-price">{price > 0 ? rm(price) : 'Ask for the price'}
-            {calc && <small>About {rm(calc.monthly)} a month at 10% deposit over 7 years. An estimate: the bank decides.</small>}
-          </p>
-        </div>
         {variants.length > 1 && (
           <div>
             <p className="ps-lbl">All variants</p>

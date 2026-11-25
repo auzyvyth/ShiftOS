@@ -17,11 +17,18 @@ export default function ModelHelper({ cars, infos, firstName, hasWa, waUrlFor, o
   const bands = useMemo(() => monthlyBands(models), [models]);
   const questions = useMemo(() => buildQuestions(models, bands), [models, bands]);
   const [a, setA] = useState({});
+  const [step, setStep] = useState(0);   // phone: one question at a time; wide screens show all
   const answered = questions.filter((q) => a[q.id]).length;
   const res = useMemo(() => (answered ? recommend(models, a, bands) : null), [answered, models, a, bands]);
   if (models.length < 3 || questions.length < 2) return null;
   // Tapping the chosen answer again clears it.
-  const set = (id) => (v) => setA((x) => ({ ...x, [id]: x[id] === v ? undefined : v }));
+  const set = (id) => (v) => {
+    const picked = a[id] !== v;
+    setA((x) => ({ ...x, [id]: x[id] === v ? undefined : v }));
+    // a new answer moves a phone on to the next question
+    if (picked) setTimeout(() => setStep((i) => Math.min(i + 1, questions.length - 1)), 220);
+  };
+  const cur = Math.min(step, questions.length - 1);
   const said = questions.filter((q) => a[q.id]).map((q) => `${q.q.replace(/\?$/, '')}: ${q.options.find((o) => o.id === a[q.id])?.label}`);
   return (
     <div className="ps-card ps-help" id="ap-model-help">
@@ -31,8 +38,15 @@ export default function ModelHelper({ cars, infos, firstName, hasWa, waUrlFor, o
         <h3>Answer a few questions.</h3>
         <p>We point you to one model to look at first, from {firstName}'s list. Answer as many as you like.</p>
       </div>
-      {questions.map((q) => (
-        <div className="ps-q" key={q.id}>
+      <div className="ps-steps">
+        <span>Question {cur + 1} of {questions.length}</span>
+        <span>
+          <button type="button" disabled={cur === 0} onClick={() => setStep(cur - 1)}>Back</button>
+          <button type="button" disabled={cur >= questions.length - 1} onClick={() => setStep(cur + 1)}>{a[questions[cur].id] ? 'Next' : 'Skip'}</button>
+        </span>
+      </div>
+      {questions.map((q, qi) => (
+        <div className={`ps-q${qi === cur ? ' on' : ''}`} key={q.id}>
           <p className="ps-q-l">{q.label}</p>
           <div>
             <p className="ps-q-t">{q.q}</p>

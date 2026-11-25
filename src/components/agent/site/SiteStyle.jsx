@@ -88,6 +88,9 @@ export default function SiteStyle() {
       .ps-shots button { flex: 0 0 auto; width: 64px; height: 44px; padding: 0; border-radius: 8px; overflow: hidden; border: 2px solid transparent; background: #fff; cursor: pointer; opacity: .7; }
       .ps-shots button[aria-pressed="true"] { border-color: var(--ps-ink); opacity: 1; }
       .ps-shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .ps-mhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .ps-mhead .ps-price { text-align: right; white-space: nowrap; }
+      .ps-est { font-size: 12.5px; font-weight: 600; color: var(--ps-mute); line-height: 1.45; margin-top: -6px; }
       .ps-mname { font-size: clamp(20px, 4.4vw, 24px); font-weight: 800; color: var(--ps-ink); line-height: 1.1; }
       .ps-mvar { font-size: 13.5px; font-weight: 600; color: var(--ps-mute); margin-top: 4px; }
       .ps-lbl b { font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ps-ink); font-size: 13px; }
@@ -121,6 +124,39 @@ export default function SiteStyle() {
         .ps-help-r { border-top: none; border-left: 1px solid var(--ps-line); padding: 4px 0 0 32px; position: sticky; top: 70px; }
       }
       @media (min-width: 900px) { .ps-help { padding: 24px; } .ps-q { grid-template-columns: 110px minmax(0, 1fr); gap: 16px; } .ps-q-t { margin-bottom: 10px; } }
+
+      /* Phone: one question at a time; wide screens show them all */
+      .ps-steps { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--ps-line); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ps-mute); }
+      .ps-steps span:last-child { display: flex; gap: 6px; }
+      .ps-steps button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(15,17,21,.16); background: transparent; font: 700 12.5px/1 var(--xd-font-body); letter-spacing: 0; text-transform: none; color: var(--ps-ink); cursor: pointer; }
+      .ps-steps button:disabled { opacity: .35; cursor: default; }
+      @media (max-width: 999px) { .ps-q { display: none; border-top: none; padding: 8px 0 6px; } .ps-q.on { display: grid; } .ps-q-l { display: none; } }
+      @media (min-width: 1000px) { .ps-steps { display: none; } }
+
+      @media (max-width: 899px) {
+        .ps-model { overflow: hidden; }
+        .ps-media { position: relative; }
+        .ps-stage { aspect-ratio: 16 / 10; max-height: 230px; }
+        .ps-shots { position: absolute; left: 10px; bottom: 10px; padding: 0; gap: 6px; background: transparent; }
+        .ps-shots button { width: 42px; height: 30px; border-radius: 6px; border-color: rgba(255,255,255,.7); opacity: .85; }
+        .ps-shots button[aria-pressed="true"] { border-color: #fff; opacity: 1; box-shadow: 0 0 0 2px var(--ps-ink); }
+        .ps-info { padding: 14px; gap: 10px; }
+        .ps-spec { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        .ps-spec div { padding: 7px 10px; }
+        .ps-spec dd { font-size: 14px; }
+        .ps-vars { display: flex; overflow-x: auto; gap: 6px; margin: 0 -14px; padding: 0 14px 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+        .ps-vars::-webkit-scrollbar { display: none; }
+        .ps-var { flex: 0 0 auto; width: auto; min-width: 128px; scroll-snap-align: start; }
+        .ps-col { width: 30px; height: 30px; }
+        .ps-note p:last-child { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .ps-btns { flex-wrap: nowrap; gap: 8px; }
+        .ps-btns > * { flex: 1 1 0; min-width: 0; padding: 0 10px; font-size: 13px; white-space: normal; line-height: 1.15; height: 46px; }
+        .ps-help { padding: 14px; }
+        .ps-help-h h3 { font-size: 20px; }
+        .ps-help-h p:last-child { display: none; }
+        .ps-q-o button { min-height: 38px; padding: 6px 12px; font-size: 13px; }
+        .ps-mtabs { gap: 18px; margin-bottom: 10px; }
+      }
 
       /* Delivery */
       .ps-del { padding: 18px; display: grid; gap: 16px; }
