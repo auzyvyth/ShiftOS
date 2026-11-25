@@ -11,7 +11,7 @@ import VIEWER from './viewer-ms.clicks.json';
 
 export const V_FPS = TL.fps;
 export const V_DUR = TL.dur;
-const BG = '#07080B';
+const BG = '#FFFFFF';   // owner, 2026-11-25: white with a hint of red, so the app shows
 const cl = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' };
 const W = 400, H = 780, K = 1.22;                 // recorded css size, and its scale inside the phone
 const PW = W * K, PH = H * K;
@@ -57,8 +57,8 @@ export const LiveScene = ({ lang = 'ms', audio = true, entered = false }) => {
   return (
     <AbsoluteFill style={{ background: BG, overflow: 'hidden' }}>
       <AbsoluteFill style={{ background: [
-        `radial-gradient(640px 520px at ${540 + Math.sin(f / 60) * 140}px 1100px, rgba(220,38,38,0.22), transparent 70%)`,
-        'radial-gradient(1100px 600px at 540px 0px, rgba(190,190,215,0.14), transparent 70%)' ].join(',') }} />
+        `radial-gradient(640px 520px at ${540 + Math.sin(f / 60) * 140}px 1100px, rgba(220,38,38,0.09), transparent 70%)`,
+        'radial-gradient(1100px 600px at 540px 0px, rgba(220,38,38,0.05), transparent 70%)' ].join(',') }} />
       <AbsoluteFill style={{ transformOrigin: '0 0', transform: `translate(540px, 1120px) scale(${cam.z}) translate(${-sx}px, ${-sy}px)` }}>
         <AbsoluteFill style={{ perspective: 1800, perspectiveOrigin: '540px 900px' }}>
           <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `translateX(${(1 - enter) * 520}px)` }}>
@@ -70,10 +70,10 @@ export const LiveScene = ({ lang = 'ms', audio = true, entered = false }) => {
           </div>
         </AbsoluteFill>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: `linear-gradient(180deg, ${BG} 0%, ${BG} 22%, rgba(7,8,11,0.6) 27%, transparent 32%, transparent 80%, rgba(7,8,11,0.85) 92%, ${BG} 100%)` }} />
+      <AbsoluteFill style={{ background: `linear-gradient(180deg, ${BG} 0%, ${BG} 22%, rgba(255,255,255,0.6) 27%, transparent 32%, transparent 80%, rgba(255,255,255,0.85) 92%, ${BG} 100%)` }} />
       {TL.captions.map((at, i) => <Caption key={i} lines={C.caps[i]} at={at} until={TL.captions[i + 1] ? TL.captions[i + 1] - 4 : null} />)}
       <div style={{ position: 'absolute', left: 60, right: 60, top: 400, textAlign: 'center', fontFamily: FONT, fontWeight: 500, fontSize: 24,
-        color: 'rgba(255,255,255,0.5)' }}>{C.note}</div>
+        color: 'rgba(11,12,15,0.5)' }}>{C.note}</div>
       {audio && <Audio src={staticFile('audio/live.wav')} />}
     </AbsoluteFill>
   );

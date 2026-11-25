@@ -3,16 +3,16 @@
   "fps": 30,
   "bpm": 112.5,
   "beat": 16,
-  "logo": 4,
-  "mapLines": 24,
+  "logo": 30,
+  "mapLines": 40,
   "mapNodes": [
-    28,
-    32,
-    36,
-    40,
-    44
+    44,
+    48,
+    52,
+    56,
+    60
   ],
-  "start": 48,
+  "start": 64,
   "outline": 8,
   "zoomIn": 24,
   "zoomOut": 24,
@@ -78,5 +78,20 @@
   "hub": {
     "x": 540,
     "y": 870
+  },
+  "hook": 0,
+  "hookUp": [
+    22,
+    36
+  ],
+  "hookText": {
+    "ms": [
+      "SA kereta, jangan scroll.",
+      "*5 tool, satu app.*"
+    ],
+    "en": [
+      "Car SA? Don't scroll.",
+      "*5 tools, one app.*"
+    ]
   }
 }

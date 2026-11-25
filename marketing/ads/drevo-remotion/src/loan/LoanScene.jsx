@@ -5,7 +5,7 @@
 // the loan check's document list (message.json) and the bank application's "Share with buyer" link.
 import React from 'react';
 import { AbsoluteFill, Audio, Img, staticFile, useCurrentFrame, interpolate, spring, Easing } from 'remotion';
-import { RED, FONT } from '../ui';
+import { RED, INK, FONT } from '../ui';
 import TL from './timeline.json';
 import RECTS from './rects.json';
 import MSG from './message.json';
@@ -13,7 +13,7 @@ import MSG from './message.json';
 export const L_FPS = TL.fps;
 export const L_DUR = TL.dur;
 const cl = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' };
-const BG = '#07080B';
+const BG = '#FFFFFF';   // owner, 2026-11-25: white with a hint of red, so the app shows
 const out = Easing.bezier(0.16, 1, 0.3, 1);
 const sp = (f, at, c = { damping: 14, mass: 0.7, stiffness: 150 }) => spring({ frame: f - at, fps: L_FPS, config: c });
 
@@ -36,7 +36,7 @@ const LINK_MSG = "Hi Nadia, here's your car loan page — where each bank stands
 export const S = 1.25, SW = 390 * S, SH = 844 * S, BEZ = 16;
 export const Phone = ({ x, y, ry, rx = 6, z = 0, children, glow = 0, w = SW, h = SH }) => (
   <div style={{ position: 'absolute', left: x - w / 2 - BEZ, top: y, width: w + 2 * BEZ, height: h + 2 * BEZ, borderRadius: 64,
-    background: '#16181d', boxShadow: `0 60px 120px rgba(0,0,0,0.75), 0 0 0 2px #2a2d34, 0 0 ${90 * glow}px rgba(220,38,38,${0.45 * glow})`,
+    background: '#16181d', boxShadow: `0 50px 110px rgba(11,12,15,0.28), 0 0 0 2px #2a2d34, 0 0 ${80 * glow}px rgba(220,38,38,${0.25 * glow})`,
     transform: `translateZ(${z}px) rotateY(${ry}deg) rotateX(${rx}deg)`, transformStyle: 'preserve-3d' }}>
     <div style={{ position: 'absolute', left: BEZ, top: BEZ, width: w, height: h, borderRadius: 50, overflow: 'hidden', background: '#0b0c0f' }}>
       {children}
@@ -127,7 +127,7 @@ export const Caption = ({ lines, at, until }) => {
     <div style={{ position: 'absolute', top: 214, left: 50, right: 50, textAlign: 'center', fontFamily: FONT, fontWeight: 700, fontSize: 84,
       letterSpacing: -3.5, lineHeight: 1.04, opacity: 1 - gone, filter: `blur(${gone * 10}px)`, zIndex: 20 }}>
       {lines.map((ln, li) => (
-        <div key={li} style={{ color: ln.startsWith('*') ? RED : '#fff' }}>
+        <div key={li} style={{ color: ln.startsWith('*') ? RED : INK }}>
           {ln.replace(/\*/g, '').split(' ').map((w, wi) => {
             const t0 = at + (n++) * 3;
             const p = interpolate(f, [t0, t0 + 9], [0, 1], { ...cl, easing: out });
@@ -177,8 +177,8 @@ export const LoanScene = ({ lang = 'ms', audio = true, entered = false }) => {
   return (
     <AbsoluteFill style={{ background: BG, overflow: 'hidden' }}>
       <AbsoluteFill style={{ background: [
-        `radial-gradient(640px 520px at ${540 + Math.sin(f / 60) * 140}px 1100px, rgba(220,38,38,0.22), transparent 70%)`,
-        'radial-gradient(1100px 600px at 540px 0px, rgba(190,190,215,0.14), transparent 70%)' ].join(',') }} />
+        `radial-gradient(640px 520px at ${540 + Math.sin(f / 60) * 140}px 1100px, rgba(220,38,38,0.09), transparent 70%)`,
+        'radial-gradient(1100px 600px at 540px 0px, rgba(220,38,38,0.05), transparent 70%)' ].join(',') }} />
       <AbsoluteFill style={{ transformOrigin: '0 0', transform: `translate(540px, ${FOCUS_Y}px) scale(${cam.z}) translate(${-sx}px, ${-sy}px)` }}>
       <AbsoluteFill style={{ perspective: 1800, perspectiveOrigin: '540px 900px' }}>
         {/* the seller's phone */}
@@ -212,10 +212,10 @@ export const LoanScene = ({ lang = 'ms', audio = true, entered = false }) => {
         )}
       </AbsoluteFill>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: `linear-gradient(180deg, ${BG} 0%, ${BG} 22%, rgba(7,8,11,0.6) 27%, transparent 32%, transparent 80%, rgba(7,8,11,0.85) 92%, ${BG} 100%)` }} />
+      <AbsoluteFill style={{ background: `linear-gradient(180deg, ${BG} 0%, ${BG} 22%, rgba(255,255,255,0.6) 27%, transparent 32%, transparent 80%, rgba(255,255,255,0.85) 92%, ${BG} 100%)` }} />
       {TL.captions.map((at, i) => <Caption key={i} lines={C.caps[i]} at={at} until={TL.captions[i + 1] ? TL.captions[i + 1] - 4 : null} />)}
       <div style={{ position: 'absolute', left: 60, right: 60, top: 400, textAlign: 'center', fontFamily: FONT, fontWeight: 500, fontSize: 24,
-        color: 'rgba(255,255,255,0.5)' }}>{C.note}</div>
+        color: 'rgba(11,12,15,0.5)' }}>{C.note}</div>
       {audio && <Audio src={staticFile(`audio/loan.wav`)} />}
     </AbsoluteFill>
   );

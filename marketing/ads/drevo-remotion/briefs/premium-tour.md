@@ -1,5 +1,7 @@
 # Premium tour ad (owner's brief, 2026-11-25): script, gate 2
 
+HOOK (owner, 2026-11-25): "SA kereta, jangan scroll. / *5 tool, satu app.*" (EN "Car SA? Don't scroll. / *5 tools, one app.*"),
+on frame 0, big, then it rises to become the map's title. Text in src/tour/timeline.json `hookText`.
 JOINED as ONE shot (owner, 2026-11-25: "no cut offs"): `Tour-ms` / `Tour-en`, 54 s, src/tour. The Drevo logo, a map of the five
 parts around it, then for each part: outline, glide in (the node IS the clip), play, glide back out. One music bed under
 all of it (make-audio-tour.py), each clip's own effects laid in. Red chapter cards are gone: the outline does their job.
@@ -29,6 +31,6 @@ B. **Scene 6 is two steps in the app, shown as one flow.** The loan check's own 
    it promises nothing the app does not do.
 C. **The buyer's loan page is English only** (src/pages/LoanSharePage.jsx is not translated). The BM cut shows
    it in English. Translate the page first if the BM ad should show BM.
-D. **Dark world vs STYLE.md's 60% white.** Every scene so far follows the dark reference; STYLE.md says white
-   room + red floor. Owner's call; switching later means re-grading every scene.
+D. **Settled (owner, 2026-11-25): white world with a hint of red** ("the black background doesn't really show the app").
+   Every scene's BG is white, fog is white, captions ink + red. The phones and the dashboard stay dark (the real app).
 E. Loan wording: never approval, never a score. The scene says "the bank decides" (the app's own line).

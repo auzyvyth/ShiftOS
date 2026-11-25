@@ -91,7 +91,10 @@ for p in PARTS:
 
 # ---------- the shot's own moments ----------
 NOTES = [659.3, 784, 880, 1046.5, 1174.7]
-put(fx, swell(220, .5), T(TL['logo']) - .5, .2); put(fx, thock(55, 1.0), T(TL['logo']), .9); put(fx, boom(34, 1.6), T(TL['logo']), .5)
+put(fx, thock(55, 1.0), 0, 1.0); put(fx, boom(36, 1.2), 0, .55)                        # the hook: a hit on the very first frame
+for w in range(7): put(fx, bloop(1100 + 80 * w), T(TL['hook'] + 3 * w), .05)           # its words pop
+put(fx, swell(440, T(TL['hookUp'][1] - TL['hookUp'][0])), T(TL['hookUp'][0]), .1)       # it rises to the top
+put(fx, thock(55, 1.0), T(TL['logo']), .7); put(fx, boom(34, 1.6), T(TL['logo']), .5)
 for f0 in [220, 329.6, 440, 659.3]: put(fx, bell(f0 * 2, 2.0), T(TL['logo']), .04)
 for i in range(5): put(fx, tick(2200 + 200 * i), T(TL['mapLines'] + 4 * i), .05)         # branches draw
 for i, at in enumerate(TL['mapNodes']): put(fx, bell(NOTES[i], .7), T(at), .1); put(fx, thock(NOTES[i] / 4, .7), T(at), .35)  # parts pop
