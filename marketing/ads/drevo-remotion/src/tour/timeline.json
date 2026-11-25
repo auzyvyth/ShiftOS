@@ -1,15 +1,82 @@
 {
   "_": "The Premium tour as a map: Drevo, then every part around it; the camera outlines a part, glides into it (the part IS the clip, frozen on its first frame), plays it, glides back out, and moves on. ONE timing source for picture and sound (make-audio-tour.py). 112.5 bpm = 16 frames a beat. Frames. Per part: `o` = the scene frame it opens on, `clip` = frames it plays. A cycle = outline 8 + in 24 + clip + out 24.",
-  "fps": 30, "bpm": 112.5, "beat": 16,
-  "logo": 16, "mapLines": 48, "mapNodes": [56, 64, 72, 80, 88], "start": 96,
-  "outline": 8, "zoomIn": 24, "zoomOut": 24, "endLen": 112,
+  "fps": 30,
+  "bpm": 112.5,
+  "beat": 16,
+  "logo": 4,
+  "mapLines": 24,
+  "mapNodes": [
+    28,
+    32,
+    36,
+    40,
+    44
+  ],
+  "start": 48,
+  "outline": 8,
+  "zoomIn": 24,
+  "zoomOut": 24,
+  "endLen": 112,
   "nodeScale": 0.16,
   "parts": [
-    { "id": "dash",   "o": 36, "clip": 136, "x": 210, "y": 560,  "label": { "ms": "Dashboard", "en": "Dashboard" } },
-    { "id": "broker", "o": 12, "clip": 232, "x": 540, "y": 560,  "label": { "ms": "Stok dealer", "en": "Dealer stock" } },
-    { "id": "mini",   "o": 12, "clip": 232, "x": 870, "y": 560,  "label": { "ms": "Page anda", "en": "Your page" } },
-    { "id": "live",   "o": 0,  "clip": 264, "x": 345, "y": 1180, "label": { "ms": "Live", "en": "Live" } },
-    { "id": "loan",   "o": 16, "clip": 264, "x": 735, "y": 1180, "label": { "ms": "Semakan loan", "en": "Loan check" } }
+    {
+      "id": "dash",
+      "o": 36,
+      "clip": 136,
+      "x": 210,
+      "y": 560,
+      "label": {
+        "ms": "Dashboard",
+        "en": "Dashboard"
+      }
+    },
+    {
+      "id": "broker",
+      "o": 12,
+      "clip": 232,
+      "x": 540,
+      "y": 560,
+      "label": {
+        "ms": "Stok dealer",
+        "en": "Dealer stock"
+      }
+    },
+    {
+      "id": "mini",
+      "o": 12,
+      "clip": 232,
+      "x": 870,
+      "y": 560,
+      "label": {
+        "ms": "Page anda",
+        "en": "Your page"
+      }
+    },
+    {
+      "id": "live",
+      "o": 10,
+      "clip": 264,
+      "x": 345,
+      "y": 1180,
+      "label": {
+        "ms": "Live",
+        "en": "Live"
+      }
+    },
+    {
+      "id": "loan",
+      "o": 16,
+      "clip": 264,
+      "x": 735,
+      "y": 1180,
+      "label": {
+        "ms": "Semakan loan",
+        "en": "Loan check"
+      }
+    }
   ],
-  "hub": { "x": 540, "y": 870 }
+  "hub": {
+    "x": 540,
+    "y": 870
+  }
 }

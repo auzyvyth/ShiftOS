@@ -87,7 +87,7 @@ for b in range(int(DUR / BEAT) + 1):
 for p in PARTS:
     x = read(f"public/audio/{p['id']}-fx.wav"); a = int(p['o'] / FPS * SR); n = int(p['clip'] / FPS * SR)
     seg = x[a:a + n].copy(); r = int(.02 * SR); seg[:r] *= np.linspace(0, 1, r); seg[-r:] *= np.linspace(1, 0, r)
-    put(fx, seg, p['play'] / FPS, 1.0)
+    put(fx, seg, p['play'] / FPS, .72 if p['id'] == 'dash' else 1.0)   # the dashboard's hits ran ~2 dB hot
 
 # ---------- the shot's own moments ----------
 NOTES = [659.3, 784, 880, 1046.5, 1174.7]

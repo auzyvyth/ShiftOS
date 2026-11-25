@@ -103,8 +103,8 @@ const Caption = ({ lines, at, out }) => {
   const gone = out ? interpolate(f, [out, out + 8], [0, 1], cl) : 0;
   let n = 0;
   return (
-    <div style={{ position: 'absolute', top: 236, left: 60, right: 60, textAlign: 'center', fontFamily: FONT, fontWeight: 700,
-      fontSize: 92, letterSpacing: -4, lineHeight: 1.05, opacity: 1 - gone, filter: `blur(${gone * 10}px)` }}>
+    <div style={{ position: 'absolute', top: 214, left: 50, right: 50, textAlign: 'center', fontFamily: FONT, fontWeight: 700,
+      fontSize: 84, letterSpacing: -3.5, lineHeight: 1.05, opacity: 1 - gone, filter: `blur(${gone * 10}px)` }}>
       {lines.map((ln, li) => {
         const red = ln.startsWith('*');
         return (
@@ -180,8 +180,8 @@ export const DashPan = ({ lang = 'ms', audio = true, entered = false }) => {
             opacity: interpolate(f, [TL.logo + 16, TL.logo + 26], [0, 1], cl) }}>drevo.my</div>
         </AbsoluteFill>
       )}
-      <div style={{ position: 'absolute', left: 60, right: 60, top: 1400, textAlign: 'center', fontFamily: FONT, fontWeight: 500,
-        fontSize: 26, color: 'rgba(255,255,255,0.5)', opacity: interpolate(f, [30, 50], [0, 1], cl) }}>{C.note}</div>
+      <div style={{ position: 'absolute', left: 60, right: 60, top: 400, textAlign: 'center', fontFamily: FONT, fontWeight: 500,
+        fontSize: 24, color: 'rgba(255,255,255,0.5)', opacity: interpolate(f, [30, 50], [0, 1], cl) }}>{C.note}</div>
       {audio && <Audio src={staticFile('audio/dash.wav')} />}
     </AbsoluteFill>
   );

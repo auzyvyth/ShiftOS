@@ -34,16 +34,22 @@ export const T_DUR = PLAN.dur;
 
 // camera: the map at zoom 1, a part at zoom 1/NS (it then fills the frame exactly)
 const MAP = { x: 540, y: 960, z: 1 };
+// The node stays pinned under the camera the whole way: its SCREEN position glides from where it sits on the map
+// to the centre while the zoom grows, and the camera centre is solved from that. (Gliding the camera centre
+// itself swung the shot across the map: one zoom crossed the logo at 3x.)
 const camAt = (f) => {
-  let from = MAP, to = MAP, t = 0;
   for (const p of PLAN.parts) {
-    const node = { x: p.x, y: p.y, z: 1 / NS };
-    if (f >= p.inStart && f < p.play) { from = MAP; to = node; t = (f - p.inStart) / TL.zoomIn; break; }
-    if (f >= p.play && f < p.outStart) { from = node; to = node; break; }
-    if (f >= p.outStart && f < p.back) { from = node; to = MAP; t = (f - p.outStart) / TL.zoomOut; break; }
+    let t = null;
+    if (f >= p.inStart && f < p.play) t = (f - p.inStart) / TL.zoomIn;
+    else if (f >= p.play && f < p.outStart) t = 1;
+    else if (f >= p.outStart && f < p.back) t = 1 - (f - p.outStart) / TL.zoomOut;
+    if (t === null) continue;
+    const e = glide(Math.min(1, Math.max(0, t)));
+    const z = Math.exp(Math.log(1 / NS) * e);
+    const sx = (p.x - MAP.x) * (1 - e), sy = (p.y - MAP.y) * (1 - e);      // node's offset from screen centre
+    return { x: p.x - sx / z, y: p.y - sy / z, z };
   }
-  const e = glide(Math.min(1, Math.max(0, t)));
-  return { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e, z: Math.exp(Math.log(from.z) + (Math.log(to.z) - Math.log(from.z)) * e) };
+  return MAP;
 };
 
 const Node = ({ p, i, lang, cam }) => {
