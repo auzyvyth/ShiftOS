@@ -1,5 +1,5 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { cleanSite, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
+import { cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -26,6 +26,11 @@ is('phone number refused', promoProblem({ model: 'Vios', text: 'call 012 345 678
 is('no model refused', promoProblem({ model: ' ', until: '2026-11-30' }, T), 'Type the model.');
 is('delivery ok', deliveryProblem({ town: 'Marang', km: 38, min: 45 }), '');
 is('delivery km 0 refused', deliveryProblem({ town: 'Marang', km: 0 }).includes('km'), true);
+
+is('notes: blank + duplicate (any case) dropped', cleanSite({ notes: [{ model: 'Saga', text: 'First car pick' }, { model: 'saga', text: 'again' }, { model: 'X50', text: ' ' }] }).notes, [{ model: 'Saga', text: 'First car pick' }]);
+is('note needs text', noteProblem({ model: 'Saga', text: '' }), 'Write your note.');
+is('note phone number refused', noteProblem({ model: 'Saga', text: 'call 0123456789' }), "Don't type a phone number here.");
+is('note ok', noteProblem({ model: 'Saga', text: 'Good for a first car' }), '');
 
 const site = cleanSite({ promos: [
   { model: 'Hilux', until: '2026-12-05' }, { model: 'Yaris', until: '2026-11-30' }, { model: 'Old', until: '2026-11-01' }, { model: 'Camry', until: '2026-11-30' },

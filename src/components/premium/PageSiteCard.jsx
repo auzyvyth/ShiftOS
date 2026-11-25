@@ -3,8 +3,8 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { premiumDark as PD } from '../../theme/tokens';
 import {
-  cleanSite, promoProblem, deliveryProblem, siteErrorText, myToday,
-  SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX,
+  cleanSite, promoProblem, deliveryProblem, noteProblem, siteErrorText, myToday,
+  SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
 } from '../../utils/pageSite';
 
 // Premium Settings > "Your page sections" (PAGE-SITE 2). The seller types their
@@ -23,6 +23,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
+  const [myModels, setMyModels] = useState([]);   // the seller's own model cards, to suggest names for a note
   const today = myToday();
 
   useEffect(() => {
@@ -33,6 +34,9 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
       const s = cleanSite(data?.page_site);
       setSaved(s); setDraft(s);
     });
+    supabase.from('car_listings').select('model').eq('dealer_id', userId).eq('is_model_card', true).limit(40).then(({ data }) => {
+      if (!off && Array.isArray(data)) setMyModels([...new Set(data.map((r) => r.model).filter(Boolean))]);
+    }, () => {});
     return () => { off = true; };
   }, [userId]);
 
@@ -42,6 +46,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
   // The draft keeps raw typed rows (so a half-typed row survives); cleanSite drops the bad ones on save.
   const set = (patch) => { setDraft((d) => ({ ...d, ...patch })); setDone(false); setError(null); };
   const setPromo = (i, patch) => set({ promos: draft.promos.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+  const setNote = (i, patch) => set({ notes: draft.notes.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
   const setTown = (i, patch) => set({ delivery: { ...draft.delivery, items: draft.delivery.items.map((t, j) => (j === i ? { ...t, ...patch } : t)) } });
   const move = (i, d) => {
     const o = [...draft.order]; const j = i + d;
@@ -53,6 +58,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
 
   const problems = [
     ...draft.promos.map((p) => promoProblem(p, today)),
+    ...draft.notes.map((x) => noteProblem(x)),
     ...draft.delivery.items.map((t) => deliveryProblem(t)),
   ].filter(Boolean);
 
@@ -121,6 +127,32 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
           )}
         </div>
       </div>
+
+      {myModels.length > 0 && (
+        <div style={card}>
+          <p style={h}>Your take on each model</p>
+          <p style={hint}>One line buyers read under the model, headed with your first name: who it suits and why. It is your opinion, so say it like one. Do not type phone numbers.</p>
+          <datalist id="ps-my-models">{myModels.map((m) => <option key={m} value={m} />)}</datalist>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {draft.notes.map((x, i) => {
+              const pr = noteProblem(x);
+              return (
+                <div key={i} style={row}>
+                  <input aria-label="Model" list="ps-my-models" placeholder="Model" maxLength={40} value={x.model || ''} onChange={(e) => setNote(i, { model: e.target.value })} style={input} />
+                  <textarea aria-label="Your take" placeholder="Why you would pick it" maxLength={NOTE_MAX} rows={3} value={x.text || ''} onChange={(e) => setNote(i, { text: e.target.value })}
+                    style={{ ...input, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.45 }} />
+                  <p style={{ margin: 0, fontSize: 11.5, color: PD.textMuted }}>{(x.text || '').length} / {NOTE_MAX}</p>
+                  {pr && <p style={{ margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
+                  <button type="button" onClick={() => set({ notes: draft.notes.filter((_, j) => j !== i) })} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}><Trash2 size={14} /> Remove</button>
+                </div>
+              );
+            })}
+            {draft.notes.length < NOTES_MAX && (
+              <button type="button" onClick={() => set({ notes: [...draft.notes, { model: '', text: '' }] })} style={{ ...soft, justifySelf: 'start' }}><Plus size={14} /> Add a note</button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={card}>
         <p style={h}>Delivery to your buyer's town</p>

@@ -1,5 +1,5 @@
 -- PAGE-SITE 2 (owner, 2026-11-25): a Premium page can carry the seller's own
--- promos of the month, delivery towns and the order of its sections. All of it
+-- promos of the month, the seller's own note on each model, delivery towns and the order of its sections. All of it
 -- is ONE small jsonb on the seller's profile, `profiles.page_site`.
 --
 -- The seller's OWN claims, never Drevo prices: every promo must carry an end
@@ -53,6 +53,16 @@ begin
       begin perform (e->>'until')::date; exception when others then return false; end;
       if (e->>'until')::date > (now() at time zone 'Asia/Kuala_Lumpur')::date + 120 then return false; end if;
       if e ? 'price' and not ((e->>'price') ~ '^\d{1,7}$' and (e->>'price')::numeric between 1 and 2000000) then return false; end if;
+      if regexp_replace(coalesce(e->>'model','') || coalesce(e->>'text',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
+    end loop;
+  end if;
+
+  if p ? 'notes' then
+    if jsonb_typeof(p->'notes') <> 'array' or jsonb_array_length(p->'notes') > 12 then return false; end if;
+    for e in select * from jsonb_array_elements(p->'notes') loop
+      if jsonb_typeof(e) <> 'object' then return false; end if;
+      if coalesce(length(btrim(e->>'model')), 0) not between 1 and 40 then return false; end if;
+      if coalesce(length(btrim(e->>'text')), 0) not between 1 and 160 then return false; end if;
       if regexp_replace(coalesce(e->>'model','') || coalesce(e->>'text',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
     end loop;
   end if;

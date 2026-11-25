@@ -41,11 +41,8 @@ export default function SiteStyle() {
       .ps-ask { font-size: 13px; font-weight: 700; color: var(--ps-ink); text-decoration: underline; text-underline-offset: 3px; background: none; border: none; padding: 6px 0; cursor: pointer; font-family: inherit; }
 
       /* Model picker */
-      .ps-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 14px; padding-bottom: 2px; }
-      .ps-tabs::-webkit-scrollbar { display: none; }
-      .ps-tabs button { flex: 0 0 auto; height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(15,17,21,.14); background: var(--ap-surf, #fff); font: 700 13.5px/1 var(--xd-font-body); color: #374151; cursor: pointer; }
-      .ps-tabs button[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
-      .ps-model { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+      .ps-model { display: grid; grid-template-columns: minmax(0, 1fr); }
+      .ps-media { overflow: hidden; border-radius: 18px 18px 0 0; background: #e4e7ea; }
       .ps-stage { position: relative; background: linear-gradient(180deg, #eef0f2, #e4e7ea); aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center; overflow: hidden; }
       .ps-stage img { width: 100%; height: 100%; object-fit: contain; }
       .ps-stage-tag { position: absolute; left: 14px; top: 14px; height: 26px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 999px; background: rgba(15,17,21,.82); color: #fff; font-size: 12px; font-weight: 700; }
@@ -66,9 +63,51 @@ export default function SiteStyle() {
       .ps-btns > * { flex: 1 1 160px; }
       @media (min-width: 900px) {
         .ps-model { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
-        .ps-stage { aspect-ratio: auto; min-height: 380px; }
+        .ps-media { border-radius: 18px 0 0 18px; align-self: start; position: sticky; top: 64px; }
+        .ps-stage { aspect-ratio: 4 / 3; }
         .ps-info { padding: 24px; }
       }
+
+      /* Model tabs: name over "from RM", an ink bar under the picked one */
+      .ps-mtabs { display: flex; gap: 22px; overflow-x: auto; scrollbar-width: none; margin: 0 0 14px; border-bottom: 1px solid var(--ps-line); }
+      .ps-mtabs::-webkit-scrollbar { display: none; }
+      .ps-mtabs button { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 4px 0 12px; border: none; background: none; cursor: pointer; font-family: inherit; text-align: left; color: #9ca3af; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+      .ps-mtabs button b { font-size: 15px; font-weight: 800; letter-spacing: .01em; }
+      .ps-mtabs button span { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      .ps-mtabs button[aria-pressed="true"] { color: var(--ps-ink); border-bottom-color: var(--ps-a); }
+      .ps-shots { display: flex; gap: 8px; padding: 10px 14px 14px; overflow-x: auto; scrollbar-width: none; background: #e4e7ea; }
+      .ps-shots::-webkit-scrollbar { display: none; }
+      .ps-shots button { flex: 0 0 auto; width: 64px; height: 44px; padding: 0; border-radius: 8px; overflow: hidden; border: 2px solid transparent; background: #fff; cursor: pointer; opacity: .7; }
+      .ps-shots button[aria-pressed="true"] { border-color: var(--ps-ink); opacity: 1; }
+      .ps-shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .ps-mname { font-size: clamp(22px, 5vw, 28px); font-weight: 800; color: var(--ps-ink); line-height: 1.1; }
+      .ps-mvar { font-size: 13.5px; font-weight: 600; color: var(--ps-mute); margin-top: 4px; }
+      .ps-lbl b { font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ps-ink); font-size: 13px; }
+      .ps-spec { display: grid; gap: 1px; background: var(--ps-line); border-radius: 12px; overflow: hidden; margin: 0; }
+      .ps-spec div { background: var(--ap-surf, #fff); padding: 10px 12px; min-width: 0; }
+      .ps-spec dt { font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-mute); }
+      .ps-spec dd { margin: 4px 0 0; font-size: 15px; font-weight: 800; color: var(--ps-ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      .ps-note { padding: 12px 14px; border-radius: 12px; background: #f4f5f7; }
+      .ps-note p:last-child { font-size: 14px; color: #374151; line-height: 1.55; overflow-wrap: anywhere; }
+      .ps-note .ps-lbl { margin-bottom: 4px; }
+
+      /* "Not sure which model?" */
+      .ps-help { margin-top: 18px; padding: 18px; display: grid; gap: 4px; }
+      .ps-help-h h3 { font-size: clamp(20px, 4.6vw, 26px); font-weight: 800; color: var(--ps-ink); margin: 2px 0 4px; line-height: 1.15; }
+      .ps-help-h p:last-child { font-size: 13.5px; color: var(--ps-mute); line-height: 1.5; }
+      .ps-q { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid var(--ps-line); }
+      .ps-q-l { font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-mute); }
+      .ps-q-t { font-size: 15px; font-weight: 700; color: var(--ps-ink); margin-bottom: 8px; }
+      .ps-q-o { display: flex; flex-wrap: wrap; gap: 8px; }
+      .ps-q-o button { min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(15,17,21,.16); background: transparent; font: 600 13.5px/1.25 var(--xd-font-body); color: #374151; cursor: pointer; text-align: left; }
+      .ps-q-o button[aria-checked="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
+      .ps-help .ps-btns > * { flex: 0 1 230px; }
+      .ps-help-r { border-top: 1px solid var(--ps-line); padding-top: 14px; }
+      .ps-help-pick { font-size: clamp(24px, 6vw, 32px); font-weight: 800; color: var(--ps-ink); line-height: 1.1; }
+      .ps-help-facts { font-size: 13.5px; color: #374151; margin-top: 6px; }
+      .ps-help-price { font-size: 17px; font-weight: 800; color: var(--ps-ink); margin-top: 8px; font-variant-numeric: tabular-nums; }
+      .ps-help-price small { font-size: 12.5px; font-weight: 600; color: var(--ps-mute); }
+      @media (min-width: 900px) { .ps-help { padding: 24px; } .ps-q { grid-template-columns: 110px minmax(0, 1fr); gap: 16px; } .ps-q-t { margin-bottom: 10px; } }
 
       /* Delivery */
       .ps-del { padding: 18px; display: grid; gap: 16px; }

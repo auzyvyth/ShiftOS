@@ -1109,7 +1109,7 @@ export default function SalesmanProfilePage() {
   const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
   const siteNodes = {
     promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
-    models: <ModelPicker key="models" cars={listings} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
     cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
     calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,

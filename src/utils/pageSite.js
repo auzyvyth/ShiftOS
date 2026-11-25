@@ -27,6 +27,8 @@ export const SECTION_LABEL = {
 export const PROMO_MAX = 12;
 export const DELIVERY_MAX = 12;
 export const MODEL_MAX = 40;
+export const NOTE_MAX = 160;   // the seller's own line about a model
+export const NOTES_MAX = 12;
 export const TEXT_MAX = 80;
 export const TOWN_MAX = 40;
 export const PRICE_MAX = 2000000;
@@ -43,7 +45,7 @@ const addDays = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 864000
 // Today in Malaysia, as YYYY-MM-DD (the end date is a Malaysian calendar day).
 export const myToday = (now = new Date()) => malaysiaDate(now);
 
-export const EMPTY_SITE = { v: SITE_VERSION, order: [...SITE_SECTIONS], off: [], promos: [], delivery: { base: '', items: [] } };
+export const EMPTY_SITE = { v: SITE_VERSION, order: [...SITE_SECTIONS], off: [], promos: [], notes: [], delivery: { base: '', items: [] } };
 
 // Any saved value -> a valid full site. Never throws, never invents: bad rows are dropped.
 export function cleanSite(raw) {
@@ -62,6 +64,14 @@ export function cleanSite(raw) {
     promos.push({ model, text, until, ...(price > 0 && price <= PRICE_MAX ? { price } : {}) });
     if (promos.length >= PROMO_MAX) break;
   }
+  const notes = [];
+  for (const x of Array.isArray(r.notes) ? r.notes : []) {
+    const model = clean(x?.model, MODEL_MAX);
+    const text = clean(x?.text, NOTE_MAX);
+    if (!model || !text || notes.some((y) => y.model.toLowerCase() === model.toLowerCase())) continue;
+    notes.push({ model, text });
+    if (notes.length >= NOTES_MAX) break;
+  }
   const d = r.delivery && typeof r.delivery === 'object' ? r.delivery : {};
   const items = [];
   for (const it of Array.isArray(d.items) ? d.items : []) {
@@ -72,7 +82,7 @@ export function cleanSite(raw) {
     items.push({ town, km, ...(min > 0 && min <= MIN_MAX ? { min } : {}) });
     if (items.length >= DELIVERY_MAX) break;
   }
-  return { v: SITE_VERSION, order, off, promos, delivery: { base: clean(d.base, TOWN_MAX), items } };
+  return { v: SITE_VERSION, order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items } };
 }
 
 // What is wrong with one promo row, in words for the seller, or '' when fine.
@@ -84,6 +94,12 @@ export function promoProblem(p, today = myToday()) {
   if (p.until > addDays(today, PROMO_DAYS_MAX)) return `Promos can run ${PROMO_DAYS_MAX} days at most. Add the next one when it renews.`;
   const price = Number(p?.price);
   if (p?.price !== '' && p?.price != null && !(price > 0 && price <= PRICE_MAX)) return 'The price looks wrong.';
+  return '';
+}
+export function noteProblem(x) {
+  if (!clean(x?.model, MODEL_MAX)) return 'Pick or type the model.';
+  if (!clean(x?.text, NOTE_MAX)) return 'Write your note.';
+  if (hasNumberRun(x?.model) || hasNumberRun(x?.text)) return "Don't type a phone number here.";
   return '';
 }
 export function deliveryProblem(it) {
