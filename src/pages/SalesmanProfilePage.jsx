@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
-import { cdnImg, cdnSrcSet } from '../utils/img';
+import { cdnImg, cdnSrcSet, isSeeThroughPhoto } from '../utils/img';
 import { coverObjectPosition } from '../utils/coverFocus';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
@@ -890,6 +890,97 @@ export default function SalesmanProfilePage() {
     </section>
   );
 
+  // Buttons on the top of the page (cover on Lite, hero on Premium).
+  const topButtons = (
+    <>
+      <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
+      <button className="ap-share" onClick={sharePage} aria-label="Share this page">
+        {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+      </button>
+      {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
+      {viewerHome && (
+        <div className="ap-owner">
+          <Link to={viewerHome.to} style={ownerChip}>
+            {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
+          </Link>
+          {/* Every seller plan gets it, Lite included (owner, 2026-10-18).
+              Always shown to the owner: with no approved car it says why
+              instead of vanishing (a new seller looked for it and it was gone). */}
+          {isOwner && (
+            <button onClick={openLive} style={ownerChip}>
+              <Radio size={12} /> Live presentation
+            </button>
+          )}
+          {isOwner && liveBlock && (
+            <span role="status" style={{ ...ownerChip, cursor: 'default', whiteSpace: 'normal', maxWidth: 300, lineHeight: 1.4 }}>
+              {liveBlock === 'pending'
+                ? 'Your car is waiting for approval. Live presentation opens once a car is approved.'
+                : 'Add a car first. Live presentation shows the cars on this page.'}
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+  // PAGE-HERO (owner, 2026-11-25): on a Premium page the SELLER is the hero.
+  // Their photo big on the right (a see-through cut-out stands on the band, an
+  // ordinary photo sits in a tall frame), with a car in front only when its photo
+  // is a cut-out (a rectangle in front of a person looks broken). Everything the
+  // old side card said is said here, once: name, verified, numbers, WhatsApp.
+  const heroCar = listings.find((c) => isSeeThroughPhoto(Array.isArray(c.images) ? c.images[0] : null)) || null;
+  const heroCut = isSeeThroughPhoto(profile.avatar_url);
+  const heroBio = profile.bio || malayLine;
+  const heroPro = pro && (
+    <header className={`aph${profile.cover_url ? ' aph--cover' : ''}`}>
+      {profile.cover_url && (
+        <img className="aph-bg" src={cdnImg(profile.cover_url, 1600, 70)} alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
+      )}
+      <span className="aph-glow" aria-hidden="true" />
+      {topButtons}
+      <div className="aph-in">
+        <div className="aph-text">
+          <div className="aph-chips">
+            <span>{sellerKind}</span>
+            {(locationCity || locationState) && <span><MapPin size={12} />{[locationCity, locationState].filter(Boolean).join(', ')}</span>}
+            {isVerified && <span><ShieldCheck size={12} />ID verified by Drevo</span>}
+          </div>
+          <h1 className="aph-name">
+            {nameHead}
+            <span className="ap-last">{nameTail}{isVerified && (
+              <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#fff" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#0f1115" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}</span>
+          </h1>
+          {(agentNickname(seoProfile) || profile.job_title) && (
+            <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
+          )}
+          {dealer?.dealership && <p className="aph-role">Works at {dealer.dealership}</p>}
+          {heroBio && <p className="aph-bio">{heroBio}</p>}
+          <div className="aph-cta">
+            {waHref && <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}<span>WhatsApp {firstName}</span></a>}
+            {listings.length > 0 && (
+              <a className="aph-ghost" href="#ap-cars" onClick={(e) => { e.preventDefault(); document.getElementById('ap-cars')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>See my cars</a>
+            )}
+            {socials.map((so) => (
+              <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="aph-ico" title={so.label} aria-label={so.label}>{SOCIAL_ICONS[so.key]}</a>
+            ))}
+          </div>
+          <div className="aph-stats">
+            {stats.map((st) => (
+              <div key={st.key}><b>{st.n}{st.suffix && <small>{st.suffix}</small>}</b><span>{st.l}</span></div>
+            ))}
+            {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
+          </div>
+        </div>
+        <div className={`aph-pic${heroCut ? ' aph-pic--cut' : ''}${heroCar ? ' aph-pic--car' : ''}`}>
+          {profile.avatar_url
+            ? <img className="aph-me" src={heroCut ? profile.avatar_url : cdnImg(profile.avatar_url, 720, 80)} alt={profile.full_name} />
+            : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
+          {heroCar && <img className="aph-car" src={heroCar.images[0]} alt="" loading="lazy" />}
+        </div>
+      </div>
+    </header>
+  );
+
   return (
     <>
       <Helmet>
@@ -1084,6 +1175,47 @@ export default function SalesmanProfilePage() {
           box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(9 10 12 / .10), 0 2px 3px rgb(9 10 12 / .25), 0 8px 20px rgb(9 10 12 / .18);
           transition: translate 90ms ease-out, box-shadow 90ms ease-out; }
         .ap--pro .ap-back:active, .ap--pro .ap-share:active { background: linear-gradient(#eeede9, #ffffff); box-shadow: inset 0 2px 5px rgb(9 10 12 / .22); translate: 0 2px; }
+        /* PAGE-HERO (2026-11-25): Premium = the seller is the hero (heroPro). */
+        .aph { position: relative; margin-top: 12px; border-radius: 24px; overflow: hidden; background: #0c0d10; color: #fff; isolation: isolate; }
+        .aph-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -3; }
+        .aph--cover::before { content: ''; position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(12,13,16,.55), rgba(12,13,16,.92) 55%); }
+        .aph-glow { position: absolute; z-index: -1; left: 50%; top: 40px; width: 360px; height: 360px; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle, rgba(var(--ap-rgb), .95) 0%, rgba(var(--ap-rgb), .35) 42%, rgba(var(--ap-rgb), 0) 70%); }
+        .aph-in { display: flex; flex-direction: column; gap: 20px; padding: 64px 20px 24px; }
+        .aph-pic { order: -1; position: relative; height: 300px; display: flex; align-items: flex-end; justify-content: center; }
+        .aph-me { display: block; width: auto; height: 92%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 28px; box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(var(--ap-rgb), .35); }
+        .aph-pic--cut .aph-me { height: 100%; aspect-ratio: auto; max-width: 100%; object-fit: contain; object-position: bottom; border-radius: 0; box-shadow: none; filter: drop-shadow(0 20px 30px rgba(0,0,0,.45)); }
+        .aph-mono { display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, var(--ap-a), var(--ap-a2)); font-family: 'Bebas Neue', sans-serif; font-size: 140px; color: rgba(255,255,255,.92); }
+        .aph-pic--car .aph-me { margin-bottom: 36px; }
+        .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(88%, 420px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
+        .aph-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 12px; font-weight: 700; color: rgba(255,255,255,.88); }
+        .ap .aph-name { margin: 14px 0 6px; color: #fff; font-size: clamp(56px, 16vw, 120px); line-height: .88; letter-spacing: .01em; }
+        .ap .aph-name svg { width: .3em; height: .3em; margin-top: -.08em; }
+        .aph-role { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); }
+        .aph-bio { margin: 12px 0 0; max-width: 540px; font-size: 15px; line-height: 1.6; color: rgba(255,255,255,.85); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+        .aph-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
+        .aph-cta .ap-btn { flex: 1 1 auto; height: 52px; padding: 0 24px; border-radius: 26px; font-size: 15px; font-weight: 800; }
+        .aph-ghost { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 auto; height: 52px; padding: 0 22px; border-radius: 26px; border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 15px; font-weight: 800; text-decoration: none; }
+        .aph-ghost:hover { background: rgba(255,255,255,.08); }
+        .aph-ico { width: 52px; height: 52px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+        .aph-ico svg { width: 20px; height: 20px; }
+        .aph-stats { display: flex; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); }
+        .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+        .aph-stats b small { font-size: 18px; color: rgba(255,255,255,.6); }
+        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 16px; font-weight: 800; line-height: 1.2; padding-top: 10px; max-width: 180px; }
+        .aph-stats span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
+        @media (min-width: 900px) {
+          .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 560px; padding: 88px 56px 48px; }
+          .aph-pic { order: 0; height: 100%; min-height: 440px; }
+          .aph-text { align-self: center; }
+          .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
+          .aph-cta .ap-btn, .aph-ghost { flex: 0 0 auto; }
+          .aph-car { left: 44%; width: min(96%, 520px); }
+        }
+        @media (min-width: 1024px) {
+          .ap--pro .ap-cols { display: block; }
+          .ap--pro .ap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
         @media (prefers-reduced-motion: reduce) { .ap--pro .ap-btn, .ap--pro .ap-back, .ap--pro .ap-share { transition: none; } .ap--pro .ap-btn:active, .ap--pro .ap-back:active, .ap--pro .ap-share:active { translate: none; } }
         /* PAGE-PRO 2: the person, after the cars. */
         .ap-bio--short p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1141,7 +1273,7 @@ export default function SalesmanProfilePage() {
         <div className="ap-shell">
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
               marketplace's warm wave bands (colour lives here and nowhere else). */}
-          <div className="ap-cover">
+          {pro ? heroPro : <div className="ap-cover">
             {profile.cover_url ? (
               <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
             ) : (
@@ -1151,37 +1283,11 @@ export default function SalesmanProfilePage() {
                 <path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2" />
               </svg>
             )}
-            <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
-            <button className="ap-share" onClick={sharePage} aria-label="Share this page">
-              {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
-            </button>
-            {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
-            {viewerHome && (
-              <div className="ap-owner">
-                <Link to={viewerHome.to} style={ownerChip}>
-                  {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
-                </Link>
-                {/* Every seller plan gets it, Lite included (owner, 2026-10-18).
-                    Always shown to the owner: with no approved car it says why
-                    instead of vanishing (a new seller looked for it and it was gone). */}
-                {isOwner && (
-                  <button onClick={openLive} style={ownerChip}>
-                    <Radio size={12} /> Live presentation
-                  </button>
-                )}
-                {isOwner && liveBlock && (
-                  <span role="status" style={{ ...ownerChip, cursor: 'default', whiteSpace: 'normal', maxWidth: 300, lineHeight: 1.4 }}>
-                    {liveBlock === 'pending'
-                      ? 'Your car is waiting for approval. Live presentation opens once a car is approved.'
-                      : 'Add a car first. Live presentation shows the cars on this page.'}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+            {topButtons}
+          </div>}
 
           <div className="ap-cols">
-            <div className="ap-left">
+            {!pro && <div className="ap-left">
               <div className="ap-card ap-id">
                 <div className="ap-av">
                   {profile.avatar_url ? <img src={cdnImg(profile.avatar_url, 240, 80)} alt={profile.full_name} /> : <div>{initial}</div>}
@@ -1284,7 +1390,7 @@ export default function SalesmanProfilePage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
             <div className="ap-right">
               {pro && (
