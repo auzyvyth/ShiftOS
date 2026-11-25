@@ -178,7 +178,7 @@ export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onW
           )}
 
           <p className="bf-fine">
-            Estimate on the reducing balance: new Proton and Perodua at {LOCAL_NEW_EIR}% EIR, other cars at {DEFAULT_EIR}%, up to 9 years (shorter for older cars). Cars over RM 300,000 are not included. Each bank sets its own rate and decides your loan.
+            Estimate on the reducing balance: new Proton and Perodua at {LOCAL_NEW_EIR}% EIR, other cars at {DEFAULT_EIR}%, up to 9 years (shorter for older cars). Each bank sets its own rate and decides your loan.
           </p>
         </div>
       )}

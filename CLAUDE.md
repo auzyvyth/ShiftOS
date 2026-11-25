@@ -2138,6 +2138,18 @@ the title would be cut), description and Person `alternateName` (`api/og.js`). S
 its own Save button and own query, so the main profile save cannot fail on it. There is NO seller search on Drevo yet, so
 "found" means Google; an in-app search by nickname is a later step.
 
+## Brand pages /new-cars/:brand (BRAND-HUB, owner 2026-11-25) — one rules file, our own photos
+One page per new-car brand, built from keyword research of what ranks in Google Malaysia (ZigWheels, Paultan,
+Carlist: "<brand> price list", "<brand> SUV / hybrid / EV / 7 seater / under RMxxk", "<model> price / variants",
+Malay "harga kereta <brand>"). ONE rules file, `src/utils/brandHub.js` (`npm run test:brandhub`), read by
+`src/pages/BrandHubPage.jsx` AND the crawler page in `api/og.js` (`buildBrandHubHtml`), plus the sitemap.
+Every number is from `new_car_models` (Peninsular, on the road without insurance) and every photo is ours
+(`new_car_model_media`); no rebate, promo or review claim is written anywhere (promos expire, nothing holds one).
+Sections only exist when rows back them (hybrid, EV, 7-seater, a budget band that differs from the full list).
+Keyword lists per brand: `docs/BRAND_SEO_KEYWORDS.md`, built by `node tools/brand-seo/keywords.mjs` (re-run when
+models change; the sample rows in `tools/brand-seo/sample-rows.mjs` are a snapshot, not the live table).
+A model named "Omoda ..." under brand Jaecoo shows its own name (`modelDisplayName`, `BRAND_ALIASES`, newCars.js).
+
 ## Link-preview pictures (OG-1, owner 2026-11-22) — one per audience, one per dealer
 What WhatsApp / Facebook show when a link is shared. ONE list, `OG_IMAGES` (`src/config/ogImages.js`), read by
 the SPA Helmet AND `api/og.js` (the crawler page is what WhatsApp actually reads): `og-marketplace.jpg` (buyers:
