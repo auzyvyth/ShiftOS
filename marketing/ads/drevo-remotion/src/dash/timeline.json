@@ -1,7 +1,7 @@
 {
-  "_": "Dashboard pan (style from the owner's reference: a screen lying in 3D, the camera glides box to box). ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat, 64 a bar. Frames. Each box: the camera travels for `travel` frames and ARRIVES on its downbeat.",
-  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 480,
-  "overview": 40, "travel": 26,
-  "boxes": [64, 128, 192, 256, 320],
-  "pullback": 384, "logo": 424
+  "_": "Dashboard pan (style from the owner's reference: a screen lying in 3D, the camera glides box to box). ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat. Frames. One box every 2 beats; the camera travels `travel` frames and ARRIVES on the beat.",
+  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 300,
+  "overview": 24, "travel": 14,
+  "boxes": [40, 72, 104, 136, 168],
+  "pullback": 208, "logo": 240
 }

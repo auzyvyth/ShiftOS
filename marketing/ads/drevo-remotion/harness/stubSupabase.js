@@ -14,6 +14,7 @@ function query(result) {
   return q;
 }
 function rpc(name, args = {}) {
+  if (globalThis.__STUB_RPC && name in globalThis.__STUB_RPC) return query(globalThis.__STUB_RPC[name]);
   if (name === 'get_new_car_listing_info') return query(infoFor(args.p_listing_id));
   if (name === 'get_new_car_variants_batch') return query((args.p_listing_ids || []).map((id) => ({ listing_id: id, variants: infoFor(id)?.variants || [] })));
   if (name === 'set_live_listing') return query(true);

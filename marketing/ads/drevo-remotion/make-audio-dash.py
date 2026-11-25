@@ -56,19 +56,35 @@ for b in range(nbeats):
     arp = [ch[0] * 2, ch[2] * 2, ch[1] * 2, ch[2] * 2]
     for k in range(2): put(mus, tone(arp[(b * 2 + k) % 4], .3, .002, .1), t + k * BEAT / 2, .06 if sec else .035)
 
-# ---------- effects, each cued to the camera ----------
-put(fx, whoosh(T(TL['overview']) + .2, True), 0, .35)                 # the page rises out of the dark
-put(fx, boom(40, 1.4), T(TL['overview']), .45)
+# ---------- effects: no noise whooshes. Every hit is a TUNED sound that sits in the key ----------
+def thock(f, g=1.0):
+    """A solid, satisfying tap: a pitched body that drops into place, a click on top, a little weight under."""
+    n = int(.22 * SR); t = np.arange(n) / SR
+    fr = f * (1 + .5 * np.exp(-t * 70)); body = np.sin(2 * np.pi * np.cumsum(fr) / SR) * np.exp(-t / .05)
+    clk = hp(noise(.012, .0002, .002), .5)[:n]; out = body.copy(); out[:len(clk)] += clk * .6
+    sub = np.sin(2 * np.pi * np.cumsum(f / 4 * (1 + np.exp(-t * 40))) / SR) * np.exp(-t / .09)
+    return (out + .7 * sub) * g
+def bell(f, dur=1.1):
+    """Glassy pluck (FM): bright on the strike, rings out pure."""
+    n = int(dur * SR); t = np.arange(n) / SR; idx = 2.2 * np.exp(-t * 9)
+    return np.sin(2 * np.pi * f * t + idx * np.sin(2 * np.pi * f * 2.0 * t)) * env(n, .001, dur / 3.2)
+def swell(f, dur=.3):
+    """A reversed bell that swells INTO the hit, so the ear expects it."""
+    x = bell(f, dur)[::-1]; return x * np.linspace(0, 1, len(x)) ** 2
+def bloop(f): n = int(.05 * SR); t = np.arange(n) / SR; return np.sin(2 * np.pi * np.cumsum(f * (1 + .6 * t / .05)) / SR) * np.exp(-t / .015)
+
+NOTES = [659.3, 784, 880, 1046.5, 1174.7]                 # A minor pentatonic, one step up per box
+put(fx, swell(440, .6), T(TL['overview']) - .6, .25); put(fx, thock(110), T(TL['overview']), .55); put(fx, bell(440, 1.6), T(TL['overview']), .14)
 for i, d in enumerate(TL['boxes']):
-    put(fx, lp(whoosh(T(TL['travel']) + .1, True), .5), T(d - TL['travel']), .55)   # the glide
-    put(fx, boom(46, .9), T(d), .7); put(fx, clap(), T(d), .2)                    # arrival = downbeat
-    for k, f in enumerate([1318.5, 1568, 2093]): put(fx, tone(f * (1 + .03 * i), .5, .002, .18, (1, .3)), T(d + 4) + k * .05, .07)  # outline draws
-    for w in range(5): put(fx, blip(880 + 110 * w), T(d - 6 + 5 * w), .045)                 # caption words
-put(fx, whoosh(T(TL['travel']) + .1, False), T(PB - TL['travel']), .45)
-for i in range(5): put(fx, tone(784 * 2 ** (i / 12 * 2), .25, .002, .07, (1, .3)), T(PB + i * 8), .1)   # every box lights, rising
-put(fx, whoosh(.9, True), T(TL['logo']) - .9, .4)
-put(fx, boom(34, 2.4), T(TL['logo']), 1.0); put(fx, clap(), T(TL['logo']), .35)
-for f in [220, 261.6, 329.6, 440, 523.3, 659.3]: put(mus, tone(f, 4.5, .01, 1.6, (1, .3)), T(TL['logo']), .14)
+    n0 = NOTES[i]
+    put(fx, swell(n0, T(TL['travel'])), T(d) - T(TL['travel']), .16)   # glide = a swell, not a whoosh
+    put(fx, thock(n0 / 4), T(d), .75)                                  # the box lands
+    put(fx, bell(n0), T(d), .17); put(fx, bell(n0 * 1.5, .7), T(d + 3), .06)   # the outline rings
+    for w in range(5): put(fx, bloop(1200 + 90 * w), T(d - TL['travel'] + 3 * w), .035)  # caption words
+for i in range(5): put(fx, bell(NOTES[i] * 2, .6), T(TL['pullback'] + i * 4), .08); put(fx, thock(NOTES[i] / 2), T(TL['pullback'] + i * 4), .25)
+put(fx, swell(220, .8), T(TL['logo']) - .8, .25)
+put(fx, thock(55, 1.0), T(TL['logo']), 1.0); put(fx, boom(34, 2.0), T(TL['logo']), .5)
+for f in [220, 261.6, 329.6, 440, 523.3, 659.3]: put(mus, tone(f, 4.5, .01, 1.6, (1, .3)), T(TL['logo']), .14); put(fx, bell(f * 2, 2.5), T(TL['logo']), .03)
 
 for d in TL['boxes'] + [TL['logo']]:
     i0, i1 = int(T(d) * SR), int((T(d) + .35) * SR); mus[i0:i1] *= np.linspace(.5, 1, i1 - i0)

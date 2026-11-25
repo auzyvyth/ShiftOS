@@ -13,7 +13,10 @@ export const D_DUR = TL.dur;
 const cl = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' };
 const BG = '#07080B';
 const CY = 1010;
-const TOP = 125;                                  // css px: the referral strip sits above this line                                   // where the focus point sits on screen (y)
+const TOP = 125;
+// The page is LAID OUT K times bigger and the camera scale divided by K: Chrome rasters a 3D layer at its
+// layout size, so a 1280 px page zoomed 3x came out pixelated. At K = 4 it rasters from the full 4x capture.
+const K = 4;                                  // css px: the referral strip sits above this line                                   // where the focus point sits on screen (y)
 
 const COPY = {
   ms: {
@@ -67,25 +70,26 @@ const camAt = (keys, f) => {
 };
 
 // ---------- one box, lifted off the page: a copy of its pixels pushed up in Z, outlined red ----------
-const Lift = ({ b, at, img, W, H, out }) => {
+const Lift = ({ b: b0, at, img, W, H, out }) => {
+  const b = { x: b0.x * K, y: b0.y * K, w: b0.w * K, h: b0.h * K };
   const f = useCurrentFrame();
   const up = spring({ frame: f - at, fps: D_FPS, config: { damping: 15, mass: 0.8, stiffness: 120 } });
-  const down = out ? interpolate(f, [out, out + 14], [0, 1], { ...cl, easing: Easing.in(Easing.cubic) }) : 0;
+  const down = out ? interpolate(f, [out, out + 8], [0, 1], { ...cl, easing: Easing.in(Easing.cubic) }) : 0;
   const lift = up * (1 - down);
   if (lift <= 0.001) return null;
   const draw = interpolate(f, [at - 2, at + 14], [0, 1], { ...cl, easing: Easing.bezier(0.16, 1, 0.3, 1) });
-  const sheen = interpolate(f, [at + 6, at + 26], [-0.4, 1.4], cl);
-  const pad = 7, rad = 22;
+  const sheen = interpolate(f, [at + 4, at + 18], [-0.4, 1.4], cl);
+  const pad = 7 * K, rad = 22 * K;
   return (
     <div style={{ position: 'absolute', left: b.x, top: b.y, width: b.w, height: b.h, transformStyle: 'preserve-3d',
-      transform: `translateZ(${lift * 70}px) scale(${1 + lift * 0.04})` }}>
+      transform: `translateZ(${lift * 70 * K}px) scale(${1 + lift * 0.04})` }}>
       <div style={{ position: 'absolute', inset: 0, borderRadius: rad, overflow: 'hidden',
         backgroundImage: `url(${img})`, backgroundSize: `${W}px ${H}px`, backgroundPosition: `${-b.x}px ${-b.y}px`,
-        boxShadow: `0 ${30 * lift}px ${70 * lift}px rgba(0,0,0,${0.75 * lift}), 0 0 ${60 * lift}px rgba(220,38,38,${0.35 * lift})` }}>
+        boxShadow: `0 ${30 * K * lift}px ${70 * K * lift}px rgba(0,0,0,${0.75 * lift}), 0 0 ${60 * K * lift}px rgba(220,38,38,${0.35 * lift})` }}>
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, transparent ${sheen * 100 - 18}%, rgba(255,255,255,0.13) ${sheen * 100}%, transparent ${sheen * 100 + 18}%)` }} />
       </div>
       <svg style={{ position: 'absolute', left: -pad, top: -pad, overflow: 'visible' }} width={b.w + 2 * pad} height={b.h + 2 * pad}>
-        <rect x={1.5} y={1.5} width={b.w + 2 * pad - 3} height={b.h + 2 * pad - 3} rx={rad + pad} fill="none" stroke={RED} strokeWidth={3}
+        <rect x={6} y={6} width={b.w + 2 * pad - 12} height={b.h + 2 * pad - 12} rx={rad + pad} fill="none" stroke={RED} strokeWidth={3 * K}
           pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} opacity={lift} />
       </svg>
     </div>
@@ -106,7 +110,7 @@ const Caption = ({ lines, at, out }) => {
         return (
           <div key={li} style={{ color: red ? RED : '#FFFFFF' }}>
             {ln.replace(/\*/g, '').split(' ').map((w, wi) => {
-              const t0 = at + (n++) * 5;
+              const t0 = at + (n++) * 3;
               const p = interpolate(f, [t0, t0 + 10], [0, 1], { ...cl, easing: Easing.bezier(0.16, 1, 0.3, 1) });
               return <span key={wi} style={{ display: 'inline-block', marginRight: 20, opacity: p, filter: `blur(${(1 - p) * 12}px)`,
                 transform: `translateY(${(1 - p) * 28}px)` }}>{w}</span>;
@@ -124,8 +128,7 @@ export const DashPan = ({ lang = 'ms', audio = true }) => {
   const img = staticFile(`real/dash-${lang}.png`);
   const { w: W, h: H } = RECTS[lang].size;
   const keys = camKeys(lang);
-  const cam = camAt(keys, f), prev = camAt(keys, f - 1);
-  const speed = Math.hypot((cam.x - prev.x) * cam.s, (cam.y - prev.y) * cam.s) + Math.abs(Math.log(cam.s / prev.s)) * 900;
+  const cam = camAt(keys, f);
   const B = box(lang);
   const focused = TL.boxes.findIndex((d, i) => f >= d - 4 && f < (TL.boxes[i + 1] ?? TL.pullback) - TL.travel + 8);
   const dimTo = f >= TL.boxes[0] - 6 && f < TL.pullback - 6 ? 0.55 : 0;
@@ -141,32 +144,32 @@ export const DashPan = ({ lang = 'ms', audio = true }) => {
         `radial-gradient(700px 520px at ${540 + drift}px ${CY + 120}px, rgba(220,38,38,${0.22 + 0.1 * (focused >= 0)}), transparent 70%)`,
         `radial-gradient(1100px 600px at 540px 0px, rgba(190,190,215,0.16), transparent 70%)` ].join(',') }} />
       <AbsoluteFill style={{ perspective: 1500, perspectiveOrigin: `540px ${CY - 160}px` }}>
-        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, transformOrigin: '0 0', transformStyle: 'preserve-3d',
-          opacity: enter * endFade, filter: `blur(${Math.min(2.5, speed * 0.02)}px) brightness(${0.4 + 0.6 * enter})`,
-          transform: `translate(540px, ${CY}px) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) rotateZ(${cam.rz}deg) scale(${cam.s}) translate(${-cam.x}px, ${-cam.y}px)` }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: W * K, height: H * K, transformOrigin: '0 0', transformStyle: 'preserve-3d',
+          opacity: enter * endFade,
+          transform: `translate(540px, ${CY}px) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg) rotateZ(${cam.rz}deg) scale(${cam.s / K}) translate(${-cam.x * K}px, ${-cam.y * K}px)` }}>
           {/* the page from the greeting down: the invite strip above it is cropped off */}
-          <div style={{ position: 'absolute', left: 0, top: TOP, width: W, height: H - TOP, borderRadius: 28, overflow: 'hidden',
-            boxShadow: '0 60px 160px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06)' }}>
-            <Img src={img} style={{ position: 'absolute', left: 0, top: -TOP, width: W, height: H }} />
-            <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: dim }} />
+          <div style={{ position: 'absolute', left: 0, top: TOP * K, width: W * K, height: (H - TOP) * K, borderRadius: 28 * K, overflow: 'hidden',
+            boxShadow: `0 ${60 * K}px ${160 * K}px rgba(0,0,0,0.8), 0 0 0 ${K}px rgba(255,255,255,0.06)` }}>
+            <Img src={img} style={{ position: 'absolute', left: 0, top: -TOP * K, width: W * K, height: H * K }} />
+            <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: Math.max(dim, 0.6 * (1 - enter)) }} />
           </div>
           {TL.boxes.map((d, i) => (
-            <Lift key={i} b={B[i]} at={d} img={img} W={W} H={H} out={(TL.boxes[i + 1] ?? TL.pullback) - TL.travel + 2} />
+            <Lift key={i} b={B[i]} at={d} img={img} W={W * K} H={H * K} out={(TL.boxes[i + 1] ?? TL.pullback) - TL.travel + 2} />
           ))}
           {/* the pull-back: every box outlined at once, one per 8th note */}
           {f >= TL.pullback - 8 && f < TL.logo + 20 && B.map((b, i) => {
-            const at = TL.pullback + i * 8;
+            const at = TL.pullback + i * 4;
             const p = interpolate(f, [at, at + 10], [0, 1], cl) * interpolate(f, [TL.logo, TL.logo + 14], [1, 0], cl);
-            return <div key={`o${i}`} style={{ position: 'absolute', left: b.x - 6, top: b.y - 6, width: b.w + 12, height: b.h + 12,
-              borderRadius: 26, border: `3px solid ${RED}`, opacity: p, transform: `translateZ(${p * 24}px)`,
-              boxShadow: `0 0 40px rgba(220,38,38,${0.5 * p})` }} />;
+            return <div key={`o${i}`} style={{ position: 'absolute', left: (b.x - 6) * K, top: (b.y - 6) * K, width: (b.w + 12) * K, height: (b.h + 12) * K,
+              borderRadius: 26 * K, border: `${3 * K}px solid ${RED}`, opacity: p, transform: `translateZ(${p * 24 * K}px)`,
+              boxShadow: `0 0 ${40 * K}px rgba(220,38,38,${0.5 * p})` }} />;
           })}
         </div>
       </AbsoluteFill>
       {/* fog top and bottom, the reference's depth falloff */}
       <AbsoluteFill style={{ background: `linear-gradient(180deg, ${BG} 0%, rgba(7,8,11,0.85) 9%, transparent 26%, transparent 74%, rgba(7,8,11,0.9) 90%, ${BG} 100%)` }} />
       {TL.boxes.map((d, i) => (
-        <Caption key={i} lines={C.boxes[i]} at={d - 6} out={(TL.boxes[i + 1] ?? TL.pullback) - TL.travel} />
+        <Caption key={i} lines={C.boxes[i]} at={d - TL.travel} out={(TL.boxes[i + 1] ?? TL.pullback) - TL.travel} />
       ))}
       <Caption lines={C.end} at={TL.pullback + 2} out={TL.logo - 6} />
       {f >= TL.logo && (

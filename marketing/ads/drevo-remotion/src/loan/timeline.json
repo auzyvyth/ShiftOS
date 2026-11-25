@@ -1,0 +1,13 @@
+{
+  "_": "Loan check scene. ONE timing source for picture and sound. 112.5 bpm = 16 frames a beat. Frames. Screens and taps from harness/loan.cjs (real components, sample buyer).",
+  "fps": 30, "bpm": 112.5, "beat": 16, "dur": 320,
+  "enter": 0,
+  "tapLate": 16, "tapCcris": 32,
+  "fix": 48, "outlineFix": 56,
+  "tapBring": 96, "bring": 100,
+  "tapSend": 128, "swap": 136,
+  "msg1": 144, "msg2": 176, "tapLink": 200,
+  "share": 208, "outlineNeeded": 216,
+  "scroll": [236, 252], "outlineBanks": 256,
+  "captions": [0, 48, 96, 136, 208, 252]
+}
