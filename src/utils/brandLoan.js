@@ -13,7 +13,7 @@ import { monthlyPayment, flatToEir, DEFAULT_EIR } from "./financing.js";
 import { LOCAL_NEW_EIR, isLocalNew, variantExtras, salaryGuide, SALARY_SHARE } from "./liveMaths.js";
 import { calcRoadTaxEst, calcInsuranceAnnual, estAnnualFuel } from "./ownership.js";
 import { LIVE_COPY } from "../components/live/liveCopy.js";
-import { NEW_CAR_BRANDS, slugPart, newModelPath } from "./newCars.js";
+import { NEW_CAR_BRANDS, slugPart, newModelPath, modelDisplayName } from "./newCars.js";
 
 export const LOAN_BASE = "/kalkulator-loan";
 export const LOAN_TENURES = [5, 7, 9];
@@ -76,8 +76,8 @@ export function loanCopy(brand, models, today = new Date()) {
   const faqs = [];
   if (cheapV) {
     faqs.push({
-      q: `Berapa ansuran bulanan ${brand} ${cheap.model} paling murah?`,
-      a: `${brand} ${cheap.model} ${cheapV.variant} berharga ${rmLoan(cheapV.price)} (harga rasmi Semenanjung, atas jalan tanpa insurans). Dengan deposit 10% dan pinjaman 9 tahun pada ${rate}% EIR, ansurannya lebih kurang ${rmLoan(cheapMo)} sebulan. Bank yang menentukan kadar sebenar dan sama ada pinjaman lulus.`,
+      q: `Berapa ansuran bulanan ${modelDisplayName(brand, cheap.model)} paling murah?`,
+      a: `${modelDisplayName(brand, cheap.model)} ${cheapV.variant} berharga ${rmLoan(cheapV.price)} (harga rasmi Semenanjung, atas jalan tanpa insurans). Dengan deposit 10% dan pinjaman 9 tahun pada ${rate}% EIR, ansurannya lebih kurang ${rmLoan(cheapMo)} sebulan. Bank yang menentukan kadar sebenar dan sama ada pinjaman lulus.`,
     });
   }
   faqs.push({
@@ -87,22 +87,22 @@ export function loanCopy(brand, models, today = new Date()) {
   if (cheapV) {
     faqs.push({
       q: `Kenapa angka saya lain dengan kalkulator ${brand} yang lain?`,
-      a: `Biasanya sebab kadar flat. Contoh ${brand} ${cheap.model} ${cheapV.variant}: pada ${COMPARE_FLAT}% flat, 9 tahun, deposit 10%, ansurannya ${rmLoan(flatMo)} sebulan; pada ${rate}% EIR ia ${rmLoan(cheapMo)}. Kadar yang bank tawarkan kepada anda yang menentukan, jadi taip kadar itu dalam kalkulator di atas.`,
+      a: `Biasanya sebab kadar flat. Contoh ${modelDisplayName(brand, cheap.model)} ${cheapV.variant}: pada ${COMPARE_FLAT}% flat, 9 tahun, deposit 10%, ansurannya ${rmLoan(flatMo)} sebulan; pada ${rate}% EIR ia ${rmLoan(cheapMo)}. Kadar yang bank tawarkan kepada anda yang menentukan, jadi taip kadar itu dalam kalkulator di atas.`,
     });
   }
   for (const m of models.slice(0, 3)) {
     const g = modelGuide(brand, m, rate);
     if (g.picks.length < 2) continue;
     faqs.push({
-      q: `Varian ${brand} ${m.model} mana patut saya pilih?`,
+      q: `Varian ${modelDisplayName(brand, m.model)} mana patut saya pilih?`,
       a: g.picks.map((p) => `${p.labels.join(" dan ")}: ${p.variant} (${rmLoan(p.price)}), ${p.why[0]}`).join(" "),
     });
   }
   if (cheapV) {
     const sal = salaryGuide(cheapMo);
     faqs.push({
-      q: `Gaji berapa untuk ambil ${brand} ${cheap.model}?`,
-      a: `Untuk ${brand} ${cheap.model} ${cheapV.variant} dengan ansuran ${rmLoan(cheapMo)} sebulan (deposit 10%, 9 tahun), panduan ${Math.round(SALARY_SHARE * 100)}% gaji bersih memberi gaji bersih sekitar ${rmLoan(sal)} ke atas. Komitmen lain, CCRIS dan CTOS juga dikira. Bank yang memutuskan.`,
+      q: `Gaji berapa untuk ambil ${modelDisplayName(brand, cheap.model)}?`,
+      a: `Untuk ${modelDisplayName(brand, cheap.model)} ${cheapV.variant} dengan ansuran ${rmLoan(cheapMo)} sebulan (deposit 10%, 9 tahun), panduan ${Math.round(SALARY_SHARE * 100)}% gaji bersih memberi gaji bersih sekitar ${rmLoan(sal)} ke atas. Komitmen lain, CCRIS dan CTOS juga dikira. Bank yang memutuskan.`,
     });
   }
   faqs.push({
@@ -187,7 +187,7 @@ const moDiff = (a, b, rate) => (loanMonthly(a, { years: 9, rate }) || 0) - (loan
 // Picks + step-ups + yearly costs for one model. Pure; both renderers use it.
 export function modelGuide(brand, m, rate) {
   const vs = m.variants;
-  const name = `${brand} ${m.model}`;
+  const name = `${modelDisplayName(brand, m.model)}`;
   const steps = vs.slice(1).map((v) => {
     const below = vs[vs.indexOf(v) - 1];
     const ex = variantExtras(vs, v, 6);

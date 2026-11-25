@@ -21,7 +21,7 @@ import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
 import { LOAN_TENURES, LOAN_DEPOSIT_PCT, loanBrandFromSlug, loanPath, loanModels, loanCopy, loanMonthly, loanFaqLd, rmLoan, modelGuide, loanSections } from "../src/utils/brandLoan.js";
 import { agentName, agentNickname, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
-import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath, NEW_CAR_BRANDS } from "../src/utils/newCars.js";
+import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, modelDisplayName, newModelPath, NEW_CAR_BRANDS } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 import { dealerSchema } from "../src/utils/dealerSchema.js";
 import { OG_IMAGES } from "../src/config/ogImages.js";
@@ -306,13 +306,13 @@ function buildNewModelHtml(brand, rows, advisors) {
   const copy = newModelCopy(brand, model, rows);
   const canonical = `${SITE_URL}${newModelPath(brand, model)}`;
   const head = PRICE_ZONES.map((z) => `<th>${esc(z.label)}</th>`).join("");
-  const trs = rows.map((r) => `<tr><td>${esc(`${brand} ${r.model} ${r.variant}`)}</td>${PRICE_ZONES.map((z) => `<td>${esc(newRm(r[z.col]) || "Ask an advisor")}</td>`).join("")}</tr>`).join("\n      ");
+  const trs = rows.map((r) => `<tr><td>${esc(`${modelDisplayName(brand, r.model)} ${r.variant}`)}</td>${PRICE_ZONES.map((z) => `<td>${esc(newRm(r[z.col]) || "Ask an advisor")}</td>`).join("")}</tr>`).join("\n      ");
   // Each advisor links to their card for the model (the cards canonicalise
   // back here) and to their page.
   const advLis = advisors.map((a) => {
     const name = esc(a.full_name || "Advisor");
     const where = a.city || a.state ? ` (${esc([a.city, a.state].filter(Boolean).join(", "))})` : "";
-    const card = a.card_slug ? ` <a href="${SITE_URL}/showroom/${encodeURIComponent(a.card_slug)}">${esc(`${brand} ${model} offer from ${a.full_name || "this advisor"}`)}</a>` : "";
+    const card = a.card_slug ? ` <a href="${SITE_URL}/showroom/${encodeURIComponent(a.card_slug)}">${esc(`${modelDisplayName(brand, model)} offer from ${a.full_name || "this advisor"}`)}</a>` : "";
     return `<li><a href="${SITE_URL}/s/${encodeURIComponent(a.slug)}">${name}</a>${where}${card}</li>`;
   }).join("");
   const body = `  <main>
@@ -324,7 +324,7 @@ function buildNewModelHtml(brand, rows, advisors) {
       ${trs}
     </table>
     <p>On the road without insurance, as published by ${esc(brand)}.</p>
-    <h2>Advisors who sell the ${esc(brand)} ${esc(model)}</h2>
+    <h2>Advisors who sell the ${esc(modelDisplayName(brand, model))}</h2>
     ${advLis ? `<ul>${advLis}</ul>` : `<p>No advisor lists this model on Drevo yet.</p>`}
     <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
   </main>`;
@@ -337,7 +337,7 @@ function buildBrandLoanHtml(brand, models) {
   const head = LOAN_TENURES.map((y) => `<th>${y} tahun</th>`).join("");
   const tables = models.map((m) => {
     const g = modelGuide(brand, m, copy.rate);
-    const picks = g.picks.length > 1 ? `<h4>${esc(`${brand} ${m.model}`)} varian mana untuk anda?</h4>
+    const picks = g.picks.length > 1 ? `<h4>${esc(`${modelDisplayName(brand, m.model)}`)} varian mana untuk anda?</h4>
     <ul>${g.picks.map((p) => `<li><strong>${esc(p.labels.join(" / "))}: ${esc(p.variant)} (${esc(rmLoan(p.price))})</strong>. ${esc(p.why.map((w) => w[0].toUpperCase() + w.slice(1)).join(" "))}</li>`).join("")}</ul>` : "";
     const steps = g.steps.some((x) => x.items.length) ? `<h4>Apa yang anda dapat bila naik varian</h4>
     <ul>${g.steps.map((x) => `<li>${esc(`${x.over} ke ${x.variant}: +${rmLoan(x.plus)} (lebih kurang +${rmLoan(x.plusMo)} sebulan)${x.items.length ? `. Tambah: ${x.items.join(", ")}` : ""}.`)}</li>`).join("")}</ul>` : "";
@@ -349,7 +349,7 @@ function buildBrandLoanHtml(brand, models) {
       c.fuel != null ? `Minyak sekitar ${rmLoan(c.fuel)} setahun (15,000 km, RON95).` : "",
       "Semua anggaran.",
     ].filter(Boolean).join(" ");
-    return `<h3><a href="${SITE_URL}${m.path}">${esc(`${brand} ${m.model}`)}</a></h3>
+    return `<h3><a href="${SITE_URL}${m.path}">${esc(`${modelDisplayName(brand, m.model)}`)}</a></h3>
     ${g.facts ? `<p>${esc(g.facts)}</p>` : ""}
     <table>
       <tr><th>Varian</th><th>Harga</th>${head}</tr>

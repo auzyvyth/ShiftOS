@@ -19,7 +19,7 @@ import { monthlyPayment, DEFAULT_EIR, DEFAULT_LOAN_RATIO, DEFAULT_TENURE_YEARS }
 import { LOCAL_NEW_EIR, isLocalNew, variantExtras } from "../utils/liveMaths";
 import { calcRoadTaxEst, calcInsuranceAnnual, estAnnualFuel } from "../utils/ownership";
 import {
-  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning, zoneForState,
+  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning, zoneForState, modelDisplayName,
   readBuyerState, saveBuyerState, liveNewCarBrands, colourSwatch, modelFacts, modelLead,
 } from "../utils/newCars";
 
@@ -128,7 +128,7 @@ export default function NewCarModelPage() {
 
   useEffect(() => {
     if (!brand || !model) return;
-    trackEvent(supabase, "page_view", { metadata: { source: "new_model_page", model: `${brand} ${model}` } });
+    trackEvent(supabase, "page_view", { metadata: { source: "new_model_page", model: `${modelDisplayName(brand, model)}` } });
   }, [brand, model]);
 
   if (isSubdomain()) return <Navigate to="/cars" replace />;
@@ -168,7 +168,7 @@ export default function NewCarModelPage() {
   const tapWa = (a) => {
     trackEvent(supabase, "whatsapp_click", {
       car_id: a.card_id || undefined, salesman_slug: a.slug,
-      metadata: { source: "new_model_page", model: `${brand} ${model}`, variant: picked?.variant || null, colour: paint },
+      metadata: { source: "new_model_page", model: `${modelDisplayName(brand, model)}`, variant: picked?.variant || null, colour: paint },
     });
   };
   const list = showAll ? sorted : sorted.slice(0, SHOWN);
@@ -208,7 +208,7 @@ export default function NewCarModelPage() {
                       setPhotoIdx(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
                     }}>
                       {photos.map((src, i) => (
-                        <img key={src} src={cdnImg(src, 960, 75)} alt={`${brand} ${model}${i ? ` photo ${i + 1}` : ""}`}
+                        <img key={src} src={cdnImg(src, 960, 75)} alt={`${modelDisplayName(brand, model)}${i ? ` photo ${i + 1}` : ""}`}
                           loading={i ? "lazy" : "eager"} decoding="async" />
                       ))}
                     </div>
@@ -283,7 +283,7 @@ export default function NewCarModelPage() {
                   <p className="ncm-note">Loading advisors...</p>
                 ) : sorted.length === 0 ? (
                   <div className="ncm-card ncm-empty">
-                    <p>{advError ? "Couldn't load advisors right now. Please refresh to try again." : `No advisor lists the ${brand} ${model} on Drevo yet.`}</p>
+                    <p>{advError ? "Couldn't load advisors right now. Please refresh to try again." : `No advisor lists the ${modelDisplayName(brand, model)} on Drevo yet.`}</p>
                     {!advError && <p>Sell {brand}? <Link to="/for-salesmen">Put your page on Drevo</Link>.</p>}
                   </div>
                 ) : (
