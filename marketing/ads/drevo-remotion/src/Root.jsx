@@ -14,5 +14,6 @@ export const Root = () => (
     <Composition id="Renewals-en" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
     <Composition id="Sizzle" component={Sizzle} durationInFrames={S_DUR} fps={S_FPS} width={1080} height={1920} defaultProps={{ audio: true }} />
     <Composition id="CalcAd-ms" component={CalcAd} durationInFrames={C_DUR} fps={C_FPS} width={1080} height={1920} defaultProps={{ audio: true }} />
+    <Composition id="CalcAd-vo" component={CalcAd} durationInFrames={C_DUR} fps={C_FPS} width={1080} height={1920} defaultProps={{ audio: true, vo: true }} />
   </>
 );

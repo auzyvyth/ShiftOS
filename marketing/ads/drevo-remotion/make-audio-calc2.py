@@ -69,8 +69,22 @@ put(fx, whoosh(.5), B['plans'], .5); put(fx, whoosh(.5), B['plans'] + .35, .5)
 put(fx, whoosh(.6), H['wipe'] - .3, .6); put(fx, boom(45, 1.6), H['logo'], 1.0)
 for i in range(4): put(fx, tone(880 * 2 ** ([0, 4, 7, 12][i] / 12), .4, .002, .15), H['logo'] + .6 + i * .07, .1)
 
-out = mus * .55 + fx * .6
+# optional English voice-over (make-vo-calc2.py): music ducks under each line, effects drop a little
+import sys, os
+VO = '--vo' in sys.argv
+if VO:
+    import soundfile as sf
+    vo = sf.read('public/audio/calc2-vo.wav')[0][:, 0]
+    vo = np.pad(vo, (0, max(0, N - len(vo))))[:N]
+    duck = np.ones(N)
+    for st, en in json.load(open('public/audio/calc2-vo.json')):
+        i0, i1 = int((st - .12) * SR), int((en + .15) * SR)
+        duck[max(0, i0):i1] = 0.28
+    duck = np.convolve(duck, np.ones(2400) / 2400, mode='same')  # 50 ms fades
+    out = mus * .55 * duck + fx * .6 * (0.55 + 0.45 * duck) + vo * 1.0
+else:
+    out = mus * .55 + fx * .6
 out = out[:int(SR * TL['dur'])]; out /= np.max(np.abs(out)) * 1.05
 pcm = (np.stack([out, out], 1) * 32767).astype('<i2')
-w = wave.open('public/audio/calc2.wav', 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes()); w.close()
-print('public/audio/calc2.wav', round(len(out) / SR, 2), 's')
+w = wave.open('public/audio/calc2-vo-mix.wav' if VO else 'public/audio/calc2.wav', 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes()); w.close()
+print('vo mix' if VO else 'music + fx', round(len(out) / SR, 2), 's')

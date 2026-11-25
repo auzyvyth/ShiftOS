@@ -475,7 +475,7 @@ const shake = (f) => [[H.drop, 10], [H.tag, 8], [H.phone, 7], [H.logo, 6]].reduc
   const k = a * Math.exp(-d / 3.5); return [x + Math.sin(d * 2.9) * k, y + Math.cos(d * 3.4) * k];
 }, [0, 0]);
 
-export const CalcAd = ({ audio = true }) => {
+export const CalcAd = ({ audio = true, vo = false }) => {
   const f = useCurrentFrame();
   const [sx, sy] = shake(f);
   return (
@@ -490,7 +490,7 @@ export const CalcAd = ({ audio = true }) => {
       </AbsoluteFill>
       <Pill />
       <Film />
-      {audio && <Audio src={staticFile('audio/calc2.wav')} />}
+      {audio && <Audio src={staticFile(vo ? 'audio/calc2-vo-mix.wav' : 'audio/calc2.wav')} />}
     </AbsoluteFill>
   );
 };
