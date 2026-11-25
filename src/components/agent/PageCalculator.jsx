@@ -57,7 +57,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-car { flex: 0 0 148px; scroll-snap-align: start; text-align: left; padding: 0; border: 2px solid transparent; border-radius: 14px; background: #F7F6F2; cursor: pointer; font: inherit; color: #111827; overflow: hidden; }
         .pc-car[aria-pressed="true"] { border-color: #0f1115; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.14); }
         .pc-ph { display: block; position: relative; aspect-ratio: 4 / 3; background: #EDEAE3; }
-        .pc-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .pc-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .pc-n { position: absolute; left: 8px; top: 8px; min-width: 24px; height: 22px; padding: 0 6px; border-radius: 11px; background: rgba(15,17,21,.82); color: #fff; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
         .pc-ct { display: block; padding: 8px 10px 10px; }
         .pc-cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 700; line-height: 1.3; min-height: 32px; }

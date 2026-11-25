@@ -992,6 +992,8 @@ export default function SalesmanProfilePage() {
         .ap-car:hover { box-shadow: 0 8px 22px rgba(15,23,42,.12); transform: translateY(-2px); }
         .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
         .ap-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* PAGE-SITE: a Premium card shows the WHOLE car (a wide photo was cropped at the sides). The grey behind is the card's own. Lite keeps cover. */
+        .ap--pro .ap-ph img { object-fit: contain; }
         .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: ap-pulse 1.4s ease-in-out infinite; }
         .ap-skel .ap-cb i { display: block; height: 12px; border-radius: 6px; background: #EDEAE3; margin-bottom: 10px; }
         .ap-skel .ap-cb i:nth-child(1) { width: 80%; } .ap-skel .ap-cb i:nth-child(2) { width: 55%; } .ap-skel .ap-cb i:nth-child(3) { width: 40%; height: 18px; margin-bottom: 0; }

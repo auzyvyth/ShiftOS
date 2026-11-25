@@ -102,7 +102,7 @@ export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onW
         .bf-row { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; min-height: 56px; text-decoration: none; color: #111827; }
         .bf-row:hover { background: #F7F6F2; }
         .bf-thumb { width: 64px; height: 48px; border-radius: 8px; background: #EDEAE3; overflow: hidden; flex-shrink: 0; position: relative; }
-        .bf-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .bf-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .bf-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; }
         .bf-name { font-size: 14px; font-weight: 700; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
         .bf-sub { font-size: 12.5px; color: #4b5563; }
