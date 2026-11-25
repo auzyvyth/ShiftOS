@@ -18,8 +18,12 @@ import {
 
 const rm = (v) => Math.round(Number(v) || 0).toLocaleString('en-MY');
 
-export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onWhatsApp }) {
-  const [open, setOpen] = useState(false);
+// `bare`: no card, no drop-down head, always open. The calculator section
+// (PageCalculator) hosts it as its "Fit my budget" tab so the page has ONE
+// money block, not two.
+export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onWhatsApp, bare = false }) {
+  const [openState, setOpen] = useState(false);
+  const open = bare || openState;
   const [mode, setMode] = useState('monthly');
   const [amount, setAmount] = useState('');
   const [depositPct, setDepositPct] = useState(0.1);
@@ -68,7 +72,7 @@ export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onW
   };
 
   return (
-    <div className="ap-card bf">
+    <div className={bare ? 'bf bf--bare' : 'ap-card bf'}>
       <style>{`
         .bf { margin: 0 0 16px; overflow: hidden; }
         .bf-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 56px; background: none; border: none; cursor: pointer; text-align: left; font-family: inherit; color: #111827; }
@@ -76,6 +80,7 @@ export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onW
         .bf-head small { display: block; font-size: 12.5px; color: #4b5563; margin-top: 2px; }
         .bf-chev { margin-left: auto; flex-shrink: 0; transition: transform .2s; color: #4b5563; }
         .bf-head[aria-expanded="true"] .bf-chev { transform: rotate(180deg); }
+        .bf--bare .bf-body { border-top: none; padding: 0; }
         .bf-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; border-top: 1px solid rgba(0,0,0,.06); padding-top: 14px; }
         .bf-seg { display: flex; gap: 4px; padding: 4px; background: #F1F0EC; border-radius: 10px; }
         .bf-seg button { flex: 1; height: 40px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13.5px; font-weight: 700; color: #4b5563; cursor: pointer; }
@@ -110,13 +115,13 @@ export default function BudgetFinder({ listings, firstName, hasWa, waUrlFor, onW
         @media (prefers-reduced-motion: reduce) { .bf-chev { transition: none; } }
       `}</style>
 
-      <button type="button" className="bf-head" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)}>
+      {!bare && <button type="button" className="bf-head" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)}>
         <span>
           <b>What fits your budget?</b>
           <small>See the monthly for every car here</small>
         </span>
         <ChevronDown size={20} className="bf-chev" aria-hidden="true" />
-      </button>
+      </button>}
 
       {open && (
         <div id={panelId} className="bf-body">

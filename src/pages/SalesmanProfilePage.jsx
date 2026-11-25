@@ -19,7 +19,8 @@ import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
-import BudgetFinder from '../components/agent/BudgetFinder';
+import PageCalculator from '../components/agent/PageCalculator';
+import PageNav from '../components/agent/PageNav';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -810,7 +811,7 @@ export default function SalesmanProfilePage() {
               {/* Location: the agent's own address, else (linked) the dealership's. */}
               {mapLocationStr && (
                 <>
-                  <div className="ap-sec"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
+                  <div className="ap-sec" id="ap-find"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
                   <div className="ap-card ap-map">
                     <iframe
                       title={ownLocationStr ? 'My location' : 'Dealership location'}
@@ -854,7 +855,7 @@ export default function SalesmanProfilePage() {
     </section>
   );
   const whySec = (about?.my_promise || profile.specializations?.length > 0 || terms.length > 0) && (
-    <section className="ap-pro-sec">
+    <section id="ap-why" className="ap-pro-sec">
       <div className="ap-sec"><h2>Why buy from me</h2></div>
       {about?.my_promise && (
         <div className="ap-card ap-promise"><span aria-hidden="true">&ldquo;</span><p>{about.my_promise}</p></div>
@@ -873,7 +874,7 @@ export default function SalesmanProfilePage() {
     </section>
   );
   const trackSec = (
-    <section className="ap-pro-sec">
+    <section id="ap-track" className="ap-pro-sec">
       {trust.recentSales.length > 0 && <div className="ap-sec"><h2>Track record</h2></div>}
       {trust.recentSales.length > 0 && (
         <div className="ap-card ap-sold">
@@ -1284,6 +1285,16 @@ export default function SalesmanProfilePage() {
             </div>
 
             <div className="ap-right">
+              {pro && (
+                <PageNav items={[
+                  shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
+                  shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' },
+                  aboutSec && { id: 'ap-about', label: 'About' },
+                  whySec && { id: 'ap-why', label: 'Why me' },
+                  (trust.recentSales.length > 0) && { id: 'ap-track', label: 'Track record' },
+                  mapLocationStr && { id: 'ap-find', label: 'Find me' },
+                ]} />
+              )}
               {/* Live now: the car on the agent's live stream right now. Viewers
                   land here from the TikTok bio link, so it leads the column. */}
               {liveCar && (
@@ -1310,7 +1321,7 @@ export default function SalesmanProfilePage() {
                 </>
               )}
 
-              <div className="ap-sec">
+              <div className="ap-sec" id="ap-cars">
                 <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
                 {shownListings.length > 1 && (
                   <div className="ap-seg" role="group" aria-label="Sort cars">
@@ -1332,23 +1343,6 @@ export default function SalesmanProfilePage() {
               {/* Only cars a superadmin checked (car_listings.docs_verified). */}
               {docsLine && (
                 <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
-              )}
-
-              {/* Premium only (BUDGET-1): a closed drop-down until the buyer opens it.
-                  A Lite page (page_basic) shows exactly what it showed before. */}
-              {!profile.page_basic && listings.length > 0 && (
-                <BudgetFinder
-                  listings={pickedBrand ? shownListings : listings}
-                  firstName={firstName}
-                  hasWa={hasWa}
-                  waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
-                  onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
-                    car_id: car.id,
-                    dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
-                    salesman_slug: slug,
-                    metadata: { source: 'budget_finder' },
-                  })}
-                />
               )}
 
               {loading && listings.length === 0 ? (
@@ -1380,6 +1374,24 @@ export default function SalesmanProfilePage() {
               ) : (
                 <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
                   No cars for sale right now.
+                </div>
+              )}
+              {/* Premium only (PAGE-SITE): the page's one money block, under the cars.
+                  A Lite page (page_basic) shows exactly what it showed before. */}
+              {pro && !profile.page_basic && shownListings.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <PageCalculator
+                    listings={pickedBrand ? shownListings : listings}
+                    firstName={firstName}
+                    hasWa={hasWa}
+                    waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
+                    onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
+                      car_id: car.id,
+                      dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
+                      salesman_slug: slug,
+                      metadata: { source: 'page_calculator' },
+                    })}
+                  />
                 </div>
               )}
               {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
