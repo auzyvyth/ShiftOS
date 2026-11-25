@@ -20,3 +20,7 @@ dist/
 /playwright/.auth/
 
 .claude/settings.local.json
+
+# reanimate skill evidence + its script deps
+.reanimate/
+.claude/skills/reanimate/scripts/node_modules/
