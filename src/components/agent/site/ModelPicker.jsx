@@ -19,7 +19,7 @@ import ModelHelper from './ModelHelper';
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
 const carName = (c) => [c?.brand, c?.model].filter(Boolean).join(' ');
 
-function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
+function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   const raw = useNewCarInfo(car.id);
   const { variants, current, choose } = useNewCarVariant(car.id, raw);
   const [colourPick, setColourPick] = useState(null);
@@ -102,8 +102,8 @@ function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
               Ask price and stock
             </a>
           )}
-          {calc && (
-            <button type="button" className="ps-ghost" onClick={() => document.getElementById('ap-calc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+          {calc && onCalc && (
+            <button type="button" className="ps-ghost" onClick={() => onCalc({ carId: car.id, price, variant: vname || null })}>
               Work out my instalment
             </button>
           )}
@@ -113,7 +113,7 @@ function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
   );
 }
 
-export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, onWhatsApp }) {
+export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   const models = useMemo(() => (cars || []).filter((c) => c.is_model_card), [cars]);
   const [pickId, setPickId] = useState(null);
   const stageRef = useRef(null);
@@ -145,7 +145,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
         </div>
       )}
       <div ref={stageRef} style={{ scrollMarginTop: 70 }}>
-        <ModelPanel key={car.id} car={car} note={modelNote(site, car)} firstName={firstName} hasWa={hasWa} waUrlFor={waUrlFor} onWhatsApp={onWhatsApp} />
+        <ModelPanel key={car.id} car={car} note={modelNote(site, car)} firstName={firstName} hasWa={hasWa} waUrlFor={waUrlFor} onWhatsApp={onWhatsApp} onCalc={onCalc} />
       </div>
       <p className="ps-fine">List prices for {firstName}'s area, from the brand. Any promo is on the promo board, set by {firstName}.</p>
       {models.length >= 3 && (

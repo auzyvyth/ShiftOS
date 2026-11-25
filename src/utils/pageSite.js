@@ -18,7 +18,7 @@ export const SITE_VERSION = 1;
 export const SITE_SECTIONS = ['models', 'cars', 'promos', 'delivery', 'calculator'];
 // How much of the row a section takes on a wide screen (owner, 2026-11-25: "everything is too
 // wide"): a half section sits beside the next half one; a full one has its own row.
-export const SECTION_SPAN = { models: 'full', cars: 'full', promos: 'half', delivery: 'half', calculator: 'half' };
+export const SECTION_SPAN = { models: 'full', cars: 'full', promos: 'half', delivery: 'half', calculator: 'full' };
 export const SECTION_LABEL = {
   promos: 'Promos of the month',
   models: 'Pick a model',

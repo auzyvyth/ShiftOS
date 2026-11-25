@@ -16,7 +16,7 @@ import BudgetFinder from './BudgetFinder';
 const rm = (v) => Math.round(Number(v) || 0).toLocaleString('en-MY');
 const DEPOSITS = [...PAGE_DEPOSITS, 0.3];
 
-export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, onWhatsApp }) {
+export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, onWhatsApp, focus }) {
   const cars = useMemo(
     () => (listings || []).map((c, i) => ({ car: c, n: i + 1 })).filter((x) => Number(x.car.selling_price) > 0),
     [listings],
@@ -25,6 +25,16 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
   const [pickedId, setPickedId] = useState(null);
   const [depositPct, setDepositPct] = useState(0.1);
   const [years, setYears] = useState(7);
+  // "Work out my instalment" on the model picker hands over the model AND the variant the buyer
+  // picked: show that car at that variant's price, not the card's cheapest "from" price. Picking
+  // another car in the strip drops it.
+  const [override, setOverride] = useState(null);
+  useEffect(() => {
+    if (!focus?.carId) return;
+    setTab('car');
+    setPickedId(focus.carId);
+    setOverride(Number(focus.price) > 0 ? { carId: focus.carId, price: Number(focus.price), variant: focus.variant || null } : null);
+  }, [focus?.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A brand tab can remove the picked car from the list: fall back to the first.
   useEffect(() => {
@@ -33,10 +43,14 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
   }, [cars, pickedId]);
 
   const picked = cars.find((x) => x.car.id === pickedId) || cars[0] || null;
-  const car = picked?.car || null;
+  const baseCar = picked?.car || null;
+  const car = baseCar && override && override.carId === baseCar.id
+    ? { ...baseCar, selling_price: override.price, ...(override.variant ? { variant: override.variant } : {}) }
+    : baseCar;
   const yearsOffered = car ? calcYears(car) : [];
   const yearsNow = car ? fitYears(car, years) : null;
-  const calc = car ? pageCalc(car, { depositPct, years: yearsNow || years }) : null;
+  const calcRaw = car ? pageCalc(car, { depositPct, years: yearsNow || years }) : null;
+  const calc = calcRaw && car !== baseCar ? { ...calcRaw, from: false } : calcRaw;
   const href = car && hasWa ? waUrlFor(calcMessage({ firstName, car, depositPct, years: yearsNow })) : null;
 
   if (!cars.length) return null;
@@ -83,6 +97,35 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-link { display: flex; align-items: center; justify-content: center; margin-top: 16px; height: 48px; border-radius: 24px; background: #fff; color: #0f1115; font-weight: 800; font-size: 14px; text-decoration: none; }
         .pc-fine { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #4b5563; }
         .pc-none { margin: 0; padding: 20px 4px; font-size: 14px; color: rgba(255,255,255,.8); }
+        @container (max-width: 639px) {
+          .pc { padding: 14px 12px 12px; margin-bottom: 16px; }
+          .pc h2 { margin: 6px 0 8px; font-size: 22px; }
+          .pc-sub { display: none; }
+          .pc-tabs { margin-bottom: 10px; }
+          .pc-tabs button { height: 38px; font-size: 13px; }
+          .pc-pick { gap: 8px; margin: 0 -12px 10px; padding: 2px 12px 4px; }
+          .pc-car { flex-basis: 116px; border-radius: 12px; }
+          .pc-ph { aspect-ratio: 16 / 10; }
+          .pc-ct { padding: 6px 8px 8px; }
+          .pc-cn { font-size: 11.5px; min-height: 0; -webkit-line-clamp: 2; }
+          .pc-cp { font-size: 12px; margin-top: 2px; }
+          .pc-grid { gap: 10px; }
+          .pc-ctl { gap: 8px; }
+          .pc-ctl > div { display: flex; align-items: center; gap: 10px; }
+          .pc-ctl .pc-lbl { flex: 0 0 52px; }
+          .pc-chips { margin-top: 0; gap: 6px; flex-wrap: nowrap; }
+          .pc-chips button { height: 38px; min-width: 0; flex: 1 1 0; padding: 0 8px; font-size: 13px; }
+          .pc-out { padding: 14px 14px 12px; border-radius: 16px; }
+          .pc-k { font-size: 10.5px; }
+          .pc-big { margin: 4px 0 2px; font-size: 36px; }
+          .pc-big small { display: inline; margin: 0 0 0 6px; font-size: 13px; }
+          .pc-sum { margin: 0 0 10px; font-size: 12px; }
+          .pc-rows { grid-template-columns: 1fr 1fr; gap: 8px 16px; padding-top: 10px; }
+          .pc-rows div { flex-direction: column; gap: 1px; font-size: 13px; }
+          .pc-rows dt { font-size: 11px; }
+          .pc-out .ap-btn, .pc-link { margin-top: 12px; height: 44px; font-size: 14px; }
+          .pc-fine { margin-top: 10px; font-size: 11px; }
+        }
         @container (min-width: 640px) {
           .pc { padding: 28px 28px 24px; }
           .pc-pick { margin: 0 -28px 20px; padding: 2px 28px 8px; }
@@ -114,7 +157,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
             {cars.map(({ car: c, n }) => {
               const img = Array.isArray(c.images) ? c.images[0] : null;
               return (
-                <button key={c.id} type="button" className="pc-car" aria-pressed={c.id === car?.id} onClick={() => setPickedId(c.id)}>
+                <button key={c.id} type="button" className="pc-car" aria-pressed={c.id === car?.id} onClick={() => { setPickedId(c.id); setOverride(null); }}>
                   <span className="pc-ph">
                     {img ? <img src={cdnImg(img, 320, 70)} alt="" loading="lazy" /> : null}
                     <span className="pc-n">#{n}</span>

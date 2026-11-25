@@ -525,6 +525,12 @@ export default function SalesmanProfilePage() {
   // its own call like get_agent_hero: before the migration is applied, or when the
   // database is slow, the page simply shows its default sections.
   const [siteRaw, setSiteRaw] = useState(null);
+  // The model picker's "Work out my instalment": the calculator opens on THAT model at THAT variant's price.
+  const [calcFocus, setCalcFocus] = useState(null);
+  const openCalc = (pick) => {
+    setCalcFocus({ ...pick, n: Date.now() });
+    setTimeout(() => document.getElementById('ap-calc')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
   useEffect(() => {
     if (!slug || !profile?.id || profile.page_basic) { setSiteRaw(null); return undefined; }
     let off = false;
@@ -1085,6 +1091,7 @@ export default function SalesmanProfilePage() {
                     listings={pickedBrand ? shownListings : listings}
                     firstName={firstName}
                     hasWa={hasWa}
+                    focus={calcFocus}
                     waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
                     onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
                       car_id: car.id,
@@ -1109,7 +1116,7 @@ export default function SalesmanProfilePage() {
   const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
   const siteNodes = {
     promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
-    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
     cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
     calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
