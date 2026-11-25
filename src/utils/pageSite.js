@@ -15,7 +15,10 @@
 import { malaysiaDate } from './myDay.js';
 
 export const SITE_VERSION = 1;
-export const SITE_SECTIONS = ['promos', 'models', 'cars', 'calculator', 'delivery'];
+export const SITE_SECTIONS = ['models', 'cars', 'promos', 'delivery', 'calculator'];
+// How much of the row a section takes on a wide screen (owner, 2026-11-25: "everything is too
+// wide"): a half section sits beside the next half one; a full one has its own row.
+export const SECTION_SPAN = { models: 'full', cars: 'full', promos: 'half', delivery: 'half', calculator: 'half' };
 export const SECTION_LABEL = {
   promos: 'Promos of the month',
   models: 'Pick a model',
@@ -151,4 +154,22 @@ export function siteErrorText(err) {
   if (/page_site_invalid/.test(m)) return 'Something in your page is not valid. Check the dates and numbers.';
   if (/not_a_seller|not_premium|not_signed_in/.test(m)) return 'Sign in again and retry. These sections are for Premium pages.';
   return "Couldn't save. Check your connection and try again.";
+}
+
+// Lay sections out in rows: a full section is a row of its own, half sections go two to a
+// row, and a half section with no half neighbour stays alone (the page caps it at half
+// the width, so it never stretches). items = [{ id, span: 'full' | 'half', ... }].
+export function flowRows(items) {
+  const rows = [];
+  let open = null;
+  for (const it of items || []) {
+    if (it.span === 'half') {
+      if (open) { open.push(it); rows.push(open); open = null; } else open = [it];
+    } else {
+      if (open) { rows.push(open); open = null; }
+      rows.push([it]);
+    }
+  }
+  if (open) rows.push(open);
+  return rows;
 }

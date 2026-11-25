@@ -26,7 +26,7 @@ import SiteStyle from '../components/agent/site/SiteStyle';
 import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
 import ModelPicker from '../components/agent/site/ModelPicker';
 import DeliveryBlock from '../components/agent/site/DeliveryBlock';
-import { cleanSite, visibleSections, activePromos } from '../utils/pageSite';
+import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -1115,7 +1115,27 @@ export default function SalesmanProfilePage() {
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
   };
   const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk }) : [];
-  const siteBody = <>{siteIds.map((id) => siteNodes[id])}</>;
+  // The page reads as rows (owner, 2026-11-25: "everything is too wide"): models + cars take a
+  // row each, the other sections go two to a row on a wide screen. The fixed sections after
+  // the seller's own (About, Why me, Track record, Find me) join the same flow.
+  const flowItems = [
+    ...siteIds.map((id) => ({ id, span: SECTION_SPAN[id], node: siteNodes[id] })),
+    ...(pro ? [
+      aboutSec && { id: 'about', span: 'half', node: <React.Fragment key="about">{aboutSec}</React.Fragment> },
+      whySec && { id: 'why', span: 'half', node: <React.Fragment key="why">{whySec}</React.Fragment> },
+      { id: 'track', span: 'half', node: <React.Fragment key="track">{trackSec}</React.Fragment> },
+      mapLocationStr && { id: 'find', span: 'half', node: <React.Fragment key="find">{mapSec}</React.Fragment> },
+    ] : []).filter(Boolean),
+  ];
+  const siteBody = (
+    <>
+      {flowRows(flowItems).map((row) => (
+        <div key={row.map((x) => x.id).join('+')} className={`ps-row${row.length === 2 ? ' ps-row--2' : row[0].span === 'half' ? ' ps-row--half' : ''}`}>
+          {row.map((x) => x.node)}
+        </div>
+      ))}
+    </>
+  );
   const hasPromos = pro && activePromos(site).length > 0;
 
   return (
@@ -1378,6 +1398,7 @@ export default function SalesmanProfilePage() {
         .ap-spec { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 14px; font-weight: 600; color: #111827; }
         .ap-spec svg { flex-shrink: 0; width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: var(--ap-a); }
         .ap-terms--pro { margin-top: 0; padding: 18px 20px; border-top: none; }
+        @media (min-width: 1800px) { .ap-shell { max-width: 1640px; } }
         @media (min-width: 1024px) {
           .ap-cover { height: 220px; }
           .ap--pro .ap-cover { height: 300px; }
@@ -1541,17 +1562,12 @@ export default function SalesmanProfilePage() {
 
             <div className="ap-right">
               {pro && (
-                <PageNav items={[
-                  siteIds.includes('promos') && { id: 'ap-promos', label: 'Promos' },
-                  siteIds.includes('models') && { id: 'ap-models', label: 'Models' },
-                  siteIds.includes('cars') && shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
-                  siteIds.includes('calculator') && shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' },
-                  siteIds.includes('delivery') && { id: 'ap-delivery', label: 'Delivery' },
-                  aboutSec && { id: 'ap-about', label: 'About' },
-                  whySec && { id: 'ap-why', label: 'Why me' },
-                  (trust.recentSales.length > 0) && { id: 'ap-track', label: 'Track record' },
-                  mapLocationStr && { id: 'ap-find', label: 'Find me' },
-                ]} />
+                <PageNav items={flowItems.map((x) => ({
+                  promos: { id: 'ap-promos', label: 'Promos' }, models: { id: 'ap-models', label: 'Models' }, cars: shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
+                  calculator: shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' }, delivery: { id: 'ap-delivery', label: 'Delivery' },
+                  about: { id: 'ap-about', label: 'About' }, why: { id: 'ap-why', label: 'Why me' }, track: trust.recentSales.length > 0 && { id: 'ap-track', label: 'Track record' },
+                  find: { id: 'ap-find', label: 'Find me' },
+                }[x.id]))} />
               )}
               {/* Live now: the car on the agent's live stream right now. Viewers
                   land here from the TikTok bio link, so it leads the column. */}
@@ -1580,7 +1596,7 @@ export default function SalesmanProfilePage() {
               )}
 
               {pro ? siteBody : <>{carsSec}{calcSec}</>}
-              {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
+              {!pro && <>{soldSec}{mapSec}{reviewsSec}</>}
             </div>
           </div>
 

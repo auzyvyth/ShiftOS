@@ -25,6 +25,7 @@ export default function ModelHelper({ cars, infos, firstName, hasWa, waUrlFor, o
   const said = questions.filter((q) => a[q.id]).map((q) => `${q.q.replace(/\?$/, '')}: ${q.options.find((o) => o.id === a[q.id])?.label}`);
   return (
     <div className="ps-card ps-help" id="ap-model-help">
+      <div className="ps-help-l">
       <div className="ps-help-h">
         <p className="ps-lbl">Not sure which model?</p>
         <h3>Answer a few questions.</h3>
@@ -43,6 +44,7 @@ export default function ModelHelper({ cars, infos, firstName, hasWa, waUrlFor, o
           </div>
         </div>
       ))}
+      </div>
       <div className="ps-help-r" aria-live="polite">
         {!res && <p className="ps-fine" style={{ margin: 0 }}>Tap an answer to see a model.</p>}
         {res?.none && (

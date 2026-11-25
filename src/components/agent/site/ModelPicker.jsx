@@ -69,7 +69,7 @@ function ModelPanel({ car, note, firstName, hasWa, waUrlFor, onWhatsApp }) {
           </div>
         )}
         {strip.length > 0 && (
-          <dl className="ps-spec" style={{ gridTemplateColumns: `repeat(${strip.length > 2 ? 2 : strip.length}, minmax(0, 1fr))` }}>
+          <dl className="ps-spec">
             {strip.map((x) => <div key={x.label}><dt>{x.label}</dt><dd>{x.value}</dd></div>)}
           </dl>
         )}

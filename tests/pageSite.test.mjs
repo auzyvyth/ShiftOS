@@ -1,5 +1,5 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
+import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -47,6 +47,13 @@ is('delivery line no minutes', deliveryLine({ km: 12 }), '12 km');
 const full = cleanSite({ promos: [{ model: 'Yaris', until: '2026-11-30' }], delivery: { items: [{ town: 'Marang', km: 38 }] }, off: ['delivery'], order: ['cars', 'promos'] });
 is('visible: order kept, off + empty removed', visibleSections(full, { cars: true, calculator: true, models: false }, T), ['cars', 'promos', 'calculator']);
 is('visible: nothing filled', visibleSections(null, {}, T), []);
+
+const f = (...xs) => xs.map((x) => ({ id: x[0], span: x[1] }));
+const ids = (rows) => rows.map((r) => r.map((x) => x.id));
+is('flow: halves pair, fulls stand alone', ids(flowRows(f(['p', 'half'], ['d', 'half'], ['m', 'full'], ['c', 'full'], ['k', 'half'], ['a', 'half']))), [['p', 'd'], ['m'], ['c'], ['k', 'a']]);
+is('flow: a lone half stays alone', ids(flowRows(f(['p', 'half'], ['m', 'full'], ['k', 'half']))), [['p'], ['m'], ['k']]);
+is('flow: three halves = a pair and a single', ids(flowRows(f(['a', 'half'], ['b', 'half'], ['c', 'half']))), [['a', 'b'], ['c']]);
+is('flow: empty', flowRows(null), []);
 
 console.log(`pageSite: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

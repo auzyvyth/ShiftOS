@@ -42,6 +42,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
   if (!cars.length) return null;
 
   return (
+    <div style={{ containerType: 'inline-size' }}>
     <section id="ap-calc" className="pc ap-card" aria-label="Monthly instalment calculator">
       <style>{`
         .pc { padding: 20px 16px 18px; margin: 0 0 24px; scroll-margin-top: 72px; overflow: hidden; }
@@ -82,7 +83,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-link { display: flex; align-items: center; justify-content: center; margin-top: 16px; height: 48px; border-radius: 24px; background: #fff; color: #0f1115; font-weight: 800; font-size: 14px; text-decoration: none; }
         .pc-fine { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #4b5563; }
         .pc-none { margin: 0; padding: 20px 4px; font-size: 14px; color: rgba(255,255,255,.8); }
-        @media (min-width: 720px) {
+        @container (min-width: 640px) {
           .pc { padding: 28px 28px 24px; }
           .pc-pick { margin: 0 -28px 20px; padding: 2px 28px 8px; }
           .pc-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; gap: 24px; }
@@ -184,5 +185,6 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         An estimate on the reducing balance, not an approval. Each bank sets its own rate and decides your loan. Final price and deposit are agreed with the seller.
       </p>
     </section>
+    </div>
   );
 }
