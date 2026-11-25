@@ -124,17 +124,17 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
   return (
     <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 18 }}>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PD.text }}>Hero photo</p>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PD.text }}>Your photo on your page</p>
       <p style={{ margin: '4px 0 14px', fontSize: 12.5, lineHeight: 1.5, color: PD.textMuted }}>
-        The big photo at the top of your page. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.
+        The big photo of you at the top of your page, the first thing buyers see. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.
       </p>
 
       <div style={{ position: 'relative', height: 260, borderRadius: 16, overflow: 'hidden', background: '#0c0d10', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
         <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: 20, width: 240, height: 240, translate: '-50% 0', borderRadius: '50%', background: `radial-gradient(circle, ${accent}e6 0%, ${accent}55 42%, ${accent}00 70%)` }} />
         {shown ? (
           shown.cut
-            ? <img src={shown.url} alt="Your hero photo" style={{ position: 'relative', height: '100%', maxWidth: '100%', objectFit: 'contain', objectPosition: 'bottom' }} />
-            : <img src={shown.url} alt="Your hero photo" style={{ position: 'relative', height: '86%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 20, marginBottom: '7%' }} />
+            ? <img src={shown.url} alt="Your photo" style={{ position: 'relative', height: '100%', maxWidth: '100%', objectFit: 'contain', objectPosition: 'bottom' }} />
+            : <img src={shown.url} alt="Your photo" style={{ position: 'relative', height: '86%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 20, marginBottom: '7%' }} />
         ) : (
           <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
             style={{ ...soft, position: 'relative', alignSelf: 'center', background: 'rgba(255,255,255,.1)', color: '#fff' }}>
@@ -151,7 +151,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>First time only: your phone downloads the cut-out tool ({MB} MB). Use Wi-Fi.</p>
       )}
       {notReady && !error && (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>You can try it now. Saving switches on after tonight's update.</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>Saving your photo is not available yet. Try again later.</p>
       )}
       {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 12.5, color: PD.danger || '#f87171' }}>{error}</p>}
 

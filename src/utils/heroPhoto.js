@@ -72,7 +72,7 @@ export const heroExt = (blob) => (blob?.type === 'image/webp' ? 'webp' : blob?.t
 export function heroErrorText(err) {
   const m = String(err?.message || err || '');
   if (/hero_empty/.test(m)) return "Couldn't find you in this photo. Try one where you stand out from the background.";
-  if (/set_my_hero_photo|function .* does not exist|PGRST202/.test(m)) return 'Hero photos switch on after tonight\'s update. Try again tomorrow.';
+  if (/set_my_hero_photo|function .* does not exist|PGRST202/.test(m)) return 'Saving your photo is not available yet. Try again later.';
   if (/bad_hero_url|not_a_seller|not_signed_in/.test(m)) return "Couldn't save this photo. Sign in again and retry.";
   return "Couldn't save the photo. Check your connection and try again.";
 }

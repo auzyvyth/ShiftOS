@@ -16,6 +16,6 @@ is('box hugs the person, small margin', [b.x, b.y, b.x + b.w, b.y + b.h], [28, 1
 is('faint halo is ignored', opaqueBounds(px((d) => box(d, 0, 0, 99, 99, 10)), W, H), null);
 is('webp ext', heroExt({ type: 'image/webp' }), 'webp');
 is('jpg ext', heroExt({ type: 'image/jpeg' }), 'jpg');
-is('missing function = tonight', heroErrorText({ message: 'Could not find the function public.set_my_hero_photo(p_url)' }).includes('tonight'), true);
+is('missing function = not available yet', heroErrorText({ message: 'Could not find the function public.set_my_hero_photo(p_url)' }).includes('not available yet'), true);
 console.log(`heroPhoto: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

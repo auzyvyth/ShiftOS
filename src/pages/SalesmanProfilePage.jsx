@@ -1199,14 +1199,16 @@ export default function SalesmanProfilePage() {
         .aph-glow { position: absolute; z-index: -1; left: 50%; top: 40px; width: 360px; height: 360px; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle, rgba(var(--ap-rgb), .95) 0%, rgba(var(--ap-rgb), .35) 42%, rgba(var(--ap-rgb), 0) 70%); }
         .aph-in { display: flex; flex-direction: column; gap: 14px; padding: 60px 18px 20px; }
         .aph-pic { order: -1; position: relative; height: 200px; display: flex; align-items: flex-end; justify-content: center; }
-        .aph-pic--cut { height: 250px; }
+        .aph-pic--cut { height: 360px; }
         .aph-pic--wait .aph-me { opacity: 0; }
         .aph-me { transition: opacity .2s; }
         .aph-me { display: block; width: auto; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 28px; box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(var(--ap-rgb), .35); }
         .aph-pic--cut .aph-me { height: 100%; aspect-ratio: auto; max-width: 100%; object-fit: contain; object-position: bottom; border-radius: 0; box-shadow: none; filter: drop-shadow(0 20px 30px rgba(0,0,0,.45)); }
         .aph-mono { display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, var(--ap-a), var(--ap-a2)); font-family: 'Bebas Neue', sans-serif; font-size: 110px; color: rgba(255,255,255,.92); }
-        .aph-pic--car .aph-me { margin-bottom: 30px; }
-        .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(88%, 420px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
+        .aph-pic--car .aph-me { margin-bottom: 22px; }
+        .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(76%, 360px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
+        /* index.css paints #fff behind every see-through car photo (cards); not here */
+        .aph .aph-pic img.aph-car { background: transparent; }
         .aph-chips { display: flex; flex-wrap: wrap; gap: 6px; }
         .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,.88); }
         .ap .aph-name { margin: 10px 0 4px; color: #fff; font-size: clamp(46px, 13vw, 96px); line-height: .88; letter-spacing: .01em; }
@@ -1225,13 +1227,13 @@ export default function SalesmanProfilePage() {
         @media (min-width: 900px) {
           .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 440px; padding: 76px 48px 36px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
-          .aph-pic--cut { height: 400px; align-self: end; }
+          .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }
           .aph-pic:not(.aph-pic--cut) .aph-me { height: auto; width: min(100%, 300px); }
           .aph-text { align-self: center; }
           .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
           .aph-cta .ap-btn { flex: 0 0 auto; }
-          .aph-car { left: 44%; width: min(96%, 520px); }
+          .aph-car { left: 40%; width: min(80%, 440px); }
         }
         @media (min-width: 1024px) {
           .ap--pro .ap-cols { display: block; }
