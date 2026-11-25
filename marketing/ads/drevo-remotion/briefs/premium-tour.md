@@ -34,3 +34,22 @@ C. **The buyer's loan page is English only** (src/pages/LoanSharePage.jsx is not
 D. **Settled (owner, 2026-11-25): white world with a hint of red** ("the black background doesn't really show the app").
    Every scene's BG is white, fog is white, captions ink + red. The phones and the dashboard stay dark (the real app).
 E. Loan wording: never approval, never a score. The scene says "the bank decides" (the app's own line).
+
+## Post captions (2026-11-25)
+**BM:** SA kereta, ni semua dalam satu app 👇
+1. Dashboard: siapa tekan WhatsApp, siapa buka page anda
+2. Stok dealer: jual kereta dealer dari page anda sendiri
+3. Page anda: satu link, semua kereta, dengan anggaran bulanan
+4. Live: kira bulanan depan penonton, ikut gaji mereka
+5. Semakan loan: tahu apa nak betulkan sebelum bank tengok
+Cuba Premium 7 hari percuma di drevo.my
+#jurujualkereta #SAkereta #keretaterpakai #recon #loankereta #drevo
+
+**EN:** Car SA? This is your whole sales job in one app 👇
+1. Dashboard: who tapped WhatsApp, who opened your page
+2. Dealer stock: sell a dealer's cars from your own page
+3. Your page: one link, every car, with the monthly
+4. Live: work out the monthly on stream, by the viewer's pay
+5. Loan check: know what to fix before any bank sees the file
+Try Premium free for 7 days at drevo.my
+#carsales #carsalesadvisor #usedcars #carloan #malaysia #drevo
