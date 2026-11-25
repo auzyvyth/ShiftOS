@@ -1,5 +1,5 @@
 // Model picker facts + the "Not sure which model?" helper. Run: npm run test:modelpick
-import { specStrip, modelNote, helperModels, monthlyBands, recommend, pickFacts } from '../src/utils/modelPick.js';
+import { specStrip, modelNote, helperModels, monthlyBands, buildQuestions, recommend, pickFacts } from '../src/utils/modelPick.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -42,15 +42,34 @@ is('three bands, last is open ended', [bands.length, bands[2].max], [3, Infinity
 is('band labels are in RM', bands[0].label.startsWith('Under RM'), true);
 is('too few models = no budget question', monthlyBands(models.slice(0, 2)), null);
 
-is('big family needs 6+ seats', recommend(models, { people: 'big', use: 'city', budget: 'high' }, bands).pick.id, 'd');
-is('no 6-seater = honest none', recommend(models.filter((m) => m.id !== 'd'), { people: 'big', use: 'city' }, bands).none, true);
-is('first car = cheapest', recommend(models, { people: 'solo', use: 'first', budget: 'low' }, bands).pick.id, 'a');
-is('long trips = most power inside the band', recommend(models, { people: 'family', use: 'long', budget: 'high' }, bands).pick.id, 'e');
-is('around town prefers electric / economy', recommend(models, { people: 'family', use: 'city', budget: 'high' }, bands).pick.id, 'e');
-const tight = recommend(models, { people: 'big', use: 'first', budget: 'low' }, bands);
+// Questions come from the lineup
+const qs = buildQuestions(models, bands);
+is('questions asked', qs.map((q) => q.id), ['body', 'people', 'fuel', 'priority', 'budget']);
+is('shapes are the lineup\'s own', qs[0].options.map((o) => o.label), ['Sedan', 'SUV']);
+is('fuel options only what exists', qs[2].options.map((o) => o.id), ['petrol', 'electric']);
+is('big family offered because a 7-seater exists', qs[1].options.map((o) => o.id), ['solo', 'family', 'big']);
+is('no 6-seater = no big-family option', buildQuestions(models.filter((m) => m.id !== 'd'), bands)[1].options.map((o) => o.id), ['solo', 'family']);
+is('one shape + one fuel = those questions are skipped', buildQuestions(models.filter((m) => m.id === 'a' || m.id === 'b'), null).map((q) => q.id), ['people', 'priority']);
+const noData = helperModels(cars, { a: { variants: [v(38990, 'Sedan', 'Petrol', {})] }, b: { variants: [v(56800, 'Sedan', 'Petrol', {})] }, c: { variants: [v(89800, 'Sedan', 'Petrol', {})] } }).slice(0, 3);
+is('priority with no running/power data is only price = not asked', buildQuestions(noData, null).some((q) => q.id === 'priority'), false);
+
+// Recommending
+is('big family needs 6+ seats', recommend(models, { people: 'big' }, bands).pick.id, 'd');
+is('shape is a rule', recommend(models, { body: 'sedan', priority: 'power' }, bands).pick.id, 'b');
+is('fuel is a rule', recommend(models, { fuel: 'electric' }, bands).pick.id, 'e');
+is('lowest price', recommend(models, { priority: 'price' }, bands).pick.id, 'a');
+is('power orders what is left', recommend(models, { body: 'suv', priority: 'power' }, bands).pick.id, 'e');
+is('running cost: electric / economy first', recommend(models, { priority: 'running' }, bands).pick.id, 'e');
+is('refines with each answer', recommend(models, { people: 'family' }, bands).pick.id, 'a');
+const none = recommend(models, { body: 'sedan', fuel: 'electric' }, bands);
+is('no match names what to change', [none.none, none.fixes], [true, ['body', 'fuel']]);
+is('no 6-seater = honest none', recommend(models.filter((m) => m.id !== 'd'), { people: 'big' }, bands).none, true);
+const tight = recommend(models, { people: 'big', budget: 'low' }, bands);
 is('nothing in budget = relaxed, flagged', [tight.pick.id, tight.relaxed], ['d', true]);
+is('an unknown seat count never rules a car out for a family', recommend(helperModels([cars[0]], { a: { variants: [v(38990, 'Sedan', 'Petrol', {})] } }), { people: 'family' }, null).pick.id, 'a');
+is('unknown seats: an MPV still counts as big', recommend(helperModels([{ ...cars[0], id: 'm' }], { m: { variants: [v(80000, 'MPV', 'Petrol', {})] } }), { people: 'big' }, null).pick.id, 'm');
 is('facts quote data only', pickFacts(models[3]), ['SUV', '7 seats', 'up to 177 PS']);
-is('no bands = budget ignored', recommend(models, { people: 'solo', use: 'first' }, null).pick.id, 'a');
+is('no bands = budget ignored', recommend(models, { priority: 'price', budget: 'low' }, null).pick.id, 'a');
 
 console.log(`modelPick: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
