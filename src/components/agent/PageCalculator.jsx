@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cdnImg } from '../../utils/img';
 import { carLabel } from '../../utils/liveMaths';
-import { pageCalc, calcYears, fitYears, calcMessage, PAGE_DEPOSITS } from '../../utils/pageCalc';
+import { pageCalc, calcYears, fitYears, calcMessage } from '../../utils/pageCalc';
 import BudgetFinder from './BudgetFinder';
 
 // The Premium page's one money block (PAGE-SITE, 2026-11-25). Two tabs:
@@ -14,7 +14,7 @@ import BudgetFinder from './BudgetFinder';
 // buyer picked (no approval, no promise). Lite pages never render this.
 
 const rm = (v) => Math.round(Number(v) || 0).toLocaleString('en-MY');
-const DEPOSITS = [...PAGE_DEPOSITS, 0.3];
+const DEPOSIT_MAX = 50; // percent, the most pageCalc takes
 
 export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, onWhatsApp, focus }) {
   const cars = useMemo(
@@ -78,10 +78,24 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 700; line-height: 1.3; min-height: 32px; }
         .pc-cp { display: block; margin-top: 4px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
         .pc-grid { display: grid; gap: 16px; }
-        .pc-lbl { font-size: 12px; font-weight: 700; color: #4b5563; }
-        .pc-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        .pc-chips button { height: 44px; min-width: 56px; padding: 0 16px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; font: inherit; font-size: 14px; font-weight: 800; color: #111827; cursor: pointer; }
-        .pc-chips button[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .pc-lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #4b5563; }
+        .pc-field { padding: 14px 16px; border-radius: 14px; background: #F4F3EF; }
+        .pc-fh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+        .pc-fh b { font-size: 15px; font-weight: 900; color: #0f1115; font-variant-numeric: tabular-nums; text-align: right; }
+        /* Deposit: a slider with the amount beside it. The thumb is 28px so a thumb is easy to grab. */
+        .pc-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 36px; margin: 6px 0 0; background: transparent; cursor: pointer; touch-action: pan-y; }
+        .pc-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ap-a, #dc2626) var(--pc-fill, 0%), #d9d6cd var(--pc-fill, 0%)); }
+        .pc-range::-moz-range-track { height: 6px; border-radius: 3px; background: #d9d6cd; }
+        .pc-range::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ap-a, #dc2626); }
+        .pc-range::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -11px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 0 0 1px rgba(15,17,21,.12), 0 2px 6px rgba(15,17,21,.28); }
+        .pc-range::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 0 0 1px rgba(15,17,21,.12), 0 2px 6px rgba(15,17,21,.28); }
+        .pc-range:focus-visible { outline: none; }
+        .pc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0f1115; }
+        .pc-ticks { display: flex; justify-content: space-between; margin-top: -2px; font-size: 11px; font-weight: 700; color: #6b7280; font-variant-numeric: tabular-nums; }
+        /* Loan length: one joined control, the picked length filled in ink. */
+        .pc-seg { display: flex; margin-top: 10px; padding: 4px; border-radius: 12px; background: #E7E5DE; }
+        .pc-seg button { flex: 1 1 0; min-width: 0; height: 40px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 800; color: #4b5563; cursor: pointer; }
+        .pc-seg button[aria-checked="true"] { background: #0f1115; color: #fff; box-shadow: 0 2px 6px rgba(15,17,21,.25); }
         .pc-ctl { display: flex; flex-direction: column; gap: 16px; }
         .pc-out { background: #0f1115; color: #fff; border-radius: 18px; padding: 20px 18px 18px; position: relative; overflow: hidden; }
         .pc-out::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, var(--ap-a, #dc2626), var(--ap-a2, #991b1b)); }
@@ -111,10 +125,13 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
           .pc-cp { font-size: 12px; margin-top: 2px; }
           .pc-grid { gap: 10px; }
           .pc-ctl { gap: 8px; }
-          .pc-ctl > div { display: flex; align-items: center; gap: 10px; }
-          .pc-ctl .pc-lbl { flex: 0 0 52px; }
-          .pc-chips { margin-top: 0; gap: 6px; flex-wrap: nowrap; }
-          .pc-chips button { height: 38px; min-width: 0; flex: 1 1 0; padding: 0 8px; font-size: 13px; }
+          .pc-field { padding: 8px 12px 8px; }
+          .pc-ticks { display: none; }
+          .pc-fh b { font-size: 14px; }
+          .pc-range { height: 30px; margin-top: 0; }
+          .pc-seg { margin-top: 6px; }
+          .pc-seg { padding: 3px; }
+          .pc-seg button { height: 34px; font-size: 13px; }
           .pc-out { padding: 14px 14px 12px; border-radius: 16px; }
           .pc-k { font-size: 10.5px; }
           .pc-big { margin: 4px 0 2px; font-size: 36px; }
@@ -173,21 +190,29 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
 
           <div className="pc-grid">
             <div className="pc-ctl">
-              <div>
-                <span className="pc-lbl">Deposit</span>
-                <div className="pc-chips" role="group" aria-label="Deposit">
-                  {DEPOSITS.map((d) => (
-                    <button key={d} type="button" aria-pressed={depositPct === d} onClick={() => setDepositPct(d)}>
-                      {d === 0 ? 'None' : `${Math.round(d * 100)}%`}
-                    </button>
-                  ))}
+              <div className="pc-field">
+                <div className="pc-fh">
+                  <span className="pc-lbl">Deposit</span>
+                  <b>{depositPct === 0 ? 'No deposit' : `${Math.round(depositPct * 100)}% · RM ${rm(calc ? calc.deposit : 0)}`}</b>
                 </div>
+                <input
+                  type="range" className="pc-range" min={0} max={DEPOSIT_MAX} step={5}
+                  value={Math.round(depositPct * 100)}
+                  onChange={(e) => setDepositPct(Number(e.target.value) / 100)}
+                  style={{ '--pc-fill': `${(Math.round(depositPct * 100) / DEPOSIT_MAX) * 100}%` }}
+                  aria-label="Deposit percentage"
+                  aria-valuetext={depositPct === 0 ? 'No deposit' : `${Math.round(depositPct * 100)} percent`}
+                />
+                <div className="pc-ticks" aria-hidden="true"><span>0%</span><span>25%</span><span>50%</span></div>
               </div>
-              <div>
-                <span className="pc-lbl">Years</span>
-                <div className="pc-chips" role="group" aria-label="Loan years">
+              <div className="pc-field">
+                <div className="pc-fh">
+                  <span className="pc-lbl">Loan length</span>
+                  <b>{yearsNow ? `${yearsNow} years · ${yearsNow * 12} months` : ''}</b>
+                </div>
+                <div className="pc-seg" role="radiogroup" aria-label="Loan years">
                   {yearsOffered.map((y) => (
-                    <button key={y} type="button" aria-pressed={yearsNow === y} onClick={() => setYears(y)}>{y}</button>
+                    <button key={y} type="button" role="radio" aria-checked={yearsNow === y} onClick={() => setYears(y)}>{y} yrs</button>
                   ))}
                 </div>
               </div>
