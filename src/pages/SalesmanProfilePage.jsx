@@ -1233,7 +1233,8 @@ export default function SalesmanProfilePage() {
           .aph-text { align-self: center; }
           .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
           .aph-cta .ap-btn { flex: 0 0 auto; }
-          .aph-car { left: 40%; width: min(80%, 440px); }
+          .aph-car { left: 46%; bottom: -18px; width: min(140%, 660px); max-width: none; }
+          .aph-pic--car .aph-me { margin-bottom: 60px; }
         }
         @media (min-width: 1024px) {
           .ap--pro .ap-cols { display: block; }
