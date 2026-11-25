@@ -3,7 +3,8 @@ import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
-import { cdnImg, cdnSrcSet, isSeeThroughPhoto } from '../utils/img';
+import { cdnImg, cdnSrcSet } from '../utils/img';
+import { useSeeThrough, useFirstSeeThrough } from '../utils/seeThrough';
 import { coverObjectPosition } from '../utils/coverFocus';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
@@ -515,6 +516,12 @@ export default function SalesmanProfilePage() {
       .catch(() => { if (!off) setHeroUrl(null); });
     return () => { off = true; };
   }, [slug, profile?.id, profile?.page_basic]);
+  // A .png/.webp name is not proof of see-through (stock new-car photos are
+  // .webp on white): read the pixels. The car stands in front of the seller
+  // only when the seller is a cut-out too; in front of a framed photo it crowds.
+  const heroImgUrl = heroUrl || profile?.avatar_url || null;
+  const heroCutState = useSeeThrough(profile && !profile.page_basic ? heroImgUrl : null);
+  const heroCarUrl = useFirstSeeThrough(heroCutState === true ? listings.map((c) => (Array.isArray(c.images) ? c.images[0] : null)) : []);
 
   useEffect(() => {
     if (!slug || !profile?.id) { setNickname(''); return undefined; }
@@ -939,9 +946,9 @@ export default function SalesmanProfilePage() {
   // ordinary photo sits in a tall frame), with a car in front only when its photo
   // is a cut-out (a rectangle in front of a person looks broken). Everything the
   // old side card said is said here, once: name, verified, numbers, WhatsApp.
-  const heroCar = listings.find((c) => isSeeThroughPhoto(Array.isArray(c.images) ? c.images[0] : null)) || null;
-  const heroImg = heroUrl || profile.avatar_url;
-  const heroCut = isSeeThroughPhoto(heroImg);
+  const heroImg = heroImgUrl;
+  const heroCut = heroCutState === true;
+  const heroWait = heroCutState === null && !!heroImg;
   const heroBio = profile.bio || malayLine;
   const heroPro = pro && (
     <header className={`aph${profile.cover_url ? ' aph--cover' : ''}`}>
@@ -970,9 +977,6 @@ export default function SalesmanProfilePage() {
           {heroBio && <p className="aph-bio">{heroBio}</p>}
           <div className="aph-cta">
             {waHref && <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}<span>WhatsApp {firstName}</span></a>}
-            {listings.length > 0 && (
-              <a className="aph-ghost" href="#ap-cars" onClick={(e) => { e.preventDefault(); document.getElementById('ap-cars')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>See my cars</a>
-            )}
             {socials.map((so) => (
               <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="aph-ico" title={so.label} aria-label={so.label}>{SOCIAL_ICONS[so.key]}</a>
             ))}
@@ -984,11 +988,11 @@ export default function SalesmanProfilePage() {
             {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
           </div>
         </div>
-        <div className={`aph-pic${heroCut ? ' aph-pic--cut' : ''}${heroCar ? ' aph-pic--car' : ''}`}>
+        <div className={`aph-pic${heroCut ? ' aph-pic--cut' : ''}${heroCarUrl ? ' aph-pic--car' : ''}${heroWait ? ' aph-pic--wait' : ''}`}>
           {heroImg
-            ? <img className="aph-me" src={heroCut ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} />
+            ? <img className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} />
             : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
-          {heroCar && <img className="aph-car" src={heroCar.images[0]} alt="" loading="lazy" />}
+          {heroCarUrl && <img className="aph-car" src={heroCarUrl} alt="" />}
         </div>
       </div>
     </header>
@@ -1193,36 +1197,40 @@ export default function SalesmanProfilePage() {
         .aph-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -3; }
         .aph--cover::before { content: ''; position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(12,13,16,.55), rgba(12,13,16,.92) 55%); }
         .aph-glow { position: absolute; z-index: -1; left: 50%; top: 40px; width: 360px; height: 360px; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle, rgba(var(--ap-rgb), .95) 0%, rgba(var(--ap-rgb), .35) 42%, rgba(var(--ap-rgb), 0) 70%); }
-        .aph-in { display: flex; flex-direction: column; gap: 20px; padding: 64px 20px 24px; }
-        .aph-pic { order: -1; position: relative; height: 300px; display: flex; align-items: flex-end; justify-content: center; }
-        .aph-me { display: block; width: auto; height: 92%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 28px; box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(var(--ap-rgb), .35); }
+        .aph-in { display: flex; flex-direction: column; gap: 14px; padding: 60px 18px 20px; }
+        .aph-pic { order: -1; position: relative; height: 200px; display: flex; align-items: flex-end; justify-content: center; }
+        .aph-pic--cut { height: 250px; }
+        .aph-pic--wait .aph-me { opacity: 0; }
+        .aph-me { transition: opacity .2s; }
+        .aph-me { display: block; width: auto; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 28px; box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(var(--ap-rgb), .35); }
         .aph-pic--cut .aph-me { height: 100%; aspect-ratio: auto; max-width: 100%; object-fit: contain; object-position: bottom; border-radius: 0; box-shadow: none; filter: drop-shadow(0 20px 30px rgba(0,0,0,.45)); }
-        .aph-mono { display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, var(--ap-a), var(--ap-a2)); font-family: 'Bebas Neue', sans-serif; font-size: 140px; color: rgba(255,255,255,.92); }
-        .aph-pic--car .aph-me { margin-bottom: 36px; }
+        .aph-mono { display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, var(--ap-a), var(--ap-a2)); font-family: 'Bebas Neue', sans-serif; font-size: 110px; color: rgba(255,255,255,.92); }
+        .aph-pic--car .aph-me { margin-bottom: 30px; }
         .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(88%, 420px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
-        .aph-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 12px; font-weight: 700; color: rgba(255,255,255,.88); }
-        .ap .aph-name { margin: 14px 0 6px; color: #fff; font-size: clamp(56px, 16vw, 120px); line-height: .88; letter-spacing: .01em; }
+        .aph-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,.88); }
+        .ap .aph-name { margin: 10px 0 4px; color: #fff; font-size: clamp(46px, 13vw, 96px); line-height: .88; letter-spacing: .01em; }
         .ap .aph-name svg { width: .3em; height: .3em; margin-top: -.08em; }
         .aph-role { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); }
-        .aph-bio { margin: 12px 0 0; max-width: 540px; font-size: 15px; line-height: 1.6; color: rgba(255,255,255,.85); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
-        .aph-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
-        .aph-cta .ap-btn { flex: 1 1 auto; height: 52px; padding: 0 24px; border-radius: 26px; font-size: 15px; font-weight: 800; }
-        .aph-ghost { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 auto; height: 52px; padding: 0 22px; border-radius: 26px; border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 15px; font-weight: 800; text-decoration: none; }
-        .aph-ghost:hover { background: rgba(255,255,255,.08); }
-        .aph-ico { width: 52px; height: 52px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+        .aph-bio { margin: 8px 0 0; max-width: 540px; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,.82); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+        .aph-cta { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+        .aph-cta .ap-btn { flex: 1 1 auto; min-width: 0; height: 48px; padding: 0 20px; border-radius: 24px; font-size: 15px; font-weight: 800; }
+        .aph-ico { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
         .aph-ico svg { width: 20px; height: 20px; }
-        .aph-stats { display: flex; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); }
-        .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+        .aph-stats { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
+        .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
         .aph-stats b small { font-size: 18px; color: rgba(255,255,255,.6); }
-        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 16px; font-weight: 800; line-height: 1.2; padding-top: 10px; max-width: 180px; }
-        .aph-stats span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
+        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 14px; font-weight: 800; line-height: 1.25; padding-top: 4px; max-width: 200px; }
+        .aph-stats span { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
         @media (min-width: 900px) {
-          .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 560px; padding: 88px 56px 48px; }
-          .aph-pic { order: 0; height: 100%; min-height: 440px; }
+          .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 440px; padding: 76px 48px 36px; }
+          .aph-pic { order: 0; height: 100%; min-height: 340px; }
+          .aph-pic--cut { height: 400px; align-self: end; }
+          .aph-pic:not(.aph-pic--cut) { align-items: center; }
+          .aph-pic:not(.aph-pic--cut) .aph-me { height: auto; width: min(100%, 300px); }
           .aph-text { align-self: center; }
           .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
-          .aph-cta .ap-btn, .aph-ghost { flex: 0 0 auto; }
+          .aph-cta .ap-btn { flex: 0 0 auto; }
           .aph-car { left: 44%; width: min(96%, 520px); }
         }
         @media (min-width: 1024px) {
