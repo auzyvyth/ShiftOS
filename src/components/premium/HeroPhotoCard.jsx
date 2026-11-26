@@ -6,7 +6,7 @@ import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYT
 import { prepareCutout, preparePlain, heroExt, heroErrorText } from '../../utils/heroPhoto';
 import { isSeeThroughPhoto, cdnImg } from '../../utils/img';
 import { checkSeeThrough } from '../../utils/seeThrough';
-import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT } from '../../utils/heroFrame';
+import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
 import DragSlider from '../studio/DragSlider';
 import HeroPreview from './HeroPreview';
 
@@ -222,6 +222,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
           ) : carList.length === 0 ? (
             <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>None of your cars has a cut-out photo (no background) as its first photo, so no car shows.</p>
           ) : (
+            <>
             <div className="keep-alpha" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
               {[{ id: 'auto', label: 'Newest' }, { id: 'none', label: 'No car' }, ...carList.map((c) => ({ id: c.id, label: [c.brand, c.model].filter(Boolean).join(' '), img: c.images[0] }))].map((o) => {
                 const on = frame.car === o.id || (o.id === 'auto' && frame.car !== 'none' && !carList.some((c) => c.id === frame.car));
@@ -237,6 +238,15 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
                 );
               })}
             </div>
+            {frame.car !== 'none' && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>
+                  <span>Car size</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{frame.carSize}%</span>
+                </div>
+                <DragSlider value={frame.carSize} min={HERO_CAR_SIZE.min} max={HERO_CAR_SIZE.max} step={1} accent={accent} onChange={(v) => setFrame((f) => ({ ...f, carSize: v }))} />
+              </div>
+            )}
+            </>
           )}
         </div>
       )}

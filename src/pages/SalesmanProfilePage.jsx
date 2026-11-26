@@ -31,7 +31,7 @@ import HandoverBlock from '../components/agent/site/HandoverBlock';
 import StepsBlock from '../components/agent/site/StepsBlock';
 import FaqBlock from '../components/agent/site/FaqBlock';
 import BookBlock from '../components/agent/site/BookBlock';
-import { heroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates } from '../utils/heroFrame';
+import { heroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
 import { withSampleSite, cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
@@ -1072,7 +1072,7 @@ export default function SalesmanProfilePage() {
           {heroImg
             ? <img className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} style={heroPersonStyle(heroFrameSet, heroCut)} />
             : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
-          {heroCarUrl && <img className="aph-car" src={heroCarUrl} alt="" />}
+          {heroCarUrl && <img className="aph-car" src={heroCarUrl} alt="" style={heroCarStyle(heroFrameSet)} />}
         </div>
       </div>
     </header>

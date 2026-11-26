@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { heroPersonStyle, HERO_SHIFT } from '../../utils/heroFrame';
+import { heroPersonStyle, heroCarStyle, HERO_SHIFT } from '../../utils/heroFrame';
 
 // PAGE-HERO 2: how the hero will look, on a phone or on a desktop, drawn small with the
 // SAME size / position maths the page uses (heroPersonStyle). The page's text is shown as
@@ -32,9 +32,9 @@ export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, a
     : <img ref={imgRef} src={url} alt="" draggable={false} style={{ position: 'relative', height: phone ? '92%' : '78%', aspectRatio: '4 / 5', objectFit: 'cover', borderRadius: 14, marginBottom: phone ? 0 : '8%', ...heroPersonStyle(frame, false) }} />;
 
   const car = carUrl && (
-    <img src={carUrl} alt="" draggable={false} style={phone
+    <img src={carUrl} alt="" draggable={false} style={{ ...(phone
       ? { position: 'absolute', zIndex: 2, bottom: -4, left: '50%', translate: '-50% 0', width: '64%', pointerEvents: 'none', filter: 'drop-shadow(0 10px 10px rgba(0,0,0,.6))' }
-      : { position: 'absolute', zIndex: 2, bottom: -10, left: '46%', translate: '-50% 0', width: '140%', maxWidth: 'none', pointerEvents: 'none', filter: 'drop-shadow(0 10px 10px rgba(0,0,0,.6))' }} />
+      : { position: 'absolute', zIndex: 2, bottom: -10, left: '46%', translate: '-50% 0', width: '140%', maxWidth: 'none', pointerEvents: 'none', filter: 'drop-shadow(0 10px 10px rgba(0,0,0,.6))' }), ...heroCarStyle(frame) }} />
   );
 
   const pic = (

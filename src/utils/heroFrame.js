@@ -6,7 +6,8 @@
 
 export const HERO_SIZE = { min: 60, max: 160, def: 100 };
 export const HERO_SHIFT = { min: -40, max: 40, def: 0 };
-const KEYS = ['hs', 'hx', 'hy', 'hc'];
+export const HERO_CAR_SIZE = { min: 50, max: 160, def: 100 }; // hk = the car's size %
+const KEYS = ['hs', 'hx', 'hy', 'hc', 'hk'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const clampInt = (v, lo, hi, def) => {
   const n = Math.round(Number(v));
@@ -15,13 +16,14 @@ const clampInt = (v, lo, hi, def) => {
 
 // Any URL -> { size, x, y, car }. car: 'auto' | 'none' | <listing id>.
 export function heroFrame(url) {
-  const out = { size: HERO_SIZE.def, x: HERO_SHIFT.def, y: HERO_SHIFT.def, car: 'auto' };
+  const out = { size: HERO_SIZE.def, x: HERO_SHIFT.def, y: HERO_SHIFT.def, car: 'auto', carSize: HERO_CAR_SIZE.def };
   const q = String(url || '').split('#')[0].split('?')[1];
   if (!q) return out;
   const p = new URLSearchParams(q);
   if (p.has('hs')) out.size = clampInt(p.get('hs'), HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def);
   if (p.has('hx')) out.x = clampInt(p.get('hx'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
   if (p.has('hy')) out.y = clampInt(p.get('hy'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
+  if (p.has('hk')) out.carSize = clampInt(p.get('hk'), HERO_CAR_SIZE.min, HERO_CAR_SIZE.max, HERO_CAR_SIZE.def);
   const c = p.get('hc');
   if (c === 'none' || UUID.test(c || '')) out.car = c;
   return out;
@@ -41,13 +43,19 @@ export function withHeroFrame(url, frame) {
   if (size !== HERO_SIZE.def) p.set('hs', String(size));
   if (x !== 0) p.set('hx', String(x));
   if (y !== 0) p.set('hy', String(y));
+  const k = clampInt(f.carSize, HERO_CAR_SIZE.min, HERO_CAR_SIZE.max, HERO_CAR_SIZE.def);
+  if (k !== HERO_CAR_SIZE.def) p.set('hk', String(k));
   if (f.car === 'none' || UUID.test(f.car || '')) p.set('hc', f.car);
   const qs = p.toString();
   return qs ? `${base}?${qs}` : base;
 }
 
 // The image's own URL (without the frame keys), for loading the file.
-export const heroImageUrl = (url) => withHeroFrame(url, { size: HERO_SIZE.def, x: 0, y: 0, car: 'auto' });
+export const heroImageUrl = (url) => withHeroFrame(url, { size: HERO_SIZE.def, x: 0, y: 0, car: 'auto', carSize: HERO_CAR_SIZE.def });
+
+// CSS for the car in front: grows from its wheels (bottom centre).
+export const heroCarStyle = (frame) => (frame && frame.carSize !== HERO_CAR_SIZE.def
+  ? { scale: String(frame.carSize / 100), transformOrigin: '50% 100%' } : undefined);
 
 // CSS for the person. A cut-out grows from its feet (bottom centre); a framed photo
 // keeps its frame and moves the picture inside it.
