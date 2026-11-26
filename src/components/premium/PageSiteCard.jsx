@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { premiumDark as PD } from '../../theme/tokens';
@@ -26,6 +26,8 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
+  const [layoutMsg, setLayoutMsg] = useState(null); // { kind: 'busy' | 'ok' | 'bad', text }
+  const layoutQueue = useRef(Promise.resolve());
   const [myModels, setMyModels] = useState([]);   // the seller's own model cards, to suggest names for a note
   const today = myToday();
 
@@ -51,13 +53,34 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
   const setPromo = (i, patch) => set({ promos: draft.promos.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
   const setNote = (i, patch) => set({ notes: draft.notes.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
   const setTown = (i, patch) => set({ delivery: { ...draft.delivery, items: draft.delivery.items.map((t, j) => (j === i ? { ...t, ...patch } : t)) } });
+  // The order and the on/off switches SAVE ON TAP (owner, 2026-11-26: "this section doesn't save to the
+  // page"). They used to wait for "Save page sections" at the very bottom of Settings, under every other
+  // section's fields, so a seller moved a section, saw nothing happen on the page, and left. Only the
+  // layout is written: it goes onto the SAVED value, so a half-typed promo below is never sent with it.
+  const saveLayout = async (patch) => {
+    const before = { order: draft.order, off: draft.off };
+    setDraft((d) => ({ ...d, ...patch }));
+    setLayoutMsg({ kind: 'busy', text: 'Saving...' });
+    const next = cleanSite({ ...saved, order: draft.order, off: draft.off, ...patch });
+    // One save at a time, in tap order, so a slow answer can never put an older layout back.
+    const run = layoutQueue.current.then(() => supabase.rpc('set_my_page_site', { p_site: next }));
+    layoutQueue.current = run.catch(() => {});
+    const { error: e } = await run.catch((err) => ({ error: err }));
+    if (e) {
+      setDraft((d) => ({ ...d, ...before }));
+      setLayoutMsg({ kind: 'bad', text: siteErrorText(e) });
+      return;
+    }
+    setSaved(next); setNotReady(false);
+    setLayoutMsg({ kind: 'ok', text: 'Saved. Your page shows this order now.' });
+  };
   const move = (i, d) => {
     const o = [...draft.order]; const j = i + d;
     if (j < 0 || j >= o.length) return;
     [o[i], o[j]] = [o[j], o[i]];
-    set({ order: o });
+    saveLayout({ order: o });
   };
-  const toggle = (id) => set({ off: draft.off.includes(id) ? draft.off.filter((x) => x !== id) : [...draft.off, id] });
+  const toggle = (id) => saveLayout({ off: draft.off.includes(id) ? draft.off.filter((x) => x !== id) : [...draft.off, id] });
 
   const problems = [
     ...draft.promos.map((p) => promoProblem(p, today)),
@@ -101,7 +124,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={card}>
         <p style={h}>Sections on your page</p>
-        <p style={hint}>The order buyers scroll through. Switch off what you do not want. A section with nothing in it never shows.</p>
+        <p style={hint}>The order buyers scroll through. Switch off what you do not want. A section with nothing in it never shows, even when it is on.</p>
         <div style={{ display: 'grid', gap: 8 }}>
           {draft.order.map((id, i) => {
             const on = !draft.off.includes(id);
@@ -116,6 +139,10 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
             );
           })}
         </div>
+        <p role="status" style={{ margin: '10px 0 0', minHeight: 18, fontSize: 12.5, fontWeight: 600,
+          color: layoutMsg?.kind === 'bad' ? (PD.danger || '#f87171') : layoutMsg?.kind === 'ok' ? (PD.up || '#86efac') : PD.textMuted }}>
+          {layoutMsg ? layoutMsg.text : 'Changes here save as you tap.'}
+        </p>
       </div>
 
       <div style={card}>
