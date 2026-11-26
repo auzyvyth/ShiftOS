@@ -23,6 +23,8 @@ const GIF = '/news/premium-new-look.gif';
 const COPY = {
   en: {
     eyebrow: "What's new",
+    beta: 'Beta',
+    betaNote: "This new look is in beta: we are still testing it, so some things may change or look off. Tell us if something is wrong.",
     title: 'Premium has a new look',
     body: 'Your page can now open on a business card: your cars turning on top, your photo, your numbers and one WhatsApp button.',
     trial: 'Try Premium 7 days',
@@ -34,6 +36,8 @@ const COPY = {
   },
   ms: {
     eyebrow: 'Baru',
+    beta: 'Beta',
+    betaNote: 'Rupa baru ini masih dalam beta: kami masih mengujinya, jadi ada bahagian yang mungkin berubah atau kelihatan tidak kena. Beritahu kami jika ada masalah.',
     title: 'Premium kini ada rupa baru',
     body: 'Page anda kini boleh dibuka dengan kad perniagaan: kereta anda berpusing di atas, gambar anda, angka anda dan satu butang WhatsApp.',
     trial: 'Cuba Premium 7 hari',
@@ -119,9 +123,13 @@ export default function PremiumLookNews({ userId, profile, isPremium, blocked, o
           </div>
         )}
         <div style={{ padding: '18px 20px 20px' }}>
-          <p style={{ margin: 0, fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(244,245,247,.55)' }}>{c.eyebrow}</p>
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(244,245,247,.55)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {c.eyebrow}
+            <span style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(244,245,247,.14)', color: '#f4f5f7', fontWeight: 800, letterSpacing: '.12em' }}>{c.beta}</span>
+          </p>
           <h2 id="news-title" style={{ margin: '6px 0 8px', fontFamily: "'Bebas Neue', sans-serif", fontWeight: 400, fontSize: 34, lineHeight: 1 }}>{c.title}</h2>
           <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.55, color: 'rgba(244,245,247,.78)' }}>{c.body}</p>
+          <p style={{ margin: '-6px 0 16px', fontSize: 12.5, lineHeight: 1.5, color: 'rgba(244,245,247,.6)' }}>{c.betaNote}</p>
           {isPremium ? (
             <>
               <button type="button" className="lk-red" style={{ ...btn, color: '#fff' }} onClick={() => { close(); if (profile?.slug) window.open(`/s/${encodeURIComponent(profile.slug)}`, '_blank'); }}>{c.premium}</button>
