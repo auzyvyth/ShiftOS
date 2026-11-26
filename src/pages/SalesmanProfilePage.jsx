@@ -212,6 +212,16 @@ function AgentCarCard({ car, num, onClick, refSlug }) {
   );
 }
 
+// The hero's place chip, as typed by the seller but tidied for display only: stray spaces and
+// commas dropped, an all-lowercase word capitalised ("Wilayah persekutuan ," -> "Wilayah Persekutuan").
+function tidyPlace(...parts) {
+  return parts
+    .map((p) => String(p || '').replace(/[\s,]+$/, '').replace(/^[\s,]+/, '').replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .map((p) => p.split(' ').map((w) => (w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(' '))
+    .join(', ');
+}
+
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -985,7 +995,7 @@ export default function SalesmanProfilePage() {
         <div className="aph-text">
           <div className="aph-chips">
             <span>{sellerKind}</span>
-            {(locationCity || locationState) && <span className="aph-locchip"><MapPin size={12} style={{ flexShrink: 0 }} /><i className="aph-loc">{[locationCity, locationState].filter(Boolean).join(', ')}</i></span>}
+            {(locationCity || locationState) && <span className="aph-locchip"><MapPin size={12} style={{ flexShrink: 0 }} /><i className="aph-loc">{tidyPlace(locationCity, locationState)}</i></span>}
             {isVerified && <span><ShieldCheck size={12} />ID verified by Drevo</span>}
           </div>
           <h1 className="aph-name">
@@ -1359,24 +1369,24 @@ export default function SalesmanProfilePage() {
         .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(64%, 300px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
         /* index.css paints #fff behind every see-through car photo (cards); not here */
         .aph .aph-pic img.aph-car { background: transparent; }
-        .aph-chips { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+        .aph-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
         .aph-chips span { white-space: nowrap; flex: 0 0 auto; }
-        .aph-chips .aph-locchip { flex: 0 1 auto; min-width: 0; }
-        .aph-loc { font-style: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .aph-chips .aph-locchip { flex: 0 1 auto; min-width: 0; height: auto !important; min-height: 26px; padding-block: 4px !important; white-space: normal !important; line-height: 1.25; }
+        .aph-loc { font-style: normal; min-width: 0; overflow-wrap: anywhere; }
         .aph-chips span:nth-child(n+3) { display: none; } /* the verified tick sits beside the name; the full chip returns from 900px */
-        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 11.5px; font-weight: 700; color: rgba(255,255,255,.88); }
+        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 12px; font-weight: 500; color: rgba(255,255,255,.88); }
         .ap .aph-name { margin: 8px 0 2px; color: #fff; font-size: clamp(46px, 13vw, 96px); line-height: .88; letter-spacing: .01em; }
         .ap .aph-name svg { width: .3em; height: .3em; margin-top: -.08em; }
-        .aph-role { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); }
+        .aph-role { margin: 0 0 2px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,.7); }
         .aph-bio { margin: 8px 0 0; max-width: 540px; font-size: 13.5px; line-height: 1.45; color: rgba(255,255,255,.82); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
-        .aph-cta { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-        .aph-cta .ap-btn { flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 20px; border-radius: 24px; font-size: 15px; font-weight: 800; }
-        .aph-ico { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
-        .aph-ico svg { width: 20px; height: 20px; }
+        .aph-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+        .ap--pro .aph-cta .ap-btn { flex: 1 1 100%; min-width: 0; height: 48px; padding: 0 20px; border-radius: 12px; font-size: 15px; font-weight: 600; }
+        .aph-ico { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+        .aph-ico svg { width: 18px; height: 18px; }
         .aph-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); }
         .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 26px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
         .aph-stats b small { font-size: 18px; color: rgba(255,255,255,.6); }
-        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 14px; font-weight: 800; line-height: 1.25; padding-top: 4px; max-width: 200px; }
+        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 14px; font-weight: 600; line-height: 1.25; padding-top: 4px; max-width: 200px; }
         .aph-stats span { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
         @media (max-height: 740px) and (max-width: 899px) { .aph-bio { display: none; } }
         @media (min-width: 900px) {
@@ -1389,7 +1399,9 @@ export default function SalesmanProfilePage() {
           .aph-pic:not(.aph-pic--cut) .aph-me { height: auto; width: min(100%, 300px); }
           .aph-text { align-self: center; }
           .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
-          .aph-cta .ap-btn { flex: 0 0 auto; }
+          .aph-cta { flex-wrap: nowrap; }
+          .ap--pro .aph-cta .ap-btn { flex: 0 0 auto; }
+          .aph-ico { width: 48px; height: 48px; }
           .aph-car { left: 46%; bottom: -18px; width: min(140%, 660px); max-width: none; }
           .aph-pic--car .aph-me { margin-bottom: 60px; }
         }

@@ -67,7 +67,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
       <style>{`
         .pc { padding: 20px 16px 18px; margin: 0 0 24px; scroll-margin-top: 72px; overflow: hidden; }
         .pc-tabs { display: flex; gap: 4px; padding: 4px; background: #F1F0EC; border-radius: 12px; margin-bottom: 16px; }
-        .pc-tabs button { flex: 1; height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 800; color: #4b5563; cursor: pointer; }
+        .pc-tabs button { flex: 1; height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #4b5563; cursor: pointer; }
         .pc-tabs button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
         .pc-pick { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px 16px; padding: 2px 16px 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
         .pc-pick::-webkit-scrollbar { display: none; }
@@ -77,13 +77,13 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .pc-n { position: absolute; left: 8px; top: 8px; min-width: 24px; height: 22px; padding: 0 6px; border-radius: 11px; background: rgba(15,17,21,.82); color: #fff; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
         .pc-ct { display: block; padding: 8px 10px 10px; }
-        .pc-cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 700; line-height: 1.3; min-height: 32px; }
-        .pc-cp { display: block; margin-top: 4px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .pc-cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 500; line-height: 1.3; min-height: 32px; }
+        .pc-cp { display: block; margin-top: 4px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
         .pc-grid { display: grid; gap: 16px; }
-        .pc-lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #4b5563; }
+        .pc-lbl { font-size: 13.5px; font-weight: 500; color: #4b5563; }
         .pc-field { padding: 14px 16px; border-radius: 14px; background: #F4F3EF; }
         .pc-fh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-        .pc-fh b { font-size: 15px; font-weight: 900; color: #0f1115; font-variant-numeric: tabular-nums; text-align: right; }
+        .pc-fh b { font-size: 15px; font-weight: 700; color: #0f1115; font-variant-numeric: tabular-nums; text-align: right; }
         /* Deposit: a slider with the amount beside it. The thumb is 28px so a thumb is easy to grab. */
         .pc-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 36px; margin: 6px 0 0; background: transparent; cursor: pointer; touch-action: pan-y; }
         .pc-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ap-a, #dc2626) var(--pc-fill, 0%), #d9d6cd var(--pc-fill, 0%)); }
@@ -93,23 +93,23 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-range::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 0 0 1px rgba(15,17,21,.12), 0 2px 6px rgba(15,17,21,.28); }
         .pc-range:focus-visible { outline: none; }
         .pc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0f1115; }
-        .pc-ticks { display: flex; justify-content: space-between; margin-top: -2px; font-size: 11px; font-weight: 700; color: #6b7280; font-variant-numeric: tabular-nums; }
+        .pc-ticks { display: flex; justify-content: space-between; margin-top: -2px; font-size: 11px; font-weight: 400; color: #6b7280; font-variant-numeric: tabular-nums; }
         /* Loan length: one joined control, the picked length filled in ink. */
         .pc-seg { display: flex; margin-top: 10px; padding: 4px; border-radius: 12px; background: #E7E5DE; }
-        .pc-seg button { flex: 1 1 0; min-width: 0; height: 40px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 800; color: #4b5563; cursor: pointer; }
+        .pc-seg button { flex: 1 1 0; min-width: 0; height: 40px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #4b5563; cursor: pointer; }
         .pc-seg button[aria-checked="true"] { background: #0f1115; color: #fff; box-shadow: 0 2px 6px rgba(15,17,21,.25); }
         .pc-ctl { display: flex; flex-direction: column; gap: 16px; }
         .pc-out { background: #0f1115; color: #fff; border-radius: 18px; padding: 20px 18px 18px; position: relative; overflow: hidden; }
-        .pc-k { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.62); }
-        .pc-big { margin: 6px 0 2px; white-space: nowrap; font-size: clamp(38px, 10vw, 52px); line-height: 1; font-weight: 900; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-        .pc-big small { display: block; margin: 6px 0 0; font-size: 14px; font-weight: 700; letter-spacing: 0; color: rgba(255,255,255,.7); }
+        .pc-k { margin: 0; font-size: 13.5px; font-weight: 500; color: rgba(255,255,255,.62); }
+        .pc-big { margin: 6px 0 2px; white-space: nowrap; font-size: clamp(38px, 10vw, 52px); line-height: 1; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .pc-big small { display: block; margin: 6px 0 0; font-size: 14px; font-weight: 400; letter-spacing: 0; color: rgba(255,255,255,.7); }
         .pc-sum { margin: 0 0 14px; font-size: 13px; color: rgba(255,255,255,.7); }
         .pc-rows { margin: 0; padding: 12px 0 0; border-top: 1px solid rgba(255,255,255,.12); display: grid; gap: 8px; }
         .pc-rows div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
         .pc-rows dt { margin: 0; color: rgba(255,255,255,.7); }
-        .pc-rows dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .pc-rows dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
         .pc-out .ap-btn { margin-top: 16px; width: 100%; }
-        .pc-link { display: flex; align-items: center; justify-content: center; margin-top: 16px; height: 48px; border-radius: 24px; background: #fff; color: #0f1115; font-weight: 800; font-size: 14px; text-decoration: none; }
+        .pc-link { display: flex; align-items: center; justify-content: center; margin-top: 16px; height: 48px; border-radius: 24px; background: #fff; color: #0f1115; font-weight: 600; font-size: 14px; text-decoration: none; }
         .pc-fine { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #4b5563; }
         .pc-none { margin: 0; padding: 20px 4px; font-size: 14px; color: rgba(255,255,255,.8); }
         @container (max-width: 639px) {

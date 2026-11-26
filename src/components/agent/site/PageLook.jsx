@@ -45,7 +45,7 @@ export default function PageLook() {
 
       /* Jump chips: no pills, light tiles, no shadow */
       .ap--pro .pn { background: linear-gradient(var(--pl-g1) 72%, transparent); }
-      .ap--pro .pn a { border-radius: 8px; background: var(--pl-tile); box-shadow: none; font-weight: 700; }
+      .ap--pro .pn a { border-radius: 8px; background: var(--pl-tile); box-shadow: none; font-weight: 600; }
       .ap--pro .pn a:hover { box-shadow: 0 0 0 1px rgba(15,17,21,.1); }
       .ap--pro .ap-brands button, .ap--pro .ap-seg { border-radius: 8px; }
 
