@@ -57,6 +57,25 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
     setOverride(Number(focus.price) > 0 ? { carId: focus.carId, price: Number(focus.price), variant: focus.variant || null } : null);
   }, [focus?.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The picked car must be visible in the strip: "Work out my instalment" can hand over a car that sits
+  // far along the row, and the buyer should not have to wonder which car the figure is for. Only the
+  // strip scrolls (never the page), and only when the car is not already fully in view.
+  useEffect(() => {
+    if (tab !== 'car') return undefined;
+    const t = setTimeout(() => {
+      const row = pickRef.current;
+      const btn = row?.querySelector('.pc-car[aria-pressed="true"]');
+      if (!row || !btn) return;
+      const rr = row.getBoundingClientRect();
+      const br = btn.getBoundingClientRect();
+      if (br.left >= rr.left + 8 && br.right <= rr.right - 8) return;
+      const target = row.scrollLeft + (br.left - rr.left) - (rr.width - br.width) / 2;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      row.scrollTo({ left: Math.max(0, target), behavior: reduce ? 'auto' : 'smooth' });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [pickedId, focus?.n, tab, cars.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // A brand tab can remove the picked car from the list: fall back to the first.
   useEffect(() => {
     if (!cars.length) return;
