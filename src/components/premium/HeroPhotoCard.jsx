@@ -6,10 +6,9 @@ import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYT
 import { prepareCutout, preparePlain, heroExt, heroErrorText } from '../../utils/heroPhoto';
 import { isSeeThroughPhoto, cdnImg } from '../../utils/img';
 import { checkSeeThrough } from '../../utils/seeThrough';
-import { gradientTheme } from '../../utils/pageAccent';
 import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
 import DragSlider from '../studio/DragSlider';
-import HeroPreview from './HeroPreview';
+import PagePreviewFrame from './PagePreviewFrame';
 import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
 
 // Premium Settings > Hero photo (PAGE-HERO, 2026-11-25). The big photo at the top
@@ -40,6 +39,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const [rows, setRows] = useState(null);             // every live car (the business card's ring reads them)
   const [avatar, setAvatar] = useState(null);         // the round profile photo (the business card uses it)
   const [cover, setCover] = useState(null);           // the cover photo (the business card's top band)
+  const [slug, setSlug] = useState(null);             // the page the preview frame shows
 
   useEffect(() => {
     let off = false;
@@ -57,13 +57,14 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   useEffect(() => {
     let off = false;
     isCutoutModelSaved().then((v) => { if (!off) setModelSaved(!!v); }).catch(() => {});
-    supabase.from('profiles').select('hero_url, avatar_url, cover_url').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
+    supabase.from('profiles').select('hero_url, avatar_url, cover_url, slug').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
       if (off) return;
       if (e) { setNotReady(true); setSaved(null); return; }
       setSaved(data?.hero_url || null);
       setFrame(heroFrame(data?.hero_url));
       setAvatar(data?.avatar_url || null);
       setCover(data?.cover_url || null);
+      setSlug(data?.slug || null);
     });
     return () => { off = true; };
   }, [userId]);
@@ -166,8 +167,6 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const ringAll = useRingCars(rows);
   const brands = ringBrands(ringAll);
   const ringPick = ringCarsFor(ringAll || [], frame.ringBrand);
-  const carPhoto = frame.car === 'none' ? null
-    : (carList.find((c) => c.id === frame.car) || carList[0])?.images?.[0] || null;
 
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
@@ -233,8 +232,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       </div>
       <div style={{ position: 'relative' }}>
         {shown ? (
-          <HeroPreview mode={view} url={shown.url} cut={shown.cut} frame={frame} carUrl={shown.cut ? carPhoto : null} accent={accent}
-            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} coverUrl={cover ? cdnImg(cover, 800, 70) : null} ring={ringPick} accent2={gradientTheme(accent).dark} />
+          <PagePreviewFrame slug={slug} view={view} url={shown.url} cut={shown.cut} frame={frame} />
         ) : (
           <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
@@ -250,7 +248,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
       {shown && frame.layout !== 'card' && (
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-          <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Drag the photo to move it. The phone and desktop previews use the same settings.</p>
+          <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>The preview above is your real page. Phone and desktop use the same settings.</p>
           {[['Size', 'size', HERO_SIZE, '%'], ['Left / right', 'x', HERO_SHIFT, ''], ['Up / down', 'y', HERO_SHIFT, '']].map(([label, key, r, unit]) => (
             <div key={key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>

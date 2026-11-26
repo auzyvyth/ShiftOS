@@ -2001,6 +2001,12 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   the second half only muted), numbers + buttons Outfit bold; Archivo only for the small spaced labels. Outlined boxes use
   `corner-shape: squircle` where supported (`--r-card/btn/chip`). The seller background picker (`page_site.ground`) was removed.
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
+  **The Settings hero preview IS the page (HERO-PREVIEW, owner 2026-11-26):** `PagePreviewFrame.jsx` frames `/s/<slug>?heroPreview=1`
+  at a real phone (390) / desktop (1366) width and posts the unsaved photo + settings in (`xd-hero-preview`, own-origin parent only);
+  in that mode the page shows the buyer view, logs no visit, hides the cookie banner. Needs `X-Frame-Options: SAMEORIGIN` +
+  `frame-ancestors 'self'` (vercel.json). Never bring back a hand-drawn copy of the hero (HeroPreview drifted).
+  With a car in front, the seller's cut-out ends at the car's tyre line (`useHeroCarClip`, the car photo's own outline).
+  Console new-car cut-outs are redrawn onto one 4:3 frame on upload (FRAME-1, `src/utils/cutoutFrame.js`), so every model is the same size.
   The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
   6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a
   scroll box and silently kills sticky (it had, on every seller page).

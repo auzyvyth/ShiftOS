@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, 
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
 import { useSeeThrough, useFirstSeeThrough } from '../utils/seeThrough';
+import { useHeroCarClip } from '../components/agent/useHeroCarClip';
 import { coverObjectPosition } from '../utils/coverFocus';
 import CarRing, { useRingCars, ringCarsFor } from '../components/agent/site/CarRing';
 import { withTimeout } from '../config/marketplaceConfig';
@@ -32,7 +33,7 @@ import HandoverBlock from '../components/agent/site/HandoverBlock';
 import StepsBlock from '../components/agent/site/StepsBlock';
 import FaqBlock from '../components/agent/site/FaqBlock';
 import BookBlock from '../components/agent/site/BookBlock';
-import { heroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
+import { heroFrame, withHeroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
 import { withSampleSite, cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
@@ -230,6 +231,8 @@ function tidyPlace(...parts) {
 
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
+  const heroPreviewMode = typeof window !== 'undefined' && window.parent !== window
+    && new URLSearchParams(window.location.search).get('heroPreview') === '1';
   const navigate = useNavigate();
   // Back = wherever the visitor was before this page. With no in-app history
   // (history.state.idx 0) a buyer from a TikTok / WhatsApp link goes to the
@@ -423,7 +426,7 @@ export default function SalesmanProfilePage() {
 
       // Log the mini-page visit (footprint). Keyed on the agent's slug so it
       // shows in their own dashboard; dealer_id so the parent dealer sees it.
-      if (!visitTracked.current) {
+      if (!visitTracked.current && !heroPreviewMode) {
         visitTracked.current = true;
         trackEvent(supabase, 'minipage_view', {
           salesman_slug: slug,
@@ -569,13 +572,38 @@ export default function SalesmanProfilePage() {
   // A .png/.webp name is not proof of see-through (stock new-car photos are
   // .webp on white): read the pixels. The car stands in front of the seller
   // only when the seller is a cut-out too; in front of a framed photo it crowds.
+  // HERO-PREVIEW (owner, 2026-11-26: "the preview in dashboard gets the same result it would on the
+  // page"): Premium Settings shows THIS page in a frame (`?heroPreview=1`) at a real phone / desktop
+  // width and posts the unsaved photo + settings here. Only a parent on our own origin is listened to;
+  // the frame shows the buyer's view (no owner buttons) and logs no visit.
+  const [heroOverride, setHeroOverride] = useState(null); // { url, cut }
+  useEffect(() => {
+    if (!heroPreviewMode) return undefined;
+    const on = (e) => {
+      if (e.origin !== window.location.origin || e.source !== window.parent) return;
+      const d = e.data;
+      if (d?.type !== 'xd-hero-preview') return;
+      const u = typeof d.url === 'string' && /^(blob:|https:)/.test(d.url) ? d.url : null;
+      setHeroOverride(u ? { url: withHeroFrame(u, d.frame || {}), cut: !!d.cut } : null);
+    };
+    window.addEventListener('message', on);
+    window.parent.postMessage({ type: 'xd-hero-preview-ready' }, window.location.origin);
+    return () => window.removeEventListener('message', on);
+  }, []);
+  const heroUrlShown = heroOverride ? heroOverride.url : heroUrl;
   // PAGE-HERO 2: size, position and which car (or none) ride on the hero URL (src/utils/heroFrame.js).
-  const heroFrameSet = heroFrame(heroUrl);
-  const heroImgUrl = heroUrl ? heroImageUrl(heroUrl) : (profile?.avatar_url || null);
-  const heroCutState = useSeeThrough(profile && !profile.page_basic ? heroImgUrl : null);
+  const heroFrameSet = heroFrame(heroUrlShown);
+  const heroImgUrl = heroUrlShown ? heroImageUrl(heroUrlShown) : (profile?.avatar_url || null);
+  const heroCutChecked = useSeeThrough(profile && !profile.page_basic && !heroOverride ? heroImgUrl : null);
+  const heroCutState = heroOverride ? heroOverride.cut : heroCutChecked;
   const ringAll = useRingCars(profile && !profile.page_basic && heroFrameSet.layout === 'card' ? listings : null);
   const ringCars = useMemo(() => (ringAll ? ringCarsFor(ringAll, heroFrameSet.ringBrand) : null), [ringAll, heroFrameSet.ringBrand]);
   const heroCarUrl = useFirstSeeThrough(heroCutState === true ? heroCarCandidates(listings, heroFrameSet) : []);
+  // HERO-CLIP: the seller's photo ends at the car's tyres (nothing of them shows under the car).
+  const heroMeRef = useRef(null);
+  const heroCarRef = useRef(null);
+  const heroClip = useHeroCarClip(heroMeRef, heroCarRef, heroCarUrl,
+    [heroImgUrl, heroFrameSet.size, heroFrameSet.x, heroFrameSet.y, heroFrameSet.carSize, heroFrameSet.layout]);
 
   useEffect(() => {
     if (!slug || !profile?.id) { setNickname(''); return undefined; }
@@ -655,7 +683,7 @@ export default function SalesmanProfilePage() {
   // shell into a to-do list, and it renders for the OWNER ONLY: a buyer must
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
-  const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  const isOwner = !heroPreviewMode && !!viewerId && !!profile && viewerId === profile.id;
   const [showSamples, setShowSamples] = useState(true);
   // LIVE-ORDER: the seller arranged their "#N" numbers in the Live presenter. The
   // page (and so the presenter, the Live now card and every viewer's page) takes
@@ -1000,7 +1028,7 @@ export default function SalesmanProfilePage() {
         {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
       </button>
       {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
-      {viewerHome && (
+      {viewerHome && !heroPreviewMode && (
         <div className="ap-owner">
           <Link to={viewerHome.to} style={ownerChip}>
             {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
@@ -1131,9 +1159,10 @@ export default function SalesmanProfilePage() {
         </div>
         <div className={`aph-pic keep-alpha${heroCut ? ' aph-pic--cut' : ''}${heroCarUrl ? ' aph-pic--car' : ''}${heroWait ? ' aph-pic--wait' : ''}`}>
           {heroImg
-            ? <img className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} style={heroPersonStyle(heroFrameSet, heroCut)} />
+            ? <img ref={heroMeRef} className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name}
+                style={heroCarUrl && heroClip ? { ...heroPersonStyle(heroFrameSet, heroCut), clipPath: heroClip } : heroPersonStyle(heroFrameSet, heroCut)} />
             : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
-          {heroCarUrl && <img className="aph-car" src={heroCarUrl} alt="" style={heroCarStyle(heroFrameSet)} />}
+          {heroCarUrl && <img ref={heroCarRef} className="aph-car" src={heroCarUrl} alt="" style={heroCarStyle(heroFrameSet)} />}
         </div>
       </div>
     </header>

@@ -47,7 +47,10 @@ export default function ConsentBanner() {
   const [preferences, setPreferences] = useState(true);
   const [showLegal, setShowLegal] = useState(false);
   const { pathname } = useLocation();
-  const suppressed = isInternalPath(pathname);
+  // Inside the Settings page preview (HERO-PREVIEW, a framed /s/<slug>?heroPreview=1) the banner
+  // would sit over the preview; the seller answers it on their own pages.
+  const framedPreview = typeof window !== 'undefined' && window.parent !== window && /[?&]heroPreview=1/.test(window.location.search);
+  const suppressed = isInternalPath(pathname) || framedPreview;
 
   // Decide whether to show on mount, and honor re-open requests.
   useEffect(() => {
