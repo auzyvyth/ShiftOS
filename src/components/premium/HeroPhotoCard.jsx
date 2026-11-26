@@ -177,7 +177,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
       <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Layout</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }} role="radiogroup" aria-label="Layout">
-        {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'Your cover or page colour on top, round photo']].map(([k, t, d]) => {
+        {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'Your cars spin on top, round photo']].map(([k, t, d]) => {
           const on = frame.layout === k;
           return (
             <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setFrame((f) => ({ ...f, layout: k }))}
@@ -194,7 +194,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Save a photo first; the layout is saved with it.</p>
       )}
       {frame.layout === 'card' && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. The band on top is your cover photo{cover ? '' : ' (none yet, so your page colour is used)'}: change either one under Cover photo and Page colour.</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. On top, your cars with a cut-out photo spin on a ring (Remove BG in Drevo Studio makes one). With no cut-out car, the band shows your cover photo{cover ? '' : ' (none yet, so a dark band in your page colour is used)'}.</p>
       )}
       <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label="Preview">
         {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
