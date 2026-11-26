@@ -33,7 +33,7 @@ import HandoverBlock from '../components/agent/site/HandoverBlock';
 import StepsBlock from '../components/agent/site/StepsBlock';
 import FaqBlock from '../components/agent/site/FaqBlock';
 import BookBlock from '../components/agent/site/BookBlock';
-import { heroFrame, withHeroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
+import { heroFrame, heroFrameFor, HERO_DESK_MIN_W, withHeroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
 import { withSampleSite, cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
@@ -592,7 +592,17 @@ export default function SalesmanProfilePage() {
   }, []);
   const heroUrlShown = heroOverride ? heroOverride.url : heroUrl;
   // PAGE-HERO 2: size, position and which car (or none) ride on the hero URL (src/utils/heroFrame.js).
-  const heroFrameSet = heroFrame(heroUrlShown);
+  // HERO-DESK: desktop has its own size / position / car size (phone's when never set).
+  const [heroDesk, setHeroDesk] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(`(min-width: ${HERO_DESK_MIN_W}px)`).matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.(`(min-width: ${HERO_DESK_MIN_W}px)`);
+    if (!mq) return undefined;
+    const on = () => setHeroDesk(mq.matches);
+    on();
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  const heroFrameSet = heroFrameFor(heroFrame(heroUrlShown), heroDesk);
   const heroImgUrl = heroUrlShown ? heroImageUrl(heroUrlShown) : (profile?.avatar_url || null);
   const heroCutChecked = useSeeThrough(profile && !profile.page_basic && !heroOverride ? heroImgUrl : null);
   const heroCutState = heroOverride ? heroOverride.cut : heroCutChecked;

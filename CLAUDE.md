@@ -2005,6 +2005,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   at a real phone (390) / desktop (1366) width and posts the unsaved photo + settings in (`xd-hero-preview`, own-origin parent only);
   in that mode the page shows the buyer view, logs no visit, hides the cookie banner. Needs `X-Frame-Options: SAMEORIGIN` +
   `frame-ancestors 'self'` (vercel.json). Never bring back a hand-drawn copy of the hero (HeroPreview drifted).
+  Phone and desktop have SEPARATE size / position / car size (HERO-DESK, owner 2026-11-26): desktop's are `ds/dx/dy/dk` on the hero URL, absent = the phone's numbers (`heroFrameFor`, desktop = 900px+); the sliders edit the view being previewed.
   With a car in front, the seller's cut-out ends at the car's tyre line (`useHeroCarClip`, the car photo's own outline).
   Console new-car cut-outs are redrawn onto one 4:3 frame on upload (FRAME-1, `src/utils/cutoutFrame.js`), so every model is the same size.
   Photos uploaded before FRAME-1 stay as they were until Console > New car prices > "Same size for all cut-outs" is pressed.

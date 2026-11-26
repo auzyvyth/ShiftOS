@@ -6,7 +6,7 @@ import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYT
 import { prepareCutout, preparePlain, heroExt, heroErrorText } from '../../utils/heroPhoto';
 import { isSeeThroughPhoto, cdnImg } from '../../utils/img';
 import { checkSeeThrough } from '../../utils/seeThrough';
-import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
+import { heroFrame, heroFrameFor, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
 import DragSlider from '../studio/DragSlider';
 import PagePreviewFrame from './PagePreviewFrame';
 import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
@@ -75,7 +75,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
   const showPreview = (blob, kind) => {
     setPreview({ blob, kind, url: URL.createObjectURL(blob) });
-    setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0 })); // a new photo starts centred; the car pick stays
+    setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0, desk: null })); // a new photo starts centred; the car pick stays
   };
 
   const cut = async (file) => {
@@ -167,6 +167,16 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const ringAll = useRingCars(rows);
   const brands = ringBrands(ringAll);
   const ringPick = ringCarsFor(ringAll || [], frame.ringBrand);
+  // HERO-DESK: the sliders edit the screen being previewed. Desktop starts from the phone's numbers
+  // and becomes its own set on the first move.
+  const onDesk = view === 'desktop';
+  const cur = heroFrameFor(frame, onDesk);
+  const setNum = (key, v) => setFrame((f) => (onDesk
+    ? { ...f, desk: { ...(f.desk || { size: f.size, x: f.x, y: f.y, carSize: f.carSize }), [key]: v } }
+    : { ...f, [key]: v }));
+  const resetPos = () => (onDesk
+    ? setFrame((f) => ({ ...f, desk: { size: HERO_SIZE.def, x: 0, y: 0, carSize: f.desk?.carSize ?? f.carSize } }))
+    : setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0 })));
 
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
@@ -248,20 +258,31 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
       {shown && frame.layout !== 'card' && (
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-          <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>The preview above is your real page. Phone and desktop use the same settings.</p>
+          <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>
+            {!onDesk ? 'The preview above is your real page. These are your PHONE settings; Desktop has its own.'
+              : frame.desk ? 'These are your DESKTOP settings, separate from phone.'
+                : 'Desktop uses your phone settings until you move a slider here.'}
+          </p>
           {[['Size', 'size', HERO_SIZE, '%'], ['Left / right', 'x', HERO_SHIFT, ''], ['Up / down', 'y', HERO_SHIFT, '']].map(([label, key, r, unit]) => (
             <div key={key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>
-                <span>{label}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{frame[key]}{unit}</span>
+                <span>{label}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{cur[key]}{unit}</span>
               </div>
-              <DragSlider value={frame[key]} min={r.min} max={r.max} step={1} accent={accent} onChange={(v) => setFrame((f) => ({ ...f, [key]: v }))} />
+              <DragSlider value={cur[key]} min={r.min} max={r.max} step={1} accent={accent} onChange={(v) => setNum(key, v)} />
             </div>
           ))}
-          {(frame.size !== HERO_SIZE.def || frame.x || frame.y) ? (
-            <button type="button" onClick={() => setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0 }))} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}>
-              <RotateCcw size={14} /> Reset size and position
-            </button>
-          ) : null}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {(cur.size !== HERO_SIZE.def || cur.x || cur.y) ? (
+              <button type="button" onClick={resetPos} style={{ ...soft, minHeight: 36 }}>
+                <RotateCcw size={14} /> Reset size and position
+              </button>
+            ) : null}
+            {onDesk && frame.desk ? (
+              <button type="button" onClick={() => setFrame((f) => ({ ...f, desk: null }))} style={{ ...soft, minHeight: 36 }}>
+                <Smartphone size={14} /> Same as phone
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -292,9 +313,9 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
             {frame.car !== 'none' && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>
-                  <span>Car size</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{frame.carSize}%</span>
+                  <span>Car size{onDesk ? ' (desktop)' : ' (phone)'}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{cur.carSize}%</span>
                 </div>
-                <DragSlider value={frame.carSize} min={HERO_CAR_SIZE.min} max={HERO_CAR_SIZE.max} step={1} accent={accent} onChange={(v) => setFrame((f) => ({ ...f, carSize: v }))} />
+                <DragSlider value={cur.carSize} min={HERO_CAR_SIZE.min} max={HERO_CAR_SIZE.max} step={1} accent={accent} onChange={(v) => setNum('carSize', v)} />
               </div>
             )}
             </>

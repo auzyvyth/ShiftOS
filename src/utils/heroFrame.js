@@ -7,7 +7,11 @@
 export const HERO_SIZE = { min: 60, max: 160, def: 100 };
 export const HERO_SHIFT = { min: -40, max: 40, def: 0 };
 export const HERO_CAR_SIZE = { min: 50, max: 160, def: 100 }; // hk = the car's size %
-const KEYS = ['hs', 'hx', 'hy', 'hc', 'hk', 'hl', 'hb'];
+const KEYS = ['hs', 'hx', 'hy', 'hc', 'hk', 'hl', 'hb', 'ds', 'dx', 'dy', 'dk'];
+// HERO-DESK (owner, 2026-11-26: "make em separate"): desktop has its OWN size, position and car
+// size (ds / dx / dy / dk). None of them on the URL = desktop uses the phone's numbers, so a
+// page saved before this looks exactly as it did. `desk` is null until the seller sets it.
+export const HERO_DESK_MIN_W = 900; // the hero's desktop layout starts here (SalesmanProfilePage CSS)
 // hb = the business card ring's brand ('' = the brand with the most cut-out cars).
 const BRAND = /^[\p{L}\p{N} .&-]{1,30}$/u;
 const cleanBrand = (v) => { const b = String(v || '').trim(); return BRAND.test(b) ? b : ''; };
@@ -20,10 +24,18 @@ const clampInt = (v, lo, hi, def) => {
 
 // Any URL -> { size, x, y, car }. car: 'auto' | 'none' | <listing id>.
 export function heroFrame(url) {
-  const out = { size: HERO_SIZE.def, x: HERO_SHIFT.def, y: HERO_SHIFT.def, car: 'auto', carSize: HERO_CAR_SIZE.def, layout: 'stage', ringBrand: '' };
+  const out = { size: HERO_SIZE.def, x: HERO_SHIFT.def, y: HERO_SHIFT.def, car: 'auto', carSize: HERO_CAR_SIZE.def, layout: 'stage', ringBrand: '', desk: null };
   const q = String(url || '').split('#')[0].split('?')[1];
   if (!q) return out;
   const p = new URLSearchParams(q);
+  if (['ds', 'dx', 'dy', 'dk'].some((k) => p.has(k))) {
+    out.desk = {
+      size: clampInt(p.get('ds'), HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def),
+      x: clampInt(p.get('dx'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def),
+      y: clampInt(p.get('dy'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def),
+      carSize: clampInt(p.get('dk'), HERO_CAR_SIZE.min, HERO_CAR_SIZE.max, HERO_CAR_SIZE.def),
+    };
+  }
   if (p.has('hs')) out.size = clampInt(p.get('hs'), HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def);
   if (p.has('hx')) out.x = clampInt(p.get('hx'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
   if (p.has('hy')) out.y = clampInt(p.get('hy'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
@@ -54,12 +66,25 @@ export function withHeroFrame(url, frame) {
   if (f.layout === 'card') p.set('hl', 'card');
   if (cleanBrand(f.ringBrand)) p.set('hb', cleanBrand(f.ringBrand));
   if (f.car === 'none' || UUID.test(f.car || '')) p.set('hc', f.car);
+  if (f.desk) { // all four, so their presence alone says "desktop is separate"
+    p.set('ds', String(clampInt(f.desk.size, HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def)));
+    p.set('dx', String(clampInt(f.desk.x, HERO_SHIFT.min, HERO_SHIFT.max, 0)));
+    p.set('dy', String(clampInt(f.desk.y, HERO_SHIFT.min, HERO_SHIFT.max, 0)));
+    p.set('dk', String(clampInt(f.desk.carSize, HERO_CAR_SIZE.min, HERO_CAR_SIZE.max, HERO_CAR_SIZE.def)));
+  }
   const qs = p.toString();
   return qs ? `${base}?${qs}` : base;
 }
 
 // The image's own URL (without the frame keys), for loading the file.
-export const heroImageUrl = (url) => withHeroFrame(url, { size: HERO_SIZE.def, x: 0, y: 0, car: 'auto', carSize: HERO_CAR_SIZE.def, layout: 'stage', ringBrand: '' });
+export const heroImageUrl = (url) => withHeroFrame(url, { size: HERO_SIZE.def, x: 0, y: 0, car: 'auto', carSize: HERO_CAR_SIZE.def, layout: 'stage', ringBrand: '', desk: null });
+
+// The numbers one screen uses: desktop's own set when it has one, else the phone's.
+export function heroFrameFor(frame, desktop) {
+  const f = frame || heroFrame('');
+  if (!desktop || !f.desk) return f;
+  return { ...f, size: f.desk.size, x: f.desk.x, y: f.desk.y, carSize: f.desk.carSize };
+}
 
 // CSS for the car in front: grows from its wheels (bottom centre).
 export const heroCarStyle = (frame) => (frame && frame.carSize !== HERO_CAR_SIZE.def
