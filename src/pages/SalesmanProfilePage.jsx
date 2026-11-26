@@ -1472,7 +1472,8 @@ export default function SalesmanProfilePage() {
           background: radial-gradient(70% 90% at 50% 100%, rgba(var(--ap-rgb), .55), rgba(var(--ap-rgb), 0) 70%), linear-gradient(180deg, #08090b, #16181d); }
         .aph-band > img { width: 100%; height: 100%; object-fit: cover; }
         .aph-band::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 50%, rgba(0,0,0,.22)); }
-        .aph-band--ring { height: 250px; }
+        /* The ring band is in the flow and as tall as its content (owner: 'too tall'); the card body overlaps it by half the photo. */
+        .aph-band--ring { position: relative; height: auto; }
         .aph-band--ring::after { display: none; }
         .ap .aph.aph--card { overflow: clip; }
         /* PageLook's Back/Share are white glass with white text (for the dark hero); on the card they sit on the
@@ -1480,7 +1481,7 @@ export default function SalesmanProfilePage() {
         .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
         .aph--card .aph-in > * { pointer-events: auto; }
-        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 204px; }
+        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
         .aph-bc { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
         .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
@@ -1538,14 +1539,11 @@ export default function SalesmanProfilePage() {
           .aph--card .aph-bc { grid-area: id; } .aph--card .aph-chips { grid-area: chips; } .aph--card .aph-bio { grid-area: bio; }
           .aph--card .aph-stats { grid-area: stats; } .aph--card .aph-cta { grid-area: cta; justify-self: end; }
           .aph-band { height: 190px; }
-          .aph-band--ring { height: 330px; }
+          .aph-band.aph-band--ring { height: auto; }
           .aph--card .aph-in { padding-top: 126px; }
-          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 266px; }
-          .aph-band .cring-label { top: 22px; }
+          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
+          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 27cqw; --under: 44px; }
           .aph-band .cring-label b { font-size: 44px; }
-          .aph-band .cring { --spread: 31cqw; }
-          .aph-band .cring-car { width: 25%; bottom: 52px; }
-          .aph-band .cring-floor { width: 86%; height: 120px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }
           .aph-bc-ph { width: 136px; height: 136px; }

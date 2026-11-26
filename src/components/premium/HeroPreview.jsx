@@ -77,14 +77,17 @@ export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, a
 // The business card layout, drawn small: white card, round photo beside the name, then the rest.
 function CardPreview({ phone, photo, accent, accent2, cover, ring }) {
   const hasRing = Array.isArray(ring) && ring.length > 0;
-  const bandH = hasRing ? (phone ? 120 : 150) : (phone ? 76 : 96);
+  const bandH = phone ? 76 : 96;
   const g = (w, h = 8, bg = 'rgba(15,17,21,.12)') => <span style={{ display: 'block', width: w, height: h, borderRadius: 4, background: bg }} />;
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div aria-label={phone ? 'Phone preview' : 'Desktop preview'} style={{ width: phone ? 'min(100%, 260px)' : '100%', background: '#e9eaec', borderRadius: phone ? 22 : 12, padding: phone ? 12 : 18 }}>
-        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: `${bandH - (phone ? 26 : 38)}px ${phone ? 14 : 26}px ${phone ? 14 : 22}px`, display: 'grid', gap: 12 }}>
-          {/* Top band = the same as the page: the turning cars, else the cover photo, else a dark band lit in the page colour. */}
-          <span aria-hidden={!hasRing} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: bandH, overflow: 'clip',
+        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: `${hasRing ? 0 : bandH - (phone ? 26 : 38)}px ${phone ? 14 : 26}px ${phone ? 14 : 22}px`, display: 'grid', gap: 12 }}>
+          {/* Top band = the same as the page: the turning cars (in the flow, as tall as the cars), else the
+              cover photo, else a dark band lit in the page colour. */}
+          <span aria-hidden={!hasRing} style={{ overflow: 'clip', ...(hasRing
+            ? { display: 'block', position: 'relative', margin: `0 -${phone ? 14 : 26}px -${phone ? 38 : 50}px` }
+            : { position: 'absolute', left: 0, right: 0, top: 0, height: bandH }),
             background: !hasRing && cover ? `center / cover no-repeat url("${cover}")` : `radial-gradient(70% 90% at 50% 100%, ${accent}8c, ${accent}00 70%), linear-gradient(180deg, #08090b, #16181d)` }}>
             {hasRing && <CarRing cars={ring} small />}
           </span>

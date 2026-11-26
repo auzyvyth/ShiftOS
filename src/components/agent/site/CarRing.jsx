@@ -10,8 +10,8 @@ import { seeThroughBox } from '../../../utils/seeThrough';
 // - Every car is cropped to its own outline (seeThroughBox) and drawn at the SAME width, standing on
 //   the SAME floor line, so the tyres land on one spot whatever empty margin the photo had (owner).
 // - Movement is one continuous angle: a car's slot offset k maps to a point on the circle (sin for
-//   across, cos for depth), so every car travels the same arc. No scaling and no lift (owner: same
-//   size, same landing); depth shows as light only.
+//   across, cos for depth), so every car travels the same arc. A car grows as it reaches the front
+//   (scaled from its tyres, so the landing never moves) and is lit brighter; no lift.
 // Paused while hovered or the tab is hidden; under reduced motion it only turns on a tap.
 
 const MAX_CARS = 24;
@@ -19,6 +19,7 @@ const STEP_MS = 3400;
 const TURN_MS = 1100;
 const SLOT_DEG = 58;     // angle between neighbours on the turntable
 const SHOW = 1.5;        // slots either side still visible (1 = the side cars, fading out by 1.5)
+const SIDE_SCALE = 0.78; // a side car's size; it grows to full size as it reaches the front (owner, 2026-11-26)
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 export const brandKeyOf = (b) => String(b || '').trim().toLowerCase();
 
@@ -80,24 +81,25 @@ export function ringCarsFor(cars, brand) {
 // The ring's own styles, so the page and the Settings preview draw the same thing. The page sizes it
 // for desktop with `.aph-band .cring...` rules; `small` is the Settings preview.
 const CSS = `
-.cring { position: absolute; inset: 0; container-type: inline-size; --spread: 41cqw; }
-.cring-label { position: absolute; left: 50%; top: 58px; translate: -50% 0; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
+.cring { position: relative; container-type: inline-size; --spread: 41cqw; --car-w: 40cqw; --under: 44px; padding: 58px 0 0; }
+.cring-label { position: relative; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
 .cring-label span { font: 500 11px/1 var(--xd-font-body); letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.6); }
 .cring-label b { font: 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .02em; white-space: nowrap; }
-@keyframes cringIn { from { opacity: 0; translate: -50% 6px; } to { opacity: 1; translate: -50% 0; } }
-.cring-floor { position: absolute; left: 50%; bottom: 4px; width: 100%; height: 90px; translate: -50% 0; border-radius: 50%; pointer-events: none;
+@keyframes cringIn { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+/* The stage is exactly as tall as the tallest car at full size, plus the floor margin under it. */
+.cring-stage { position: relative; margin-top: 10px; height: calc(var(--car-w) * var(--ratio, .5) + var(--under, 26px)); }
+.cring-floor { position: absolute; left: 50%; bottom: 0; width: 100%; height: calc(var(--under, 26px) * 2.6); translate: -50% 0; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, rgba(255,255,255,.10), rgba(255,255,255,.03) 55%, rgba(255,255,255,0)); }
-.cring-car { position: absolute; left: 50%; bottom: 40px; width: 36%; padding: 0; border: 0; background: none; cursor: pointer; will-change: transform, opacity; -webkit-tap-highlight-color: transparent; filter: brightness(var(--lit, 1)); }
+.cring-car { position: absolute; left: 50%; bottom: var(--under, 26px); width: var(--car-w); padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 100%; will-change: transform, opacity; -webkit-tap-highlight-color: transparent; filter: brightness(var(--lit, 1)); }
 .cring-crop { position: relative; display: block; width: 100%; overflow: hidden; }
 .cring-crop img { position: absolute; max-width: none; pointer-events: none; }
 /* One contact shadow under every car, at the shared floor line: the tyres land on it. */
 .cring-shadow { position: absolute; left: 6%; right: 6%; bottom: -7px; height: 14px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.65), rgba(0,0,0,0)); }
-.cring--sm .cring-label { top: 12px; }
+.cring--sm { padding-top: 10px; --under: 30px; }
 .cring--sm .cring-label span { font-size: 8px; }
 .cring--sm .cring-label b { font-size: 18px; }
-.cring--sm .cring-car { bottom: 16px; }
+.cring--sm .cring-stage { margin-top: 4px; }
 .cring--sm .cring-shadow { bottom: -4px; height: 8px; }
-.cring--sm .cring-floor { height: 40px; }
 @media (prefers-reduced-motion: reduce) { .cring-label { animation: none; } }
 `;
 
@@ -121,7 +123,8 @@ export default function CarRing({ cars, small = false }) {
       const x = Math.sin(Math.max(-Math.PI / 2, Math.min(Math.PI / 2, th)));
       const depth = (Math.cos(Math.min(Math.PI / 2, Math.abs(th))) + 1) / 2; // 1 front .. .5 at the side
       const fade = Math.abs(k) <= 1 ? 1 : Math.max(0, (SHOW - Math.abs(k)) / (SHOW - 1));
-      el.style.transform = `translateX(-50%) translateX(calc(${x.toFixed(4)} * var(--spread)))`;
+      const sc = SIDE_SCALE + (1 - SIDE_SCALE) * ((depth - 0.5) * 2); // grows from the tyres: the landing never moves
+      el.style.transform = `translateX(-50%) translateX(calc(${x.toFixed(4)} * var(--spread))) scale(${sc.toFixed(4)})`;
       el.style.zIndex = String(Math.round(depth * 100));
       el.style.opacity = fade.toFixed(3);
       el.style.visibility = fade > 0 ? 'visible' : 'hidden';
@@ -162,6 +165,8 @@ export default function CarRing({ cars, small = false }) {
   };
 
   const car = cars[front];
+  // Height of the tallest car per unit of width, so the stage fits the cars and nothing more.
+  const ratio = Math.max(0.3, ...cars.map((c) => c.box.h / Math.max(0.01, c.box.w * c.box.ar)));
   return (
     <div className={`cring keep-alpha${small ? ' cring--sm' : ''}`} onPointerEnter={() => { hover.current = true; }} onPointerLeave={() => { hover.current = false; }}>
       <style>{CSS}</style>
@@ -169,6 +174,7 @@ export default function CarRing({ cars, small = false }) {
         <span>{car?.brand}</span>
         <b>{car?.model}</b>
       </div>
+      <div className="cring-stage" style={{ '--ratio': ratio.toFixed(4) }}>
       <div className="cring-floor" aria-hidden="true" />
       {cars.map((c, i) => {
         const b = c.box;
@@ -185,6 +191,7 @@ export default function CarRing({ cars, small = false }) {
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
