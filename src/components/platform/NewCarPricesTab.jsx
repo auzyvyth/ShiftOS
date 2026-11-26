@@ -5,6 +5,7 @@ import { useModalHistory } from "../../hooks/useModalHistory";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, isHttpUrl } from "../../utils/newCars";
 import { compressListingPhoto, photoExt } from "../../utils/compressImage";
+import { frameCutout } from "../../utils/cutoutFrame";
 import { cdnImg } from "../../utils/img";
 
 // NEWCAR-1: the one place official new-car prices are typed in.
@@ -36,6 +37,58 @@ const lbl = { display: "block", margin: "0 0 4px", fontSize: 10, fontWeight: 700
 
 const MAX_MODEL_PHOTOS = 12;
 
+// FRAME-1: a cut-out is redrawn onto the one shared frame before upload (cutoutFrame.js), so
+// every model shows at the same size on every surface. "-fit" in the name = already framed.
+async function uploadModelPhoto(file, userId) {
+  const framed = await frameCutout(file);
+  const small = framed ? framed : await compressListingPhoto(file);
+  // Storage lets a user write only under their own id folder.
+  const path = `${userId}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}${framed ? "-fit" : ""}.${photoExt(small)}`;
+  const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: small.type || "image/jpeg", cacheControl: "31536000" });
+  if (e) throw e;
+  return supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl;
+}
+
+// The photos uploaded before FRAME-1: fetch each see-through one, frame it, upload the copy and
+// swap it in (an UPDATE of the media row, so new_car_media_sync moves every card on it).
+// A photo with a background, or one the browser cannot fetch, is left as it is.
+async function frameExistingPhotos(media, onProgress) {
+  const { data: { user } } = await supabase.auth.getUser();
+  let done = 0, skipped = 0, failed = 0;
+  const next = {};
+  const keys = Object.keys(media);
+  for (let k = 0; k < keys.length; k++) {
+    const [brand, model] = keys[k].split("|");
+    const imgs = media[keys[k]] || [];
+    let changed = false;
+    const out = [];
+    for (const u of imgs) {
+      const plain = u.split(/[?#]/)[0];
+      if (!/\.(png|webp)$/i.test(plain) || /-fit\.(png|webp)$/i.test(plain)) { out.push(u); continue; }
+      try {
+        const res = await fetch(u, { mode: "cors", cache: "no-store" });
+        if (!res.ok) throw new Error("fetch");
+        const blob = await res.blob();
+        const framed = await frameCutout(blob);
+        if (!framed) { skipped++; out.push(u); continue; }
+        out.push(await uploadModelPhoto(new File([framed], "photo", { type: framed.type }), user.id));
+        changed = true;
+        done++;
+      } catch {
+        failed++;
+        out.push(u);
+      }
+    }
+    if (changed) {
+      const { error } = await supabase.from("new_car_model_media").upsert({ brand, model, images: out }, { onConflict: "brand,model" });
+      if (error) failed++;
+      else next[keys[k]] = out;
+    }
+    onProgress?.(k + 1, keys.length);
+  }
+  return { done, skipped, failed, next };
+}
+
 // One model's photos. The first is the cover the cards and the signup picker show;
 // tapping another makes it the cover.
 function ModelPhotos({ brand, model, images, onChange }) {
@@ -55,14 +108,7 @@ function ModelPhotos({ brand, model, images, onChange }) {
     onChange(next);
   };
 
-  const uploadOne = async (file, userId) => {
-    const small = await compressListingPhoto(file);
-    // Storage lets a user write only under their own id folder.
-    const path = `${userId}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoExt(small)}`;
-    const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: small.type || "image/jpeg", cacheControl: "31536000" });
-    if (e) throw e;
-    return supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl;
-  };
+  const uploadOne = (file, userId) => uploadModelPhoto(file, userId);
 
   const addFiles = async (files) => {
     const list = Array.from(files || []).slice(0, MAX_MODEL_PHOTOS - images.length);
@@ -227,6 +273,14 @@ export default function NewCarPricesTab() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [media, setMedia] = useState({}); // "brand|model" -> images
+  const [fitting, setFitting] = useState(null); // null | "a/b" progress | result line
+  const fitAll = async () => {
+    if (fitting && fitting.startsWith("Fitting")) return;
+    setFitting("Fitting 0/" + Object.keys(media).length);
+    const r = await frameExistingPhotos(media, (a, b) => setFitting(`Fitting ${a}/${b}`));
+    setMedia((m) => ({ ...m, ...r.next }));
+    setFitting(`${r.done} photo${r.done === 1 ? "" : "s"} put on the shared frame` + (r.failed ? `, ${r.failed} could not be read (upload them again)` : "") + ".");
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -310,6 +364,13 @@ export default function NewCarPricesTab() {
           </p>
         </div>
         {!form && (
+          <button type="button" onClick={fitAll} disabled={!!fitting && fitting.startsWith("Fitting")}
+            title="Redraw every see-through model photo at the same size, standing on the same line"
+            style={{ padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "rgba(255,255,255,0.06)", border: "none", color: "#e5e7eb", marginLeft: "auto" }}>
+            {fitting && fitting.startsWith("Fitting") ? fitting : "Same size for all cut-outs"}
+          </button>
+        )}
+        {!form && (
           <button type="button" onClick={() => setForm({ ...EMPTY, brand })}
             style={{ padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "#dc2626", border: "none", color: "#fff" }}>
             Add variant
@@ -317,6 +378,9 @@ export default function NewCarPricesTab() {
         )}
       </div>
 
+      {fitting && !fitting.startsWith("Fitting") && (
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af" }}>{fitting}</p>
+      )}
       {error && (
         <div style={{ marginBottom: 14, padding: "10px 13px", borderRadius: 9, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", fontSize: 12 }}>
           {error}

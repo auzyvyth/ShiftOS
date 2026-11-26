@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // "How buying works" (PAGE-SITE 3): the seller's OWN stops from first visit to handover
 // (page_site.steps). One row of numbered stops; tapping one opens what happens there.
@@ -6,6 +6,15 @@ import React, { useState } from 'react';
 export default function StepsBlock({ steps, firstName }) {
   const list = steps || [];
   const [at, setAt] = useState(0);
+  // The booking form can sit above or below (the seller orders the sections), so the last stop's
+  // button finds it by id and scrolls there. No form on the page = no Book now button.
+  const [hasBook, setHasBook] = useState(false);
+  useEffect(() => { setHasBook(!!document.getElementById('ap-book')); }, [at]);
+  const goBook = () => {
+    const el = document.getElementById('ap-book');
+    if (!el) return;
+    el.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
   if (!list.length) return null;
   const s = list[Math.min(at, list.length - 1)];
   const n = list.length;
@@ -32,7 +41,9 @@ export default function StepsBlock({ steps, firstName }) {
         {s.d && <p className="sb-d">{s.d}</p>}
         <div className="sb-nav">
           <button type="button" disabled={at === 0} onClick={() => setAt(at - 1)}>Back</button>
-          <button type="button" disabled={at >= n - 1} onClick={() => setAt(at + 1)}>Next stop</button>
+          {at >= n - 1 && hasBook
+            ? <button type="button" onClick={goBook}>Book now</button>
+            : <button type="button" disabled={at >= n - 1} onClick={() => setAt(at + 1)}>Next stop</button>}
         </div>
       </div>
       <p className="ps-fine">{firstName}'s own process. Loan approval is always the bank's decision.</p>

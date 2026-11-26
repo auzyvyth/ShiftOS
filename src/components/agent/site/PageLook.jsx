@@ -200,8 +200,9 @@ export default function PageLook() {
       .ap--pro .pc-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
       .ap--pro .pc-car { background: transparent; color: var(--t1); border: 1px solid var(--line); border-radius: var(--r-card); }
       /* The picked car: the WHOLE card turns ink (owner, 2026-11-26: an outline "looks cheap") */
-      .ap--pro .pc-car[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); box-shadow: none; }
-      .ap--pro .pc-car[aria-pressed="true"] .pc-ph { background: var(--ink-2); }
+      .ap--pro .pc-car[aria-pressed="true"] { background: transparent; border-color: transparent; color: var(--on-ink); box-shadow: none; }
+      /* No coloured ring round the photo (owner, 2026-11-26: "remove top outline"): only the name + price part fills */
+      .ap--pro .pc-car[aria-pressed="true"] .pc-ct { background: var(--ink); }
       .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: #fff; color: var(--ink-2); }
       .ap--pro .pc-ph { background: var(--k1); }
       .ap--pro .pc-n { border-radius: var(--r-chip); }
@@ -215,7 +216,7 @@ export default function PageLook() {
       .ap--pro .pc-seg button[aria-checked="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
       /* The answer is the black band */
       .ap--pro .pc-out { background: var(--ink); color: var(--on-ink); border-radius: var(--r-card); }
-      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.82) !important; }
+      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.92) !important; text-shadow: 0 1px 2px rgba(0,0,0,.35), 0 0 14px rgba(0,0,0,.28); }
       .ap--pro .pc-big { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.86); }
       .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.3); padding-top: 10px; }
