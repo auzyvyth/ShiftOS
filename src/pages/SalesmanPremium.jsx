@@ -7790,7 +7790,7 @@ export default function SalesmanPremium() {
  {renderTour()}
  {renderFirstSale()}
  {/* NEWS-1: the once-only "Premium has a new look" pop-up. */}
- <PremiumLookNews userId={userId} profile={profile} isPremium blocked={tourStep !== null} onTryLook={() => openSettings("profile")} />
+ <PremiumLookNews userId={userId} profile={profile} isPremium blocked={tourStep !== null} />
 
  {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
  desktop sidebar, mobile topbar) open this instead of calling

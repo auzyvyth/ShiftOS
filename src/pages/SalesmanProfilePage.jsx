@@ -1572,7 +1572,7 @@ export default function SalesmanProfilePage() {
         .aph-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); }
         .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 26px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
         .aph-stats b small { font-size: 18px; color: rgba(255,255,255,.6); }
-        .aph-stats b.aph-small { font-family: var(--xd-font-body); font-size: 14px; font-weight: 600; line-height: 1.25; padding-top: 4px; max-width: 200px; }
+        .aph-stats b.aph-small { display: flex; align-items: center; height: 26px; font-family: var(--xd-font-body); font-size: 14px; font-weight: 600; line-height: 1; padding: 0; white-space: nowrap; }
         .aph-stats span { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
         @media (max-height: 740px) and (max-width: 899px) { .aph-bio { display: none; } }
         @media (min-width: 900px) {

@@ -16,7 +16,7 @@ import { markStarterTask } from '../../utils/starterTasks';
 // still unused (get_my_premium_offer), else it sends them to the Premium screen, never a free promise
 // they cannot get. Words in en + ms.
 
-export const NEWS_READY = false; // flip when the GIF file is in public/news/
+export const NEWS_READY = true; // owner, 2026-11-26: "apply it". No GIF file = the pop-up simply has no picture area.
 const SEEN_KEY = 'news_premium_look_1';
 const GIF = '/news/premium-new-look.gif';
 
@@ -25,27 +25,27 @@ const COPY = {
     eyebrow: "What's new",
     title: 'Premium has a new look',
     body: 'Your page can now open on a business card: your cars turning on top, your photo, your numbers and one WhatsApp button.',
-    trial: 'Try Premium free for 7 days',
+    trial: 'Try Premium 7 days',
     trialNote: 'No card needed. After 7 days you go back to Lite unless you pay.',
     lite: 'See Premium',
-    premium: 'Try the new look',
-    premiumNote: 'Settings > Profile > Your photo on your page > Business card.',
+    premium: 'Check it out',
+    premiumNote: 'Opens your page.',
     later: 'Maybe later',
   },
   ms: {
     eyebrow: 'Baru',
     title: 'Premium kini ada rupa baru',
     body: 'Page anda kini boleh dibuka dengan kad perniagaan: kereta anda berpusing di atas, gambar anda, angka anda dan satu butang WhatsApp.',
-    trial: 'Cuba Premium percuma 7 hari',
+    trial: 'Cuba Premium 7 hari',
     trialNote: 'Tiada kad diperlukan. Selepas 7 hari anda kembali ke Lite jika tidak membayar.',
     lite: 'Lihat Premium',
-    premium: 'Cuba rupa baru',
-    premiumNote: 'Tetapan > Profil > Gambar anda di page > Business card.',
+    premium: 'Tengok sekarang',
+    premiumNote: 'Buka page anda.',
     later: 'Nanti dulu',
   },
 };
 
-export default function PremiumLookNews({ userId, profile, isPremium, blocked, onPremiumScreen, onTryLook }) {
+export default function PremiumLookNews({ userId, profile, isPremium, blocked, onPremiumScreen }) {
   const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('news') === '1';
   const seen = !!profile?.starter_tasks?.[SEEN_KEY];
   const want = !!userId && !!profile && (forced || (NEWS_READY && !seen)) && !blocked;
@@ -113,18 +113,18 @@ export default function PremiumLookNews({ userId, profile, isPremium, blocked, o
           style={{ position: 'absolute', top: 10, right: 10, zIndex: 1, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <X size={18} />
         </button>
-        <div style={{ background: '#08090b', borderRadius: '20px 20px 0 0', overflow: 'hidden', height: 'min(48dvh, 460px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {gifOk
-            ? <img src={GIF} alt="" onError={() => setGifOk(false)} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-            : <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 13 }}>GIF goes here (public{GIF})</span>}
-        </div>
+        {gifOk && (
+          <div style={{ background: '#08090b', borderRadius: '20px 20px 0 0', overflow: 'hidden', height: 'min(48dvh, 460px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={GIF} alt="" onError={() => setGifOk(false)} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+          </div>
+        )}
         <div style={{ padding: '18px 20px 20px' }}>
           <p style={{ margin: 0, fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(244,245,247,.55)' }}>{c.eyebrow}</p>
           <h2 id="news-title" style={{ margin: '6px 0 8px', fontFamily: "'Bebas Neue', sans-serif", fontWeight: 400, fontSize: 34, lineHeight: 1 }}>{c.title}</h2>
           <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.55, color: 'rgba(244,245,247,.78)' }}>{c.body}</p>
           {isPremium ? (
             <>
-              <button type="button" className="lk-red" style={{ ...btn, color: '#fff' }} onClick={() => { close(); onTryLook?.(); }}>{c.premium}</button>
+              <button type="button" className="lk-red" style={{ ...btn, color: '#fff' }} onClick={() => { close(); if (profile?.slug) window.open(`/s/${encodeURIComponent(profile.slug)}`, '_blank'); }}>{c.premium}</button>
               <p style={{ margin: '8px 0 0', fontSize: 12, color: 'rgba(244,245,247,.55)', textAlign: 'center' }}>{c.premiumNote}</p>
             </>
           ) : offer === null ? (

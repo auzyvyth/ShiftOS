@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cdnImg } from '../../utils/img';
 import { carLabel } from '../../utils/liveMaths';
@@ -23,6 +24,26 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
   );
   const [tab, setTab] = useState('car');
   const [pickedId, setPickedId] = useState(null);
+  // Sideways arrows for mouse users (a phone just swipes): shown only while there is more to see that way.
+  const pickRef = useRef(null);
+  const [arrows, setArrows] = useState({ l: false, r: false });
+  const checkArrows = () => {
+    const el = pickRef.current;
+    if (!el) return;
+    setArrows({ l: el.scrollLeft > 4, r: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  };
+  const nudge = (dir) => {
+    const el = pickRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: reduce ? 'auto' : 'smooth' });
+  };
+  useEffect(() => {
+    checkArrows();
+    window.addEventListener('resize', checkArrows);
+    const t = setTimeout(checkArrows, 600); // photos and fonts settle
+    return () => { window.removeEventListener('resize', checkArrows); clearTimeout(t); };
+  }, [cars.length, tab]); // eslint-disable-line react-hooks/exhaustive-deps
   const [depositPct, setDepositPct] = useState(0.1);
   const [years, setYears] = useState(7);
   // "Work out my instalment" on the model picker hands over the model AND the variant the buyer
@@ -71,6 +92,12 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-tabs button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 3px rgba(15,23,42,.14); }
         .pc-pick { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px 16px; padding: 2px 16px 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
         .pc-pick::-webkit-scrollbar { display: none; }
+        .pc-pickw { position: relative; }
+        .pc-arr { display: none; position: absolute; top: calc(50% - 12px); z-index: 3; width: 40px; height: 40px; margin-top: -20px; border-radius: 50%; border: 0; align-items: center; justify-content: center;
+          background: #fff; color: #0f1115; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.08); }
+        .pc-arr--l { left: -6px; } .pc-arr--r { right: -6px; }
+        .pc-arr:hover { background: #f2f3f5; }
+        @media (hover: hover) and (pointer: fine) { .pc-arr--on { display: flex; } }
         .pc-car { flex: 0 0 148px; scroll-snap-align: start; text-align: left; padding: 0; border: 2px solid transparent; border-radius: 14px; background: #F7F6F2; cursor: pointer; font: inherit; color: #111827; overflow: hidden; }
         .pc-car[aria-pressed="true"] { border-color: #0f1115; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.14); }
         .pc-ph { display: block; position: relative; aspect-ratio: 4 / 3; background: #EDEAE3; }
@@ -165,7 +192,10 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         />
       ) : (
         <>
-          <div className="pc-pick" role="group" aria-label="Pick a car">
+          <div className="pc-pickw">
+          <button type="button" className={`pc-arr pc-arr--l${arrows.l ? ' pc-arr--on' : ''}`} aria-label="Earlier cars" onClick={() => nudge(-1)}><ChevronLeft size={20} /></button>
+          <button type="button" className={`pc-arr pc-arr--r${arrows.r ? ' pc-arr--on' : ''}`} aria-label="More cars" onClick={() => nudge(1)}><ChevronRight size={20} /></button>
+          <div className="pc-pick" role="group" aria-label="Pick a car" ref={pickRef} onScroll={checkArrows}>
             {cars.map(({ car: c, n }) => {
               const img = Array.isArray(c.images) ? c.images[0] : null;
               return (
@@ -181,6 +211,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
                 </button>
               );
             })}
+          </div>
           </div>
 
           <div className="pc-grid">
