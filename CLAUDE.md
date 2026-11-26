@@ -1971,6 +1971,15 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   added to `get_salesman_by_slug`; rules + words in `src/utils/agentAbout.js`
   (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
   column can never fail the main profile load or save. No phone numbers in them (CDP-3).
+  **The models section is a VEHICLE CONFIGURATOR (CONFIG-1, owner 2026-11-26, the Mercedes configurator as the direction):**
+  `src/components/agent/site/ModelPicker.jsx` (rules: `src/utils/configurator.js`, `npm run test:configurator`). Brand tabs (the
+  seller's own model-card brands, logos from `brandLogos.js`) -> model rail -> stage (one big photo) + build panel (price,
+  colour, variant rows with what each adds, specs, the seller's note, Ask + Instalment). Same data and variant store as the
+  car page (`useNewCarInfo`/`useNewCarVariant`), no second catalogue. We hold ONE photo set per model: a colour changes the
+  swatch, its name and the WhatsApp text, never the photo, and the panel says so. Colours only where `new_car_models.specs.colours`
+  has them (Proton, Perodua, BYD; none for Honda, Toyota, Jaecoo). Never add per-colour or AI images to fill the gap.
+  **The Premium page is BLACK now (owner, 2026-11-26, reverses the 25 Nov light page):** `PageLook.jsx`; the seller background
+  picker (`page_site.ground`) was removed before it was ever saved.
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
   The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
   6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a
