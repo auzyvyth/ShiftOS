@@ -5,6 +5,15 @@
 2. Present the pending items to the user and ask which one to work on first.
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
+5. **Security check, EVERY session (owner, 2026-11-26).** At the start, read `TODO.md` `SECURITY-NOW`
+   and list its open items alongside the rest (security first). Before ending, check that nothing you
+   built opened a hole: a new table/view has RLS and no anon write; a new SECURITY DEFINER function
+   derives the caller from `auth.uid()` and is revoked from `public` + `anon` unless it must be public
+   (verify with `has_function_privilege`); nothing private (IC, phone, cost, address, token) went into a
+   public view, RPC, bucket, page payload or share picture; no key or secret in the repo or the browser
+   bundle. Run `get_advisors` (security) after any migration. Say the result in the session summary,
+   even if it is "nothing new". This repo is PUBLIC: write a hole into TODO.md only in words that do not
+   show how to use it, and never name the honeypot tripwires anywhere in the repo.
 
 ## App Store / Play Store readiness — PAUSED (owner, 2026-10-09)
 **Store work is paused until there is revenue** (`TODO.md` MOBILE section: "everything
