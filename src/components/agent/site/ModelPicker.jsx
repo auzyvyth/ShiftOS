@@ -208,16 +208,18 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
 }
 
 // The configurator's own styles (Premium pages only: this component only renders there).
-// Black page, hairlines, square corners, wide labels: the same language as PageLook.
+// Black page, hairlines, squircle corners, wide labels: the same language as PageLook (its --head,
+// --bold and --r-* tokens are inherited, with fallbacks).
 function ConfigStyle() {
   return (
     <style>{`
       .cfg { --c-line: rgba(255,255,255,.12); --c-line2: rgba(255,255,255,.24); --c-t2: rgba(255,255,255,.72); --c-t3: rgba(255,255,255,.5);
-        --c-wide: 'Archivo', var(--xd-font-body); }
+        --c-wide: 'Archivo', var(--xd-font-body); --c-head: var(--head, 'Bebas Neue', sans-serif); --c-bold: var(--bold, var(--xd-font-body));
+        --c-rc: var(--r-card, 16px); --c-rb: var(--r-btn, 12px); --c-rs: var(--r-chip, 9px); }
       .cfg-lbl, .cfg-eyebrow, .cfg-tag, .cfg-brands small, .cfg-rail span:not(.cfg-rail-ph) { font-family: var(--c-wide); font-stretch: 125%; font-size: 10.5px; font-weight: 500;
         letter-spacing: .16em; text-transform: uppercase; color: var(--c-t3); }
       .cfg-lbl { margin: 0 0 12px; display: flex; gap: 10px; flex-wrap: wrap; }
-      .cfg-lbl b { color: #fff; font-weight: 700; letter-spacing: .12em; }
+      .cfg-lbl b { color: #fff; font-family: var(--c-bold); font-weight: 700; letter-spacing: .12em; }
 
       /* Brands: logo tiles, the picked one underlined */
       .cfg-brands { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); margin: 0 0 18px; }
@@ -227,14 +229,14 @@ function ConfigStyle() {
         transition: color .2s, box-shadow .2s, background .2s; }
       .cfg-brands button + button { border-left: 1px solid var(--c-line); }
       .cfg-brands img { height: 26px; width: auto; max-width: 90px; object-fit: contain; filter: brightness(0) invert(1); opacity: .55; transition: opacity .2s; }
-      .cfg-brands span { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .cfg-brands span { font-family: var(--c-bold); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
       .cfg-brands button[aria-pressed="true"] { color: #fff; box-shadow: inset 0 -2px 0 #fff; background: rgba(255,255,255,.03); }
       .cfg-brands button[aria-pressed="true"] img, .cfg-brands button:hover img { opacity: 1; }
       .cfg-brands button:hover { color: #fff; }
 
       /* Model rail: photo tiles */
       .cfg-rail { display: grid; grid-auto-flow: column; grid-auto-columns: 158px; width: max-content; max-width: 100%; gap: 0; overflow-x: auto; scroll-snap-type: x proximity;
-        scrollbar-width: none; border: 1px solid var(--c-line); margin: 0 0 18px; }
+        scrollbar-width: none; border: 1px solid var(--c-line); border-radius: var(--c-rc); margin: 0 0 18px; }
       .cfg-rail::-webkit-scrollbar { display: none; }
       .cfg-rail button { scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px 14px; min-width: 0;
         border: none; background: none; cursor: pointer; text-align: left; color: #fff; font-family: inherit; box-shadow: inset 0 -2px 0 transparent; transition: background .2s, box-shadow .2s; }
@@ -243,42 +245,42 @@ function ConfigStyle() {
       .cfg-rail button:hover { background: rgba(255,255,255,.04); }
       .cfg-rail-ph { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 6px; }
       .cfg-rail-ph img { width: 100%; height: 100%; object-fit: contain; }
-      .cfg-rail b { font-family: var(--c-wide); font-stretch: 125%; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; overflow-wrap: anywhere; }
+      .cfg-rail b { font-family: var(--c-head); font-size: 19px; font-weight: 400; line-height: 1.05; letter-spacing: .03em; text-transform: uppercase; overflow-wrap: anywhere; }
       .cfg-rail span:not(.cfg-rail-ph) { letter-spacing: .06em; text-transform: none; font-size: 12px; font-family: var(--xd-font-body); color: var(--c-t2); font-variant-numeric: tabular-nums; }
 
       /* The build: stage + panel */
-      .cfg-build { display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--c-line); }
+      .cfg-build { display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--c-line); border-radius: var(--c-rc); overflow: clip; }
       .cfg-stage { position: relative; overflow: hidden; min-height: 260px; aspect-ratio: 16 / 11; display: flex; align-items: center; justify-content: center;
         background: radial-gradient(ellipse 75% 60% at 50% 40%, #2c2c31 0%, #151518 55%, #0a0a0b 100%); }
-      .cfg-mark { position: absolute; left: 50%; top: 46%; translate: -50% -50%; white-space: nowrap; pointer-events: none; font-family: var(--c-wide); font-stretch: 125%;
-        font-weight: 800; text-transform: uppercase; font-size: clamp(64px, 17vw, 200px); line-height: 1; color: rgba(255,255,255,.045); letter-spacing: -.02em; }
+      .cfg-mark { position: absolute; left: 50%; top: 46%; translate: -50% -50%; white-space: nowrap; pointer-events: none; font-family: var(--c-head);
+        font-weight: 400; text-transform: uppercase; font-size: clamp(80px, 22vw, 260px); line-height: 1; color: rgba(255,255,255,.045); letter-spacing: .01em; }
       .cfg-tag { position: absolute; left: 16px; top: 16px; z-index: 2; color: var(--c-t2); }
       .cfg-car { position: relative; z-index: 1; width: 88%; height: 78%; display: flex; align-items: center; justify-content: center; animation: cfg-in .5s cubic-bezier(.2,.7,.2,1) both; }
       .cfg-car img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 24px 30px rgba(0,0,0,.55)); }
       .cfg-floor { position: absolute; left: 12%; right: 12%; bottom: 13%; height: 26px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.65), rgba(0,0,0,0)); }
-      .cfg-nophoto { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-family: var(--c-wide); font-stretch: 125%; font-weight: 800;
-        text-transform: uppercase; color: rgba(255,255,255,.25); font-size: 14px; letter-spacing: .1em; text-align: center; }
+      .cfg-nophoto { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-family: var(--c-head); font-weight: 400;
+        text-transform: uppercase; color: rgba(255,255,255,.25); font-size: 22px; letter-spacing: .08em; text-align: center; }
       .cfg-shots { position: absolute; left: 12px; bottom: 12px; z-index: 2; display: flex; gap: 6px; }
-      .cfg-shots button { width: 52px; height: 36px; padding: 0; border: 1px solid var(--c-line2); background: #0a0a0b; cursor: pointer; opacity: .7; overflow: hidden; }
+      .cfg-shots button { width: 52px; height: 36px; padding: 0; border: 1px solid var(--c-line2); border-radius: var(--c-rs); background: #0a0a0b; cursor: pointer; opacity: .7; overflow: hidden; }
       .cfg-shots button[aria-pressed="true"] { opacity: 1; border-color: #fff; }
       .cfg-shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
       @keyframes cfg-in { from { opacity: 0; transform: translateX(24px) scale(.98); } to { opacity: 1; transform: none; } }
 
       .cfg-panel { padding: 22px 18px 20px; display: flex; flex-direction: column; min-width: 0; border-top: 1px solid var(--c-line); }
       .cfg-eyebrow { margin: 0; }
-      .cfg-name { margin: 6px 0 0; font-family: var(--c-wide); font-stretch: 125%; font-weight: 800; text-transform: uppercase; color: #fff;
-        font-size: clamp(26px, 6vw, 40px); line-height: 1; letter-spacing: -.01em; overflow-wrap: anywhere; }
+      .cfg-name { margin: 6px 0 0; font-family: var(--c-head); font-weight: 400; text-transform: uppercase; color: #fff;
+        font-size: clamp(36px, 8vw, 54px); line-height: .95; letter-spacing: .02em; overflow-wrap: anywhere; }
       .cfg-var { margin: 8px 0 0; font-size: 15px; color: var(--c-t2); min-height: 20px; }
       .cfg-price { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--c-line); }
       .cfg-price .cfg-lbl { margin-bottom: 6px; }
-      .cfg-rm { margin: 0; font-family: var(--c-wide); font-stretch: 125%; font-weight: 800; color: #fff; font-size: clamp(28px, 6.4vw, 38px); line-height: 1.05; font-variant-numeric: tabular-nums; }
+      .cfg-rm { margin: 0; font-family: var(--c-bold); font-weight: 700; letter-spacing: -.02em; color: #fff; font-size: clamp(28px, 6.4vw, 38px); line-height: 1.05; font-variant-numeric: tabular-nums; }
       .cfg-est { margin: 8px 0 0; font-size: 13px; color: var(--c-t2); line-height: 1.5; }
       .cfg-block { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--c-line); }
       .cfg-fine { margin: 10px 0 0; font-size: 12px; color: var(--c-t3); line-height: 1.5; }
 
       .cfg-cols { display: flex; flex-wrap: wrap; gap: 10px; }
-      .cfg-col { width: 40px; height: 40px; padding: 4px; border: 1px solid transparent; background: none; cursor: pointer; transition: border-color .2s; }
-      .cfg-col i { display: block; width: 100%; height: 100%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+      .cfg-col { width: 40px; height: 40px; padding: 4px; border: 1px solid transparent; border-radius: var(--c-rs); background: none; cursor: pointer; transition: border-color .2s; }
+      .cfg-col i { display: block; width: 100%; height: 100%; border-radius: calc(var(--c-rs) - 3px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
       .cfg-col[aria-checked="true"] { border-color: #fff; }
 
       .cfg-vars { display: grid; border-top: 1px solid var(--c-line); }
@@ -291,7 +293,7 @@ function ConfigStyle() {
       .cfg-v-n small { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--c-t3); }
       .cfg-v-p { flex-shrink: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
       .cfg-v--skel { cursor: default; }
-      .cfg-skel { display: inline-block; height: 12px; width: 150px; background: rgba(255,255,255,.08); animation: cfg-pulse 1.4s ease-in-out infinite; }
+      .cfg-skel { display: inline-block; height: 12px; width: 150px; border-radius: 6px; background: rgba(255,255,255,.08); animation: cfg-pulse 1.4s ease-in-out infinite; }
       @keyframes cfg-pulse { 50% { opacity: .45; } }
 
       .cfg-specs { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--c-line); }
@@ -314,6 +316,7 @@ function ConfigStyle() {
         .cfg-rail { grid-auto-columns: 200px; }
       }
       @media (max-width: 999px) { .cfg-stage { aspect-ratio: 4 / 3; } }
+      @supports (corner-shape: squircle) { .cfg-rail, .cfg-build, .cfg-shots button, .cfg-col, .cfg-col i, .cfg-skel { corner-shape: squircle; } }
       @media (prefers-reduced-motion: reduce) { .cfg-car { animation: none; } .cfg-skel { animation: none; } .cfg * { transition: none !important; } }
     `}</style>
   );
