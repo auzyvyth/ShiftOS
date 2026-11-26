@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
-import { isLegacyDoc, moveLegacyDocs } from "../../utils/carDocs";
+import { isLegacyDoc, moveLegacyDocs, listPublicDocLeftovers, clearPublicDocLeftovers } from "../../utils/carDocs";
 
 // One-time clean-up, shown on Safety > Posture only while there is something to
 // do: car documents uploaded before 2026-10-13 still sit in the PUBLIC
 // car-images bucket (anyone with the link can open a geran). This moves them
 // into the private car-docs bucket and deletes the public copy
-// (src/utils/carDocs.js moveLegacyDocs). Disappears once nothing is left.
+// (src/utils/carDocs.js moveLegacyDocs). It also clears document files left in
+// the public bucket that no listing uses (clearPublicDocLeftovers, needs
+// migration 20261126a). Disappears once nothing is left.
 export default function PublicDocsMover() {
   const [listings, setListings] = useState(null);
+  const [leftovers, setLeftovers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -19,11 +22,12 @@ export default function PublicDocsMover() {
       .not("car_documents", "is", null);
     if (error) { setListings([]); setResult(`Could not check documents: ${error.message}`); return; }
     setListings((data || []).filter((l) => Array.isArray(l.car_documents) && l.car_documents.some(isLegacyDoc)));
+    setLeftovers(await listPublicDocLeftovers(supabase));
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const count = (listings || []).reduce((n, l) => n + l.car_documents.filter(isLegacyDoc).length, 0);
+  const count = (listings || []).reduce((n, l) => n + l.car_documents.filter(isLegacyDoc).length, 0) + leftovers.length;
   if (!listings || (!count && !result)) return null;
 
   const run = async () => {
@@ -33,9 +37,13 @@ export default function PublicDocsMover() {
       const r = await moveLegacyDocs(supabase, l);
       moved += r.moved; failed += r.failed; publicLeft += r.publicLeft;
     }
+    // Run after the move: a public copy the move could not delete shows up here.
+    const c = await clearPublicDocLeftovers(supabase, await listPublicDocLeftovers(supabase));
+    failed += c.failed;
     setBusy(false);
     setResult(
       `Moved ${moved} document${moved === 1 ? "" : "s"} to private storage.` +
+      (c.cleared ? ` Removed ${c.cleared} leftover public file${c.cleared === 1 ? "" : "s"}${c.kept ? ` (${c.kept} unused, kept privately in car-docs/orphaned)` : ""}.` : "") +
       (failed ? ` ${failed} could not be moved.` : "") +
       (publicLeft ? ` ${publicLeft} public cop${publicLeft === 1 ? "y" : "ies"} could not be deleted.` : ""),
     );
