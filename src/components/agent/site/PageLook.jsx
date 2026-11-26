@@ -8,7 +8,7 @@ import React, { useEffect } from 'react';
 //  - Type by contrast: labels are tiny, light, wide-spaced capitals (Archivo, expanded). The BOLD type
 //    is the marketplace's (owner, 2026-11-26): headings in Bebas Neue, numbers and buttons in Outfit bold.
 //    A heading is a bold part then a light Archivo part ("PICK YOUR <light>MODEL</light>").
-//  - The main button is INK with white words (white inside the dark hero). The seller's colour is only a small accent: the
+//  - Main buttons and everything PICKED are Drevo RED (#dc2626) with white words (owner, 2026-11-26: "the black colour, change it to our red"). The seller's colour is only a small accent: the
 //    slider, the picked tab's underline, the promo dots. Never a big coloured block or a glow.
 //  - Things that float over the page (top buttons, section menu, bottom bar) are frosted glass.
 // Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The wide face (Archivo,
@@ -32,7 +32,7 @@ export default function PageLook() {
   return (
     <style>{`
       .ap.ap--pro { --k0: #ffffff; --k1: #f4f4f6; --k2: #ebebee; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
-        --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #0a0a0b; --on-ink: #ffffff;
+        --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #dc2626; --ink-2: #b91c1c; --on-ink: #ffffff;
         --wide: 'Archivo', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
         --r-card: 16px; --r-btn: 12px; --r-chip: 9px; --ap-bg: var(--k0); --ap-surf: var(--k1);
         background: var(--k0); color: var(--t1); }
@@ -92,9 +92,8 @@ export default function PageLook() {
       /* ---------- Buttons ---------- */
       .ap--pro .ap-btn, .ap--pro .ps-wa { border-radius: var(--r-btn) !important; background: var(--ink) !important; color: var(--on-ink) !important; box-shadow: none !important;
         font-family: var(--bold); font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .1em; text-transform: uppercase; }
-      .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: #2a2a2e !important; }
-      .ap--pro .aph .ap-btn { background: #fff !important; color: #0a0a0b !important; }
-      .ap--pro .aph .ap-btn:hover { background: #e9e9ea !important; }
+      .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: var(--ink-2) !important; }
+      
       .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; }
       .ap--pro .ps-ghost { border-radius: var(--r-btn); background: transparent; color: var(--t1); border-color: var(--line2);
         font-family: var(--bold); font-weight: 700; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; }
@@ -202,8 +201,8 @@ export default function PageLook() {
       .ap--pro .pc-car { background: transparent; color: var(--t1); border: 1px solid var(--line); border-radius: var(--r-card); }
       /* The picked car: the WHOLE card turns ink (owner, 2026-11-26: an outline "looks cheap") */
       .ap--pro .pc-car[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); box-shadow: none; }
-      .ap--pro .pc-car[aria-pressed="true"] .pc-ph { background: #1c1c1f; }
-      .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: #fff; color: #0a0a0b; }
+      .ap--pro .pc-car[aria-pressed="true"] .pc-ph { background: var(--ink-2); }
+      .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: #fff; color: var(--ink-2); }
       .ap--pro .pc-ph { background: var(--k1); }
       .ap--pro .pc-n { border-radius: var(--r-chip); }
       .ap--pro .pc-field { background: transparent; border-radius: 0; border-bottom: 1px solid var(--line); }
@@ -216,11 +215,11 @@ export default function PageLook() {
       .ap--pro .pc-seg button[aria-checked="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
       /* The answer is the black band */
       .ap--pro .pc-out { background: var(--ink); color: var(--on-ink); border-radius: var(--r-card); }
-      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.55) !important; }
+      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.82) !important; }
       .ap--pro .pc-big { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.6); }
-      .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.14); padding-top: 10px; }
-      .ap--pro .pc-link { background: #fff; color: #0a0a0b; border-radius: var(--r-btn); font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.86); }
+      .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.3); padding-top: 10px; }
+      .ap--pro .pc-link { background: #fff; color: var(--ink-2); border-radius: var(--r-btn); font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .pc-fine, .ap--pro .pc-fine[style] { color: var(--t3); }
       .ap--pro .pc-none { color: var(--t1); }
       /* Apple's continuous corners where the browser can draw them (corner-shape), round corners elsewhere.

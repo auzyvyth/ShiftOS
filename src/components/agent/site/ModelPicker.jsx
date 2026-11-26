@@ -213,7 +213,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
 function ConfigStyle() {
   return (
     <style>{`
-      .cfg { --c-line: rgba(10,10,11,.1); --c-line2: rgba(10,10,11,.2); --c-t1: #0a0a0b; --c-t2: rgba(10,10,11,.66); --c-t3: rgba(10,10,11,.48); --c-ink: #0a0a0b;
+      .cfg { --c-line: rgba(10,10,11,.1); --c-line2: rgba(10,10,11,.2); --c-t1: #0a0a0b; --c-t2: rgba(10,10,11,.66); --c-t3: rgba(10,10,11,.48); --c-ink: var(--ink, #dc2626);
         --c-wide: 'Archivo', var(--xd-font-body); --c-head: var(--head, 'Bebas Neue', sans-serif); --c-bold: var(--bold, var(--xd-font-body));
         --c-rc: var(--r-card, 16px); --c-rb: var(--r-btn, 12px); --c-rs: var(--r-chip, 9px); }
       .cfg-lbl, .cfg-eyebrow, .cfg-tag, .cfg-brands small, .cfg-rail span:not(.cfg-rail-ph) { font-family: var(--c-wide); font-stretch: 125%; font-size: 10.5px; font-weight: 500;
@@ -232,7 +232,7 @@ function ConfigStyle() {
       .cfg-brands span { font-family: var(--c-bold); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
       .cfg-brands button[aria-pressed="true"] { color: #fff; background: var(--c-ink); }
       .cfg-brands button[aria-pressed="true"] img { filter: brightness(0) invert(1); }
-      .cfg-brands button[aria-pressed="true"] small { color: rgba(255,255,255,.6); }
+      .cfg-brands button[aria-pressed="true"] small { color: rgba(255,255,255,.86); }
       .cfg-brands button[aria-pressed="true"] img, .cfg-brands button:hover img { opacity: 1; }
       .cfg-brands button:not([aria-pressed="true"]):hover { color: var(--c-t1); background: rgba(10,10,11,.03); }
 
@@ -244,8 +244,8 @@ function ConfigStyle() {
         border: none; background: none; cursor: pointer; text-align: left; color: var(--c-t1); font-family: inherit; box-shadow: inset 0 -2px 0 transparent; transition: background .2s, box-shadow .2s; }
       .cfg-rail button + button { border-left: 1px solid var(--c-line); }
       .cfg-rail button[aria-pressed="true"] { background: var(--c-ink); color: #fff; }
-      .cfg-rail button[aria-pressed="true"] span:not(.cfg-rail-ph) { color: rgba(255,255,255,.65); }
-      .cfg-rail button[aria-pressed="true"] .cfg-rail-ph { background: #1c1c1f; border-radius: calc(var(--c-rs) - 2px); }
+      .cfg-rail button[aria-pressed="true"] span:not(.cfg-rail-ph) { color: rgba(255,255,255,.86); }
+      .cfg-rail button[aria-pressed="true"] .cfg-rail-ph { background: var(--ink-2, #b91c1c); border-radius: calc(var(--c-rs) - 2px); }
       .cfg-rail button:not([aria-pressed="true"]):hover { background: rgba(10,10,11,.03); }
       .cfg-rail-ph { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 6px; }
       .cfg-rail-ph img { width: 100%; height: 100%; object-fit: contain; }
@@ -294,7 +294,7 @@ function ConfigStyle() {
       .cfg-v:not([aria-checked="true"]):hover { background: rgba(10,10,11,.03); color: var(--c-t1); }
       /* The picked variant: the whole row turns ink (owner, 2026-11-26: an outline "looks cheap") */
       .cfg-v[aria-checked="true"] { background: var(--c-ink); color: #fff; border-radius: var(--c-rs); border-bottom-color: transparent; }
-      .cfg-v[aria-checked="true"] .cfg-v-n small { color: rgba(255,255,255,.62); }
+      .cfg-v[aria-checked="true"] .cfg-v-n small { color: rgba(255,255,255,.88); }
       .cfg-v-n { min-width: 0; font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; }
       .cfg-v-n small { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--c-t3); }
       .cfg-v-p { flex-shrink: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }

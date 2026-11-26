@@ -5,8 +5,8 @@ import { premiumDark as PD } from '../../theme/tokens';
 import {
   cleanSite, promoProblem, deliveryProblem, noteProblem, siteErrorText, myToday,
   SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
-  lineProblem, faqProblem, rankProblem, HANDOVER_STARTERS, STEP_STARTERS, DEFAULT_SLOTS, slotLabel,
-  LIST_MAX, LINE_T_MAX, LINE_D_MAX, FAQ_MAX, FAQ_Q_MAX, FAQ_A_MAX, RANK_MAX, RANK_TITLE_MAX, BEST_MAX, SLOT_MAX,
+  lineProblem, faqProblem, rankProblem, HANDOVER_STARTERS, STEP_STARTERS,
+  LIST_MAX, LINE_T_MAX, LINE_D_MAX, FAQ_MAX, FAQ_Q_MAX, FAQ_A_MAX, RANK_MAX, RANK_TITLE_MAX, BEST_MAX,
 } from '../../utils/pageSite';
 import HandoverPhotosCard from './HandoverPhotosCard';
 
@@ -195,7 +195,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
       </div>
 
 
-      {/* PAGE-SITE 3: handover day, buying steps, FAQ, about extras, booking times */}
+      {/* PAGE-SITE 3: handover day, buying steps, FAQ, about extras */}
       {[
         { key: 'handover', title: 'Handover day: what the buyer gets', hint: 'What you do with every buyer on the day you hand over the keys. Your own list; only promise what you really do. Do not type phone numbers.', starters: HANDOVER_STARTERS, add: 'Add a line' },
         { key: 'steps', title: 'How buying works with you', hint: 'Your stops from the first visit to the handover, in order. Never promise a loan approval: the bank decides. Do not type phone numbers.', starters: STEP_STARTERS, add: 'Add a stop' },
@@ -279,22 +279,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
         </div>
       </div>
 
-      <div style={card}>
-        <p style={h}>Book a visit: your times</p>
-        <p style={hint}>The times a buyer can pick on your page. A booking lands in Inbox, Bookings as "needs your OK"; you confirm it on WhatsApp. Leave all off to use {DEFAULT_SLOTS.map(slotLabel).join(', ')}.</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {['09:00', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '17:00', '18:00', '19:00', '20:00'].map((t) => {
-            const on = draft.slots.includes(t);
-            const atMax = !on && draft.slots.length >= SLOT_MAX;
-            return (
-              <button key={t} type="button" aria-pressed={on} disabled={atMax}
-                onClick={() => set({ slots: on ? draft.slots.filter((x) => x !== t) : [...draft.slots, t].sort() })}
-                style={{ ...btn, minHeight: 40, padding: '0 12px', background: on ? accent : PD.hover, color: on ? '#fff' : PD.textSec, opacity: atMax ? 0.4 : 1 }}>{slotLabel(t)}</button>
-            );
-          })}
-        </div>
-        <p style={{ ...hint, margin: '10px 0 0' }}>{draft.slots.length ? `${draft.slots.length} of ${SLOT_MAX} times picked.` : 'Using the usual times.'}</p>
-      </div>
+      <p style={{ ...hint, margin: 0 }}>Book a visit uses the days and hours in Settings, Availability: the same ones buyers see on your car pages. Times already booked are never offered.</p>
 
       {notReady && !error && <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Saving these sections is not available yet. Try again later.</p>}
       {error && <p role="alert" style={{ margin: 0, fontSize: 12.5, color: PD.accentText }}>{error}</p>}

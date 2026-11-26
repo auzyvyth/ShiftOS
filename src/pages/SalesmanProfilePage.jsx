@@ -1164,7 +1164,7 @@ export default function SalesmanProfilePage() {
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
     handover: <HandoverBlock key="handover" items={site.handover} photos={handoverPhotos} soldCount={soldCount} firstName={firstName} />,
     steps: <StepsBlock key="steps" steps={site.steps} firstName={firstName} />,
-    book: <BookBlock key="book" cars={listings} site={site} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
+    book: <BookBlock key="book" cars={listings} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
     faq: <FaqBlock key="faq" faq={site.faq} firstName={firstName} />,
   };
   const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: listings.some((c) => c.status === 'available' && c.dealer_id) }) : [];
@@ -1459,7 +1459,7 @@ export default function SalesmanProfilePage() {
         .ap-ranks-h { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
         .ap-ranks-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
         .ap-ranks-g div { padding: 12px; border-radius: 10px; corner-shape: squircle; background: #f4f4f6; color: #0f1115; }
-        .ap-ranks-g div.is-top { background: #0a0a0b; color: #fff; }
+        .ap-ranks-g div.is-top { background: #dc2626; color: #fff; }
         .ap-ranks-g b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; letter-spacing: .02em; }
         .ap-ranks-g span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
         .ap-ranks-f { margin: 8px 0 0; font-size: 11.5px; color: #6b7280; }

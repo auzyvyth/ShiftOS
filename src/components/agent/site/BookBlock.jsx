@@ -1,24 +1,26 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, MapPin } from 'lucide-react';
 import PhoneInput from '../../ui/PhoneInput';
 import { isValidMyPhone } from '../../../lib/phone';
 import { apiUrl } from '../../../utils/apiUrl';
 import { malaysiaDate } from '../../../utils/myDay';
 import { carLabel } from '../../../utils/liveMaths';
-import { bookSlots, slotLabel } from '../../../utils/pageSite';
+import { slotLabel } from '../../../utils/pageSite';
+import { bookDays, daySlots, OPEN_RULE } from '../../../utils/pageBooking';
+import { prefetchBookingSlots } from '../../BookingCalendar';
 
 // "Book a visit" (PAGE-SITE 3, owner 2026-11-26: the appointment pass of a Proton advisor's site,
 // but a REAL booking). It goes through the one public booking route, /api/booking (rate-limited,
 // server key, the same checks as a car page): it lands in the seller's Bookings tab as PENDING,
 // pushes them, and they confirm it. The pass on the right is only a preview until the server says
-// yes; it never claims "booked" before that.
+// yes; it never claims "booked" before that. Days and times are the seller's ONE availability setting
+// (Settings > Availability, get_booking_slots), the same as the car page: days off and taken slots are
+// never offered (rules: src/utils/pageBooking.js).
 export const PURPOSES = [
   { key: 'test_drive', label: 'Test drive' },
   { key: 'price', label: 'Price and financing' },
   { key: 'trade_in', label: 'Trade-in valuation' },
 ];
-const DAYS_AHEAD = 60;
-const addDays = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const dayParts = (ymd) => {
   const d = new Date(`${ymd}T00:00:00Z`);
   return {
@@ -29,13 +31,22 @@ const dayParts = (ymd) => {
   };
 };
 
-export default function BookBlock({ cars, site, firstName, slug, place, avatar }) {
+export default function BookBlock({ cars, firstName, slug, place, avatar }) {
   const today = malaysiaDate();
   const options = useMemo(() => (cars || [])
     .filter((c) => c.status === 'available' && c.dealer_id)
     .map((c) => ({ id: c.id, dealerId: c.dealer_id, label: c.is_model_card ? [c.brand, c.model].filter(Boolean).join(' ') : carLabel(c) })), [cars]);
-  const slots = bookSlots(site);
-  const [f, setF] = useState({ name: '', phone: '', date: today, carId: options[0]?.id || '', time: '', purpose: 'test_drive' });
+  const [f, setF] = useState({ name: '', phone: '', date: '', carId: options[0]?.id || '', time: '', purpose: 'test_drive' });
+  const [cal, setCal] = useState(null); // { rule, booked: Set<ms> } for the picked car's seller
+  const carId = f.carId || options[0]?.id;
+  useEffect(() => {
+    if (!carId) return undefined;
+    let alive = true;
+    prefetchBookingSlots(carId, slug).then((res) => {
+      if (alive) setCal({ rule: res?.rule?.has ? res.rule : OPEN_RULE, booked: new Set(res?.booked || []) });
+    });
+    return () => { alive = false; };
+  }, [carId, slug]);
   const [ok, setOk] = useState({ come: false, wa: false });
   const [errs, setErrs] = useState({});
   const [state, setState] = useState('idle'); // idle | sending | sent | failed
@@ -45,17 +56,17 @@ export default function BookBlock({ cars, site, firstName, slug, place, avatar }
   const set = (patch) => { setF((x) => ({ ...x, ...patch })); setErrs({}); if (state === 'failed') setState('idle'); };
   const car = options.find((o) => o.id === f.carId) || options[0];
   const purpose = PURPOSES.find((p) => p.key === f.purpose);
-  const dp = dayParts(f.date || today);
-  // A slot earlier than now today is not offered.
-  const nowHm = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kuala_Lumpur' });
-  const slotOk = (t) => f.date > today || t > nowHm;
+  const days = cal ? bookDays(cal.rule, today, cal.booked) : [];
+  const day = days.includes(f.date) ? f.date : days[0] || '';
+  const times = cal && day ? daySlots(cal.rule, day, cal.booked) : [];
+  const dp = dayParts(day || today);
 
   const check = () => {
     const e = {};
     if (!f.name.trim()) e.name = 'Type your name.';
     if (!isValidMyPhone(f.phone)) e.phone = 'Type a Malaysian phone number.';
-    if (!f.date || f.date < today || f.date > addDays(today, DAYS_AHEAD)) e.date = 'Pick a day in the next two months.';
-    if (!f.time || !slotOk(f.time)) e.time = 'Pick a time.';
+    if (!day) e.date = 'Pick a day.';
+    if (!f.time || !times.includes(f.time)) e.time = 'Pick a time.';
     if (!ok.come || !ok.wa) e.consent = 'Tick both boxes to send it.';
     return e;
   };
@@ -67,7 +78,7 @@ export default function BookBlock({ cars, site, firstName, slug, place, avatar }
     setState('sending');
     try {
       // The slot is Malaysian time, whatever the buyer's phone is set to.
-      const at = new Date(`${f.date}T${f.time}:00+08:00`);
+      const at = new Date(`${day}T${f.time}:00+08:00`);
       const res = await fetch(apiUrl('/api/booking'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,20 +123,33 @@ export default function BookBlock({ cars, site, firstName, slug, place, avatar }
               {errs.phone && <em>{errs.phone}</em>}
             </label>
             <div className="bk-two">
-              <label className="bk-f"><span>Day</span>
-                <input type="date" value={f.date} min={today} max={addDays(today, DAYS_AHEAD)} onChange={(e) => set({ date: e.target.value, time: '' })} aria-invalid={!!errs.date} />
-                {errs.date && <em>{errs.date}</em>}
-              </label>
               <label className="bk-f"><span>Car</span>
-                <select value={car.id} onChange={(e) => set({ carId: e.target.value })}>
+                <select value={car.id} onChange={(e) => set({ carId: e.target.value, time: '' })}>
                   {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
               </label>
             </div>
+            <div className="bk-f"><span id="bk-day-l">Day</span>
+              {!cal ? <p className="bk-wait">Loading {firstName}'s free days...</p> : days.length === 0 ? (
+                <p className="bk-wait">No free times in the next three weeks. WhatsApp {firstName} to arrange one.</p>
+              ) : (
+                <div className="bk-days" role="radiogroup" aria-labelledby="bk-day-l">
+                  {days.map((d) => {
+                    const x = dayParts(d);
+                    return (
+                      <button key={d} type="button" role="radio" aria-checked={d === day} onClick={() => set({ date: d, time: '' })}>
+                        <small>{d === today ? 'Today' : x.wd.slice(0, 3)}</small><b>{x.day}</b><small>{x.mon}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {errs.date && <em>{errs.date}</em>}
+            </div>
             <div className="bk-f"><span id="bk-time-l">Time</span>
               <div className="bk-chips" role="radiogroup" aria-labelledby="bk-time-l">
-                {slots.map((t) => (
-                  <button key={t} type="button" role="radio" aria-checked={f.time === t} disabled={!slotOk(t)} onClick={() => set({ time: t })}>{slotLabel(t)}</button>
+                {times.map((t) => (
+                  <button key={t} type="button" role="radio" aria-checked={f.time === t} onClick={() => set({ time: t })}>{slotLabel(t)}</button>
                 ))}
               </div>
               {errs.time && <em>{errs.time}</em>}
@@ -188,38 +212,45 @@ function BookStyle() {
         corner-shape: squircle; background: #fff; color: var(--t1, #0a0a0b); font-family: inherit; font-size: 16px; }
       .bk-phone { padding: 0; }
       .bk-phone input { border: none !important; height: 46px; background: transparent; }
-      .bk-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-      @media (min-width: 520px) { .bk-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+      .bk-two { display: grid; gap: 14px; }
       .bk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .bk-chips button { min-height: 44px; padding: 0 14px; border: 1px solid var(--line2, #d1d5db); border-radius: var(--r-chip, 10px); corner-shape: squircle; background: transparent;
         color: var(--t1, #0a0a0b); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-      .bk-chips button[aria-checked="true"] { background: var(--ink, #0a0a0b); border-color: var(--ink, #0a0a0b); color: var(--on-ink, #fff); }
-      .bk-chips button:disabled { opacity: .35; cursor: default; text-decoration: line-through; }
+      .bk-chips button[aria-checked="true"] { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: var(--on-ink, #fff); }
+      .bk-days { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+      .bk-days::-webkit-scrollbar { display: none; }
+      .bk-days button { flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; border: 1px solid var(--line2, #d1d5db);
+        border-radius: var(--r-chip, 10px); corner-shape: squircle; background: transparent; color: var(--t1, #0a0a0b); font-family: inherit; cursor: pointer; }
+      .bk-days small { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--t3, #6b7280); }
+      .bk-days b { font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 26px; line-height: 1; }
+      .bk-days button[aria-checked="true"] { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: var(--on-ink, #fff); }
+      .bk-days button[aria-checked="true"] small { color: rgba(255,255,255,.88); }
+      .bk-wait { margin: 0; font-size: 13.5px; color: var(--t2, #4b5563); }
       .bk-ok { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line, #e5e7eb); }
       .bk-ok button { display: flex; gap: 10px; align-items: flex-start; padding: 4px 0; border: none; background: none; text-align: left; cursor: pointer; font-family: inherit; font-size: 13.5px; line-height: 1.45; color: var(--t2, #4b5563); }
       .bk-ok i { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; border-radius: 6px; border: 1.5px solid var(--line2, #9ca3af); display: flex; align-items: center; justify-content: center; }
-      .bk-ok button[aria-checked="true"] i { background: var(--ink, #0a0a0b); border-color: var(--ink, #0a0a0b); color: #fff; }
+      .bk-ok button[aria-checked="true"] i { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: #fff; }
       .bk-ok em { font-style: normal; font-size: 12.5px; color: #b91c1c; }
-      .bk-pass { background: var(--ink, #0a0a0b); color: #fff; border-radius: var(--r-card, 16px); corner-shape: squircle; overflow: hidden; min-width: 0; }
+      .bk-pass { background: var(--ink, #dc2626); color: #fff; border-radius: var(--r-card, 16px); corner-shape: squircle; overflow: hidden; min-width: 0; }
       .bk-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 18px 0; color: #fff; }
       .bk-top b { display: block; font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 24px; letter-spacing: .03em; text-transform: uppercase; line-height: 1; }
-      .bk-top small { display: block; margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.6); }
+      .bk-top small { display: block; margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.88); }
       .bk-top img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
-      .bk-when { display: flex; align-items: center; gap: 14px; padding: 18px; border-bottom: 1px dashed rgba(255,255,255,.22); }
-      .bk-tile { width: 66px; height: 72px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #0a0a0b; border-radius: 10px; corner-shape: squircle; }
+      .bk-when { display: flex; align-items: center; gap: 14px; padding: 18px; border-bottom: 1px dashed rgba(255,255,255,.45); }
+      .bk-tile { width: 66px; height: 72px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: var(--ink-2, #b91c1c); border-radius: 10px; corner-shape: squircle; }
       .bk-tile b { font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 34px; line-height: .9; }
       .bk-tile small { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
       .bk-when > div:last-child b { display: block; font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 26px; letter-spacing: .03em; text-transform: uppercase; line-height: 1; }
-      .bk-when > div:last-child small { display: block; margin-top: 4px; font-size: 13px; color: rgba(255,255,255,.7); }
+      .bk-when > div:last-child small { display: block; margin-top: 4px; font-size: 13px; color: rgba(255,255,255,.88); }
       .bk-rows { margin: 0; padding: 6px 18px; }
-      .bk-rows div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 13.5px; }
-      .bk-rows dt { color: rgba(255,255,255,.6); }
+      .bk-rows div { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.28); font-size: 13.5px; }
+      .bk-rows dt { color: rgba(255,255,255,.85); }
       .bk-rows dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
-      .bk-send { display: block; width: calc(100% - 36px); margin: 14px 18px 0; height: 52px; border: none; border-radius: var(--r-btn, 12px); corner-shape: squircle; background: #fff; color: #0a0a0b;
+      .bk-send { display: block; width: calc(100% - 36px); margin: 14px 18px 0; height: 52px; border: none; border-radius: var(--r-btn, 12px); corner-shape: squircle; background: #fff; color: var(--ink-2, #b91c1c);
         font-family: var(--bold, inherit); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
       .bk-send:disabled { opacity: .6; }
-      .bk-fail { margin: 10px 18px 0; font-size: 13px; color: #fca5a5; }
-      .bk-fine { margin: 10px 18px 18px; font-size: 12px; color: rgba(255,255,255,.6); text-align: center; }
+      .bk-fail { margin: 10px 18px 0; font-size: 13px; font-weight: 600; color: #fff; }
+      .bk-fine { margin: 10px 18px 18px; font-size: 12px; color: rgba(255,255,255,.88); text-align: center; }
     `}</style>
   );
 }

@@ -94,7 +94,7 @@ function HandoverStyle() {
       .hb-eb { margin: 0 0 8px; font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
       .hb-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line, #e5e7eb); }
       .hb-list li { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
-      .hb-list i { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; corner-shape: squircle; display: flex; align-items: center; justify-content: center; background: var(--ink, #0a0a0b); color: var(--on-ink, #fff); }
+      .hb-list i { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; corner-shape: squircle; display: flex; align-items: center; justify-content: center; background: var(--ink, #dc2626); color: var(--on-ink, #fff); }
       .hb-list b { display: block; font-size: 15px; font-weight: 600; color: var(--t1, #0a0a0b); }
       .hb-list span { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.5; color: var(--t2, #4b5563); }
       .hb-count { display: flex; align-items: center; gap: 16px; margin: 30px 0 14px; }

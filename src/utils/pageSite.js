@@ -46,7 +46,7 @@ export const KM_MAX = 3000;
 export const MIN_MAX = 2880;
 export const PROMO_DAYS_MAX = 120; // an end date further out than this is refused
 // PAGE-SITE 3 (owner, 2026-11-26, after a Proton advisor's site): handover checklist, buying steps,
-// FAQ, labelled rankings, best sellers, booking time slots. All the seller's own words.
+// FAQ, labelled rankings, best sellers. (Booking times are the seller's Availability, src/utils/pageBooking.js.) All the seller's own words.
 export const LIST_MAX = 8;        // handover lines, buying steps
 export const LINE_T_MAX = 60;     // a line's title
 export const LINE_D_MAX = 200;    // a line's explanation
@@ -56,8 +56,6 @@ export const FAQ_A_MAX = 500;
 export const RANK_MAX = 6;
 export const RANK_TITLE_MAX = 60;
 export const BEST_MAX = 80;
-export const SLOT_MAX = 8;
-export const DEFAULT_SLOTS = ['10:00', '11:30', '14:00', '15:30', '17:00'];
 // Starters the editor offers (the seller adds, edits or deletes them; nothing shows until saved).
 export const HANDOVER_STARTERS = [
   { t: 'We check the car together', d: 'Body, paint, tyres and papers, before the keys are yours.' },
@@ -86,7 +84,7 @@ const addDays = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 864000
 export const myToday = (now = new Date()) => malaysiaDate(now);
 
 export const EMPTY_SITE = { v: SITE_VERSION, order: [...SITE_SECTIONS], off: [], promos: [], notes: [], delivery: { base: '', items: [] },
-  handover: [], steps: [], faq: [], ranks: [], rankTitle: '', best: '', slots: [] };
+  handover: [], steps: [], faq: [], ranks: [], rankTitle: '', best: '' };
 
 // Any saved value -> a valid full site. Never throws, never invents: bad rows are dropped.
 export function cleanSite(raw) {
@@ -151,20 +149,12 @@ export function cleanSite(raw) {
     if (ranks.length >= RANK_MAX) break;
   }
   ranks.sort((a, b) => a.m.localeCompare(b.m));
-  const slots = [];
-  for (const t of Array.isArray(r.slots) ? r.slots : []) {
-    const v = String(t || '');
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v) || slots.includes(v)) continue;
-    slots.push(v);
-    if (slots.length >= SLOT_MAX) break;
-  }
-  slots.sort();
   const rankTitle = clean(r.rankTitle, RANK_TITLE_MAX);
   const best = clean(r.best, BEST_MAX);
   return {
     v: SITE_VERSION, order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items },
     handover: lines(r.handover, LIST_MAX), steps: lines(r.steps, LIST_MAX), faq, ranks,
-    rankTitle: hasNumberRun(rankTitle) ? '' : rankTitle, best: hasNumberRun(best) ? '' : best, slots,
+    rankTitle: hasNumberRun(rankTitle) ? '' : rankTitle, best: hasNumberRun(best) ? '' : best,
   };
 }
 
@@ -188,8 +178,6 @@ export function rankProblem(x, now = new Date()) {
 }
 // "Sep" / "Sept 2026" for a rank tile.
 export const rankMonth = (m) => new Date(`${m}-01T00:00:00Z`).toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
-// The booking slots to offer: the seller's, else the defaults.
-export const bookSlots = (site) => (site?.slots?.length ? site.slots : DEFAULT_SLOTS);
 // "11:30" -> "11:30 am"
 export function slotLabel(t) {
   const [h, m] = String(t).split(':').map(Number);

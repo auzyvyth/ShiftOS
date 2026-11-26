@@ -44,8 +44,8 @@ export default function StepsBlock({ steps, firstName }) {
           border-radius: var(--r-chip, 10px); corner-shape: squircle; cursor: pointer; text-align: left; color: var(--t2, #4b5563); font-family: inherit; transition: background .2s, color .2s, border-color .2s; }
         .sb-rail em { font-style: normal; font-family: var(--head, 'Bebas Neue'), sans-serif; font-size: 24px; line-height: 1; color: var(--t3, #9ca3af); }
         .sb-rail span { font-size: 13px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-        .sb-rail button[aria-selected="true"] { background: var(--ink, #0a0a0b); border-color: var(--ink, #0a0a0b); color: var(--on-ink, #fff); }
-        .sb-rail button[aria-selected="true"] em { color: rgba(255,255,255,.6); }
+        .sb-rail button[aria-selected="true"] { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: var(--on-ink, #fff); }
+        .sb-rail button[aria-selected="true"] em { color: rgba(255,255,255,.85); }
         .sb-panel { padding: 22px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--r-card, 16px); corner-shape: squircle; }
         .sb-k { margin: 0; font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
         .sb-panel h3 { margin: 6px 0 0; font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: .02em; text-transform: uppercase; color: var(--t1, #0a0a0b); overflow-wrap: anywhere; }
@@ -53,7 +53,7 @@ export default function StepsBlock({ steps, firstName }) {
         .sb-nav { display: flex; gap: 8px; margin-top: 18px; }
         .sb-nav button { height: 44px; padding: 0 18px; border-radius: var(--r-btn, 12px); corner-shape: squircle; border: 1px solid var(--line2, #d1d5db); background: transparent; color: var(--t1, #0a0a0b);
           font-family: var(--bold, inherit); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
-        .sb-nav button:last-child { background: var(--ink, #0a0a0b); border-color: var(--ink, #0a0a0b); color: var(--on-ink, #fff); }
+        .sb-nav button:last-child { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: var(--on-ink, #fff); }
         .sb-nav button:disabled { opacity: .35; cursor: default; }
       `}</style>
     </section>

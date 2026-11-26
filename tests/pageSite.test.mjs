@@ -1,5 +1,6 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX, lineProblem, faqProblem, rankProblem, bookSlots, slotLabel, DEFAULT_SLOTS } from '../src/utils/pageSite.js';
+import { daySlots, bookDays, slotMs } from '../src/utils/pageBooking.js';
+import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX, lineProblem, faqProblem, rankProblem, slotLabel } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -62,8 +63,13 @@ is('handover line with a phone number is dropped', cleanSite({ handover: [{ t: '
 is('steps capped at 8', cleanSite({ steps: Array.from({ length: 12 }, (_, i) => ({ t: `S${i}` })) }).steps.length, 8);
 is('faq needs both halves', cleanSite({ faq: [{ q: 'Rate?' }, { q: 'Rate?', a: 'The bank decides.' }] }).faq, [{ q: 'Rate?', a: 'The bank decides.' }]);
 is('ranks: bad month / rank dropped, one per month, sorted', cleanSite({ ranks: [{ m: '2026-09', n: 1 }, { m: '2026-13', n: 1 }, { m: '2026-07', n: 120 }, { m: '2026-09', n: 3 }, { m: '2026-07', n: 2 }] }).ranks, [{ m: '2026-07', n: 2 }, { m: '2026-09', n: 1 }]);
-is('slots: valid, unique, sorted', cleanSite({ slots: ['17:00', '10:00', '10:00', '25:00', 'noon'] }).slots, ['10:00', '17:00']);
-is('no slots = the defaults', bookSlots(cleanSite({})), DEFAULT_SLOTS);
+// Booking days/times come from the seller's Availability (Malaysian time)
+const R = { weekdays: [1, 2, 3, 4, 5], startHour: 9, endHour: 12, slotMinutes: 60 };
+const NOW = Date.parse('2026-11-26T02:30:00Z'); // Thu 10:30 am in Malaysia
+is('today: past times dropped', daySlots(R, '2026-11-26', new Set(), NOW), ['11:00']);
+is('booked time dropped', daySlots(R, '2026-11-27', new Set([slotMs('2026-11-27', '10:00')]), NOW), ['09:00', '11:00']);
+is('weekend skipped, Thu first', bookDays(R, '2026-11-26', new Set(), NOW).slice(0, 3), ['2026-11-26', '2026-11-27', '2026-11-30']);
+is('a full day is skipped', bookDays(R, '2026-11-26', new Set(['09:00','10:00','11:00'].map((t) => slotMs('2026-11-27', t))), NOW).slice(0, 2), ['2026-11-26', '2026-11-30']);
 is('slot label', [slotLabel('11:30'), slotLabel('14:00'), slotLabel('00:30')], ['11:30 am', '2:00 pm', '12:30 am']);
 is('rank in a future month refused', rankProblem({ m: '2026-12', n: 1 }, new Date('2026-11-26T05:00:00Z')), 'That month has not happened yet.');
 is('rank ok', rankProblem({ m: '2026-09', n: 1 }, new Date('2026-11-26T05:00:00Z')), '');

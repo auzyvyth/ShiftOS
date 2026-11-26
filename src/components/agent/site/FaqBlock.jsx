@@ -37,7 +37,7 @@ export default function FaqBlock({ faq, firstName }) {
         .fq-it button span { min-width: 0; overflow-wrap: anywhere; }
         .fq-it i { flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; corner-shape: squircle; display: flex; align-items: center; justify-content: center;
           background: var(--k1, #f4f4f6); color: var(--t1, #0a0a0b); transition: transform .25s ease, background .2s, color .2s; }
-        .fq-it button[aria-expanded="true"] i { transform: rotate(45deg); background: var(--ink, #0a0a0b); color: var(--on-ink, #fff); }
+        .fq-it button[aria-expanded="true"] i { transform: rotate(45deg); background: var(--ink, #dc2626); color: var(--on-ink, #fff); }
         .fq-a p { margin: 0 0 16px; max-width: 62ch; font-size: 14.5px; line-height: 1.65; color: var(--t2, #4b5563); white-space: pre-line; overflow-wrap: anywhere; }
         @media (prefers-reduced-motion: reduce) { .fq-it i { transition: none; } }
       `}</style>
