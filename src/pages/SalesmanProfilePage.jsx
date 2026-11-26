@@ -1,10 +1,13 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
+import { useSeeThrough, useFirstSeeThrough } from '../utils/seeThrough';
+import { useHeroCarClip } from '../components/agent/useHeroCarClip';
 import { coverObjectPosition } from '../utils/coverFocus';
+import CarRing, { useRingCars, ringCarsFor } from '../components/agent/site/CarRing';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
@@ -19,7 +22,19 @@ import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
-import BudgetFinder from '../components/agent/BudgetFinder';
+import PageCalculator from '../components/agent/PageCalculator';
+import PageNav from '../components/agent/PageNav';
+import SiteStyle from '../components/agent/site/SiteStyle';
+import PageLook from '../components/agent/site/PageLook';
+import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
+import ModelPicker from '../components/agent/site/ModelPicker';
+import DeliveryBlock from '../components/agent/site/DeliveryBlock';
+import HandoverBlock from '../components/agent/site/HandoverBlock';
+import StepsBlock from '../components/agent/site/StepsBlock';
+import FaqBlock from '../components/agent/site/FaqBlock';
+import BookBlock from '../components/agent/site/BookBlock';
+import { heroFrame, heroFrameFor, HERO_DESK_MIN_W, withHeroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates, heroCarStyle } from '../utils/heroFrame';
+import { withSampleSite, cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -204,8 +219,20 @@ function AgentCarCard({ car, num, onClick, refSlug }) {
   );
 }
 
+// The hero's place chip, as typed by the seller but tidied for display only: stray spaces and
+// commas dropped, an all-lowercase word capitalised ("Wilayah persekutuan ," -> "Wilayah Persekutuan").
+function tidyPlace(...parts) {
+  return parts
+    .map((p) => String(p || '').replace(/[\s,]+$/, '').replace(/^[\s,]+/, '').replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .map((p) => p.split(' ').map((w) => (w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(' '))
+    .join(', ');
+}
+
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
+  const heroPreviewMode = typeof window !== 'undefined' && window.parent !== window
+    && new URLSearchParams(window.location.search).get('heroPreview') === '1';
   const navigate = useNavigate();
   // Back = wherever the visitor was before this page. With no in-app history
   // (history.state.idx 0) a buyer from a TikTok / WhatsApp link goes to the
@@ -399,7 +426,7 @@ export default function SalesmanProfilePage() {
 
       // Log the mini-page visit (footprint). Keyed on the agent's slug so it
       // shows in their own dashboard; dealer_id so the parent dealer sees it.
-      if (!visitTracked.current) {
+      if (!visitTracked.current && !heroPreviewMode) {
         visitTracked.current = true;
         trackEvent(supabase, 'minipage_view', {
           salesman_slug: slug,
@@ -503,6 +530,91 @@ export default function SalesmanProfilePage() {
   // NICKNAME-1: the seller's social media name (get_agent_nickname), every plan. Its own call, so a missing
   // function (database change not applied yet) or a slow database just means no "@name" this time.
   const [nickname, setNickname] = useState('');
+  // PAGE-HERO: the seller's hero photo, its own call (like get_agent_about) so a
+  // missing function before tonight's migration just leaves the profile photo.
+  const [heroUrl, setHeroUrl] = useState(null);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setHeroUrl(null); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_hero', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setHeroUrl(!r?.error && typeof r?.data === 'string' ? r.data : null); })
+      .catch(() => { if (!off) setHeroUrl(null); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
+  // PAGE-SITE 2: the seller's promos, delivery towns and section order (get_agent_site),
+  // its own call like get_agent_hero: before the migration is applied, or when the
+  // database is slow, the page simply shows its default sections.
+  const [siteRaw, setSiteRaw] = useState(null);
+  // The model picker's "Work out my instalment": the calculator opens on THAT model at THAT variant's price.
+  const [calcFocus, setCalcFocus] = useState(null);
+  const openCalc = (pick) => {
+    setCalcFocus({ ...pick, n: Date.now() });
+    setTimeout(() => document.getElementById('ap-calc')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setSiteRaw(null); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_site', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setSiteRaw(!r?.error && r?.data && typeof r.data === 'object' ? r.data : null); })
+      .catch(() => { if (!off) setSiteRaw(null); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
+  // PAGE-SITE 3: the seller's handover photos (each with a recorded buyer consent), own call too.
+  const [handoverPhotos, setHandoverPhotos] = useState([]);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setHandoverPhotos([]); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_handover_photos', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setHandoverPhotos(!r?.error && Array.isArray(r?.data) ? r.data : []); })
+      .catch(() => { if (!off) setHandoverPhotos([]); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
+  // A .png/.webp name is not proof of see-through (stock new-car photos are
+  // .webp on white): read the pixels. The car stands in front of the seller
+  // only when the seller is a cut-out too; in front of a framed photo it crowds.
+  // HERO-PREVIEW (owner, 2026-11-26: "the preview in dashboard gets the same result it would on the
+  // page"): Premium Settings shows THIS page in a frame (`?heroPreview=1`) at a real phone / desktop
+  // width and posts the unsaved photo + settings here. Only a parent on our own origin is listened to;
+  // the frame shows the buyer's view (no owner buttons) and logs no visit.
+  const [heroOverride, setHeroOverride] = useState(null); // { url, cut }
+  useEffect(() => {
+    if (!heroPreviewMode) return undefined;
+    const on = (e) => {
+      if (e.origin !== window.location.origin || e.source !== window.parent) return;
+      const d = e.data;
+      if (d?.type !== 'xd-hero-preview') return;
+      const u = typeof d.url === 'string' && /^(blob:|https:)/.test(d.url) ? d.url : null;
+      setHeroOverride(u ? { url: withHeroFrame(u, d.frame || {}), cut: !!d.cut } : null);
+    };
+    window.addEventListener('message', on);
+    window.parent.postMessage({ type: 'xd-hero-preview-ready' }, window.location.origin);
+    return () => window.removeEventListener('message', on);
+  }, []);
+  const heroUrlShown = heroOverride ? heroOverride.url : heroUrl;
+  // PAGE-HERO 2: size, position and which car (or none) ride on the hero URL (src/utils/heroFrame.js).
+  // HERO-DESK: desktop has its own size / position / car size (phone's when never set).
+  const [heroDesk, setHeroDesk] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(`(min-width: ${HERO_DESK_MIN_W}px)`).matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.(`(min-width: ${HERO_DESK_MIN_W}px)`);
+    if (!mq) return undefined;
+    const on = () => setHeroDesk(mq.matches);
+    on();
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  const heroFrameSet = heroFrameFor(heroFrame(heroUrlShown), heroDesk);
+  const heroImgUrl = heroUrlShown ? heroImageUrl(heroUrlShown) : (profile?.avatar_url || null);
+  const heroCutChecked = useSeeThrough(profile && !profile.page_basic && !heroOverride ? heroImgUrl : null);
+  const heroCutState = heroOverride ? heroOverride.cut : heroCutChecked;
+  const ringAll = useRingCars(profile && !profile.page_basic && heroFrameSet.layout === 'card' ? listings : null);
+  const ringCars = useMemo(() => (ringAll ? ringCarsFor(ringAll, heroFrameSet.ringBrand) : null), [ringAll, heroFrameSet.ringBrand]);
+  const heroCarUrl = useFirstSeeThrough(heroCutState === true ? heroCarCandidates(listings, heroFrameSet) : []);
+  // HERO-CLIP: the seller's photo ends at the car's tyres (nothing of them shows under the car).
+  const heroMeRef = useRef(null);
+  const heroCarRef = useRef(null);
+  const heroClip = useHeroCarClip(heroMeRef, heroCarRef, heroCarUrl,
+    [heroImgUrl, heroFrameSet.size, heroFrameSet.x, heroFrameSet.y, heroFrameSet.carSize, heroFrameSet.layout]);
+
   useEffect(() => {
     if (!slug || !profile?.id) { setNickname(''); return undefined; }
     let alive = true;
@@ -581,7 +693,8 @@ export default function SalesmanProfilePage() {
   // shell into a to-do list, and it renders for the OWNER ONLY: a buyer must
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
-  const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  const isOwner = !heroPreviewMode && !!viewerId && !!profile && viewerId === profile.id;
+  const [showSamples, setShowSamples] = useState(true);
   // LIVE-ORDER: the seller arranged their "#N" numbers in the Live presenter. The
   // page (and so the presenter, the Live now card and every viewer's page) takes
   // the new order at once; the account saves it. A failed save puts it back.
@@ -810,7 +923,7 @@ export default function SalesmanProfilePage() {
               {/* Location: the agent's own address, else (linked) the dealership's. */}
               {mapLocationStr && (
                 <>
-                  <div className="ap-sec"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
+                  <div className="ap-sec" id="ap-find"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
                   <div className="ap-card ap-map">
                     <iframe
                       title={ownLocationStr ? 'My location' : 'Dealership location'}
@@ -830,17 +943,31 @@ export default function SalesmanProfilePage() {
     <>
               {/* Seller reviews (same feature as CarDetailPage, seller-scoped). Its
                   tally feeds the stats row via onSummary. */}
-              <ReviewsSection
+              <div className="ap-reviews"><ReviewsSection
                 dealerId={profile.id}
                 sellerName={profile.full_name || firstName || 'this seller'}
                 isXdrive
                 th={LIGHT_REVIEW_TH}
                 onSummary={setReviewSummary}
-              />
+              /></div>
     </>
   );
+  // Owner-only samples: the seller looking at their own page sees example rows in the empty
+  // sections (never saved, never shown to a buyer). "Hide samples" turns them off for this visit.
+  const sampleModels = [...new Set(listings.filter((c) => c.is_model_card).map((c) => [c.brand, c.model].filter(Boolean).join(' ')))];
+  const sampled = isOwner && pro && showSamples ? withSampleSite(siteRaw, { models: sampleModels }) : null;
+  const site = sampled ? sampled.site : cleanSite(siteRaw);
+  const sampleNote = sampled && sampled.filled.length > 0 && (
+    <div className="ap-sample-note" role="note">
+      <span><b>Sample sections, only you see them.</b> Buyers see a section only once you fill it in Settings &gt; Your page.</span>
+      <button type="button" onClick={() => setShowSamples(false)}>Hide samples</button>
+    </div>
+  );
   const facts = aboutFacts(about);
-  const aboutSec = (profile.bio || facts.length > 0) && (
+  // PAGE-SITE 3: the seller's own rankings (labelled: Drevo cannot check them) and best sellers.
+  const ranks = pro ? site.ranks : [];
+  const best = pro ? site.best : '';
+  const aboutSec = (profile.bio || facts.length > 0 || ranks.length > 0 || best) && (
     <section id="ap-about" className="ap-pro-sec">
       <div className="ap-sec"><h2>About me</h2></div>
       <div className="ap-card ap-about">
@@ -850,11 +977,25 @@ export default function SalesmanProfilePage() {
             {facts.map((f) => <li key={f.key}><Check size={14} strokeWidth={2.6} />{f.text}</li>)}
           </ul>
         )}
+        {best && <p className="ap-best"><span>Best sellers</span><b>{best}</b></p>}
+        {ranks.length > 0 && (
+          <div className="ap-ranks">
+            <p className="ap-ranks-h">{site.rankTitle || 'Sales ranking'}</p>
+            <div className="ap-ranks-g">
+              {ranks.map((r) => (
+                <div key={r.m} className={r.n === Math.min(...ranks.map((x) => x.n)) ? 'is-top' : ''}>
+                  <b>No. {r.n}</b><span>{rankMonth(r.m)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="ap-ranks-f">As stated by {firstName}. Drevo has not checked it.</p>
+          </div>
+        )}
       </div>
     </section>
   );
   const whySec = (about?.my_promise || profile.specializations?.length > 0 || terms.length > 0) && (
-    <section className="ap-pro-sec">
+    <section id="ap-why" className="ap-pro-sec">
       <div className="ap-sec"><h2>Why buy from me</h2></div>
       {about?.my_promise && (
         <div className="ap-card ap-promise"><span aria-hidden="true">&ldquo;</span><p>{about.my_promise}</p></div>
@@ -873,7 +1014,7 @@ export default function SalesmanProfilePage() {
     </section>
   );
   const trackSec = (
-    <section className="ap-pro-sec">
+    <section id="ap-track" className="ap-pro-sec">
       {trust.recentSales.length > 0 && <div className="ap-sec"><h2>Track record</h2></div>}
       {trust.recentSales.length > 0 && (
         <div className="ap-card ap-sold">
@@ -888,6 +1029,282 @@ export default function SalesmanProfilePage() {
       {reviewsSec}
     </section>
   );
+
+  // Buttons on the top of the page (cover on Lite, hero on Premium).
+  const topButtons = (
+    <>
+      <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
+      <button className="ap-share" onClick={sharePage} aria-label="Share this page">
+        {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+      </button>
+      {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
+      {viewerHome && !heroPreviewMode && (
+        <div className="ap-owner">
+          <Link to={viewerHome.to} style={ownerChip}>
+            {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
+          </Link>
+          {/* Every seller plan gets it, Lite included (owner, 2026-10-18).
+              Always shown to the owner: with no approved car it says why
+              instead of vanishing (a new seller looked for it and it was gone). */}
+          {isOwner && (
+            <button onClick={openLive} style={ownerChip}>
+              <Radio size={12} /> Live presentation
+            </button>
+          )}
+          {isOwner && liveBlock && (
+            <span role="status" style={{ ...ownerChip, cursor: 'default', whiteSpace: 'normal', maxWidth: 300, lineHeight: 1.4 }}>
+              {liveBlock === 'pending'
+                ? 'Your car is waiting for approval. Live presentation opens once a car is approved.'
+                : 'Add a car first. Live presentation shows the cars on this page.'}
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+  // PAGE-HERO (owner, 2026-11-25): on a Premium page the SELLER is the hero.
+  // Their photo big on the right (a see-through cut-out stands on the band, an
+  // ordinary photo sits in a tall frame), with a car in front only when its photo
+  // is a cut-out (a rectangle in front of a person looks broken). Everything the
+  // old side card said is said here, once: name, verified, numbers, WhatsApp.
+  const heroImg = heroImgUrl;
+  const heroCut = heroCutState === true;
+  const heroWait = heroCutState === null && !!heroImg;
+  const heroBio = profile.bio || malayLine;
+  // PAGE-HERO 2 (owner, 2026-11-26): two layouts, picked in Settings > Your photo. 'card' = a white
+  // business card: a small round photo beside the name, then the same words, numbers and WhatsApp.
+  const heroCard = heroFrameSet.layout === 'card';
+  const cardPhoto = profile.avatar_url || heroImg;
+  const heroPro = pro && heroCard ? (
+    <header className="aph aph--card">
+      {/* The card's top band (owner, 2026-11-26: "looks like Lite", white-on-white buttons): the seller's
+          cover photo, else their page colour. Both are already set in Settings (cover + Page colour). */}
+      {/* CAR-RING (owner, 2026-11-26): the seller's cut-out cars on a turning ring. No cut-out = their cover
+          photo, else a dark studio lit in their page colour (never the flat colour band, "same as Lite"). */}
+      <div className={`aph-band${ringCars?.length ? ' aph-band--ring' : ''}`}>
+        {ringCars?.length
+          ? <CarRing cars={ringCars} />
+          : profile.cover_url && <img src={cdnImg(profile.cover_url, 1600, 70)} alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />}
+      </div>
+      {topButtons}
+      <div className="aph-in">
+        <div className="aph-bc">
+          {/* Business card: Share sits on the right, level with the middle of the photo (owner, 2026-11-26). */}
+          <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
+            {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+          </button>
+          {cardPhoto
+            ? <img className="aph-bc-ph" src={cdnImg(cardPhoto, 240, 80)} alt={profile.full_name} />
+            : <div className="aph-bc-ph aph-mono" aria-hidden="true">{initial}</div>}
+          <div className="aph-bc-id">
+            <h1 className="aph-name">
+              {nameHead}
+              <span className="ap-last">{nameTail}{isVerified && (
+                <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              )}</span>
+            </h1>
+            {(agentNickname(seoProfile) || profile.job_title) && (
+              <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
+            )}
+            {dealer?.dealership && <p className="aph-role">Works at {dealer.dealership}</p>}
+          </div>
+        </div>
+        <div className="aph-chips">
+          <span>{sellerKind}</span>
+          {(locationCity || locationState) && <span className="aph-locchip"><MapPin size={12} style={{ flexShrink: 0 }} /><i className="aph-loc">{tidyPlace(locationCity, locationState)}</i></span>}
+          {isVerified && <span><ShieldCheck size={12} />ID verified by Drevo</span>}
+        </div>
+        {heroBio && <p className="aph-bio">{heroBio}</p>}
+        <div className="aph-stats">
+          {stats.map((st) => (
+            <div key={st.key}><b>{st.n}{st.suffix && <small>{st.suffix}</small>}</b><span>{st.l}</span></div>
+          ))}
+          {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
+        </div>
+        <div className="aph-cta">
+          {waHref && <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}<span>WhatsApp {firstName}</span></a>}
+          {socials.map((so) => (
+            <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="aph-ico" title={so.label} aria-label={so.label}>{SOCIAL_ICONS[so.key]}</a>
+          ))}
+        </div>
+      </div>
+    </header>
+  ) : pro && (
+    <header className={`aph${profile.cover_url ? ' aph--cover' : ''}`}>
+      {profile.cover_url && (
+        <img className="aph-bg" src={cdnImg(profile.cover_url, 1600, 70)} alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
+      )}
+      <span className="aph-glow" aria-hidden="true" />
+      {topButtons}
+      <div className="aph-in">
+        <div className="aph-text">
+          <div className="aph-chips">
+            <span>{sellerKind}</span>
+            {(locationCity || locationState) && <span className="aph-locchip"><MapPin size={12} style={{ flexShrink: 0 }} /><i className="aph-loc">{tidyPlace(locationCity, locationState)}</i></span>}
+            {isVerified && <span><ShieldCheck size={12} />ID verified by Drevo</span>}
+          </div>
+          <h1 className="aph-name">
+            {nameHead}
+            <span className="ap-last">{nameTail}{isVerified && (
+              <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#fff" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#0f1115" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}</span>
+          </h1>
+          {(agentNickname(seoProfile) || profile.job_title) && (
+            <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
+          )}
+          {dealer?.dealership && <p className="aph-role">Works at {dealer.dealership}</p>}
+          {heroBio && <p className="aph-bio">{heroBio}</p>}
+          <div className="aph-cta">
+            {waHref && <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}<span>WhatsApp {firstName}</span></a>}
+            {socials.map((so) => (
+              <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="aph-ico" title={so.label} aria-label={so.label}>{SOCIAL_ICONS[so.key]}</a>
+            ))}
+          </div>
+          <div className="aph-stats">
+            {stats.map((st) => (
+              <div key={st.key}><b>{st.n}{st.suffix && <small>{st.suffix}</small>}</b><span>{st.l}</span></div>
+            ))}
+            {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
+          </div>
+        </div>
+        <div className={`aph-pic keep-alpha${heroCut ? ' aph-pic--cut' : ''}${heroCarUrl ? ' aph-pic--car' : ''}${heroWait ? ' aph-pic--wait' : ''}`}>
+          {heroImg
+            ? <img ref={heroMeRef} className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name}
+                style={heroCarUrl && heroClip ? { ...heroPersonStyle(heroFrameSet, heroCut), clipPath: heroClip } : heroPersonStyle(heroFrameSet, heroCut)} />
+            : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
+          {heroCarUrl && <img ref={heroCarRef} className="aph-car" src={heroCarUrl} alt="" style={heroCarStyle(heroFrameSet)} />}
+        </div>
+      </div>
+    </header>
+  );
+
+  // The cars grid and the calculator, as values so a Premium page can order them (PAGE-SITE 2).
+  const carsSec = (
+    <>
+              <div className="ap-sec" id="ap-cars">
+                <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
+                {shownListings.length > 1 && (
+                  <div className="ap-seg" role="group" aria-label="Sort cars">
+                    <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
+                    <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
+                  </div>
+                )}
+              </div>
+              {showBrandTabs && (
+                <div className="ap-brands" role="group" aria-label="Brands">
+                  <button type="button" aria-pressed={!pickedBrand} onClick={() => setBrandTab('all')}>All <span>{listings.length}</span></button>
+                  {pageBrands.map((b) => (
+                    <button key={b} type="button" aria-pressed={pickedBrand === b} onClick={() => setBrandTab(b)}>
+                      {b} <span>{listings.filter((c) => brandName(c) === b).length}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
+              {docsLine && (
+                <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
+              )}
+
+              {loading && listings.length === 0 ? (
+                <div className="ap-grid" aria-busy="true" aria-label="Loading cars">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="ap-card ap-car ap-skel">
+                      <div className="ap-ph" />
+                      <div className="ap-cb"><i /><i /><i /></div>
+                    </div>
+                  ))}
+                </div>
+              ) : brandBlocks ? (
+                brandBlocks.map((g) => (
+                  <section key={g.brand} className="ap-bblock" aria-label={`${g.brand} cars`}>
+                    <h3 className="ap-bhead">{g.brand} <span>{g.cars.length}</span></h3>
+                    <div className="ap-grid">
+                      {g.cars.map((car) => (
+                        <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
+                      ))}
+                    </div>
+                  </section>
+                ))
+              ) : shownListings.length > 0 ? (
+                <div className="ap-grid">
+                  {shownListings.map((car) => (
+                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
+                  No cars for sale right now.
+                </div>
+              )}
+    </>
+  );
+  const calcSec = (
+    <>
+              {/* Premium only (PAGE-SITE): the page's one money block, under the cars.
+                  A Lite page (page_basic) shows exactly what it showed before. */}
+              {pro && !profile.page_basic && shownListings.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <PageCalculator
+                    listings={pickedBrand ? shownListings : listings}
+                    firstName={firstName}
+                    hasWa={hasWa}
+                    focus={calcFocus}
+                    waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
+                    onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
+                      car_id: car.id,
+                      dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
+                      salesman_slug: slug,
+                      metadata: { source: 'page_calculator' },
+                    })}
+                  />
+                </div>
+              )}
+    </>
+  );
+  const hasModels = pro && listings.some((c) => c.is_model_card);
+  const calcOk = pro && !profile.page_basic && shownListings.length > 0;
+  const siteWa = (source, item) => trackEvent(supabase, 'whatsapp_click', {
+    car_id: item?.id || null,
+    dealer_id: item?.dealer_id || profile?.dealer_id || profile?.id || null,
+    salesman_slug: slug,
+    metadata: { source: `page_${source}` },
+  });
+  const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
+  const siteNodes = {
+    promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
+    cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
+    calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
+    delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    handover: <HandoverBlock key="handover" items={site.handover} photos={handoverPhotos} soldCount={soldCount} firstName={firstName} />,
+    steps: <StepsBlock key="steps" steps={site.steps} firstName={firstName} />,
+    book: <BookBlock key="book" cars={listings} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
+    faq: <FaqBlock key="faq" faq={site.faq} firstName={firstName} />,
+  };
+  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: listings.some((c) => c.status === 'available' && c.dealer_id) }) : [];
+  // The page reads as rows (owner, 2026-11-25: "everything is too wide"): models + cars take a
+  // row each, the other sections go two to a row on a wide screen. The fixed sections after
+  // the seller's own (About, Why me, Track record, Find me) join the same flow.
+  const flowItems = [
+    ...siteIds.map((id) => ({ id, span: SECTION_SPAN[id], node: siteNodes[id] })),
+    ...(pro ? [
+      aboutSec && { id: 'about', span: 'half', node: <React.Fragment key="about">{aboutSec}</React.Fragment> },
+      whySec && { id: 'why', span: 'half', node: <React.Fragment key="why">{whySec}</React.Fragment> },
+      { id: 'track', span: 'half', node: <React.Fragment key="track">{trackSec}</React.Fragment> },
+      mapLocationStr && { id: 'find', span: 'half', node: <React.Fragment key="find">{mapSec}</React.Fragment> },
+    ] : []).filter(Boolean),
+  ];
+  const siteBody = (
+    <>
+      {sampleNote}
+      {flowRows(flowItems).map((row) => (
+        <div key={row.map((x) => x.id).join('+')} className={`ps-row${row.length === 2 ? ' ps-row--2' : row[0].span === 'half' ? ' ps-row--half' : ''}`}>
+          {row.map((x) => x.node)}
+        </div>
+      ))}
+    </>
+  );
+  const hasPromos = pro && activePromos(site).length > 0;
 
   return (
     <>
@@ -991,6 +1408,8 @@ export default function SalesmanProfilePage() {
         .ap-car:hover { box-shadow: 0 8px 22px rgba(15,23,42,.12); transform: translateY(-2px); }
         .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
         .ap-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* PAGE-SITE: a Premium card shows the WHOLE car (a wide photo was cropped at the sides). The grey behind is the card's own. Lite keeps cover. */
+        .ap--pro .ap-ph img { object-fit: contain; }
         .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: ap-pulse 1.4s ease-in-out infinite; }
         .ap-skel .ap-cb i { display: block; height: 12px; border-radius: 6px; background: #EDEAE3; margin-bottom: 10px; }
         .ap-skel .ap-cb i:nth-child(1) { width: 80%; } .ap-skel .ap-cb i:nth-child(2) { width: 55%; } .ap-skel .ap-cb i:nth-child(3) { width: 40%; height: 18px; margin-bottom: 0; }
@@ -1081,6 +1500,115 @@ export default function SalesmanProfilePage() {
           box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(9 10 12 / .10), 0 2px 3px rgb(9 10 12 / .25), 0 8px 20px rgb(9 10 12 / .18);
           transition: translate 90ms ease-out, box-shadow 90ms ease-out; }
         .ap--pro .ap-back:active, .ap--pro .ap-share:active { background: linear-gradient(#eeede9, #ffffff); box-shadow: inset 0 2px 5px rgb(9 10 12 / .22); translate: 0 2px; }
+        /* PAGE-HERO (2026-11-25): Premium = the seller is the hero (heroPro). */
+        .aph { position: relative; margin-top: 12px; border-radius: 24px; overflow: hidden; background: #0c0d10; color: #fff; isolation: isolate; }
+        .aph-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -3; }
+        .aph--cover::before { content: ''; position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(12,13,16,.55), rgba(12,13,16,.92) 55%); }
+        .aph-glow { position: absolute; z-index: -1; left: 50%; top: 40px; width: 360px; height: 360px; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle, rgba(var(--ap-rgb), .95) 0%, rgba(var(--ap-rgb), .35) 42%, rgba(var(--ap-rgb), 0) 70%); }
+        /* PHONE (owner, 2026-11-25: "the hero is too long, it doesn't fit the screen"): the hero answers to the
+           screen's height (svh), so the name, the WhatsApp button and the numbers show without a scroll. */
+        .aph-in { display: flex; flex-direction: column; gap: 10px; padding: 54px 16px 16px; }
+        /* PAGE-HERO 2: the business card layout (white, a small round photo beside the name). */
+        .ap .aph.aph--card { --k0: #ffffff; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.16); --t1: #0f1115; --t2: rgba(15,17,21,.72); --t3: rgba(15,17,21,.52);
+          background: #fff; color: #0f1115; border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(10,10,11,.04), 0 12px 32px rgba(10,10,11,.06); }
+        .aph-band { position: absolute; left: 0; right: 0; top: 0; height: 150px; overflow: clip;
+          background: radial-gradient(70% 90% at 50% 100%, rgba(var(--ap-rgb), .55), rgba(var(--ap-rgb), 0) 70%), linear-gradient(180deg, #08090b, #16181d); }
+        .aph-band > img { width: 100%; height: 100%; object-fit: cover; }
+        .aph-band::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 50%, rgba(0,0,0,.22)); }
+        /* The ring band is in the flow and as tall as its content (owner: 'too tall'); the card body overlaps it by half the photo. */
+        .aph-band--ring { position: relative; height: auto; }
+        .aph-band--ring::after { display: none; }
+        .ap .aph.aph--card { overflow: clip; }
+        /* PageLook's Back/Share are white glass with white text (for the dark hero); on the card they sit on the
+           band, so a dark glass keeps them readable on any colour or cover photo. */
+        .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
+        .aph--card .aph-in > * { pointer-events: auto; }
+        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
+        .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+        .aph--card > .ap-share { display: none; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { left: auto; right: 0; top: 30px; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
+        .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
+        .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
+        .aph-bc-id { min-width: 0; }
+        .ap .aph--card .aph-name { margin: 0 0 4px; color: #0f1115; font-size: clamp(34px, 9vw, 64px); }
+        .aph--card .aph-name svg { width: .34em; height: .34em; }
+        .aph--card .aph-role { color: var(--t3); }
+        .aph--card .aph-chips span { border-color: var(--line2); background: transparent; color: var(--t2); }
+        .aph--card .aph-bio { color: var(--t2); }
+        .aph--card .aph-stats { margin-top: 0; border-top-color: var(--line); }
+        .aph--card .aph-stats b small { color: var(--t3); }
+        .aph--card .aph-stats span { color: var(--t3); }
+        .aph--card .aph-ico { color: #0f1115; background: transparent; border-color: var(--line2); }
+        .aph--card .aph-cta { margin-top: 0; }
+        .aph-pic { order: -1; position: relative; height: clamp(130px, 22svh, 190px); display: flex; align-items: flex-end; justify-content: center; }
+        .aph-pic--cut { height: clamp(170px, 31svh, 270px); }
+        .aph-pic--wait .aph-me { opacity: 0; }
+        .aph-me { transition: opacity .2s; }
+        .aph-me { display: block; width: auto; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 28px; box-shadow: 0 30px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(var(--ap-rgb), .35); }
+        .aph-pic--cut .aph-me { height: 100%; aspect-ratio: auto; max-width: 100%; object-fit: contain; object-position: bottom; border-radius: 0; box-shadow: none; filter: drop-shadow(0 20px 30px rgba(0,0,0,.45)); }
+        .aph-mono { display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, var(--ap-a), var(--ap-a2)); font-family: 'Bebas Neue', sans-serif; font-size: 110px; color: rgba(255,255,255,.92); }
+        .aph-pic--car .aph-me { margin-bottom: 22px; }
+        .aph-car { position: absolute; z-index: 2; bottom: -6px; left: 50%; translate: -50% 0; width: min(64%, 300px); height: auto; filter: drop-shadow(0 18px 16px rgba(0,0,0,.6)); pointer-events: none; }
+        /* index.css paints #fff behind every see-through car photo (cards); not here */
+        .aph .aph-pic img.aph-car { background: transparent; }
+        .aph-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+        .ap-sample-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 18px 0 4px; padding: 12px 14px; border-radius: 12px; border: 1px dashed rgba(10,10,11,.25); background: #f6f6f7; color: #3a3d44; font-size: 13px; line-height: 1.45; }
+        .ap-sample-note b { color: #0f1115; }
+        .ap-sample-note button { flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(10,10,11,.2); background: #fff; color: #0f1115; font: inherit; font-weight: 600; cursor: pointer; }
+        .aph-chips span { white-space: nowrap; flex: 0 0 auto; }
+        .aph-chips .aph-locchip { flex: 0 1 auto; min-width: 0; height: auto !important; min-height: 26px; padding-block: 4px !important; white-space: normal !important; line-height: 1.25; }
+        .aph-loc { font-style: normal; min-width: 0; overflow-wrap: anywhere; }
+        .aph-chips span:nth-child(n+3) { display: none; } /* the verified tick sits beside the name; the full chip returns from 900px */
+        .aph-chips span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); font-size: 12px; font-weight: 500; color: rgba(255,255,255,.88); }
+        .ap .aph-name { margin: 8px 0 2px; color: #fff; font-size: clamp(46px, 13vw, 96px); line-height: .88; letter-spacing: .01em; }
+        .ap .aph-name svg { width: .3em; height: .3em; margin-top: -.08em; }
+        .aph-role { margin: 0 0 2px; font-size: 14px; font-weight: 500; color: rgba(255,255,255,.7); }
+        .aph-bio { margin: 8px 0 0; max-width: 540px; font-size: 13.5px; line-height: 1.45; color: rgba(255,255,255,.82); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+        .aph-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+        .ap--pro .aph-cta .ap-btn { flex: 1 1 100%; min-width: 0; height: 48px; padding: 0 20px; border-radius: 12px; font-size: 15px; font-weight: 600; }
+        .aph-ico { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+        .aph-ico svg { width: 18px; height: 18px; }
+        .aph-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); }
+        .aph-stats b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 26px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+        .aph-stats b small { font-size: 18px; color: rgba(255,255,255,.6); }
+        .aph-stats b.aph-small { display: flex; align-items: center; height: 26px; font-family: var(--xd-font-body); font-size: 14px; font-weight: 600; line-height: 1; padding: 0; white-space: nowrap; }
+        .aph-stats span { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.58); }
+        @media (max-height: 740px) and (max-width: 899px) { .aph-bio { display: none; } }
+        @media (min-width: 900px) {
+          .aph-chips { flex-wrap: wrap; }
+          .aph-chips span:nth-child(n+3) { display: inline-flex; }
+          .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 440px; padding: 76px 48px 36px; }
+          .aph--card .aph-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'id id' 'chips chips' 'bio bio' 'stats cta';
+            align-items: end; min-height: 0; gap: 16px 32px; padding: 76px 40px 32px; }
+          .aph--card .aph-bc { grid-area: id; } .aph--card .aph-chips { grid-area: chips; } .aph--card .aph-bio { grid-area: bio; }
+          .aph--card .aph-stats { grid-area: stats; } .aph--card .aph-cta { grid-area: cta; justify-self: end; }
+          .aph-band { height: 190px; }
+          .aph-band.aph-band--ring { height: auto; }
+          .aph--card .aph-in { padding-top: 126px; }
+          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
+          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 34cqw; --under: 44px; }
+          .aph-band .cring-label b { font-size: 44px; }
+          .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
+          .aph-bc-id { padding-top: 76px; }
+          .aph-bc-ph { width: 136px; height: 136px; }
+          .ap--pro .aph--card .aph-bc .aph-bc-share { top: 50px; }
+          .aph-pic { order: 0; height: 100%; min-height: 340px; }
+          .aph-pic--cut { height: 500px; align-self: end; }
+          .aph-pic:not(.aph-pic--cut) { align-items: center; }
+          .aph-pic:not(.aph-pic--cut) .aph-me { height: auto; width: min(100%, 300px); }
+          .aph-text { align-self: center; }
+          .aph-glow { left: auto; right: 4%; top: 12%; width: 520px; height: 520px; translate: none; }
+          .aph-cta { flex-wrap: nowrap; }
+          .ap--pro .aph-cta .ap-btn { flex: 0 0 auto; }
+          .aph-ico { width: 48px; height: 48px; }
+          .aph-car { left: 46%; bottom: -18px; width: min(140%, 660px); max-width: none; }
+          .aph-pic--car .aph-me { margin-bottom: 60px; }
+        }
+        @media (min-width: 1024px) {
+          .ap--pro .ap-cols { display: block; }
+          .ap--pro .ap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
         @media (prefers-reduced-motion: reduce) { .ap--pro .ap-btn, .ap--pro .ap-back, .ap--pro .ap-share { transition: none; } .ap--pro .ap-btn:active, .ap--pro .ap-back:active, .ap--pro .ap-share:active { translate: none; } }
         /* PAGE-PRO 2: the person, after the cars. */
         .ap-bio--short p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1089,6 +1617,17 @@ export default function SalesmanProfilePage() {
         .ap-about { padding: 20px; }
         .ap-about-bio { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-line; }
         .ap-facts { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .ap-best { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-size: 14px; }
+        .ap-best span { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
+        .ap-best b { color: #0f1115; font-weight: 600; }
+        .ap-ranks { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-ranks-h { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
+        .ap-ranks-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+        .ap-ranks-g div { padding: 12px; border-radius: 10px; corner-shape: squircle; background: #f4f4f6; color: #0f1115; }
+        .ap-ranks-g div.is-top { background: #dc2626; color: #fff; }
+        .ap-ranks-g b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; letter-spacing: .02em; }
+        .ap-ranks-g span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+        .ap-ranks-f { margin: 8px 0 0; font-size: 11.5px; color: #6b7280; }
         .ap-about-bio + .ap-facts { padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
         .ap-facts li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #111827; background: #F4F2EC; border-radius: 999px; padding: 7px 12px; }
         .ap-facts svg { color: var(--ap-a); flex-shrink: 0; }
@@ -1099,6 +1638,7 @@ export default function SalesmanProfilePage() {
         .ap-spec { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 14px; font-weight: 600; color: #111827; }
         .ap-spec svg { flex-shrink: 0; width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: var(--ap-a); }
         .ap-terms--pro { margin-top: 0; padding: 18px 20px; border-top: none; }
+        @media (min-width: 1800px) { .ap-shell { max-width: 1640px; } }
         @media (min-width: 1024px) {
           .ap-cover { height: 220px; }
           .ap--pro .ap-cover { height: 300px; }
@@ -1138,7 +1678,9 @@ export default function SalesmanProfilePage() {
         <div className="ap-shell">
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
               marketplace's warm wave bands (colour lives here and nowhere else). */}
-          <div className="ap-cover">
+          {pro && <SiteStyle />}
+          {pro && <PageLook />}
+          {pro ? heroPro : <div className="ap-cover">
             {profile.cover_url ? (
               <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
             ) : (
@@ -1148,37 +1690,13 @@ export default function SalesmanProfilePage() {
                 <path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2" />
               </svg>
             )}
-            <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
-            <button className="ap-share" onClick={sharePage} aria-label="Share this page">
-              {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
-            </button>
-            {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
-            {viewerHome && (
-              <div className="ap-owner">
-                <Link to={viewerHome.to} style={ownerChip}>
-                  {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
-                </Link>
-                {/* Every seller plan gets it, Lite included (owner, 2026-10-18).
-                    Always shown to the owner: with no approved car it says why
-                    instead of vanishing (a new seller looked for it and it was gone). */}
-                {isOwner && (
-                  <button onClick={openLive} style={ownerChip}>
-                    <Radio size={12} /> Live presentation
-                  </button>
-                )}
-                {isOwner && liveBlock && (
-                  <span role="status" style={{ ...ownerChip, cursor: 'default', whiteSpace: 'normal', maxWidth: 300, lineHeight: 1.4 }}>
-                    {liveBlock === 'pending'
-                      ? 'Your car is waiting for approval. Live presentation opens once a car is approved.'
-                      : 'Add a car first. Live presentation shows the cars on this page.'}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+            {topButtons}
+          </div>}
+
+          {hasPromos && !site.off.includes('promos') && <PromoTicker site={site} />}
 
           <div className="ap-cols">
-            <div className="ap-left">
+            {!pro && <div className="ap-left">
               <div className="ap-card ap-id">
                 <div className="ap-av">
                   {profile.avatar_url ? <img src={cdnImg(profile.avatar_url, 240, 80)} alt={profile.full_name} /> : <div>{initial}</div>}
@@ -1281,9 +1799,18 @@ export default function SalesmanProfilePage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
             <div className="ap-right">
+              {pro && (
+                <PageNav items={flowItems.map((x) => ({
+                  promos: { id: 'ap-promos', label: 'Promos' }, models: { id: 'ap-models', label: 'Models' }, cars: shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
+                  calculator: shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' }, delivery: { id: 'ap-delivery', label: 'Delivery' },
+                  handover: { id: 'ap-handover', label: 'Handover' }, steps: { id: 'ap-steps', label: 'How to buy' }, book: { id: 'ap-book', label: 'Book' }, faq: { id: 'ap-faq', label: 'FAQ' },
+                  about: { id: 'ap-about', label: 'About' }, why: { id: 'ap-why', label: 'Why me' }, track: trust.recentSales.length > 0 && { id: 'ap-track', label: 'Track record' },
+                  find: { id: 'ap-find', label: 'Find me' },
+                }[x.id]))} />
+              )}
               {/* Live now: the car on the agent's live stream right now. Viewers
                   land here from the TikTok bio link, so it leads the column. */}
               {liveCar && (
@@ -1310,79 +1837,8 @@ export default function SalesmanProfilePage() {
                 </>
               )}
 
-              <div className="ap-sec">
-                <h2>{lockedBrand ? `${lockedBrand} cars` : profile.seller_type === 'new_car' ? 'New cars' : 'Cars for sale'}{shownListings.length > 0 && <> <span>{shownListings.length}</span></>}</h2>
-                {shownListings.length > 1 && (
-                  <div className="ap-seg" role="group" aria-label="Sort cars">
-                    <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
-                    <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
-                  </div>
-                )}
-              </div>
-              {showBrandTabs && (
-                <div className="ap-brands" role="group" aria-label="Brands">
-                  <button type="button" aria-pressed={!pickedBrand} onClick={() => setBrandTab('all')}>All <span>{listings.length}</span></button>
-                  {pageBrands.map((b) => (
-                    <button key={b} type="button" aria-pressed={pickedBrand === b} onClick={() => setBrandTab(b)}>
-                      {b} <span>{listings.filter((c) => brandName(c) === b).length}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
-              {docsLine && (
-                <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
-              )}
-
-              {/* Premium only (BUDGET-1): a closed drop-down until the buyer opens it.
-                  A Lite page (page_basic) shows exactly what it showed before. */}
-              {!profile.page_basic && listings.length > 0 && (
-                <BudgetFinder
-                  listings={pickedBrand ? shownListings : listings}
-                  firstName={firstName}
-                  hasWa={hasWa}
-                  waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
-                  onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
-                    car_id: car.id,
-                    dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
-                    salesman_slug: slug,
-                    metadata: { source: 'budget_finder' },
-                  })}
-                />
-              )}
-
-              {loading && listings.length === 0 ? (
-                <div className="ap-grid" aria-busy="true" aria-label="Loading cars">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="ap-card ap-car ap-skel">
-                      <div className="ap-ph" />
-                      <div className="ap-cb"><i /><i /><i /></div>
-                    </div>
-                  ))}
-                </div>
-              ) : brandBlocks ? (
-                brandBlocks.map((g) => (
-                  <section key={g.brand} className="ap-bblock" aria-label={`${g.brand} cars`}>
-                    <h3 className="ap-bhead">{g.brand} <span>{g.cars.length}</span></h3>
-                    <div className="ap-grid">
-                      {g.cars.map((car) => (
-                        <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
-                      ))}
-                    </div>
-                  </section>
-                ))
-              ) : shownListings.length > 0 ? (
-                <div className="ap-grid">
-                  {shownListings.map((car) => (
-                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} refSlug={profile?.slug || slug} onClick={() => trackCardClick(car)} />
-                  ))}
-                </div>
-              ) : (
-                <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
-                  No cars for sale right now.
-                </div>
-              )}
-              {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
+              {pro ? siteBody : <>{carsSec}{calcSec}</>}
+              {!pro && <>{soldSec}{mapSec}{reviewsSec}</>}
             </div>
           </div>
 

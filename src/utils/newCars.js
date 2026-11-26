@@ -123,17 +123,31 @@ export function modelRows(rows, modelSlug) {
 
 // Copy for /new-cars/:brand/:model. Shared by the SPA page and api/og.js, and
 // it may only quote numbers that are in the rows (no invented "from" prices).
+// Jaecoo (JAECOO-SEO, owner 2026-11-25: one brand for now). The Omoda C9 models are filed
+// under brand Jaecoo, but nobody searches "Jaecoo Omoda C9". A model whose own name already
+// starts with one of the brand's aliases is shown as the model name alone, and its page says
+// the two brands are sold together (Omoda | Jaecoo, the dealer network's own name).
+export const BRAND_ALIASES = { Jaecoo: ["Omoda"] };
+export function aliasOf(brand, model) {
+  const m = String(model || "").toLowerCase();
+  return (BRAND_ALIASES[brand] || []).find((a) => m.startsWith(`${a.toLowerCase()} `)) || null;
+}
+export function modelDisplayName(brand, model) {
+  return aliasOf(brand, model) ? model : `${brand} ${model}`;
+}
+
 export function newModelCopy(brand, model, rows) {
   const pen = (rows || []).map((r) => Number(r.price_peninsular)).filter((n) => n > 0);
   const from = pen.length ? Math.min(...pen) : null;
   const n = (rows || []).length;
-  const name = `${brand} ${model}`;
+  const name = modelDisplayName(brand, model);
+  const alias = aliasOf(brand, model);
   const priceLine = from ? `from ${rm(from)} in Peninsular Malaysia, on the road without insurance` : "official prices by region";
   return {
     title: `New ${name} price in Malaysia | Drevo`,
     h1: `New ${name}`,
     description: `${n} ${n === 1 ? "variant" : "variants"}, ${priceLine}. The official price is set by the brand, so compare the advisors and message one directly.`,
-    intro: `${brand} sets the official price, and it is the same in every showroom in your region. What differs is the advisor: how fast they reply, where they are and what they can arrange for you. Compare them below and message one directly.`,
+    intro: `${alias ? `${alias} and ${brand} are sold together in Malaysia (Omoda | Jaecoo). ` : ""}${alias || brand} sets the official price, and it is the same in every showroom in your region. What differs is the advisor: how fast they reply, where they are and what they can arrange for you. Compare them below and message one directly.`,
   };
 }
 

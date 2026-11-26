@@ -21,7 +21,7 @@ flowchart TB
   end
 
   subgraph Screens["Screens (one React app, src/)"]
-    MK["XDrive marketplace<br/>xdrive.my /, /showroom, /cars/:slug,<br/>/used-cars, /new-cars, /find-me"]
+    MK["XDrive marketplace<br/>xdrive.my /, /showroom, /cars/:slug,<br/>/used-cars, /new-cars/:brand,<br/>/new-cars/:brand/:model, /find-me,<br/>/kalkulator-loan/:brand"]
     MP["Seller mini page<br/>/s/:slug"]
     SF["Dealer storefront<br/>sub.xdrive.my<br/>(section order: dashboard Storefront, Layout;<br/>handover photos: Storefront, Delivery photos)"]
     LITE["Salesman Lite<br/>/salesman-lite"]
@@ -249,6 +249,7 @@ change them; each is applied on its own.
 | Why do two dealer screens show different numbers? | Section 8 below + `docs/DEALER_NUMBERS_AUDIT.md`; car profit = `src/utils/carPnl.js` |
 | What to fix before a loan goes to a bank (Premium) | `loan_checks` (one row per lead), `src/utils/loanReadiness.js`, `src/components/loans/LoanCheck.jsx` |
 | What a buyer can see about a seller | `get_salesman_by_slug`, `sellerWaUrl` (`src/utils/sellerWhatsApp.js`) |
+| What a Premium page shows beyond the cars (promos, handover day, buying steps, FAQ, rankings) | `profiles.page_site` via `set_my_page_site` / `get_agent_site` (`src/utils/pageSite.js`, migration `20261125b`, queued); handover photos `agent_handover_photos` via `get_agent_handover_photos` (consent stamped by the DB, migration `20261126a`, queued); a page booking goes through `api/booking.js` like a car page, on the seller's Availability (`get_booking_slots`, `src/utils/pageBooking.js`) |
 | Plans and caps | `plan_config`, `enforce_listing_cap`, `src/utils/planConfig.js` |
 | Why can a broker (not) see / sell a dealer's car? | `dealer_brokers` (connection), `broker_registrations` (14-day buyer hold, identity columns locked), `_broker_ok`, `broker_*` RPCs, `get_salesman_featured_listings` (page shows a dealer car only while active + Premium); `src/lib/brokerApi.js`, `src/components/brokers/` (migration `20261115a`, queued) |
 

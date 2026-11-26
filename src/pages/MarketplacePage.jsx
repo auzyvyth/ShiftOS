@@ -1339,7 +1339,10 @@ export default function MarketplacePage() {
           <div className="mp-cars-layout" style={{ display:'flex', gap:'28px', alignItems:'flex-start', paddingTop:'40px' }}>
 
             {/* Left: results */}
-            <div id="mp-results" style={{ flex:1, minWidth:0 }}>
+            {/* width 100%: below 900px the layout is a COLUMN with align-items
+                flex-start, so without it this box shrank to one 327px card and
+                the grid sat in a narrow strip on the left (641-899px). */}
+            <div id="mp-results" style={{ flex:1, minWidth:0, width:'100%' }}>
               {/* Active chips */}
               {activeChips.length > 0 && (
                 <div style={{ ...S.chipsRow, paddingTop:0, marginBottom:'16px' }}>

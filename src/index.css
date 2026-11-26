@@ -455,7 +455,12 @@ html:has(.modal-overlay) {
    2026-11-12 (was a studio grey). The frames that hold a photo also turn white
    for one (isSeeThroughPhoto, src/utils/img.js), for photos hosted elsewhere.
    Opaque photos are untouched (no rule matches .jpg). */
-img[src*="car-images"][src*=".webp"],
-img[src*="car-images"][src*=".png"] {
+img[src*="car-images"][src*=".webp"]:not(:where(.keep-alpha img)),
+img[src*="car-images"][src*=".png"]:not(:where(.keep-alpha img)) {
   background: #fff;
 }
+/* .keep-alpha = a surface that is DESIGNED to show the cut-out on its own
+   backdrop (the Premium page's model configurator stage). Without the opt-out
+   the rule above draws a white box on its grey stage (2026-11-26). The opt-out sits in
+   :where() so it adds NO specificity: a plain :not(.keep-alpha img) outranked the hero's
+   own `.aph .aph-pic img.aph-car { background: transparent }` and brought the box back. */

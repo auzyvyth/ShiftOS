@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, isHttpUrl } from "../../utils/newCars";
 import { compressListingPhoto, photoExt } from "../../utils/compressImage";
+import { frameCutout } from "../../utils/cutoutFrame";
 import { cdnImg } from "../../utils/img";
 
 // NEWCAR-1: the one place official new-car prices are typed in.
@@ -34,6 +37,58 @@ const lbl = { display: "block", margin: "0 0 4px", fontSize: 10, fontWeight: 700
 
 const MAX_MODEL_PHOTOS = 12;
 
+// FRAME-1: a cut-out is redrawn onto the one shared frame before upload (cutoutFrame.js), so
+// every model shows at the same size on every surface. "-fit" in the name = already framed.
+async function uploadModelPhoto(file, userId) {
+  const framed = await frameCutout(file);
+  const small = framed ? framed : await compressListingPhoto(file);
+  // Storage lets a user write only under their own id folder.
+  const path = `${userId}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}${framed ? "-fit" : ""}.${photoExt(small)}`;
+  const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: small.type || "image/jpeg", cacheControl: "31536000" });
+  if (e) throw e;
+  return supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl;
+}
+
+// The photos uploaded before FRAME-1: fetch each see-through one, frame it, upload the copy and
+// swap it in (an UPDATE of the media row, so new_car_media_sync moves every card on it).
+// A photo with a background, or one the browser cannot fetch, is left as it is.
+async function frameExistingPhotos(media, onProgress) {
+  const { data: { user } } = await supabase.auth.getUser();
+  let done = 0, skipped = 0, failed = 0;
+  const next = {};
+  const keys = Object.keys(media);
+  for (let k = 0; k < keys.length; k++) {
+    const [brand, model] = keys[k].split("|");
+    const imgs = media[keys[k]] || [];
+    let changed = false;
+    const out = [];
+    for (const u of imgs) {
+      const plain = u.split(/[?#]/)[0];
+      if (!/\.(png|webp)$/i.test(plain) || /-fit\.(png|webp)$/i.test(plain)) { out.push(u); continue; }
+      try {
+        const res = await fetch(u, { mode: "cors", cache: "no-store" });
+        if (!res.ok) throw new Error("fetch");
+        const blob = await res.blob();
+        const framed = await frameCutout(blob);
+        if (!framed) { skipped++; out.push(u); continue; }
+        out.push(await uploadModelPhoto(new File([framed], "photo", { type: framed.type }), user.id));
+        changed = true;
+        done++;
+      } catch {
+        failed++;
+        out.push(u);
+      }
+    }
+    if (changed) {
+      const { error } = await supabase.from("new_car_model_media").upsert({ brand, model, images: out }, { onConflict: "brand,model" });
+      if (error) failed++;
+      else next[keys[k]] = out;
+    }
+    onProgress?.(k + 1, keys.length);
+  }
+  return { done, skipped, failed, next };
+}
+
 // One model's photos. The first is the cover the cards and the signup picker show;
 // tapping another makes it the cover.
 function ModelPhotos({ brand, model, images, onChange }) {
@@ -53,6 +108,8 @@ function ModelPhotos({ brand, model, images, onChange }) {
     onChange(next);
   };
 
+  const uploadOne = (file, userId) => uploadModelPhoto(file, userId);
+
   const addFiles = async (files) => {
     const list = Array.from(files || []).slice(0, MAX_MODEL_PHOTOS - images.length);
     if (!list.length) return;
@@ -62,12 +119,7 @@ function ModelPhotos({ brand, model, images, onChange }) {
     const urls = [];
     for (const file of list) {
       try {
-        const small = await compressListingPhoto(file);
-        // Storage lets a user write only under their own id folder.
-        const path = `${user.id}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoExt(small)}`;
-        const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: small.type || "image/jpeg", cacheControl: "31536000" });
-        if (e) throw e;
-        urls.push(supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl);
+        urls.push(await uploadOne(file, user.id));
       } catch {
         setErr("A photo failed to upload. Add it again.");
       }
@@ -76,15 +128,34 @@ function ModelPhotos({ brand, model, images, onChange }) {
     else setBusy(false);
   };
 
+  // Replace = the new photo takes the old one's slot (a cover stays the cover).
+  // It is an UPDATE of the media row, so the sync trigger moves every card on it.
+  const [viewAt, setViewAt] = useState(null);
+  const replaceRef = useRef(null);
+  const replaceAt = async (file) => {
+    if (!file || viewAt == null) return;
+    const at = viewAt;
+    setBusy(true);
+    setErr("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const url = await uploadOne(file, user.id);
+      await save(images.map((x, i) => (i === at ? url : x)));
+    } catch {
+      setBusy(false);
+      setErr("The new photo failed to upload. Try again.");
+    }
+  };
+
   const thumb = { position: "relative", width: 76, aspectRatio: "4 / 3", borderRadius: 7, overflow: "hidden", flexShrink: 0 };
   return (
     <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
       <div style={{ display: "flex", gap: 6, overflowX: "auto", alignItems: "stretch" }}>
         {images.map((u, i) => (
           <div key={u} style={{ ...thumb, outline: i === 0 ? "2px solid #dc2626" : "none", outlineOffset: -2 }}>
-            <button type="button" disabled={busy || i === 0} onClick={() => save([u, ...images.filter((x) => x !== u)])}
-              title={i === 0 ? "Cover photo" : "Make this the cover"}
-              style={{ display: "block", width: "100%", height: "100%", padding: 0, border: "none", cursor: i === 0 ? "default" : "pointer", background: "#111827" }}>
+            <button type="button" disabled={busy} onClick={() => setViewAt(i)}
+              title="Open photo"
+              style={{ display: "block", width: "100%", height: "100%", padding: 0, border: "none", cursor: "zoom-in", background: "#111827" }}>
               <img src={cdnImg(u, 160, 60)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             </button>
             {/* Never remove the LAST photo: deleting the media row does not touch the
@@ -107,14 +178,85 @@ function ModelPhotos({ brand, model, images, onChange }) {
         )}
       </div>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={replaceRef} type="file" accept="image/*" hidden onChange={(e) => { replaceAt(e.target.files?.[0]); e.target.value = ""; }} />
+      {viewAt != null && images[viewAt] && (
+        <PhotoViewer
+          title={`${brand} ${model}`} images={images} at={viewAt} busy={busy} err={err}
+          onStep={setViewAt} onClose={() => setViewAt(null)}
+          onReplace={() => replaceRef.current?.click()}
+          onCover={() => save([images[viewAt], ...images.filter((_, i) => i !== viewAt)]).then(() => setViewAt(0))}
+          onRemove={images.length > 1 ? () => save(images.filter((_, i) => i !== viewAt)).then(() => setViewAt(null)) : null}
+        />
+      )}
       <p style={{ margin: "6px 0 0", fontSize: 11, color: err ? "#f87171" : "#6b7280" }}>
-        {err || (images.length === 1
-          ? "To replace this photo, add the new one first, then remove this one. Advisors' cards follow."
-          : images.length
-          ? "Red outline = cover. Advisors who tick this model get these photos on their card."
+        {err || (images.length
+          ? "Red outline = cover. Tap a photo to see it full size or replace it. Advisors' cards follow."
           : "No photos yet, so advisors can't tick this model at signup. Use photos you took or have the brand's written permission to use.")}
       </p>
     </div>
+  );
+}
+
+// Full-screen look at one model photo, with Replace / Make cover / Remove.
+// Portalled + scroll lock + Back closes it (overlay rules 1, 2, 5).
+function PhotoViewer({ title, images, at, busy, err, onStep, onClose, onReplace, onCover, onRemove }) {
+  useModalHistory(true, onClose);
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "ArrowRight" && at < images.length - 1) onStep(at + 1);
+      if (e.key === "ArrowLeft" && at > 0) onStep(at - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [at, images.length, onStep]);
+
+  const navBtn = { position: "absolute", top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: 999, border: "none", background: "rgba(0,0,0,0.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" };
+  const btn = { padding: "11px 16px", borderRadius: 10, border: "none", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 };
+  const isCover = at === 0;
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={`${title} photo`}
+      style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#03060c", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", color: "#f1f5f9" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>{isCover ? "Cover photo" : "Photo"} {at + 1} of {images.length}</div>
+        </div>
+        <button type="button" aria-label="Close" onClick={onClose}
+          style={{ width: 40, height: 40, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.1)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <X size={20} />
+        </button>
+      </div>
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>
+        <img key={images[at]} src={cdnImg(images[at], 1600, 80)} alt={title}
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block", borderRadius: 6 }} />
+        {at > 0 && (
+          <button type="button" aria-label="Previous photo" onClick={() => onStep(at - 1)} style={{ ...navBtn, left: 10 }}><ChevronLeft size={22} /></button>
+        )}
+        {at < images.length - 1 && (
+          <button type="button" aria-label="Next photo" onClick={() => onStep(at + 1)} style={{ ...navBtn, right: 10 }}><ChevronRight size={22} /></button>
+        )}
+      </div>
+      <div style={{ padding: "12px 14px calc(14px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+        {err && <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{err}</p>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: 520 }}>
+          <button type="button" disabled={busy} onClick={onReplace} style={{ ...btn, flex: "1 1 160px", background: "#dc2626", color: "#fff" }}>
+            {busy ? "Saving..." : "Replace photo"}
+          </button>
+          {!isCover && (
+            <button type="button" disabled={busy} onClick={onCover} style={{ ...btn, flex: "1 1 120px", background: "rgba(255,255,255,0.1)", color: "#f1f5f9" }}>Make cover</button>
+          )}
+          {onRemove && (
+            <button type="button" disabled={busy} onClick={onRemove} style={{ ...btn, flex: "1 1 100px", background: "rgba(255,255,255,0.1)", color: "#f1f5f9" }}>Remove</button>
+          )}
+        </div>
+        <p style={{ margin: 0, fontSize: 11, color: "#6b7280", textAlign: "center" }}>
+          Replacing updates every advisor card still on this photo. Use photos you took or have the brand's written permission to use.
+        </p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -131,6 +273,14 @@ export default function NewCarPricesTab() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [media, setMedia] = useState({}); // "brand|model" -> images
+  const [fitting, setFitting] = useState(null); // null | "a/b" progress | result line
+  const fitAll = async () => {
+    if (fitting && fitting.startsWith("Fitting")) return;
+    setFitting("Fitting 0/" + Object.keys(media).length);
+    const r = await frameExistingPhotos(media, (a, b) => setFitting(`Fitting ${a}/${b}`));
+    setMedia((m) => ({ ...m, ...r.next }));
+    setFitting(`${r.done} photo${r.done === 1 ? "" : "s"} put on the shared frame` + (r.failed ? `, ${r.failed} could not be read (upload them again)` : "") + ".");
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -214,6 +364,13 @@ export default function NewCarPricesTab() {
           </p>
         </div>
         {!form && (
+          <button type="button" onClick={fitAll} disabled={!!fitting && fitting.startsWith("Fitting")}
+            title="Redraw every see-through model photo at the same size, standing on the same line"
+            style={{ padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "rgba(255,255,255,0.06)", border: "none", color: "#e5e7eb", marginLeft: "auto" }}>
+            {fitting && fitting.startsWith("Fitting") ? fitting : "Same size for all cut-outs"}
+          </button>
+        )}
+        {!form && (
           <button type="button" onClick={() => setForm({ ...EMPTY, brand })}
             style={{ padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "#dc2626", border: "none", color: "#fff" }}>
             Add variant
@@ -221,6 +378,9 @@ export default function NewCarPricesTab() {
         )}
       </div>
 
+      {fitting && !fitting.startsWith("Fitting") && (
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#9ca3af" }}>{fitting}</p>
+      )}
       {error && (
         <div style={{ marginBottom: 14, padding: "10px 13px", borderRadius: 9, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "#f87171", fontSize: 12 }}>
           {error}

@@ -1304,12 +1304,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* Desktop: the photo fills its column's height, so no empty band sits
            under it beside a taller answer (a model card's variants). */
         .lp-desk .lp-photo { aspect-ratio: auto; align-self: stretch; min-height: 200px; }
-        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; padding: 4px; object-fit: contain; }
         /* LIVE-MOTION: the photo drifts in 4% over 9s, then holds, so a car
            left on screen never looks like a frozen stream. Too slow to smear
            on a phone camera. Keyed by photo, so each photo starts over. */
+        /* The drift only zooms OUT of the frame: a stock photo that fills its box (Honda HR-V)
+           lost its grille at the edge. It now drifts 1.00 -> 0.97 inside the box, never past it. */
         .lp-photo img { animation: lp-drift 9s cubic-bezier(.25,.1,.25,1) both; transform-origin: 50% 55%; }
-        @keyframes lp-drift { from { transform: scale(1); } to { transform: scale(1.04); } }
+        @keyframes lp-drift { from { transform: scale(1); } to { transform: scale(.97); } }
         /* A new car slides in from the side the seller went (one move, ~0.45s),
            and its #N pops once. */
         .lp-sheet[data-in="next"] { animation: lp-in-next .45s cubic-bezier(.22,1,.36,1) both; }

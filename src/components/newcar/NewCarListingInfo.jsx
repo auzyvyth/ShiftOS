@@ -68,7 +68,7 @@ function loadInfo(id) {
 // published spec sheet, with spec_source + specs_checked. Anything a sheet did not
 // state is simply absent, so every row is optional.
 const n = (v) => Number(v).toLocaleString("en-MY");
-function specRows(i) {
+export function specRows(i) {
   const s = i.specs || {};
   const dims = s.length_mm && s.width_mm && s.height_mm
     ? `${n(s.length_mm)} x ${n(s.width_mm)} x ${n(s.height_mm)} mm` : null;

@@ -5,6 +5,15 @@
 2. Present the pending items to the user and ask which one to work on first.
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
+5. **Security check, EVERY session (owner, 2026-11-26).** At the start, read `TODO.md` `SECURITY-NOW`
+   and list its open items alongside the rest (security first). Before ending, check that nothing you
+   built opened a hole: a new table/view has RLS and no anon write; a new SECURITY DEFINER function
+   derives the caller from `auth.uid()` and is revoked from `public` + `anon` unless it must be public
+   (verify with `has_function_privilege`); nothing private (IC, phone, cost, address, token) went into a
+   public view, RPC, bucket, page payload or share picture; no key or secret in the repo or the browser
+   bundle. Run `get_advisors` (security) after any migration. Say the result in the session summary,
+   even if it is "nothing new". This repo is PUBLIC: write a hole into TODO.md only in words that do not
+   show how to use it, and never name the honeypot tripwires anywhere in the repo.
 
 ## App Store / Play Store readiness — PAUSED (owner, 2026-10-09)
 **Store work is paused until there is revenue** (`TODO.md` MOBILE section: "everything
@@ -1960,7 +1969,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   never two free picks (they clash). Stored as ONE hex in `profiles.brand_color` (the first colour; a
   preset is found again by it), because the TikTok Studio reads and writes that column as a plain hex.
   The gradient is for the BANNER and photo ring only; buttons and ticks are ONE colour (owner: two-colour
-  buttons "look cheap"), and the WHOLE page takes the colour lightly (`.ap--pro`: background 9%, cards and white surfaces 3%). `brand_color` has a DB DEFAULT
+  buttons "look cheap"). **The page wash is GONE (owner, 2026-11-25: "60% white, 30% dark, 10% red, remove the upper lines"):** `src/components/agent/site/PageLook.jsx` (Premium only, every rule under `.ap--pro`) = a light ground in the seller's OWN two colours + fade direction (owner, 2026-11-25: curated list "looks cheap, make it customizable"; `page_site.ground = {from, to, angle 180|135|90}`, `groundPaint` in `src/utils/pageSite.js`: each colour is mixed with white until relative luminance >= 0.75 so dark text stays readable, and the card colour is worked out from the ground; presets are only quick starts) + light tiles (no card shadows), ink `#0f1115` on the big objects (hero, promo strip, Pick your model, calculator; selected = WHITE on dark, INK on light), the seller's accent ONLY on main buttons, the slider fill and an "ends soon" word. No accent bars / dashes / rules above blocks; one heading system (Bebas H2 + one muted line); radius cards 16 / buttons 12 / chips 8, no pills on text. `brand_color` has a DB DEFAULT
   of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
   **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
   with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then
@@ -1971,7 +1980,37 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   added to `get_salesman_by_slug`; rules + words in `src/utils/agentAbout.js`
   (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
   column can never fail the main profile load or save. No phone numbers in them (CDP-3).
+  **The models section is a VEHICLE CONFIGURATOR (CONFIG-1, owner 2026-11-26, the Mercedes configurator as the direction):**
+  `src/components/agent/site/ModelPicker.jsx` (rules: `src/utils/configurator.js`, `npm run test:configurator`). Brand tabs (the
+  seller's own model-card brands, logos from `brandLogos.js`) -> model rail -> stage (one big photo) + build panel (price,
+  colour, variant rows with what each adds, specs, the seller's note, Ask + Instalment). Same data and variant store as the
+  car page (`useNewCarInfo`/`useNewCarVariant`), no second catalogue. We hold ONE photo set per model: a colour changes the
+  swatch, its name and the WhatsApp text, never the photo, and the panel says so. Colours only where `new_car_models.specs.colours`
+  has them (Proton, Perodua, BYD; none for Honda, Toyota, Jaecoo). Never add per-colour or AI images to fill the gap.
+  **PAGE-SITE 3 (owner, 2026-11-26, the ORGANISATION of a Proton advisor's site, never his words or photos):** new sections
+  `handover` (the seller's own handover-day checklist + their handover photo wall), `steps` (their buying stops), `book` (a REAL
+  booking through `api/booking.js` with a "visit pass" preview: pending in Bookings, never "booked" before the server says yes,
+  two consent ticks; days + times = the seller's Availability via `get_booking_slots`, never a second list), `faq`; plus best sellers + RANKINGS under About me. Rankings are the seller's own claim (owner's pick): the
+  page ALWAYS prints "As stated by <name>. Drevo has not checked it." The big number on the photo wall is MEASURED (cars sold on
+  Drevo), never typed. Photos = `agent_handover_photos` (migration `20261126a`, QUEUED): same PDPA shape as the storefront wall,
+  consent stamped by the DB, no UPDATE, delete in one tap, no buyer name/phone/IC/plate column, files in `car-images/<uid>/handover/`.
+  All of it edits in Premium Settings (`PageSiteCard.jsx`, `HandoverPhotosCard.jsx`); limits in `pageSite.js` AND `_page_site_ok`.
+  **The Premium page is WHITE (owner, 2026-11-26, after a day in black):** `PageLook.jsx` (tokens `--k*`, `--t*`, `--ink`). The hero
+  stays a dark photo band. Anything PICKED (car card, variant row, tab, chip, brand) fills solid ink with white words, never an
+  outline (owner: "the outline selection looks cheap"). Bold type is the marketplace's: headings Bebas Neue (one font per heading,
+  the second half only muted), numbers + buttons Outfit bold; Archivo only for the small spaced labels. Outlined boxes use
+  `corner-shape: squircle` where supported (`--r-card/btn/chip`). The seller background picker (`page_site.ground`) was removed.
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
+  **The Settings hero preview IS the page (HERO-PREVIEW, owner 2026-11-26):** `PagePreviewFrame.jsx` frames `/s/<slug>?heroPreview=1`
+  at a real phone (390) / desktop (1366) width and posts the unsaved photo + settings in (`xd-hero-preview`, own-origin parent only);
+  in that mode the page shows the buyer view, logs no visit, hides the cookie banner. Needs `X-Frame-Options: SAMEORIGIN` +
+  `frame-ancestors 'self'` (vercel.json). Never bring back a hand-drawn copy of the hero (HeroPreview drifted).
+  Phone and desktop have SEPARATE size / position / car size (HERO-DESK, owner 2026-11-26): desktop's are `ds/dx/dy/dk` on the hero URL, absent = the phone's numbers (`heroFrameFor`, desktop = 900px+); the sliders edit the view being previewed.
+  With a car in front, the seller's cut-out ends at the car's tyre line (`useHeroCarClip`, the car photo's own outline).
+  Console new-car cut-outs are redrawn onto one 4:3 frame on upload (FRAME-1, `src/utils/cutoutFrame.js`), so every model is the same size.
+  Photos uploaded before FRAME-1 stay as they were until Console > New car prices > "Same size for all cut-outs" is pressed.
+  The page calculator's car strip (`PageCalculator.jsx`) scrolls the picked car into view (a hand-over from the model section can sit far along the row) and has mouse-only arrows.
+  The configurator stage does not wait for that: `StageCar` (ModelPicker.jsx) crops a cut-out to its outline and stands it on the floor shadow at one size.
   The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
   6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a
   scroll box and silently kills sticky (it had, on every seller page).
@@ -2137,6 +2176,18 @@ can never fail on it); the page shows "@name" (`.ap-nick`), `agentSeo.js` adds i
 the title would be cut), description and Person `alternateName` (`api/og.js`). Settings has `NicknameField` (Lite + Premium):
 its own Save button and own query, so the main profile save cannot fail on it. There is NO seller search on Drevo yet, so
 "found" means Google; an in-app search by nickname is a later step.
+
+## Brand pages /new-cars/:brand (BRAND-HUB, owner 2026-11-25) — one rules file, our own photos
+One page per new-car brand, built from keyword research of what ranks in Google Malaysia (ZigWheels, Paultan,
+Carlist: "<brand> price list", "<brand> SUV / hybrid / EV / 7 seater / under RMxxk", "<model> price / variants",
+Malay "harga kereta <brand>"). ONE rules file, `src/utils/brandHub.js` (`npm run test:brandhub`), read by
+`src/pages/BrandHubPage.jsx` AND the crawler page in `api/og.js` (`buildBrandHubHtml`), plus the sitemap.
+Every number is from `new_car_models` (Peninsular, on the road without insurance) and every photo is ours
+(`new_car_model_media`); no rebate, promo or review claim is written anywhere (promos expire, nothing holds one).
+Sections only exist when rows back them (hybrid, EV, 7-seater, a budget band that differs from the full list).
+Keyword lists per brand: `docs/BRAND_SEO_KEYWORDS.md`, built by `node tools/brand-seo/keywords.mjs` (re-run when
+models change; the sample rows in `tools/brand-seo/sample-rows.mjs` are a snapshot, not the live table).
+A model named "Omoda ..." under brand Jaecoo shows its own name (`modelDisplayName`, `BRAND_ALIASES`, newCars.js).
 
 ## Link-preview pictures (OG-1, owner 2026-11-22) — one per audience, one per dealer
 What WhatsApp / Facebook show when a link is shared. ONE list, `OG_IMAGES` (`src/config/ogImages.js`), read by
