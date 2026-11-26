@@ -19,7 +19,7 @@ const STEP_MS = 3400;
 const TURN_MS = 1100;
 const SLOT_DEG = 58;     // angle between neighbours on the turntable
 const SHOW = 1.5;        // slots either side still visible (1 = the side cars, fading out by 1.5)
-const SIDE_SCALE = 0.78; // a side car's size; it grows to full size as it reaches the front (owner, 2026-11-26)
+const SIDE_SCALE = 0.6;  // a side car's size; it grows to full size as it reaches the front (owner, 2026-11-26: "needs to grow bigger")
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 export const brandKeyOf = (b) => String(b || '').trim().toLowerCase();
 
@@ -81,7 +81,7 @@ export function ringCarsFor(cars, brand) {
 // The ring's own styles, so the page and the Settings preview draw the same thing. The page sizes it
 // for desktop with `.aph-band .cring...` rules; `small` is the Settings preview.
 const CSS = `
-.cring { position: relative; container-type: inline-size; --spread: 41cqw; --car-w: 40cqw; --under: 44px; padding: 58px 0 0; }
+.cring { position: relative; container-type: inline-size; --spread: 41cqw; --car-w: 50cqw; --under: 44px; padding: 58px 0 0; }
 .cring-label { position: relative; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
 .cring-label span { font: 500 11px/1 var(--xd-font-body); letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.6); }
 .cring-label b { font: 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .02em; white-space: nowrap; }

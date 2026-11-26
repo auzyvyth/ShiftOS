@@ -1051,6 +1051,10 @@ export default function SalesmanProfilePage() {
       {topButtons}
       <div className="aph-in">
         <div className="aph-bc">
+          {/* Business card: Share sits on the right, level with the middle of the photo (owner, 2026-11-26). */}
+          <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
+            {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+          </button>
           {cardPhoto
             ? <img className="aph-bc-ph" src={cdnImg(cardPhoto, 240, 80)} alt={profile.full_name} />
             : <div className="aph-bc-ph aph-mono" aria-hidden="true">{initial}</div>}
@@ -1482,7 +1486,9 @@ export default function SalesmanProfilePage() {
         .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
         .aph--card .aph-in > * { pointer-events: auto; }
         .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
-        .aph-bc { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+        .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+        .aph--card > .ap-share { display: none; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { left: auto; right: 0; top: 30px; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
         .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
         .aph-bc-id { min-width: 0; }
@@ -1542,11 +1548,12 @@ export default function SalesmanProfilePage() {
           .aph-band.aph-band--ring { height: auto; }
           .aph--card .aph-in { padding-top: 126px; }
           .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
-          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 27cqw; --under: 44px; }
+          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 34cqw; --under: 44px; }
           .aph-band .cring-label b { font-size: 44px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }
           .aph-bc-ph { width: 136px; height: 136px; }
+          .ap--pro .aph--card .aph-bc .aph-bc-share { top: 50px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
           .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }
