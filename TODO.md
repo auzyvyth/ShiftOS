@@ -70,6 +70,30 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## SECURITY-NOW: read every session (owner, 2026-11-26) - security first
+Order agreed 2026-11-26. Details live in the items named; this is the queue.
+- [ ] 1. SEC-3 finish (2026-11-26). The private bucket + signed links shipped in October; every listing
+  now points at car-docs. Left: 23 old document files still in the public bucket (5 duplicates of
+  private copies, 18 used by nothing). The October move could not delete them (the admin could not
+  see files in that bucket). Fix = migration `20261126a_public_doc_leftovers.sql` (QUEUED, after
+  midnight) + the Posture card's button (`PublicDocsMover.jsx`, `clearPublicDocLeftovers`). Unused files
+  are kept privately in `car-docs/orphaned/` (admin only), not deleted. After applying: run the button,
+  check 0 left with `get_public_doc_leftovers()`, then delete the two SEC-3 entries below.
+- [ ] 2. One pass over the ~129 SECURITY DEFINER functions anon can call (see INPUT-1).
+- [ ] 3. HONEYPOT-1 tripwire: decoy database objects + decoy web paths that no screen uses.
+  Any touch = log + `notify_ops` alert (phone + Telegram). Alarm, NOT an IP block on the
+  database: buyers talk to Supabase directly and Malaysian carriers share one IP across many
+  phones, so blocking hurts real buyers and a hacker just changes IP. Block only on the decoy
+  web paths (Vercel). Decoy names must look ordinary and must not be listed in this repo.
+  Database part = DDL, after midnight only.
+- [ ] 4. SEC-A5 waitlist lookup via the server key, revoke from anon (see AUDIT-1021).
+- [ ] 5. SEC-9 login lock-out by email: key on IP as well (see SEC).
+- [ ] 6. Owner: revoke the old Anthropic + remove.bg keys at the provider (removed from Vercel 2026-10-28).
+- [ ] 7. Owner: backups. Free plan = no point-in-time restore; check what the plan keeps and decide.
+- [ ] 8. SEC-5 leaked-password protection: needs Supabase Pro.
+- [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
+  the ones the app actually ships to the browser or api/ first.
+
 ## NEWS-1: "Premium has a new look" pop-up (owner, 2026-11-26) - waiting on the owner's GIF
 - [ ] Owner records the business card ring on staging, makes a GIF, sends it.
 - [ ] Save it as `public/news/premium-new-look.gif`, flip `NEWS_READY = true` in `src/components/news/PremiumLookNews.jsx`, ship with the prod release.

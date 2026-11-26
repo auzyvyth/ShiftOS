@@ -49,6 +49,47 @@ export function removeDocFile(client, d) {
   return client.storage.from(bucket).remove([d.path]).catch(() => {});
 }
 
+// Document files still sitting in the PUBLIC bucket after the move: public
+// copies the old move could not delete, and old uploads no listing uses.
+// Superadmin only (get_public_doc_leftovers, migration 20261126a). Before that
+// migration is applied the RPC does not exist: report nothing, never throw.
+export async function listPublicDocLeftovers(client) {
+  const { data, error } = await client.rpc("get_public_doc_leftovers");
+  if (error) return [];
+  return (data || []).filter((f) => !f.in_use);
+}
+
+// Clears the public bucket of those files. A file that already has a private
+// copy is only deleted. A file with no private copy is first copied into
+// car-docs under `orphaned/` (superadmin-only: car_doc_folder_visible matches
+// no profile id) so nothing is lost, then deleted from public. A file a listing
+// still points at is skipped: moveLegacyDocs moves those. Returns
+// { cleared, kept, failed }.
+export async function clearPublicDocLeftovers(client, files) {
+  let cleared = 0, kept = 0, failed = 0;
+  for (const f of files || []) {
+    if (f.in_use) continue;
+    try {
+      if (!f.has_private_copy) {
+        const { publicUrl } = client.storage.from(LEGACY_BUCKET).getPublicUrl(f.name).data;
+        const res = await fetch(publicUrl);
+        if (!res.ok) throw new Error(String(res.status));
+        const blob = await res.blob();
+        const { error } = await client.storage.from(CAR_DOCS_BUCKET)
+          .upload(`orphaned/${f.name}`, blob, { contentType: blob.type || undefined });
+        if (error && !/exists/i.test(error.message || "")) throw error;
+        kept++;
+      }
+      const { data: gone } = await client.storage.from(LEGACY_BUCKET).remove([f.name]);
+      if (!gone?.length) throw new Error("not deleted");
+      cleared++;
+    } catch {
+      failed++;
+    }
+  }
+  return { cleared, kept, failed };
+}
+
 // One-time move of a listing's legacy documents into car-docs (platform
 // console). Downloads each public file, uploads it under the same owner
 // folder, rewrites the listing, then deletes the public copy. Returns
