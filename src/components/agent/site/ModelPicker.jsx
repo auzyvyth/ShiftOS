@@ -256,7 +256,7 @@ function ConfigStyle() {
       .cfg-build { display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--c-line); border-radius: var(--c-rc); overflow: clip; }
       .cfg-stage { position: relative; overflow: hidden; min-height: 260px; aspect-ratio: 16 / 11; display: flex; align-items: center; justify-content: center;
         background: radial-gradient(ellipse 75% 60% at 50% 40%, #ffffff 0%, #f1f1f3 55%, #e5e5e8 100%); }
-      .cfg-mark { position: absolute; left: 50%; top: 46%; translate: -50% -50%; white-space: nowrap; pointer-events: none; font-family: var(--c-head);
+      .cfg-mark { position: absolute; left: 50%; top: 27%; translate: -50% -50%; white-space: nowrap; pointer-events: none; font-family: var(--c-head);
         font-weight: 400; text-transform: uppercase; font-size: clamp(80px, 22vw, 260px); line-height: 1; color: rgba(10,10,11,.05); letter-spacing: .01em; }
       .cfg-tag { position: absolute; left: 16px; top: 16px; z-index: 2; color: var(--c-t2); }
       .cfg-car { position: relative; z-index: 1; width: 88%; height: 78%; display: flex; align-items: center; justify-content: center; animation: cfg-in .5s cubic-bezier(.2,.7,.2,1) both; }

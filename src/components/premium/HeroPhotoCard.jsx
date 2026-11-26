@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ImagePlus, RotateCcw, Trash2 } from 'lucide-react';
+import { ImagePlus, RotateCcw, Trash2, Smartphone, Monitor } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { premiumDark as PD } from '../../theme/tokens';
 import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYTES } from '../../lib/cutout';
 import { prepareCutout, preparePlain, heroExt, heroErrorText } from '../../utils/heroPhoto';
-import { isSeeThroughPhoto } from '../../utils/img';
+import { isSeeThroughPhoto, cdnImg } from '../../utils/img';
+import { checkSeeThrough } from '../../utils/seeThrough';
+import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT } from '../../utils/heroFrame';
+import DragSlider from '../studio/DragSlider';
+import HeroPreview from './HeroPreview';
 
 // Premium Settings > Hero photo (PAGE-HERO, 2026-11-25). The big photo at the top
 // of the seller's page. The background is removed ON THE PHONE (CUTOUT-1, no
@@ -27,6 +31,23 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const [error, setError] = useState(null);
   const [local, setLocal] = useState(null);           // just-saved photo, shown from the phone (no re-download)
   const inputRef = useRef(null);
+  // PAGE-HERO 2: size, position and the car in front (src/utils/heroFrame.js), saved on the URL.
+  const [frame, setFrame] = useState(heroFrame(''));
+  const [view, setView] = useState('phone');
+  const [cars, setCars] = useState(null);             // the seller's cars whose first photo is a cut-out
+
+  useEffect(() => {
+    let off = false;
+    supabase.from('car_listings').select('id, brand, model, images, status')
+      .or(`dealer_id.eq.${userId},assigned_to.eq.${userId}`).in('status', ['available', 'reserved'])
+      .order('created_at', { ascending: false }).limit(40)
+      .then(async ({ data }) => {
+        const rows = (data || []).filter((c) => Array.isArray(c.images) && c.images[0]);
+        const ok = await Promise.all(rows.map((c) => checkSeeThrough(c.images[0]).catch(() => false)));
+        if (!off) setCars(rows.filter((_, i) => ok[i]));
+      });
+    return () => { off = true; };
+  }, [userId]);
 
   useEffect(() => {
     let off = false;
@@ -35,6 +56,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       if (off) return;
       if (e) { setNotReady(true); setSaved(null); return; }
       setSaved(data?.hero_url || null);
+      setFrame(heroFrame(data?.hero_url));
     });
     return () => { off = true; };
   }, [userId]);
@@ -43,7 +65,10 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   useEffect(() => () => { if (preview?.url) URL.revokeObjectURL(preview.url); }, [preview]);
   useEffect(() => () => { if (local?.url) URL.revokeObjectURL(local.url); }, [local]);
 
-  const showPreview = (blob, kind) => setPreview({ blob, kind, url: URL.createObjectURL(blob) });
+  const showPreview = (blob, kind) => {
+    setPreview({ blob, kind, url: URL.createObjectURL(blob) });
+    setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0 })); // a new photo starts centred; the car pick stays
+  };
 
   const cut = async (file) => {
     setError(null);
@@ -90,7 +115,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       const up = await supabase.storage.from('avatars').upload(path, preview.blob, { upsert: true, contentType: preview.blob.type || 'image/jpeg' });
       if (up.error) throw up.error;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${publicUrl}?t=${Date.now()}`;
+      const url = withHeroFrame(`${publicUrl}?t=${Date.now()}`, frame);
       const { error: e } = await supabase.rpc('set_my_hero_photo', { p_url: url });
       if (e) throw e;
       setSaved(url);
@@ -105,6 +130,19 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
     }
   };
 
+  // Only the size / position / car changed: same file, new settings on its URL.
+  const savedFrame = heroFrame(saved);
+  const frameDirty = !!saved && !preview && JSON.stringify(savedFrame) !== JSON.stringify(frame);
+  const saveFrame = async () => {
+    setError(null);
+    setBusy('Saving...');
+    const url = withHeroFrame(saved, frame);
+    const { error: e } = await supabase.rpc('set_my_hero_photo', { p_url: url });
+    setBusy(null);
+    if (e) { setError(heroErrorText(e)); return; }
+    setSaved(url);
+  };
+
   const remove = async () => {
     setError(null);
     setBusy('Removing...');
@@ -116,7 +154,10 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   };
 
   // What the band shows: the preview, else the saved photo.
-  const shown = preview ? { url: preview.url, cut: preview.kind === 'cut' } : local || (saved ? { url: saved, cut: isSeeThroughPhoto(saved) } : null);
+  const shown = preview ? { url: preview.url, cut: preview.kind === 'cut' } : local || (saved ? { url: heroImageUrl(saved), cut: isSeeThroughPhoto(saved) } : null);
+  const carList = cars || [];
+  const carPhoto = frame.car === 'none' ? null
+    : (carList.find((c) => c.id === frame.car) || carList[0])?.images?.[0] || null;
 
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
@@ -129,22 +170,76 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         The big photo of you at the top of your page, the first thing buyers see. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.
       </p>
 
-      <div style={{ position: 'relative', height: 260, borderRadius: 16, overflow: 'hidden', background: '#0c0d10', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-        <span aria-hidden="true" style={{ position: 'absolute', left: '50%', top: 20, width: 240, height: 240, translate: '-50% 0', borderRadius: '50%', background: `radial-gradient(circle, ${accent}e6 0%, ${accent}55 42%, ${accent}00 70%)` }} />
-        {shown ? (
-          shown.cut
-            ? <img src={shown.url} alt="Your photo" style={{ position: 'relative', height: '100%', maxWidth: '100%', objectFit: 'contain', objectPosition: 'bottom' }} />
-            : <img src={shown.url} alt="Your photo" style={{ position: 'relative', height: '86%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 20, marginBottom: '7%' }} />
-        ) : (
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
-            style={{ ...soft, position: 'relative', alignSelf: 'center', background: 'rgba(255,255,255,.1)', color: '#fff' }}>
-            <ImagePlus size={16} /> Choose a photo
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }} role="group" aria-label="Preview">
+        {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
+          <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
+            style={{ ...btn, minHeight: 36, padding: '0 12px', fontSize: 12.5, background: view === k ? PD.text : PD.hover, color: view === k ? PD.canvas || '#0b0c0f' : PD.text }}>
+            <Icon size={14} /> {label}
           </button>
+        ))}
+      </div>
+      <div style={{ position: 'relative' }}>
+        {shown ? (
+          <HeroPreview mode={view} url={shown.url} cut={shown.cut} frame={frame} carUrl={shown.cut ? carPhoto : null} accent={accent}
+            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} />
+        ) : (
+          <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
+              style={{ ...soft, background: 'rgba(255,255,255,.1)', color: '#fff' }}>
+              <ImagePlus size={16} /> Choose a photo
+            </button>
+          </div>
         )}
         {busy && (
-          <span role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 13, fontWeight: 700 }}>{busy}</span>
+          <span role="status" style={{ position: 'absolute', inset: 0, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 13, fontWeight: 700 }}>{busy}</span>
         )}
       </div>
+
+      {shown && (
+        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Drag the photo to move it. The phone and desktop previews use the same settings.</p>
+          {[['Size', 'size', HERO_SIZE, '%'], ['Left / right', 'x', HERO_SHIFT, ''], ['Up / down', 'y', HERO_SHIFT, '']].map(([label, key, r, unit]) => (
+            <div key={key}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>
+                <span>{label}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{frame[key]}{unit}</span>
+              </div>
+              <DragSlider value={frame[key]} min={r.min} max={r.max} step={1} accent={accent} onChange={(v) => setFrame((f) => ({ ...f, [key]: v }))} />
+            </div>
+          ))}
+          {(frame.size !== HERO_SIZE.def || frame.x || frame.y) ? (
+            <button type="button" onClick={() => setFrame((f) => ({ ...f, size: HERO_SIZE.def, x: 0, y: 0 }))} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}>
+              <RotateCcw size={14} /> Reset size and position
+            </button>
+          ) : null}
+        </div>
+      )}
+
+      {shown?.cut && (
+        <div style={{ marginTop: 16 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Car in front of you</p>
+          {cars === null ? (
+            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Looking for your cut-out car photos...</p>
+          ) : carList.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>None of your cars has a cut-out photo (no background) as its first photo, so no car shows.</p>
+          ) : (
+            <div className="keep-alpha" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+              {[{ id: 'auto', label: 'Newest' }, { id: 'none', label: 'No car' }, ...carList.map((c) => ({ id: c.id, label: [c.brand, c.model].filter(Boolean).join(' '), img: c.images[0] }))].map((o) => {
+                const on = frame.car === o.id || (o.id === 'auto' && frame.car !== 'none' && !carList.some((c) => c.id === frame.car));
+                return (
+                  <button key={o.id} type="button" aria-pressed={on} onClick={() => setFrame((f) => ({ ...f, car: o.id }))}
+                    style={{ flex: '0 0 auto', width: 96, padding: 6, borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                      background: on ? PD.text : PD.hover, color: on ? (PD.canvas || '#0b0c0f') : PD.text }}>
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 44, fontSize: 11, fontWeight: 700 }}>
+                      {o.img ? <img src={cdnImg(o.img, 200, 70)} alt="" style={{ maxWidth: '100%', maxHeight: 44, objectFit: 'contain' }} /> : o.label}
+                    </span>
+                    {o.img && <span style={{ display: 'block', marginTop: 4, fontSize: 10.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick} />
 
       {!modelSaved && !preview && !saved && (
@@ -166,6 +261,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
           </>
         ) : saved ? (
           <>
+            {frameDirty && <button type="button" className="lk-red" onClick={saveFrame} disabled={!!busy} style={{ ...main, background: undefined }}>Save changes</button>}
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy} style={soft}><ImagePlus size={14} /> Change</button>
             <button type="button" onClick={remove} disabled={!!busy} style={soft}><Trash2 size={14} /> Remove</button>
           </>

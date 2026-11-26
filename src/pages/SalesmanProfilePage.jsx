@@ -31,7 +31,8 @@ import HandoverBlock from '../components/agent/site/HandoverBlock';
 import StepsBlock from '../components/agent/site/StepsBlock';
 import FaqBlock from '../components/agent/site/FaqBlock';
 import BookBlock from '../components/agent/site/BookBlock';
-import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
+import { heroFrame, heroImageUrl, heroPersonStyle, heroCarCandidates } from '../utils/heroFrame';
+import { withSampleSite, cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -567,9 +568,11 @@ export default function SalesmanProfilePage() {
   // A .png/.webp name is not proof of see-through (stock new-car photos are
   // .webp on white): read the pixels. The car stands in front of the seller
   // only when the seller is a cut-out too; in front of a framed photo it crowds.
-  const heroImgUrl = heroUrl || profile?.avatar_url || null;
+  // PAGE-HERO 2: size, position and which car (or none) ride on the hero URL (src/utils/heroFrame.js).
+  const heroFrameSet = heroFrame(heroUrl);
+  const heroImgUrl = heroUrl ? heroImageUrl(heroUrl) : (profile?.avatar_url || null);
   const heroCutState = useSeeThrough(profile && !profile.page_basic ? heroImgUrl : null);
-  const heroCarUrl = useFirstSeeThrough(heroCutState === true ? listings.map((c) => (Array.isArray(c.images) ? c.images[0] : null)) : []);
+  const heroCarUrl = useFirstSeeThrough(heroCutState === true ? heroCarCandidates(listings, heroFrameSet) : []);
 
   useEffect(() => {
     if (!slug || !profile?.id) { setNickname(''); return undefined; }
@@ -650,6 +653,7 @@ export default function SalesmanProfilePage() {
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  const [showSamples, setShowSamples] = useState(true);
   // LIVE-ORDER: the seller arranged their "#N" numbers in the Live presenter. The
   // page (and so the presenter, the Live now card and every viewer's page) takes
   // the new order at once; the account saves it. A failed save puts it back.
@@ -907,7 +911,17 @@ export default function SalesmanProfilePage() {
               /></div>
     </>
   );
-  const site = cleanSite(siteRaw);
+  // Owner-only samples: the seller looking at their own page sees example rows in the empty
+  // sections (never saved, never shown to a buyer). "Hide samples" turns them off for this visit.
+  const sampleModels = [...new Set(listings.filter((c) => c.is_model_card).map((c) => [c.brand, c.model].filter(Boolean).join(' ')))];
+  const sampled = isOwner && pro && showSamples ? withSampleSite(siteRaw, { models: sampleModels }) : null;
+  const site = sampled ? sampled.site : cleanSite(siteRaw);
+  const sampleNote = sampled && sampled.filled.length > 0 && (
+    <div className="ap-sample-note" role="note">
+      <span><b>Sample sections, only you see them.</b> Buyers see a section only once you fill it in Settings &gt; Your page.</span>
+      <button type="button" onClick={() => setShowSamples(false)}>Hide samples</button>
+    </div>
+  );
   const facts = aboutFacts(about);
   // PAGE-SITE 3: the seller's own rankings (labelled: Drevo cannot check them) and best sellers.
   const ranks = pro ? site.ranks : [];
@@ -1054,9 +1068,9 @@ export default function SalesmanProfilePage() {
             {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
           </div>
         </div>
-        <div className={`aph-pic${heroCut ? ' aph-pic--cut' : ''}${heroCarUrl ? ' aph-pic--car' : ''}${heroWait ? ' aph-pic--wait' : ''}`}>
+        <div className={`aph-pic keep-alpha${heroCut ? ' aph-pic--cut' : ''}${heroCarUrl ? ' aph-pic--car' : ''}${heroWait ? ' aph-pic--wait' : ''}`}>
           {heroImg
-            ? <img className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} />
+            ? <img className="aph-me" src={heroCut || heroWait ? heroImg : cdnImg(heroImg, 720, 80)} alt={profile.full_name} style={heroPersonStyle(heroFrameSet, heroCut)} />
             : <div className="aph-me aph-mono" aria-hidden="true">{initial}</div>}
           {heroCarUrl && <img className="aph-car" src={heroCarUrl} alt="" />}
         </div>
@@ -1182,6 +1196,7 @@ export default function SalesmanProfilePage() {
   ];
   const siteBody = (
     <>
+      {sampleNote}
       {flowRows(flowItems).map((row) => (
         <div key={row.map((x) => x.id).join('+')} className={`ps-row${row.length === 2 ? ' ps-row--2' : row[0].span === 'half' ? ' ps-row--half' : ''}`}>
           {row.map((x) => x.node)}
@@ -1405,6 +1420,9 @@ export default function SalesmanProfilePage() {
         /* index.css paints #fff behind every see-through car photo (cards); not here */
         .aph .aph-pic img.aph-car { background: transparent; }
         .aph-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+        .ap-sample-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 18px 0 4px; padding: 12px 14px; border-radius: 12px; border: 1px dashed rgba(10,10,11,.25); background: #f6f6f7; color: #3a3d44; font-size: 13px; line-height: 1.45; }
+        .ap-sample-note b { color: #0f1115; }
+        .ap-sample-note button { flex-shrink: 0; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(10,10,11,.2); background: #fff; color: #0f1115; font: inherit; font-weight: 600; cursor: pointer; }
         .aph-chips span { white-space: nowrap; flex: 0 0 auto; }
         .aph-chips .aph-locchip { flex: 0 1 auto; min-width: 0; height: auto !important; min-height: 26px; padding-block: 4px !important; white-space: normal !important; line-height: 1.25; }
         .aph-loc { font-style: normal; min-width: 0; overflow-wrap: anywhere; }

@@ -274,3 +274,38 @@ export function flowRows(items) {
   if (open) rows.push(open);
   return rows;
 }
+
+// Owner-only SAMPLE content (owner, 2026-11-26: "add dummy data so I can see it"). When the seller
+// looks at their OWN page, an empty section is filled with example rows so they can see what it
+// would look like. Never shown to anyone else and never saved: the database stays as typed.
+// `models` = names of the seller's own model cards (for the promo and best-seller lines).
+export const SAMPLE_FAQ = [
+  { q: 'Can I test drive before booking?', a: 'Yes. Book a visit below and I will have the car ready for you.' },
+  { q: 'How long does the loan take?', a: 'Usually a few working days after the bank has all your documents. The bank decides.' },
+  { q: 'Do you take trade-ins?', a: 'Yes. Bring your car and I will get you a valuation on the spot.' },
+];
+export function withSampleSite(site, { models = [], today = myToday() } = {}) {
+  const s = cleanSite(site);
+  const filled = [];
+  const out = { ...s };
+  const m = models.filter(Boolean);
+  if (!s.handover.length) { out.handover = HANDOVER_STARTERS; filled.push('handover'); }
+  if (!s.steps.length) { out.steps = STEP_STARTERS.slice(0, 5); filled.push('steps'); }
+  if (!s.faq.length) { out.faq = SAMPLE_FAQ; filled.push('faq'); }
+  if (!s.delivery.items.length) {
+    out.delivery = { base: s.delivery.base || 'Kuala Lumpur', items: [{ town: 'Shah Alam', km: 25, min: 40 }, { town: 'Seremban', km: 65, min: 70 }, { town: 'Ipoh', km: 200, min: 150 }] };
+    filled.push('delivery');
+  }
+  if (!activePromos(s, today).length && m[0]) {
+    out.promos = [{ model: m[0], text: 'Sample offer: free tint and a full tank', until: addDays(today, 14) }];
+    filled.push('promos');
+  }
+  if (!s.ranks.length) {
+    const ym = (k) => { const d = new Date(`${today}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - k); return d.toISOString().slice(0, 7); };
+    out.ranks = [{ m: ym(3), n: 3 }, { m: ym(2), n: 2 }, { m: ym(1), n: 1 }];
+    out.rankTitle = s.rankTitle || 'Top salesman, my branch';
+    filled.push('ranks');
+  }
+  if (!s.best && m.length) { out.best = m.slice(0, 2).join(', '); filled.push('best'); }
+  return { site: out, filled };
+}

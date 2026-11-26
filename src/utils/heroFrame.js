@@ -1,0 +1,71 @@
+// PAGE-HERO 2 (owner, 2026-11-26): the seller sizes and places their hero photo, and picks
+// which car stands in front of it (or none). Saved ON the hero URL's query string, like the
+// cover's `fy=` (coverFocus.js): `set_my_hero_photo` only checks the part before `?`, so
+// there is no column and no migration. Keys: hs = size %, hx / hy = shift % of the frame,
+// hc = 'none' | a listing id. Nothing set = today's look exactly.
+
+export const HERO_SIZE = { min: 60, max: 160, def: 100 };
+export const HERO_SHIFT = { min: -40, max: 40, def: 0 };
+const KEYS = ['hs', 'hx', 'hy', 'hc'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const clampInt = (v, lo, hi, def) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
+};
+
+// Any URL -> { size, x, y, car }. car: 'auto' | 'none' | <listing id>.
+export function heroFrame(url) {
+  const out = { size: HERO_SIZE.def, x: HERO_SHIFT.def, y: HERO_SHIFT.def, car: 'auto' };
+  const q = String(url || '').split('#')[0].split('?')[1];
+  if (!q) return out;
+  const p = new URLSearchParams(q);
+  if (p.has('hs')) out.size = clampInt(p.get('hs'), HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def);
+  if (p.has('hx')) out.x = clampInt(p.get('hx'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
+  if (p.has('hy')) out.y = clampInt(p.get('hy'), HERO_SHIFT.min, HERO_SHIFT.max, HERO_SHIFT.def);
+  const c = p.get('hc');
+  if (c === 'none' || UUID.test(c || '')) out.car = c;
+  return out;
+}
+
+// The URL with these settings; defaults are left out, other query keys (t=) are kept.
+export function withHeroFrame(url, frame) {
+  const s = String(url || '');
+  if (!s) return s;
+  const [base, q = ''] = s.split('#')[0].split('?');
+  const p = new URLSearchParams(q);
+  KEYS.forEach((k) => p.delete(k));
+  const f = { ...heroFrame(''), ...frame };
+  const size = clampInt(f.size, HERO_SIZE.min, HERO_SIZE.max, HERO_SIZE.def);
+  const x = clampInt(f.x, HERO_SHIFT.min, HERO_SHIFT.max, 0);
+  const y = clampInt(f.y, HERO_SHIFT.min, HERO_SHIFT.max, 0);
+  if (size !== HERO_SIZE.def) p.set('hs', String(size));
+  if (x !== 0) p.set('hx', String(x));
+  if (y !== 0) p.set('hy', String(y));
+  if (f.car === 'none' || UUID.test(f.car || '')) p.set('hc', f.car);
+  const qs = p.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+// The image's own URL (without the frame keys), for loading the file.
+export const heroImageUrl = (url) => withHeroFrame(url, { size: HERO_SIZE.def, x: 0, y: 0, car: 'auto' });
+
+// CSS for the person. A cut-out grows from its feet (bottom centre); a framed photo
+// keeps its frame and moves the picture inside it.
+export function heroPersonStyle(frame, cut) {
+  const f = frame || heroFrame('');
+  if (f.size === 100 && f.x === 0 && f.y === 0) return undefined;
+  if (cut) return { transform: `translate(${f.x}%, ${f.y}%) scale(${f.size / 100})`, transformOrigin: '50% 100%' };
+  return { objectPosition: `${50 - f.x}% ${50 - f.y}%`, transform: f.size !== 100 ? `scale(${f.size / 100})` : undefined, transformOrigin: '50% 50%' };
+}
+
+// Which car photos the hero may stand in front of, in order. `cars` = the page's listings.
+export function heroCarCandidates(cars, frame) {
+  const first = (c) => (Array.isArray(c?.images) ? c.images[0] : null);
+  const list = Array.isArray(cars) ? cars : [];
+  if (frame?.car === 'none') return [];
+  if (frame?.car && frame.car !== 'auto') {
+    const pick = list.find((c) => c.id === frame.car);
+    if (pick && first(pick)) return [first(pick)];
+  }
+  return list.map(first).filter(Boolean);
+}
