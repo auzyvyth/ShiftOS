@@ -1978,8 +1978,11 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   car page (`useNewCarInfo`/`useNewCarVariant`), no second catalogue. We hold ONE photo set per model: a colour changes the
   swatch, its name and the WhatsApp text, never the photo, and the panel says so. Colours only where `new_car_models.specs.colours`
   has them (Proton, Perodua, BYD; none for Honda, Toyota, Jaecoo). Never add per-colour or AI images to fill the gap.
-  **The Premium page is BLACK now (owner, 2026-11-26, reverses the 25 Nov light page):** `PageLook.jsx`; the seller background
-  picker (`page_site.ground`) was removed before it was ever saved.
+  **The Premium page is WHITE (owner, 2026-11-26, after a day in black):** `PageLook.jsx` (tokens `--k*`, `--t*`, `--ink`). The hero
+  stays a dark photo band. Anything PICKED (car card, variant row, tab, chip, brand) fills solid ink with white words, never an
+  outline (owner: "the outline selection looks cheap"). Bold type is the marketplace's: headings Bebas Neue (one font per heading,
+  the second half only muted), numbers + buttons Outfit bold; Archivo only for the small spaced labels. Outlined boxes use
+  `corner-shape: squircle` where supported (`--r-card/btn/chip`). The seller background picker (`page_site.ground`) was removed.
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
   The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
   6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a

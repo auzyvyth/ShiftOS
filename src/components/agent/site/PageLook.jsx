@@ -2,12 +2,13 @@ import React, { useEffect } from 'react';
 
 // The Premium page's look (owner, 2026-11-26: "I wanted it like this", a black advisor site he sent).
 // We take its ORGANISATION and colouring, never its words or photos. Rules:
-//  - BLACK page, white words, 1px hairlines. Outlined boxes have Apple's squircle corners (owner,
+//  - WHITE page, ink words, 1px hairlines (owner, 2026-11-26, after a day in black). The hero stays a dark photo
+//    band. Whatever is picked (a car, a variant, a tab, a chip) fills solid INK with white words, never an outline. Outlined boxes have Apple's squircle corners (owner,
 //    2026-11-26): `corner-shape: squircle` where the browser draws it, plain rounding elsewhere (--r-*).
 //  - Type by contrast: labels are tiny, light, wide-spaced capitals (Archivo, expanded). The BOLD type
 //    is the marketplace's (owner, 2026-11-26): headings in Bebas Neue, numbers and buttons in Outfit bold.
 //    A heading is a bold part then a light Archivo part ("PICK YOUR <light>MODEL</light>").
-//  - The main button is WHITE with black words. The seller's colour is only a small accent: the
+//  - The main button is INK with white words (white inside the dark hero). The seller's colour is only a small accent: the
 //    slider, the picked tab's underline, the promo dots. Never a big coloured block or a glow.
 //  - Things that float over the page (top buttons, section menu, bottom bar) are frosted glass.
 // Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The wide face (Archivo,
@@ -21,19 +22,26 @@ export default function PageLook() {
     l.rel = 'stylesheet'; l.href = FONT_HREF; l.dataset.plFont = '1';
     document.head.appendChild(l);
   }, []);
+  // The page is white edge to edge: body is the marketplace's near-black, which showed as a strip above the hero.
+  useEffect(() => {
+    // index.css paints body with !important, so this must be important too.
+    const b = document.body, was = b.style.getPropertyValue('background-color'), prio = b.style.getPropertyPriority('background-color');
+    b.style.setProperty('background-color', '#ffffff', 'important');
+    return () => { if (was) b.style.setProperty('background-color', was, prio); else b.style.removeProperty('background-color'); };
+  }, []);
   return (
     <style>{`
-      .ap.ap--pro { --k0: #0a0a0b; --k1: #111113; --k2: #18181b; --line: rgba(255,255,255,.12); --line2: rgba(255,255,255,.22);
-        --t1: #ffffff; --t2: rgba(255,255,255,.72); --t3: rgba(255,255,255,.5);
+      .ap.ap--pro { --k0: #ffffff; --k1: #f4f4f6; --k2: #ebebee; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
+        --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #0a0a0b; --on-ink: #ffffff;
         --wide: 'Archivo', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
         --r-card: 16px; --r-btn: 12px; --r-chip: 9px; --ap-bg: var(--k0); --ap-surf: var(--k1);
         background: var(--k0); color: var(--t1); }
-      .ap--pro * { scrollbar-color: #333 transparent; }
+      .ap--pro * { scrollbar-color: #c8c8cc transparent; }
 
       /* ---------- Type ---------- */
       .ap--pro .ap-sec h2, .ap--pro .ps-head h2 { font-family: var(--head); font-weight: 400; text-transform: uppercase;
         font-size: clamp(28px, 3.2vw, 42px); line-height: 1; letter-spacing: .02em; color: var(--t1); }
-      .ap--pro .ps-head h2 span, .ap--pro .ap-sec h2 small { font-family: var(--wide); font-stretch: 125%; font-weight: 300; font-size: .8em; letter-spacing: -.005em; }
+      .ap--pro .ps-head h2 span, .ap--pro .ap-sec h2 small { font-family: var(--head); font-weight: 400; font-size: 1em; letter-spacing: inherit; color: var(--t3); }
       .ap--pro .ap-sec h2 > span { font-family: var(--xd-font-body); font-weight: 400; font-size: .5em; color: var(--t3); vertical-align: middle; }
       .ap--pro .ps-head p { margin-top: 10px; font-size: 14px; line-height: 1.55; color: var(--t2); max-width: 54ch; }
       /* The label: tiny, light, wide-spaced capitals. The value under it carries the weight. */
@@ -65,10 +73,10 @@ export default function PageLook() {
       .ap--pro .ap-facts li { background: transparent; border: 1px solid var(--line); border-radius: var(--r-chip); color: var(--t1); }
       .ap--pro .ap-facts svg { color: var(--t1); }
       .ap--pro .ap-about-bio + .ap-facts { border-top: 1px solid var(--line); padding-top: 16px; }
-      .ap--pro .ap-spec svg { background: #fff; color: #0a0a0b; border-radius: var(--r-chip); }
+      .ap--pro .ap-spec svg { background: var(--ink); color: var(--on-ink); border-radius: var(--r-chip); }
       .ap--pro .ap-promise span { color: var(--line2); }
       .ap--pro .ap-terms, .ap--pro .ap-terms * { color: var(--t2); }
-      .ap--pro .ap-map iframe { filter: grayscale(1) invert(.92) contrast(.9); }
+      .ap--pro .ap-map iframe { filter: grayscale(1); }
       .ap--pro .ap-reviews { margin-top: 44px; }
       .ap--pro .ap-reviews, .ap--pro .ap-reviews p, .ap--pro .ap-reviews span, .ap--pro .ap-reviews h2, .ap--pro .ap-reviews h3 { color: var(--t1) !important; }
       .ap--pro .ap-reviews [style*="background"] { background: transparent !important; }
@@ -77,21 +85,26 @@ export default function PageLook() {
       /* Switches, brand tabs, sort */
       .ap--pro .ap-seg { background: transparent; border: 1px solid var(--line); border-radius: var(--r-chip); }
       .ap--pro .ap-seg button { color: var(--t2); }
-      .ap--pro .ap-seg button[aria-pressed="true"], .ap--pro .ap-brands button[aria-pressed="true"] { background: #fff; color: #0a0a0b; border-color: #fff; }
+      .ap--pro .ap-seg button[aria-pressed="true"], .ap--pro .ap-brands button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
       .ap--pro .ap-brands button { border-radius: var(--r-chip); background: transparent !important; color: var(--t2); border-color: var(--line); }
-      .ap--pro .ap-brands button[aria-pressed="true"] { background: #fff !important; }
+      .ap--pro .ap-brands button[aria-pressed="true"] { background: var(--ink) !important; }
 
       /* ---------- Buttons ---------- */
-      .ap--pro .ap-btn, .ap--pro .ps-wa { border-radius: var(--r-btn) !important; background: #fff !important; color: #0a0a0b !important; box-shadow: none !important;
+      .ap--pro .ap-btn, .ap--pro .ps-wa { border-radius: var(--r-btn) !important; background: var(--ink) !important; color: var(--on-ink) !important; box-shadow: none !important;
         font-family: var(--bold); font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .1em; text-transform: uppercase; }
-      .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: #e9e9ea !important; }
+      .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: #2a2a2e !important; }
+      .ap--pro .aph .ap-btn { background: #fff !important; color: #0a0a0b !important; }
+      .ap--pro .aph .ap-btn:hover { background: #e9e9ea !important; }
       .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; }
       .ap--pro .ps-ghost { border-radius: var(--r-btn); background: transparent; color: var(--t1); border-color: var(--line2);
         font-family: var(--bold); font-weight: 700; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .ps-ask { color: var(--t1); }
 
       /* ---------- Hero ---------- */
-      .ap--pro .aph { border-radius: var(--r-card); background: var(--k0); border: 1px solid var(--line); }
+      /* The hero stays a DARK photo band on the white page: white words over the cover photo need the dark fade. */
+      .ap--pro .aph { --k0: #0a0a0b; --k1: #111113; --k2: #18181b; --line: rgba(255,255,255,.12); --line2: rgba(255,255,255,.22);
+        --t1: #ffffff; --t2: rgba(255,255,255,.72); --t3: rgba(255,255,255,.5); color: var(--t1);
+        border-radius: var(--r-card); background: var(--k0); border: none; }
       .ap--pro .aph-glow { background: radial-gradient(circle, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 65%); }
       .ap--pro .aph--cover::before { background: linear-gradient(180deg, rgba(10,10,11,.6), rgba(10,10,11,.94) 58%); }
       .ap--pro .aph-me { border-radius: var(--r-card); box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px var(--line2); }
@@ -102,7 +115,7 @@ export default function PageLook() {
       .ap--pro .aph-role { font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
       .ap--pro .aph .aph-name { font-family: var(--head); font-weight: 400; text-transform: uppercase; letter-spacing: .015em;
         font-size: clamp(40px, 11vw, 86px); line-height: .92; }
-      .ap--pro .aph .aph-name .ap-last { font-family: var(--wide); font-stretch: 125%; font-weight: 300; font-size: .78em; letter-spacing: -.01em; }
+      .ap--pro .aph .aph-name .ap-last { font-family: inherit; font-weight: inherit; font-size: inherit; letter-spacing: inherit; }
       .ap--pro .aph-ico { border-radius: var(--r-chip); background: transparent; border-color: var(--line2); }
       .ap--pro .aph-stats b { font-family: var(--bold); font-weight: 700; font-size: 26px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .ap--pro .aph-stats b.aph-small { font-family: var(--xd-font-body); font-weight: 600; font-size: 14px; }
@@ -113,14 +126,14 @@ export default function PageLook() {
       .ap--pro .ap-back:active, .ap--pro .ap-share:active { background: rgba(255,255,255,.2) !important; translate: 0 1px; }
 
       /* ---------- Section menu + bottom bar: frosted strips ---------- */
-      .ap--pro .pn { background: rgba(10,10,11,.72); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+      .ap--pro .pn { background: rgba(255,255,255,.82); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
         border-bottom: 1px solid var(--line); gap: 0; padding: 0; margin: 0 0 4px; }
       .ap--pro .pn a { height: 46px; padding: 0 16px; border-radius: var(--r-btn); background: transparent; box-shadow: none; color: var(--t2);
         font-family: var(--bold); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
       .ap--pro .pn a:hover { background: transparent; color: var(--t1); box-shadow: inset 0 -2px 0 var(--ap-a); }
-      .ap--pro .ap-sticky { background: rgba(10,10,11,.78) !important; -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+      .ap--pro .ap-sticky { background: rgba(255,255,255,.84) !important; -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
         border-top: 1px solid var(--line); box-shadow: none; }
-      .ap--pro .ap-sticky .ap-mini { border-radius: var(--r-card); background: var(--k2); }
+      .ap--pro .ap-sticky .ap-mini { border-radius: var(--r-card); background: var(--ink); color: var(--on-ink); }
       .ap--pro .ap-sticky .ap-btn { padding: 0 18px; }
 
       /* ---------- Promos + ticker ---------- */
@@ -137,14 +150,14 @@ export default function PageLook() {
       /* ---------- Delivery ---------- */
       .ap--pro .ps-del { padding: 20px; }
       .ap--pro .ps-towns button { border-radius: var(--r-chip); background: transparent; border-color: var(--line2); color: var(--t2); }
-      .ap--pro .ps-towns button[aria-pressed="true"] { background: #fff; border-color: #fff; color: #0a0a0b; }
+      .ap--pro .ps-towns button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
       .ap--pro .ps-route b, .ap--pro .ps-big div b { color: var(--t1); }
       .ap--pro .ps-big div b { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .ap--pro .ps-route i { background: repeating-linear-gradient(90deg, var(--line2) 0 6px, transparent 6px 12px); }
-      .ap--pro .ps-dot { border-color: #fff; background: var(--k0); border-radius: var(--r-chip); }
+      .ap--pro .ps-dot { border-color: var(--ink); background: var(--k0); border-radius: var(--r-chip); }
       .ap--pro .ps-dot--end { background: var(--ap-a); border-color: var(--ap-a); }
 
-      /* ---------- Pick your model (the page is black now, so the block is just a section) ---------- */
+      /* ---------- Pick your model (the page itself is the surface, so the block is just a section) ---------- */
       .ap--pro .ps-dark { background: transparent; color: var(--t1); border-radius: 0; padding: 0; }
       .ap--pro .ps-dark .ps-head h2 { color: var(--t1); }
       .ap--pro .ps-mtabs { border-bottom-color: var(--line); }
@@ -153,7 +166,7 @@ export default function PageLook() {
       .ap--pro .ps-mtabs button[aria-pressed="true"] { color: var(--t1); border-bottom-color: var(--ap-a); }
       .ap--pro .ps-dark .ps-card, .ap--pro .ps-model { background: transparent; border: 1px solid var(--line); }
       .ap--pro .ps-media, .ap--pro .ps-dark .ps-media, .ap--pro .ps-dark .ps-shots, .ap--pro .ps-shots { background: var(--k0); border-radius: var(--r-card); }
-      .ap--pro .ps-stage, .ap--pro .ps-dark .ps-stage { background: radial-gradient(ellipse 70% 55% at 50% 38%, #2b2b2f 0%, #141416 55%, #0a0a0b 100%); }
+      .ap--pro .ps-stage, .ap--pro .ps-dark .ps-stage { background: radial-gradient(ellipse 70% 55% at 50% 38%, #ffffff 0%, #f1f1f3 55%, #e6e6e9 100%); }
       .ap--pro .ps-stage-tag { border-radius: var(--r-chip); background: transparent; border: 1px solid var(--line2); font-family: var(--wide); font-stretch: 125%;
         font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; }
       .ap--pro .ps-shots button { border-radius: var(--r-chip); }
@@ -167,10 +180,10 @@ export default function PageLook() {
       .ap--pro .ps-spec dd { color: var(--t1); font-weight: 700; }
       .ap--pro .ps-var, .ap--pro .ps-dark .ps-var { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--t2); }
       .ap--pro .ps-var span:last-child, .ap--pro .ps-dark .ps-var span:last-child { color: var(--t2); }
-      .ap--pro .ps-var[aria-checked="true"], .ap--pro .ps-dark .ps-var[aria-checked="true"] { background: rgba(255,255,255,.06); border-color: var(--line); box-shadow: inset 2px 0 0 #fff; color: var(--t1); }
-      .ap--pro .ps-var[aria-checked="true"] span:last-child { color: var(--t1); }
-      .ap--pro .ps-col, .ap--pro .ps-dark .ps-col { box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset; }
-      .ap--pro .ps-col[aria-checked="true"], .ap--pro .ps-dark .ps-col[aria-checked="true"] { border-color: var(--k0); outline: 1px solid #fff; }
+      .ap--pro .ps-var[aria-checked="true"], .ap--pro .ps-dark .ps-var[aria-checked="true"] { background: var(--ink); border-color: var(--ink); box-shadow: none; color: var(--on-ink); }
+      .ap--pro .ps-var[aria-checked="true"] span:last-child { color: var(--on-ink); }
+      .ap--pro .ps-col, .ap--pro .ps-dark .ps-col { box-shadow: 0 0 0 1px rgba(10,10,11,.18) inset; }
+      .ap--pro .ps-col[aria-checked="true"], .ap--pro .ps-dark .ps-col[aria-checked="true"] { border-color: var(--k0); outline: 1.5px solid var(--ink); }
       .ap--pro .ps-note, .ap--pro .ps-dark .ps-note { background: transparent; border-left: 1px solid var(--line2); border-radius: 0; padding: 4px 0 4px 14px; }
       .ap--pro .ps-note p:last-child { color: var(--t2); }
 
@@ -178,32 +191,36 @@ export default function PageLook() {
       .ap--pro .ps-help { background: transparent; border: 1px solid var(--line); }
       .ap--pro .ps-q { border-top: 1px solid var(--line) !important; }
       .ap--pro .ps-q-o button, .ap--pro .ps-steps button { border-radius: var(--r-chip); background: transparent; color: var(--t2); border-color: var(--line2); }
-      .ap--pro .ps-q-o button[aria-checked="true"] { background: #fff; border-color: #fff; color: #0a0a0b; }
+      .ap--pro .ps-q-o button[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
       .ap--pro .ps-help-r, .ap--pro .ps-dark .ps-help-r { background: transparent; border: 1px solid var(--line) !important; border-radius: var(--r-card); padding: 16px; }
 
       /* ---------- Calculator ---------- */
       .ap--pro .pc { background: transparent; color: var(--t1); border-radius: var(--r-card); border: 1px solid var(--line); }
       .ap--pro .pc-tabs { background: transparent; border: 1px solid var(--line); border-radius: var(--r-chip); }
       .ap--pro .pc-tabs button { color: var(--t2); border-radius: var(--r-chip); }
-      .ap--pro .pc-tabs button[aria-pressed="true"] { background: #fff; color: #0a0a0b; box-shadow: none; }
+      .ap--pro .pc-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
       .ap--pro .pc-car { background: transparent; color: var(--t1); border: 1px solid var(--line); border-radius: var(--r-card); }
-      .ap--pro .pc-car[aria-pressed="true"] { background: rgba(255,255,255,.06); border-color: #fff; box-shadow: none; }
+      /* The picked car: the WHOLE card turns ink (owner, 2026-11-26: an outline "looks cheap") */
+      .ap--pro .pc-car[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); box-shadow: none; }
+      .ap--pro .pc-car[aria-pressed="true"] .pc-ph { background: #1c1c1f; }
+      .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: #fff; color: #0a0a0b; }
       .ap--pro .pc-ph { background: var(--k1); }
       .ap--pro .pc-n { border-radius: var(--r-chip); }
       .ap--pro .pc-field { background: transparent; border-radius: 0; border-bottom: 1px solid var(--line); }
       .ap--pro .pc-fh b { color: var(--t1); }
       .ap--pro .pc-ticks { color: var(--t3); }
-      .ap--pro .pc-range::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--ap-a, #dc2626) var(--pc-fill, 0%), rgba(255,255,255,.16) var(--pc-fill, 0%)); }
-      .ap--pro .pc-range::-moz-range-track { background: rgba(255,255,255,.16); }
+      .ap--pro .pc-range::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--ap-a, #dc2626) var(--pc-fill, 0%), rgba(10,10,11,.12) var(--pc-fill, 0%)); }
+      .ap--pro .pc-range::-moz-range-track { background: rgba(10,10,11,.12); }
       .ap--pro .pc-seg { background: transparent; border: 1px solid var(--line); border-radius: var(--r-chip); }
       .ap--pro .pc-seg button { color: var(--t2); border-radius: var(--r-chip); }
-      .ap--pro .pc-seg button[aria-checked="true"] { background: #fff; color: #0a0a0b; box-shadow: none; }
-      .ap--pro .pc-out { background: #fff; color: #0a0a0b; border-radius: var(--r-card); }
-      .ap--pro .pc-out .pc-k { color: rgba(10,10,11,.5) !important; }
+      .ap--pro .pc-seg button[aria-checked="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+      /* The answer is the black band */
+      .ap--pro .pc-out { background: var(--ink); color: var(--on-ink); border-radius: var(--r-card); }
+      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.55) !important; }
       .ap--pro .pc-big { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(10,10,11,.55); }
-      .ap--pro .pc-rows { border-top: 1px solid rgba(10,10,11,.1); padding-top: 10px; }
-      .ap--pro .pc-link { background: #0a0a0b; color: #fff; border-radius: var(--r-btn); font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.6); }
+      .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.14); padding-top: 10px; }
+      .ap--pro .pc-link { background: #fff; color: #0a0a0b; border-radius: var(--r-btn); font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .pc-fine, .ap--pro .pc-fine[style] { color: var(--t3); }
       .ap--pro .pc-none { color: var(--t1); }
       /* Apple's continuous corners where the browser can draw them (corner-shape), round corners elsewhere.
