@@ -70,6 +70,12 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## NEWS-1: "Premium has a new look" pop-up (owner, 2026-11-26) - waiting on the owner's GIF
+- [ ] Owner records the business card ring on staging, makes a GIF, sends it.
+- [ ] Save it as `public/news/premium-new-look.gif`, flip `NEWS_READY = true` in `src/components/news/PremiumLookNews.jsx`, ship with the prod release.
+- Once per account (`starter_tasks.news_premium_look_1`). Lite: 7-day trial button only when the trial is unused. Preview any time with `?news=1`.
+- Not shown in the linked-salesman panel (Salesmanpanel.jsx).
+
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
 (price, sold, assign, delete; price now refuses a 0-row save), 7 export error, 10 AI import takes .csv, 13 header tap areas 40px, 3 owner switches staff on/off: migration `20261117a` APPLIED 2026-11-17 09:5x UTC (owner "do it now", nobody live) and

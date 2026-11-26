@@ -40,6 +40,7 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
 import { chosenPageColor } from "../utils/pageAccent";
+import PremiumLookNews from "../components/news/PremiumLookNews";
 import HeroPhotoCard from "../components/premium/HeroPhotoCard";
 import PageSiteCard from "../components/premium/PageSiteCard";
 import PageGradientPicker from "../components/premium/PageGradientPicker";
@@ -7788,6 +7789,8 @@ export default function SalesmanPremium() {
  )}
  {renderTour()}
  {renderFirstSale()}
+ {/* NEWS-1: the once-only "Premium has a new look" pop-up. */}
+ <PremiumLookNews userId={userId} profile={profile} isPremium blocked={tourStep !== null} onTryLook={() => openSettings("profile")} />
 
  {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
  desktop sidebar, mobile topbar) open this instead of calling
