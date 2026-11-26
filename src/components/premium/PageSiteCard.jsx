@@ -5,7 +5,10 @@ import { premiumDark as PD } from '../../theme/tokens';
 import {
   cleanSite, promoProblem, deliveryProblem, noteProblem, siteErrorText, myToday,
   SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
+  lineProblem, faqProblem, rankProblem, HANDOVER_STARTERS, STEP_STARTERS, DEFAULT_SLOTS, slotLabel,
+  LIST_MAX, LINE_T_MAX, LINE_D_MAX, FAQ_MAX, FAQ_Q_MAX, FAQ_A_MAX, RANK_MAX, RANK_TITLE_MAX, BEST_MAX, SLOT_MAX,
 } from '../../utils/pageSite';
+import HandoverPhotosCard from './HandoverPhotosCard';
 
 // Premium Settings > "Your page sections" (PAGE-SITE 2). The seller types their
 // promos of the month (each with an END DATE: it leaves the page by itself), the
@@ -60,7 +63,19 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
     ...draft.promos.map((p) => promoProblem(p, today)),
     ...draft.notes.map((x) => noteProblem(x)),
     ...draft.delivery.items.map((t) => deliveryProblem(t)),
+    ...draft.handover.map((x) => lineProblem(x)),
+    ...draft.steps.map((x) => lineProblem(x)),
+    ...draft.faq.map((x) => faqProblem(x)),
+    ...draft.ranks.map((x) => rankProblem(x)),
   ].filter(Boolean);
+  const setIn = (key, i, patch) => set({ [key]: draft[key].map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+  const dropIn = (key, i) => set({ [key]: draft[key].filter((_, j) => j !== i) });
+  const moveIn = (key, i, d) => {
+    const a = [...draft[key]]; const j = i + d;
+    if (j < 0 || j >= a.length) return;
+    [a[i], a[j]] = [a[j], a[i]];
+    set({ [key]: a });
+  };
 
   const save = async () => {
     setError(null); setDone(false);
@@ -177,6 +192,108 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
             <button type="button" onClick={() => set({ delivery: { ...draft.delivery, items: [...draft.delivery.items, { town: '', km: '', min: '' }] } })} style={{ ...soft, justifySelf: 'start' }}><Plus size={14} /> Add a town</button>
           )}
         </div>
+      </div>
+
+
+      {/* PAGE-SITE 3: handover day, buying steps, FAQ, about extras, booking times */}
+      {[
+        { key: 'handover', title: 'Handover day: what the buyer gets', hint: 'What you do with every buyer on the day you hand over the keys. Your own list; only promise what you really do. Do not type phone numbers.', starters: HANDOVER_STARTERS, add: 'Add a line' },
+        { key: 'steps', title: 'How buying works with you', hint: 'Your stops from the first visit to the handover, in order. Never promise a loan approval: the bank decides. Do not type phone numbers.', starters: STEP_STARTERS, add: 'Add a stop' },
+      ].map((L) => (
+        <div key={L.key} style={card}>
+          <p style={h}>{L.title}</p>
+          <p style={hint}>{L.hint}</p>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {draft[L.key].map((x, i) => {
+              const pr = lineProblem(x);
+              return (
+                <div key={i} style={row}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto auto', gap: 8, alignItems: 'center' }}>
+                    <span style={{ width: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, color: PD.textMuted }}>{i + 1}</span>
+                    <input aria-label="Title" placeholder="Title" maxLength={LINE_T_MAX} value={x.t || ''} onChange={(e) => setIn(L.key, i, { t: e.target.value })} style={input} />
+                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveIn(L.key, i, -1)} style={{ ...icon, opacity: i === 0 ? 0.35 : 1 }}><ArrowUp size={16} /></button>
+                    <button type="button" aria-label="Move down" disabled={i === draft[L.key].length - 1} onClick={() => moveIn(L.key, i, 1)} style={{ ...icon, opacity: i === draft[L.key].length - 1 ? 0.35 : 1 }}><ArrowDown size={16} /></button>
+                  </div>
+                  <textarea aria-label="What it means" placeholder="One line on what it means (optional)" maxLength={LINE_D_MAX} rows={2} value={x.d || ''} onChange={(e) => setIn(L.key, i, { d: e.target.value })}
+                    style={{ ...input, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.45 }} />
+                  {pr && <p style={{ margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
+                  <button type="button" onClick={() => dropIn(L.key, i)} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}><Trash2 size={14} /> Remove</button>
+                </div>
+              );
+            })}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {draft[L.key].length < LIST_MAX && (
+                <button type="button" onClick={() => set({ [L.key]: [...draft[L.key], { t: '', d: '' }] })} style={soft}><Plus size={14} /> {L.add}</button>
+              )}
+              {draft[L.key].length === 0 && (
+                <button type="button" onClick={() => set({ [L.key]: L.starters.map((x) => ({ ...x })) })} style={soft}>Start from a sample, then edit it</button>
+              )}
+            </div>
+          </div>
+          {L.key === 'handover' && <div style={{ marginTop: 14 }}><HandoverPhotosCard userId={userId} accent={accent} /></div>}
+        </div>
+      ))}
+
+      <div style={card}>
+        <p style={h}>Questions buyers ask</p>
+        <p style={hint}>The questions you answer every day, answered once on your page. Never quote a loan rate as certain: the bank decides. Do not type phone numbers.</p>
+        <div style={{ display: 'grid', gap: 10 }}>
+          {draft.faq.map((x, i) => {
+            const pr = faqProblem(x);
+            return (
+              <div key={i} style={row}>
+                <input aria-label="Question" placeholder="Question, e.g. Can I trade in my old car?" maxLength={FAQ_Q_MAX} value={x.q || ''} onChange={(e) => setIn('faq', i, { q: e.target.value })} style={input} />
+                <textarea aria-label="Your answer" placeholder="Your answer" maxLength={FAQ_A_MAX} rows={3} value={x.a || ''} onChange={(e) => setIn('faq', i, { a: e.target.value })}
+                  style={{ ...input, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.45 }} />
+                {pr && <p style={{ margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
+                <button type="button" onClick={() => dropIn('faq', i)} style={{ ...soft, justifySelf: 'start', minHeight: 36 }}><Trash2 size={14} /> Remove</button>
+              </div>
+            );
+          })}
+          {draft.faq.length < FAQ_MAX && (
+            <button type="button" onClick={() => set({ faq: [...draft.faq, { q: '', a: '' }] })} style={{ ...soft, justifySelf: 'start' }}><Plus size={14} /> Add a question</button>
+          )}
+        </div>
+      </div>
+
+      <div style={card}>
+        <p style={h}>About me: best sellers and rankings</p>
+        <p style={hint}>Shown under About me. Your rankings are your own claim: your page says "As stated by you, Drevo has not checked it". Only type a ranking you can show proof of if a buyer asks.</p>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <input aria-label="Best sellers" placeholder="Best sellers, e.g. S70, X50, Saga and X90" maxLength={BEST_MAX} value={draft.best} onChange={(e) => set({ best: e.target.value })} style={input} />
+          <input aria-label="Ranking title" placeholder="Ranking title, e.g. Top sales advisor, Proton DK Motor 2026" maxLength={RANK_TITLE_MAX} value={draft.rankTitle} onChange={(e) => set({ rankTitle: e.target.value })} style={input} />
+          {draft.ranks.map((x, i) => {
+            const pr = rankProblem(x);
+            return (
+              <div key={i} style={{ ...row, gridTemplateColumns: 'minmax(0,1.7fr) minmax(0,.8fr) auto', alignItems: 'center' }}>
+                <input aria-label="Month" type="month" max={today.slice(0, 7)} value={x.m || ''} onChange={(e) => setIn('ranks', i, { m: e.target.value })} style={{ ...input, colorScheme: 'dark' }} />
+                <input aria-label="Rank" placeholder="Rank, e.g. 1" inputMode="numeric" value={x.n ?? ''} onChange={(e) => setIn('ranks', i, { n: e.target.value.replace(/\D/g, '').slice(0, 2) })} style={input} />
+                <button type="button" aria-label="Remove ranking" onClick={() => dropIn('ranks', i)} style={icon}><Trash2 size={15} /></button>
+                {pr && <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 12, color: PD.accentText }}>{pr}</p>}
+              </div>
+            );
+          })}
+          {draft.ranks.length < RANK_MAX && (
+            <button type="button" onClick={() => set({ ranks: [...draft.ranks, { m: '', n: '' }] })} style={{ ...soft, justifySelf: 'start' }}><Plus size={14} /> Add a month's ranking</button>
+          )}
+        </div>
+      </div>
+
+      <div style={card}>
+        <p style={h}>Book a visit: your times</p>
+        <p style={hint}>The times a buyer can pick on your page. A booking lands in Inbox, Bookings as "needs your OK"; you confirm it on WhatsApp. Leave all off to use {DEFAULT_SLOTS.map(slotLabel).join(', ')}.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {['09:00', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '17:00', '18:00', '19:00', '20:00'].map((t) => {
+            const on = draft.slots.includes(t);
+            const atMax = !on && draft.slots.length >= SLOT_MAX;
+            return (
+              <button key={t} type="button" aria-pressed={on} disabled={atMax}
+                onClick={() => set({ slots: on ? draft.slots.filter((x) => x !== t) : [...draft.slots, t].sort() })}
+                style={{ ...btn, minHeight: 40, padding: '0 12px', background: on ? accent : PD.hover, color: on ? '#fff' : PD.textSec, opacity: atMax ? 0.4 : 1 }}>{slotLabel(t)}</button>
+            );
+          })}
+        </div>
+        <p style={{ ...hint, margin: '10px 0 0' }}>{draft.slots.length ? `${draft.slots.length} of ${SLOT_MAX} times picked.` : 'Using the usual times.'}</p>
       </div>
 
       {notReady && !error && <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Saving these sections is not available yet. Try again later.</p>}

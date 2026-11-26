@@ -27,7 +27,11 @@ import PageLook from '../components/agent/site/PageLook';
 import PromoBoard, { PromoTicker } from '../components/agent/site/PromoBoard';
 import ModelPicker from '../components/agent/site/ModelPicker';
 import DeliveryBlock from '../components/agent/site/DeliveryBlock';
-import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN } from '../utils/pageSite';
+import HandoverBlock from '../components/agent/site/HandoverBlock';
+import StepsBlock from '../components/agent/site/StepsBlock';
+import FaqBlock from '../components/agent/site/FaqBlock';
+import BookBlock from '../components/agent/site/BookBlock';
+import { cleanSite, visibleSections, activePromos, flowRows, SECTION_SPAN, rankMonth } from '../utils/pageSite';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
@@ -550,6 +554,16 @@ export default function SalesmanProfilePage() {
       .catch(() => { if (!off) setSiteRaw(null); });
     return () => { off = true; };
   }, [slug, profile?.id, profile?.page_basic]);
+  // PAGE-SITE 3: the seller's handover photos (each with a recorded buyer consent), own call too.
+  const [handoverPhotos, setHandoverPhotos] = useState([]);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setHandoverPhotos([]); return undefined; }
+    let off = false;
+    withTimeout(publicClient.rpc('get_agent_handover_photos', { p_slug: slug }), 8000)
+      .then((r) => { if (!off) setHandoverPhotos(!r?.error && Array.isArray(r?.data) ? r.data : []); })
+      .catch(() => { if (!off) setHandoverPhotos([]); });
+    return () => { off = true; };
+  }, [slug, profile?.id, profile?.page_basic]);
   // A .png/.webp name is not proof of see-through (stock new-car photos are
   // .webp on white): read the pixels. The car stands in front of the seller
   // only when the seller is a cut-out too; in front of a framed photo it crowds.
@@ -893,8 +907,12 @@ export default function SalesmanProfilePage() {
               /></div>
     </>
   );
+  const site = cleanSite(siteRaw);
   const facts = aboutFacts(about);
-  const aboutSec = (profile.bio || facts.length > 0) && (
+  // PAGE-SITE 3: the seller's own rankings (labelled: Drevo cannot check them) and best sellers.
+  const ranks = pro ? site.ranks : [];
+  const best = pro ? site.best : '';
+  const aboutSec = (profile.bio || facts.length > 0 || ranks.length > 0 || best) && (
     <section id="ap-about" className="ap-pro-sec">
       <div className="ap-sec"><h2>About me</h2></div>
       <div className="ap-card ap-about">
@@ -903,6 +921,20 @@ export default function SalesmanProfilePage() {
           <ul className="ap-facts">
             {facts.map((f) => <li key={f.key}><Check size={14} strokeWidth={2.6} />{f.text}</li>)}
           </ul>
+        )}
+        {best && <p className="ap-best"><span>Best sellers</span><b>{best}</b></p>}
+        {ranks.length > 0 && (
+          <div className="ap-ranks">
+            <p className="ap-ranks-h">{site.rankTitle || 'Sales ranking'}</p>
+            <div className="ap-ranks-g">
+              {ranks.map((r) => (
+                <div key={r.m} className={r.n === Math.min(...ranks.map((x) => x.n)) ? 'is-top' : ''}>
+                  <b>No. {r.n}</b><span>{rankMonth(r.m)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="ap-ranks-f">As stated by {firstName}. Drevo has not checked it.</p>
+          </div>
         )}
       </div>
     </section>
@@ -1115,7 +1147,6 @@ export default function SalesmanProfilePage() {
               )}
     </>
   );
-  const site = cleanSite(siteRaw);
   const hasModels = pro && listings.some((c) => c.is_model_card);
   const calcOk = pro && !profile.page_basic && shownListings.length > 0;
   const siteWa = (source, item) => trackEvent(supabase, 'whatsapp_click', {
@@ -1131,8 +1162,12 @@ export default function SalesmanProfilePage() {
     cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
     calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
+    handover: <HandoverBlock key="handover" items={site.handover} photos={handoverPhotos} soldCount={soldCount} firstName={firstName} />,
+    steps: <StepsBlock key="steps" steps={site.steps} firstName={firstName} />,
+    book: <BookBlock key="book" cars={listings} site={site} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
+    faq: <FaqBlock key="faq" faq={site.faq} firstName={firstName} />,
   };
-  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk }) : [];
+  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: listings.some((c) => c.status === 'available' && c.dealer_id) }) : [];
   // The page reads as rows (owner, 2026-11-25: "everything is too wide"): models + cars take a
   // row each, the other sections go two to a row on a wide screen. The fixed sections after
   // the seller's own (About, Why me, Track record, Find me) join the same flow.
@@ -1417,6 +1452,17 @@ export default function SalesmanProfilePage() {
         .ap-about { padding: 20px; }
         .ap-about-bio { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-line; }
         .ap-facts { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .ap-best { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-size: 14px; }
+        .ap-best span { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
+        .ap-best b { color: #0f1115; font-weight: 600; }
+        .ap-ranks { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-ranks-h { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
+        .ap-ranks-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+        .ap-ranks-g div { padding: 12px; border-radius: 10px; corner-shape: squircle; background: #f4f4f6; color: #0f1115; }
+        .ap-ranks-g div.is-top { background: #0a0a0b; color: #fff; }
+        .ap-ranks-g b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; letter-spacing: .02em; }
+        .ap-ranks-g span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+        .ap-ranks-f { margin: 8px 0 0; font-size: 11.5px; color: #6b7280; }
         .ap-about-bio + .ap-facts { padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
         .ap-facts li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #111827; background: #F4F2EC; border-radius: 999px; padding: 7px 12px; }
         .ap-facts svg { color: var(--ap-a); flex-shrink: 0; }
@@ -1595,6 +1641,7 @@ export default function SalesmanProfilePage() {
                 <PageNav items={flowItems.map((x) => ({
                   promos: { id: 'ap-promos', label: 'Promos' }, models: { id: 'ap-models', label: 'Models' }, cars: shownListings.length > 0 && { id: 'ap-cars', label: 'Cars' },
                   calculator: shownListings.some((c) => Number(c.selling_price) > 0) && { id: 'ap-calc', label: 'Calculator' }, delivery: { id: 'ap-delivery', label: 'Delivery' },
+                  handover: { id: 'ap-handover', label: 'Handover' }, steps: { id: 'ap-steps', label: 'How to buy' }, book: { id: 'ap-book', label: 'Book' }, faq: { id: 'ap-faq', label: 'FAQ' },
                   about: { id: 'ap-about', label: 'About' }, why: { id: 'ap-why', label: 'Why me' }, track: trust.recentSales.length > 0 && { id: 'ap-track', label: 'Track record' },
                   find: { id: 'ap-find', label: 'Find me' },
                 }[x.id]))} />

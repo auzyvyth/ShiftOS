@@ -1,5 +1,5 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
+import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX, lineProblem, faqProblem, rankProblem, bookSlots, slotLabel, DEFAULT_SLOTS } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -10,7 +10,7 @@ const T = '2026-11-25';
 
 is('garbage cleans to the default', cleanSite('x'), cleanSite(null));
 is('default order has every section', cleanSite(null).order, SITE_SECTIONS);
-is('a new section is appended, never lost', cleanSite({ order: ['delivery', 'promos'] }).order, ['delivery', 'promos', 'models', 'cars', 'calculator']);
+is('a new section is appended, never lost', cleanSite({ order: ['delivery', 'promos'] }).order, ['delivery', 'promos', 'models', 'cars', 'calculator', 'handover', 'steps', 'book', 'faq']);
 is('unknown + duplicate ids dropped', cleanSite({ order: ['x', 'cars', 'cars'], off: ['nope', 'promos', 'promos'] }).off, ['promos']);
 is('promo without an end date is dropped', cleanSite({ promos: [{ model: 'Camry', text: 'rebate' }] }).promos, []);
 is('promo kept, price rounded', cleanSite({ promos: [{ model: ' Camry  2.5V ', text: 'free tint', until: '2026-12-01', price: '120000.4' }] }).promos,
@@ -56,6 +56,19 @@ is('flow: three halves = a pair and a single', ids(flowRows(f(['a', 'half'], ['b
 is('flow: empty', flowRows(null), []);
 
 is('a saved ground is ignored', cleanSite({ ground: { from: '#E8F0FF', to: '#C9DAF5', angle: 135 } }).ground, undefined);
+
+// PAGE-SITE 3
+is('handover line with a phone number is dropped', cleanSite({ handover: [{ t: 'Call me', d: '012-345 6789' }, { t: 'Keys' }] }).handover, [{ t: 'Keys' }]);
+is('steps capped at 8', cleanSite({ steps: Array.from({ length: 12 }, (_, i) => ({ t: `S${i}` })) }).steps.length, 8);
+is('faq needs both halves', cleanSite({ faq: [{ q: 'Rate?' }, { q: 'Rate?', a: 'The bank decides.' }] }).faq, [{ q: 'Rate?', a: 'The bank decides.' }]);
+is('ranks: bad month / rank dropped, one per month, sorted', cleanSite({ ranks: [{ m: '2026-09', n: 1 }, { m: '2026-13', n: 1 }, { m: '2026-07', n: 120 }, { m: '2026-09', n: 3 }, { m: '2026-07', n: 2 }] }).ranks, [{ m: '2026-07', n: 2 }, { m: '2026-09', n: 1 }]);
+is('slots: valid, unique, sorted', cleanSite({ slots: ['17:00', '10:00', '10:00', '25:00', 'noon'] }).slots, ['10:00', '17:00']);
+is('no slots = the defaults', bookSlots(cleanSite({})), DEFAULT_SLOTS);
+is('slot label', [slotLabel('11:30'), slotLabel('14:00'), slotLabel('00:30')], ['11:30 am', '2:00 pm', '12:30 am']);
+is('rank in a future month refused', rankProblem({ m: '2026-12', n: 1 }, new Date('2026-11-26T05:00:00Z')), 'That month has not happened yet.');
+is('rank ok', rankProblem({ m: '2026-09', n: 1 }, new Date('2026-11-26T05:00:00Z')), '');
+is('line / faq problems', [lineProblem({ t: '' }), faqProblem({ q: 'x', a: '' }), lineProblem({ t: 'ok', d: '+60 12 345 6789' })], ['Type the title.', 'Type your answer.', "Don't type a phone number here."]);
+is('new sections show only with content', visibleSections(cleanSite({ steps: [{ t: 'Test drive' }] }), { book: true }), ['steps', 'book']);
 
 console.log(`pageSite: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

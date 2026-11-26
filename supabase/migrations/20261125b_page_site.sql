@@ -1,4 +1,4 @@
--- PAGE-SITE 2 (owner, 2026-11-25): a Premium page can carry the seller's own
+-- PAGE-SITE 2 (owner, 2026-11-25) + PAGE-SITE 3 (2026-11-26, handover / steps / FAQ / rankings / booking slots): a Premium page can carry the seller's own
 -- promos of the month, the seller's own note on each model, delivery towns and the order of its sections. All of it
 -- is ONE small jsonb on the seller's profile, `profiles.page_site`.
 --
@@ -22,22 +22,23 @@ set search_path to 'public'
 as $$
 declare
   e jsonb;
-  ids text[] := array['promos','models','cars','calculator','delivery'];
+  ids text[] := array['promos','models','cars','calculator','delivery','handover','steps','book','faq'];
+  k text;
   t text;
 begin
   if p is null then return true; end if;
   if jsonb_typeof(p) <> 'object' then return false; end if;
-  if length(p::text) > 8000 then return false; end if;
+  if length(p::text) > 24000 then return false; end if;
   if coalesce(p->>'v', '1') <> '1' then return false; end if;
 
   if p ? 'order' then
-    if jsonb_typeof(p->'order') <> 'array' or jsonb_array_length(p->'order') > 5 then return false; end if;
+    if jsonb_typeof(p->'order') <> 'array' or jsonb_array_length(p->'order') > 9 then return false; end if;
     for t in select jsonb_array_elements_text(p->'order') loop
       if not (t = any(ids)) then return false; end if;
     end loop;
   end if;
   if p ? 'off' then
-    if jsonb_typeof(p->'off') <> 'array' or jsonb_array_length(p->'off') > 5 then return false; end if;
+    if jsonb_typeof(p->'off') <> 'array' or jsonb_array_length(p->'off') > 9 then return false; end if;
     for t in select jsonb_array_elements_text(p->'off') loop
       if not (t = any(ids)) then return false; end if;
     end loop;
@@ -80,6 +81,47 @@ begin
         if regexp_replace(coalesce(e->>'town',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
       end loop;
     end if;
+  end if;
+
+  -- PAGE-SITE 3 (2026-11-26): handover checklist + buying steps (title <= 60, line <= 200, 8 each),
+  -- FAQ (10, q <= 120, a <= 500), the seller's own rankings (6, month + rank 1..99, labelled
+  -- "as stated by" on the page: Drevo cannot check them), best sellers (80), booking slots (8, HH:MM).
+  foreach k in array array['handover','steps'] loop
+    if p ? k then
+      if jsonb_typeof(p->k) <> 'array' or jsonb_array_length(p->k) > 8 then return false; end if;
+      for e in select * from jsonb_array_elements(p->k) loop
+        if jsonb_typeof(e) <> 'object' then return false; end if;
+        if coalesce(length(btrim(e->>'t')), 0) not between 1 and 60 then return false; end if;
+        if coalesce(length(e->>'d'), 0) > 200 then return false; end if;
+        if regexp_replace(coalesce(e->>'t','') || coalesce(e->>'d',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
+      end loop;
+    end if;
+  end loop;
+  if p ? 'faq' then
+    if jsonb_typeof(p->'faq') <> 'array' or jsonb_array_length(p->'faq') > 10 then return false; end if;
+    for e in select * from jsonb_array_elements(p->'faq') loop
+      if jsonb_typeof(e) <> 'object' then return false; end if;
+      if coalesce(length(btrim(e->>'q')), 0) not between 1 and 120 then return false; end if;
+      if coalesce(length(btrim(e->>'a')), 0) not between 1 and 500 then return false; end if;
+      if regexp_replace(coalesce(e->>'q','') || coalesce(e->>'a',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
+    end loop;
+  end if;
+  if p ? 'ranks' then
+    if jsonb_typeof(p->'ranks') <> 'array' or jsonb_array_length(p->'ranks') > 6 then return false; end if;
+    for e in select * from jsonb_array_elements(p->'ranks') loop
+      if jsonb_typeof(e) <> 'object' then return false; end if;
+      if coalesce(e->>'m', '') !~ '^\d{4}-(0[1-9]|1[0-2])$' then return false; end if;
+      if (e->>'m') > to_char(now() at time zone 'Asia/Kuala_Lumpur', 'YYYY-MM') then return false; end if;
+      if not ((e->>'n') ~ '^\d{1,2}$' and (e->>'n')::int between 1 and 99) then return false; end if;
+    end loop;
+  end if;
+  if coalesce(length(p->>'rankTitle'), 0) > 60 or coalesce(length(p->>'best'), 0) > 80 then return false; end if;
+  if regexp_replace(coalesce(p->>'rankTitle','') || coalesce(p->>'best',''), '[\s\-.+()]', '', 'g') ~ '[0-9]{7,}' then return false; end if;
+  if p ? 'slots' then
+    if jsonb_typeof(p->'slots') <> 'array' or jsonb_array_length(p->'slots') > 8 then return false; end if;
+    for t in select jsonb_array_elements_text(p->'slots') loop
+      if t !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then return false; end if;
+    end loop;
   end if;
   return true;
 end;

@@ -1978,6 +1978,14 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   car page (`useNewCarInfo`/`useNewCarVariant`), no second catalogue. We hold ONE photo set per model: a colour changes the
   swatch, its name and the WhatsApp text, never the photo, and the panel says so. Colours only where `new_car_models.specs.colours`
   has them (Proton, Perodua, BYD; none for Honda, Toyota, Jaecoo). Never add per-colour or AI images to fill the gap.
+  **PAGE-SITE 3 (owner, 2026-11-26, the ORGANISATION of a Proton advisor's site, never his words or photos):** new sections
+  `handover` (the seller's own handover-day checklist + their handover photo wall), `steps` (their buying stops), `book` (a REAL
+  booking through `api/booking.js` with a "visit pass" preview: pending in Bookings, never "booked" before the server says yes,
+  two consent ticks), `faq`; plus best sellers + RANKINGS under About me. Rankings are the seller's own claim (owner's pick): the
+  page ALWAYS prints "As stated by <name>. Drevo has not checked it." The big number on the photo wall is MEASURED (cars sold on
+  Drevo), never typed. Photos = `agent_handover_photos` (migration `20261126a`, QUEUED): same PDPA shape as the storefront wall,
+  consent stamped by the DB, no UPDATE, delete in one tap, no buyer name/phone/IC/plate column, files in `car-images/<uid>/handover/`.
+  All of it edits in Premium Settings (`PageSiteCard.jsx`, `HandoverPhotosCard.jsx`); limits in `pageSite.js` AND `_page_site_ok`.
   **The Premium page is WHITE (owner, 2026-11-26, after a day in black):** `PageLook.jsx` (tokens `--k*`, `--t*`, `--ink`). The hero
   stays a dark photo band. Anything PICKED (car card, variant row, tab, chip, brand) fills solid ink with white words, never an
   outline (owner: "the outline selection looks cheap"). Bold type is the marketplace's: headings Bebas Neue (one font per heading,
