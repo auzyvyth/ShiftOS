@@ -91,7 +91,7 @@ function Viewer({ pics, at, onAt, onClose }) {
 function HandoverStyle() {
   return (
     <style>{`
-      .hb-eb { margin: 0 0 8px; font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
+      .hb-eb { margin: 0 0 8px; font-family: var(--wide, inherit); font-size: 10.5px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
       .hb-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line, #e5e7eb); }
       .hb-list li { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
       .hb-list i { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; corner-shape: squircle; display: flex; align-items: center; justify-content: center; background: var(--ink, #dc2626); color: var(--on-ink, #fff); }

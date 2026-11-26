@@ -37,7 +37,7 @@ export default function StepsBlock({ steps, firstName }) {
       </div>
       <p className="ps-fine">{firstName}'s own process. Loan approval is always the bank's decision.</p>
       <style>{`
-        .sb-eb { margin: 0 0 8px; font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
+        .sb-eb { margin: 0 0 8px; font-family: var(--wide, inherit); font-size: 10.5px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
         .sb-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(112px, 1fr); gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding-bottom: 2px; }
         .sb-rail::-webkit-scrollbar { display: none; }
         .sb-rail button { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 84px; padding: 12px; border: 1px solid var(--line, #e5e7eb); background: transparent;
@@ -47,7 +47,7 @@ export default function StepsBlock({ steps, firstName }) {
         .sb-rail button[aria-selected="true"] { background: var(--ink, #dc2626); border-color: var(--ink, #dc2626); color: var(--on-ink, #fff); }
         .sb-rail button[aria-selected="true"] em { color: rgba(255,255,255,.85); }
         .sb-panel { padding: 22px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--r-card, 16px); corner-shape: squircle; }
-        .sb-k { margin: 0; font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
+        .sb-k { margin: 0; font-family: var(--wide, inherit); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
         .sb-panel h3 { margin: 6px 0 0; font-family: var(--head, 'Bebas Neue'), sans-serif; font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: .02em; text-transform: uppercase; color: var(--t1, #0a0a0b); overflow-wrap: anywhere; }
         .sb-d { margin: 10px 0 0; font-size: 15px; line-height: 1.6; color: var(--t2, #4b5563); max-width: 60ch; overflow-wrap: anywhere; }
         .sb-nav { display: flex; gap: 8px; margin-top: 18px; }

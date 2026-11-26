@@ -206,7 +206,7 @@ function BookStyle() {
       @media (min-width: 900px) { .bk-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; } .bk-pass--sent { grid-column: 1 / -1; max-width: 520px; } }
       .bk-form { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--r-card, 16px); corner-shape: squircle; min-width: 0; }
       .bk-f { display: grid; gap: 6px; min-width: 0; }
-      .bk-f > span { font-family: var(--wide, inherit); font-stretch: 125%; font-size: 10.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
+      .bk-f > span { font-family: var(--wide, inherit); font-size: 10.5px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--t3, #6b7280); }
       .bk-f em { font-style: normal; font-size: 12.5px; color: #b91c1c; }
       .bk-f input, .bk-f select, .bk-phone { box-sizing: border-box; width: 100%; min-width: 0; height: 48px; padding: 0 12px; border: 1px solid var(--line2, #d1d5db); border-radius: var(--r-chip, 10px);
         corner-shape: squircle; background: #fff; color: var(--t1, #0a0a0b); font-family: inherit; font-size: 16px; }

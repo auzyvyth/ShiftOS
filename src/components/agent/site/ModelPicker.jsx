@@ -44,7 +44,7 @@ function Build({ car, note, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   const loading = !raw;
   const ask = `Hi ${firstName}, I'm looking at the ${[name, vname].filter(Boolean).join(' ')}${colour ? ` in ${colour}` : ''}${price ? ` (${rm(price)})` : ''}.\nCan you tell me the price, any promo and the stock?`;
   return (
-    <div className="cfg-build">
+    <div className="cfg-build keep-alpha">
       <div className="cfg-stage">
         <span className="cfg-mark" aria-hidden="true">{car.model}</span>
         {tag && <span className="cfg-tag">{tag}</span>}
@@ -183,7 +183,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
         </div>
       )}
 
-      {brand.models.length > 1 && <div className="cfg-rail" role="group" aria-label={`${brand.brand} models`}>
+      {brand.models.length > 1 && <div className="cfg-rail keep-alpha" role="group" aria-label={`${brand.brand} models`}>
         {brand.models.map((c) => {
           const from = fromPrice(c, infos[c.id]);
           return (
@@ -214,9 +214,9 @@ function ConfigStyle() {
   return (
     <style>{`
       .cfg { --c-line: rgba(10,10,11,.1); --c-line2: rgba(10,10,11,.2); --c-t1: #0a0a0b; --c-t2: rgba(10,10,11,.66); --c-t3: rgba(10,10,11,.48); --c-ink: var(--ink, #dc2626);
-        --c-wide: 'Archivo', var(--xd-font-body); --c-head: var(--head, 'Bebas Neue', sans-serif); --c-bold: var(--bold, var(--xd-font-body));
+        --c-wide: var(--wide, 'Inter', var(--xd-font-body)); --c-head: var(--head, 'Bebas Neue', sans-serif); --c-bold: var(--bold, var(--xd-font-body));
         --c-rc: var(--r-card, 16px); --c-rb: var(--r-btn, 12px); --c-rs: var(--r-chip, 9px); }
-      .cfg-lbl, .cfg-eyebrow, .cfg-tag, .cfg-brands small, .cfg-rail span:not(.cfg-rail-ph) { font-family: var(--c-wide); font-stretch: 125%; font-size: 10.5px; font-weight: 500;
+      .cfg-lbl, .cfg-eyebrow, .cfg-tag, .cfg-brands small, .cfg-rail span:not(.cfg-rail-ph) { font-family: var(--c-wide); font-size: 10.5px; font-weight: 400;
         letter-spacing: .16em; text-transform: uppercase; color: var(--c-t3); }
       .cfg-lbl { margin: 0 0 12px; display: flex; gap: 10px; flex-wrap: wrap; }
       .cfg-lbl b { color: var(--c-t1); font-family: var(--c-bold); font-weight: 700; letter-spacing: .12em; }
@@ -225,7 +225,7 @@ function ConfigStyle() {
       .cfg-brands { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); margin: 0 0 18px; }
       .cfg-brands::-webkit-scrollbar { display: none; }
       .cfg-brands button { flex: 1 0 auto; min-width: 116px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 18px 14px;
-        border: none; background: none; cursor: pointer; color: var(--c-t2); font-family: var(--c-wide); font-stretch: 125%; box-shadow: inset 0 -2px 0 transparent;
+        border: none; background: none; cursor: pointer; color: var(--c-t2); font-family: var(--c-wide); box-shadow: inset 0 -2px 0 transparent;
         transition: color .2s, box-shadow .2s, background .2s; }
       .cfg-brands button + button { border-left: 1px solid var(--c-line); }
       .cfg-brands img { height: 26px; width: auto; max-width: 90px; object-fit: contain; filter: brightness(0); opacity: .5; transition: opacity .2s; }
@@ -305,7 +305,7 @@ function ConfigStyle() {
       .cfg-specs { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--c-line); }
       .cfg-specs div { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--c-line); min-width: 0; }
       .cfg-specs div:nth-child(even) { padding-left: 14px; border-left: 1px solid var(--c-line); }
-      .cfg-specs dt { font-family: var(--c-wide); font-stretch: 125%; font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--c-t3); }
+      .cfg-specs dt { font-family: var(--c-wide); font-size: 10px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--c-t3); }
       .cfg-specs dd { margin: 4px 0 0; font-size: 14.5px; font-weight: 600; color: var(--c-t1); overflow-wrap: anywhere; }
 
       .cfg-note { margin-top: 22px; padding: 2px 0 2px 14px; border-left: 1px solid var(--c-line2); }

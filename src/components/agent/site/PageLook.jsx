@@ -5,15 +5,15 @@ import React, { useEffect } from 'react';
 //  - WHITE page, ink words, 1px hairlines (owner, 2026-11-26, after a day in black). The hero stays a dark photo
 //    band. Whatever is picked (a car, a variant, a tab, a chip) fills solid INK with white words, never an outline. Outlined boxes have Apple's squircle corners (owner,
 //    2026-11-26): `corner-shape: squircle` where the browser draws it, plain rounding elsewhere (--r-*).
-//  - Type by contrast: labels are tiny, light, wide-spaced capitals (Archivo, expanded). The BOLD type
+//  - Type by contrast: labels are tiny, thin, spaced capitals in Inter (owner, 2026-11-26: Archivo expanded read unprofessional). The BOLD type
 //    is the marketplace's (owner, 2026-11-26): headings in Bebas Neue, numbers and buttons in Outfit bold.
-//    A heading is a bold part then a light Archivo part ("PICK YOUR <light>MODEL</light>").
+//    A heading is a bold part then a light grey part ("PICK YOUR <light>MODEL</light>").
 //  - Main buttons and everything PICKED are Drevo RED (#dc2626) with white words (owner, 2026-11-26: "the black colour, change it to our red"). The seller's colour is only a small accent: the
 //    slider, the picked tab's underline, the promo dots. Never a big coloured block or a glow.
 //  - Things that float over the page (top buttons, section menu, bottom bar) are frosted glass.
-// Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The wide face (Archivo,
-// expanded) loads only here, so Lite pages and the rest of Drevo never download it.
-const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,300;125,500&display=swap';
+// Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The label face (Inter)
+// loads only here, so Lite pages and the rest of Drevo never download it.
+const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap';
 
 export default function PageLook() {
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function PageLook() {
     <style>{`
       .ap.ap--pro { --k0: #ffffff; --k1: #f4f4f6; --k2: #ebebee; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
         --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #dc2626; --ink-2: #b91c1c; --on-ink: #ffffff;
-        --wide: 'Archivo', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
+        --wide: 'Inter', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
         --r-card: 16px; --r-btn: 12px; --r-chip: 9px; --ap-bg: var(--k0); --ap-surf: var(--k1);
         background: var(--k0); color: var(--t1); }
       .ap--pro * { scrollbar-color: #c8c8cc transparent; }
@@ -47,7 +47,7 @@ export default function PageLook() {
       /* The label: tiny, light, wide-spaced capitals. The value under it carries the weight. */
       .ap--pro .ps-lbl, .ap--pro .ps-spec dt, .ap--pro .pc-lbl, .ap--pro .pc-k, .ap--pro .aph-stats span, .ap--pro .ps-q-l,
       .ap--pro .ps-big div span, .ap--pro .ps-steps, .ap--pro .ap-live-h, .ap--pro .ap-eyebrow {
-        font-family: var(--wide); font-stretch: 125%; font-size: 10.5px !important; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3) !important; }
+        font-family: var(--wide); font-size: 10.5px !important; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--t3) !important; }
       .ap--pro .ps-lbl b { font-family: var(--bold); font-weight: 700; color: var(--t1); letter-spacing: .12em; }
       .ap--pro .ap-sec { margin: 64px 0 18px; }
       .ap--pro .ps, .ap--pro .pc-wrap { margin-top: 64px; }
@@ -109,9 +109,9 @@ export default function PageLook() {
       .ap--pro .aph-me { border-radius: var(--r-card); box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px var(--line2); }
       .ap--pro .aph-pic--cut .aph-me { box-shadow: none; }
       .ap--pro .aph-mono { background: var(--k2); color: var(--t1); }
-      .ap--pro .aph-chips span { border-radius: var(--r-chip); border-color: var(--line2); background: transparent; font-family: var(--wide); font-stretch: 125%;
+      .ap--pro .aph-chips span { border-radius: var(--r-chip); border-color: var(--line2); background: transparent; font-family: var(--wide);
         font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--t2); }
-      .ap--pro .aph-role { font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
+      .ap--pro .aph-role { font-family: var(--wide); font-size: 11px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
       .ap--pro .aph .aph-name { font-family: var(--head); font-weight: 400; text-transform: uppercase; letter-spacing: .015em;
         font-size: clamp(40px, 11vw, 86px); line-height: .92; }
       .ap--pro .aph .aph-name .ap-last { font-family: inherit; font-weight: inherit; font-size: inherit; letter-spacing: inherit; }
@@ -137,7 +137,7 @@ export default function PageLook() {
 
       /* ---------- Promos + ticker ---------- */
       .ap--pro .ps-tick { background: transparent; border-radius: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-      .ap--pro .ps-tick-it { font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+      .ap--pro .ps-tick-it { font-family: var(--wide); font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; }
       .ap--pro .ps-tick-it i { border-radius: var(--r-chip); background: var(--ap-a); }
       .ap--pro .ps-promos { display: block; border-top: 1px solid var(--line); }
       .ap--pro .ps-promos .ps-promo-row, .ap--pro .ps-promo-row { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 16px 0; }
@@ -166,7 +166,7 @@ export default function PageLook() {
       .ap--pro .ps-dark .ps-card, .ap--pro .ps-model { background: transparent; border: 1px solid var(--line); }
       .ap--pro .ps-media, .ap--pro .ps-dark .ps-media, .ap--pro .ps-dark .ps-shots, .ap--pro .ps-shots { background: var(--k0); border-radius: var(--r-card); }
       .ap--pro .ps-stage, .ap--pro .ps-dark .ps-stage { background: radial-gradient(ellipse 70% 55% at 50% 38%, #ffffff 0%, #f1f1f3 55%, #e6e6e9 100%); }
-      .ap--pro .ps-stage-tag { border-radius: var(--r-chip); background: transparent; border: 1px solid var(--line2); font-family: var(--wide); font-stretch: 125%;
+      .ap--pro .ps-stage-tag { border-radius: var(--r-chip); background: transparent; border: 1px solid var(--line2); font-family: var(--wide);
         font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; }
       .ap--pro .ps-shots button { border-radius: var(--r-chip); }
       .ap--pro .ps-mname, .ap--pro .ps-price, .ap--pro .ps-help-pick, .ap--pro .ps-help-price, .ap--pro .ps-q-t, .ap--pro .ps-help-h h3 { color: var(--t1); }
@@ -219,7 +219,7 @@ export default function PageLook() {
       .ap--pro .pc-big { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
       .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.86); }
       .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.3); padding-top: 10px; }
-      .ap--pro .pc-link { background: #fff; color: var(--ink-2); border-radius: var(--r-btn); font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .pc-link { background: #fff; color: var(--ink-2); border-radius: var(--r-btn); font-family: var(--wide); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .pc-fine, .ap--pro .pc-fine[style] { color: var(--t3); }
       .ap--pro .pc-none { color: var(--t1); }
       /* Apple's continuous corners where the browser can draw them (corner-shape), round corners elsewhere.
