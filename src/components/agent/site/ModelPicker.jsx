@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { cdnImg } from '../../../utils/img';
+import { seeThroughBox } from '../../../utils/seeThrough';
 import { colourSwatch } from '../../../utils/newCars';
 import { pageCalc } from '../../../utils/pageCalc';
 import { modelNote, modelRm as rm } from '../../../utils/modelPick';
@@ -26,6 +27,30 @@ function Photo({ src, alt, w, q, className, eager }) {
   return <img className={className} src={cdnImg(src, w, q)} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setBad(true)} />;
 }
 
+// STAGE-FIT (owner, 2026-11-26: "why's the HR-V so large"): a cut-out is cropped to the car's own
+// outline (seeThroughBox) and stood on the floor shadow at one size (CSS .cfg-fit), so how much empty
+// space the photo file has never changes the car's size or makes it float. A photo with a background
+// keeps the old centred look.
+function StageCar({ src, alt }) {
+  const [box, setBox] = useState(undefined); // undefined = checking, null = not a cut-out
+  useEffect(() => {
+    let off = false;
+    setBox(undefined);
+    seeThroughBox(src).then((b) => { if (!off) setBox(b || null); }, () => { if (!off) setBox(null); });
+    return () => { off = true; };
+  }, [src]);
+  if (box === undefined) return <div className="cfg-car cfg-car--wait" />;
+  if (!box) return <div className="cfg-car"><Photo src={src} alt={alt} w={1280} q={80} eager /></div>;
+  return (
+    <div className="cfg-fit" style={{ '--car-ar': ((box.w * box.ar) / box.h).toFixed(4) }}>
+      <span className="cfg-crop">
+        <img src={cdnImg(src, 1280, 80)} alt={alt} decoding="async"
+          style={{ width: `${(100 / box.w).toFixed(3)}%`, height: `${(100 / box.h).toFixed(3)}%`, left: `${(-box.x / box.w * 100).toFixed(3)}%`, top: `${(-box.y / box.h * 100).toFixed(3)}%` }} />
+      </span>
+    </div>
+  );
+}
+
 function Build({ car, note, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   const raw = useNewCarInfo(car.id);
   const { variants, current, choose } = useNewCarVariant(car.id, raw);
@@ -48,9 +73,7 @@ function Build({ car, note, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
       <div className="cfg-stage">
         <span className="cfg-mark" aria-hidden="true">{car.model}</span>
         {tag && <span className="cfg-tag">{tag}</span>}
-        <div className="cfg-car" key={`${car.id}:${shot}`}>
-          <Photo src={photos[shot]} alt={name} w={1280} q={80} eager />
-        </div>
+        <StageCar key={`${car.id}:${shot}`} src={photos[shot]} alt={name} />
         <span className="cfg-floor" aria-hidden="true" />
         {photos.length > 1 && (
           <div className="cfg-shots" role="group" aria-label="Photos">
@@ -261,6 +284,13 @@ function ConfigStyle() {
       .cfg-tag { position: absolute; left: 16px; top: 16px; z-index: 2; color: var(--c-t2); }
       .cfg-car { position: relative; z-index: 1; width: 88%; height: 78%; display: flex; align-items: center; justify-content: center; animation: cfg-in .5s cubic-bezier(.2,.7,.2,1) both; }
       .cfg-car img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 22px 24px rgba(0,0,0,.22)); }
+      /* A cut-out: the car's own outline, ONE width (or less when tall), tyres on the floor shadow. */
+      .cfg-stage { container-type: size; }
+      .cfg-fit { position: absolute; z-index: 1; left: 50%; bottom: calc(13% + 13px); translate: -50% 0; width: min(78cqw, calc(60cqh * var(--car-ar)));
+        aspect-ratio: var(--car-ar); animation: cfg-in .5s cubic-bezier(.2,.7,.2,1) both; }
+      .cfg-crop { position: absolute; inset: 0; overflow: hidden; filter: drop-shadow(0 22px 24px rgba(0,0,0,.22)); }
+      .cfg-crop img { position: absolute; max-width: none; pointer-events: none; }
+      .cfg-car--wait { opacity: 0; }
       .cfg-floor { position: absolute; left: 12%; right: 12%; bottom: 13%; height: 26px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.28), rgba(0,0,0,0)); }
       .cfg-nophoto { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-family: var(--c-head); font-weight: 400;
         text-transform: uppercase; color: rgba(10,10,11,.25); font-size: 22px; letter-spacing: .08em; text-align: center; }
