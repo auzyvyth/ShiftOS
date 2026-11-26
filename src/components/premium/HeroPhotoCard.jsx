@@ -10,6 +10,7 @@ import { gradientTheme } from '../../utils/pageAccent';
 import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
 import DragSlider from '../studio/DragSlider';
 import HeroPreview from './HeroPreview';
+import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
 
 // Premium Settings > Hero photo (PAGE-HERO, 2026-11-25). The big photo at the top
 // of the seller's page. The background is removed ON THE PHONE (CUTOUT-1, no
@@ -36,6 +37,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const [frame, setFrame] = useState(heroFrame(''));
   const [view, setView] = useState('phone');
   const [cars, setCars] = useState(null);             // the seller's cars whose first photo is a cut-out
+  const [rows, setRows] = useState(null);             // every live car (the business card's ring reads them)
   const [avatar, setAvatar] = useState(null);         // the round profile photo (the business card uses it)
   const [cover, setCover] = useState(null);           // the cover photo (the business card's top band)
 
@@ -47,7 +49,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       .then(async ({ data }) => {
         const rows = (data || []).filter((c) => Array.isArray(c.images) && c.images[0]);
         const ok = await Promise.all(rows.map((c) => checkSeeThrough(c.images[0]).catch(() => false)));
-        if (!off) setCars(rows.filter((_, i) => ok[i]));
+        if (!off) { setCars(rows.filter((_, i) => ok[i])); setRows(rows); }
       });
     return () => { off = true; };
   }, [userId]);
@@ -161,6 +163,9 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   // What the band shows: the preview, else the saved photo.
   const shown = preview ? { url: preview.url, cut: preview.kind === 'cut' } : local || (saved ? { url: heroImageUrl(saved), cut: isSeeThroughPhoto(saved) } : null);
   const carList = cars || [];
+  const ringAll = useRingCars(rows);
+  const brands = ringBrands(ringAll);
+  const ringPick = ringCarsFor(ringAll || [], frame.ringBrand);
   const carPhoto = frame.car === 'none' ? null
     : (carList.find((c) => c.id === frame.car) || carList[0])?.images?.[0] || null;
 
@@ -194,8 +199,30 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Save a photo first; the layout is saved with it.</p>
       )}
       {frame.layout === 'card' && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. On top, your cars with a cut-out photo spin on a ring (Remove BG in Drevo Studio makes one). With no cut-out car, the band shows your cover photo{cover ? '' : ' (none yet, so a dark band in your page colour is used)'}.</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. On top, one brand's cars turn on a ring, three on show at a time. Only cars with a cut-out photo (no background) can go on it: Remove BG in Drevo Studio makes one. With none, the band shows your cover photo{cover ? '' : ' (none yet, so a dark band in your page colour is used)'}.</p>
       )}
+      {frame.layout === 'card' && (() => {
+        if (ringAll === null) return <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Checking your car photos...</p>;
+        if (!brands.length) return null;
+        const pickedKey = ringPick[0] ? String(ringPick[0].brand).trim().toLowerCase() : '';
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: PD.text }}>Brand on the ring</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="radiogroup" aria-label="Brand on the ring">
+              {brands.map((b) => {
+                const on = b.key === pickedKey;
+                return (
+                  <button key={b.key} type="button" role="radio" aria-checked={on} onClick={() => setFrame((f) => ({ ...f, ringBrand: b.brand }))}
+                    style={{ padding: '7px 12px', borderRadius: 8, border: 'none', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                      background: on ? PD.text : PD.hover, color: on ? (PD.canvas || '#0b0c0f') : PD.text }}>
+                    {b.brand} <span style={{ opacity: 0.6, fontWeight: 500 }}>{b.count} {b.count === 1 ? 'model' : 'models'}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label="Preview">
         {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
           <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
@@ -207,7 +234,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       <div style={{ position: 'relative' }}>
         {shown ? (
           <HeroPreview mode={view} url={shown.url} cut={shown.cut} frame={frame} carUrl={shown.cut ? carPhoto : null} accent={accent}
-            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} coverUrl={cover ? cdnImg(cover, 800, 70) : null} accent2={gradientTheme(accent).dark} />
+            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} coverUrl={cover ? cdnImg(cover, 800, 70) : null} ring={ringPick} accent2={gradientTheme(accent).dark} />
         ) : (
           <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}

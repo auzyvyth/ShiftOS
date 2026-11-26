@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
@@ -6,7 +6,7 @@ import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
 import { useSeeThrough, useFirstSeeThrough } from '../utils/seeThrough';
 import { coverObjectPosition } from '../utils/coverFocus';
-import CarRing, { useRingCars } from '../components/agent/site/CarRing';
+import CarRing, { useRingCars, ringCarsFor } from '../components/agent/site/CarRing';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
@@ -573,7 +573,8 @@ export default function SalesmanProfilePage() {
   const heroFrameSet = heroFrame(heroUrl);
   const heroImgUrl = heroUrl ? heroImageUrl(heroUrl) : (profile?.avatar_url || null);
   const heroCutState = useSeeThrough(profile && !profile.page_basic ? heroImgUrl : null);
-  const ringCars = useRingCars(profile && !profile.page_basic && heroFrameSet.layout === 'card' ? listings : null);
+  const ringAll = useRingCars(profile && !profile.page_basic && heroFrameSet.layout === 'card' ? listings : null);
+  const ringCars = useMemo(() => (ringAll ? ringCarsFor(ringAll, heroFrameSet.ringBrand) : null), [ringAll, heroFrameSet.ringBrand]);
   const heroCarUrl = useFirstSeeThrough(heroCutState === true ? heroCarCandidates(listings, heroFrameSet) : []);
 
   useEffect(() => {
@@ -1467,22 +1468,13 @@ export default function SalesmanProfilePage() {
         /* PAGE-HERO 2: the business card layout (white, a small round photo beside the name). */
         .ap .aph.aph--card { --k0: #ffffff; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.16); --t1: #0f1115; --t2: rgba(15,17,21,.72); --t3: rgba(15,17,21,.52);
           background: #fff; color: #0f1115; border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(10,10,11,.04), 0 12px 32px rgba(10,10,11,.06); }
-        .aph-band { position: absolute; left: 0; right: 0; top: 0; height: 150px; overflow: hidden;
+        .aph-band { position: absolute; left: 0; right: 0; top: 0; height: 150px; overflow: clip;
           background: radial-gradient(70% 90% at 50% 100%, rgba(var(--ap-rgb), .55), rgba(var(--ap-rgb), 0) 70%), linear-gradient(180deg, #08090b, #16181d); }
         .aph-band > img { width: 100%; height: 100%; object-fit: cover; }
         .aph-band::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 50%, rgba(0,0,0,.22)); }
         .aph-band--ring { height: 250px; }
         .aph-band--ring::after { display: none; }
-        .cring { position: absolute; inset: 0; container-type: inline-size; }
-        .cring-label { position: absolute; left: 50%; top: 58px; translate: -50% 0; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
-        .cring-label span { font: 500 11px/1 var(--xd-font-body); letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.6); }
-        .cring-label b { font: 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .02em; white-space: nowrap; }
-        @keyframes cringIn { from { opacity: 0; translate: -50% 6px; } to { opacity: 1; translate: -50% 0; } }
-        .cring-floor { position: absolute; left: 50%; bottom: 22px; width: 92%; height: 70px; translate: -50% 0; border-radius: 50%;
-          background: radial-gradient(closest-side, rgba(255,255,255,.14), rgba(255,255,255,.04) 60%, rgba(255,255,255,0)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
-        .cring-car { position: absolute; left: 50%; bottom: 34px; width: 56%; max-width: 270px; padding: 0; border: 0; background: none; cursor: pointer; transform-origin: 50% 100%; will-change: transform; -webkit-tap-highlight-color: transparent; }
-        .cring-car img { display: block; width: 100%; height: auto; pointer-events: none; }
-        @media (prefers-reduced-motion: reduce) { .cring-label { animation: none; } }
+        .ap .aph.aph--card { overflow: clip; }
         /* PageLook's Back/Share are white glass with white text (for the dark hero); on the card they sit on the
            band, so a dark glass keeps them readable on any colour or cover photo. */
         .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -1549,10 +1541,11 @@ export default function SalesmanProfilePage() {
           .aph-band--ring { height: 330px; }
           .aph--card .aph-in { padding-top: 126px; }
           .aph--card:has(.aph-band--ring) .aph-in { padding-top: 266px; }
-          .cring-label { top: 22px; }
-          .cring-label b { font-size: 44px; }
-          .cring-car { width: 30%; max-width: 360px; bottom: 34px; }
-          .cring-floor { width: 80%; height: 96px; }
+          .aph-band .cring-label { top: 22px; }
+          .aph-band .cring-label b { font-size: 44px; }
+          .aph-band .cring { --spread: 31cqw; }
+          .aph-band .cring-car { width: 25%; bottom: 52px; }
+          .aph-band .cring-floor { width: 86%; height: 120px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }
           .aph-bc-ph { width: 136px; height: 136px; }

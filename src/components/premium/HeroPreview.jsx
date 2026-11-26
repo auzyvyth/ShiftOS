@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { heroPersonStyle, heroCarStyle, HERO_SHIFT } from '../../utils/heroFrame';
+import CarRing from '../agent/site/CarRing';
 
 // PAGE-HERO 2: how the hero will look, on a phone or on a desktop, drawn small with the
 // SAME size / position maths the page uses (heroPersonStyle). The page's text is shown as
@@ -8,11 +9,11 @@ import { heroPersonStyle, heroCarStyle, HERO_SHIFT } from '../../utils/heroFrame
 const clamp = (v) => Math.max(HERO_SHIFT.min, Math.min(HERO_SHIFT.max, Math.round(v)));
 const bar = (w, h = 8, bg = 'rgba(255,255,255,.18)') => <span style={{ display: 'block', width: w, height: h, borderRadius: 4, background: bg }} />;
 
-export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, accent = '#DC2626', accent2, coverUrl, onMove, avatarUrl }) {
+export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, accent = '#DC2626', accent2, coverUrl, ring, onMove, avatarUrl }) {
   const imgRef = useRef(null);
   const drag = useRef(null);
   const phone = mode === 'phone';
-  if (frame?.layout === 'card') return <CardPreview phone={phone} photo={avatarUrl || url} accent={accent} accent2={accent2} cover={coverUrl} />;
+  if (frame?.layout === 'card') return <CardPreview phone={phone} photo={avatarUrl || url} accent={accent} accent2={accent2} cover={coverUrl} ring={ring} />;
 
   const down = (e) => {
     if (!onMove || !imgRef.current) return;
@@ -74,14 +75,19 @@ export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, a
 }
 
 // The business card layout, drawn small: white card, round photo beside the name, then the rest.
-function CardPreview({ phone, photo, accent, accent2, cover }) {
+function CardPreview({ phone, photo, accent, accent2, cover, ring }) {
+  const hasRing = Array.isArray(ring) && ring.length > 0;
+  const bandH = hasRing ? (phone ? 120 : 150) : (phone ? 76 : 96);
   const g = (w, h = 8, bg = 'rgba(15,17,21,.12)') => <span style={{ display: 'block', width: w, height: h, borderRadius: 4, background: bg }} />;
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div aria-label={phone ? 'Phone preview' : 'Desktop preview'} style={{ width: phone ? 'min(100%, 260px)' : '100%', background: '#e9eaec', borderRadius: phone ? 22 : 12, padding: phone ? 12 : 18 }}>
-        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: phone ? '50px 14px 14px' : '58px 26px 22px', display: 'grid', gap: 12 }}>
-          {/* Top band = the seller's cover photo, else their page colour (same as the page). */}
-          <span aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: phone ? 76 : 96, background: cover ? `center / cover no-repeat url("${cover}")` : `linear-gradient(120deg, ${accent}, ${accent2 || accent})` }} />
+        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: `${bandH - (phone ? 26 : 38)}px ${phone ? 14 : 26}px ${phone ? 14 : 22}px`, display: 'grid', gap: 12 }}>
+          {/* Top band = the same as the page: the turning cars, else the cover photo, else a dark band lit in the page colour. */}
+          <span aria-hidden={!hasRing} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: bandH, overflow: 'clip',
+            background: !hasRing && cover ? `center / cover no-repeat url("${cover}")` : `radial-gradient(70% 90% at 50% 100%, ${accent}8c, ${accent}00 70%), linear-gradient(180deg, #08090b, #16181d)` }}>
+            {hasRing && <CarRing cars={ring} small />}
+          </span>
           <div style={{ position: 'relative', display: 'flex', flexDirection: phone ? 'column' : 'row', alignItems: phone ? 'flex-start' : 'flex-end', gap: phone ? 8 : 18 }}>
             {photo
               ? <img src={photo} alt="" style={{ width: phone ? 56 : 76, height: phone ? 56 : 76, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 20%', background: '#f1f1f3', flexShrink: 0, border: '3px solid #fff' }} />
