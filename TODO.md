@@ -85,6 +85,8 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 6. Owner: revoke the old Anthropic + remove.bg keys at the provider (removed from Vercel 2026-10-28).
 - [ ] 7. Owner: backups. Free plan = no point-in-time restore; check what the plan keeps and decide.
 - [ ] 8. SEC-5 leaked-password protection: needs Supabase Pro.
+- [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
+  the ones the app actually ships to the browser or api/ first.
 
 ## DASH-TEST: dealer dashboard click test (2026-11-16/17) - fix list, launch score 6.5/10
 Done 2026-11-17 (staging, screenshots on mock data): 4 print blocked, 5 onboarding save, 6 confirmations
