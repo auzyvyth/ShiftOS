@@ -6,6 +6,7 @@ import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYT
 import { prepareCutout, preparePlain, heroExt, heroErrorText } from '../../utils/heroPhoto';
 import { isSeeThroughPhoto, cdnImg } from '../../utils/img';
 import { checkSeeThrough } from '../../utils/seeThrough';
+import { gradientTheme } from '../../utils/pageAccent';
 import { heroFrame, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_SHIFT, HERO_CAR_SIZE } from '../../utils/heroFrame';
 import DragSlider from '../studio/DragSlider';
 import HeroPreview from './HeroPreview';
@@ -36,6 +37,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const [view, setView] = useState('phone');
   const [cars, setCars] = useState(null);             // the seller's cars whose first photo is a cut-out
   const [avatar, setAvatar] = useState(null);         // the round profile photo (the business card uses it)
+  const [cover, setCover] = useState(null);           // the cover photo (the business card's top band)
 
   useEffect(() => {
     let off = false;
@@ -53,12 +55,13 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   useEffect(() => {
     let off = false;
     isCutoutModelSaved().then((v) => { if (!off) setModelSaved(!!v); }).catch(() => {});
-    supabase.from('profiles').select('hero_url, avatar_url').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
+    supabase.from('profiles').select('hero_url, avatar_url, cover_url').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
       if (off) return;
       if (e) { setNotReady(true); setSaved(null); return; }
       setSaved(data?.hero_url || null);
       setFrame(heroFrame(data?.hero_url));
       setAvatar(data?.avatar_url || null);
+      setCover(data?.cover_url || null);
     });
     return () => { off = true; };
   }, [userId]);
@@ -174,7 +177,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
       <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Layout</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }} role="radiogroup" aria-label="Layout">
-        {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'White card, small round photo']].map(([k, t, d]) => {
+        {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'Your cover or page colour on top, round photo']].map(([k, t, d]) => {
           const on = frame.layout === k;
           return (
             <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setFrame((f) => ({ ...f, layout: k }))}
@@ -191,7 +194,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Save a photo first; the layout is saved with it.</p>
       )}
       {frame.layout === 'card' && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}.</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. The band on top is your cover photo{cover ? '' : ' (none yet, so your page colour is used)'}: change either one under Cover photo and Page colour.</p>
       )}
       <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label="Preview">
         {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
@@ -204,7 +207,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       <div style={{ position: 'relative' }}>
         {shown ? (
           <HeroPreview mode={view} url={shown.url} cut={shown.cut} frame={frame} carUrl={shown.cut ? carPhoto : null} accent={accent}
-            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} />
+            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} coverUrl={cover ? cdnImg(cover, 800, 70) : null} accent2={gradientTheme(accent).dark} />
         ) : (
           <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}

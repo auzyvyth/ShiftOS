@@ -8,11 +8,11 @@ import { heroPersonStyle, heroCarStyle, HERO_SHIFT } from '../../utils/heroFrame
 const clamp = (v) => Math.max(HERO_SHIFT.min, Math.min(HERO_SHIFT.max, Math.round(v)));
 const bar = (w, h = 8, bg = 'rgba(255,255,255,.18)') => <span style={{ display: 'block', width: w, height: h, borderRadius: 4, background: bg }} />;
 
-export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, accent = '#DC2626', onMove, avatarUrl }) {
+export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, accent = '#DC2626', accent2, coverUrl, onMove, avatarUrl }) {
   const imgRef = useRef(null);
   const drag = useRef(null);
   const phone = mode === 'phone';
-  if (frame?.layout === 'card') return <CardPreview phone={phone} photo={avatarUrl || url} accent={accent} />;
+  if (frame?.layout === 'card') return <CardPreview phone={phone} photo={avatarUrl || url} accent={accent} accent2={accent2} cover={coverUrl} />;
 
   const down = (e) => {
     if (!onMove || !imgRef.current) return;
@@ -74,17 +74,19 @@ export default function HeroPreview({ mode = 'phone', url, cut, frame, carUrl, a
 }
 
 // The business card layout, drawn small: white card, round photo beside the name, then the rest.
-function CardPreview({ phone, photo, accent }) {
+function CardPreview({ phone, photo, accent, accent2, cover }) {
   const g = (w, h = 8, bg = 'rgba(15,17,21,.12)') => <span style={{ display: 'block', width: w, height: h, borderRadius: 4, background: bg }} />;
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div aria-label={phone ? 'Phone preview' : 'Desktop preview'} style={{ width: phone ? 'min(100%, 260px)' : '100%', background: '#e9eaec', borderRadius: phone ? 22 : 12, padding: phone ? 12 : 18 }}>
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: phone ? '34px 14px 14px' : '40px 26px 22px', display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: phone ? 12 : 18 }}>
+        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', borderRadius: 16, border: '1px solid rgba(10,10,11,.12)', padding: phone ? '50px 14px 14px' : '58px 26px 22px', display: 'grid', gap: 12 }}>
+          {/* Top band = the seller's cover photo, else their page colour (same as the page). */}
+          <span aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: phone ? 76 : 96, background: cover ? `center / cover no-repeat url("${cover}")` : `linear-gradient(120deg, ${accent}, ${accent2 || accent})` }} />
+          <div style={{ position: 'relative', display: 'flex', flexDirection: phone ? 'column' : 'row', alignItems: phone ? 'flex-start' : 'flex-end', gap: phone ? 8 : 18 }}>
             {photo
-              ? <img src={photo} alt="" style={{ width: phone ? 56 : 76, height: phone ? 56 : 76, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 20%', background: '#f1f1f3', flexShrink: 0 }} />
-              : <span style={{ width: phone ? 56 : 76, height: phone ? 56 : 76, borderRadius: '50%', background: '#f1f1f3', flexShrink: 0 }} />}
-            <div style={{ display: 'grid', gap: 6, flex: 1 }}>{g('80%', phone ? 18 : 24, '#0f1115')}{g('50%', 7)}</div>
+              ? <img src={photo} alt="" style={{ width: phone ? 56 : 76, height: phone ? 56 : 76, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 20%', background: '#f1f1f3', flexShrink: 0, border: '3px solid #fff' }} />
+              : <span style={{ width: phone ? 56 : 76, height: phone ? 56 : 76, borderRadius: '50%', background: '#f1f1f3', flexShrink: 0, border: '3px solid #fff' }} />}
+            <div style={{ display: 'grid', gap: 6, flex: 1, width: '100%' }}>{g('80%', phone ? 18 : 24, '#0f1115')}{g('50%', 7)}</div>
           </div>
           <span style={{ display: 'flex', gap: 6 }}>{g(64, 12)}{g(90, 12)}</span>
           {g('90%', 7)}

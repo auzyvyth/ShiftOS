@@ -1036,6 +1036,11 @@ export default function SalesmanProfilePage() {
   const cardPhoto = profile.avatar_url || heroImg;
   const heroPro = pro && heroCard ? (
     <header className="aph aph--card">
+      {/* The card's top band (owner, 2026-11-26: "looks like Lite", white-on-white buttons): the seller's
+          cover photo, else their page colour. Both are already set in Settings (cover + Page colour). */}
+      <div className="aph-band" aria-hidden="true">
+        {profile.cover_url && <img src={cdnImg(profile.cover_url, 1600, 70)} alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />}
+      </div>
       {topButtons}
       <div className="aph-in">
         <div className="aph-bc">
@@ -1456,9 +1461,15 @@ export default function SalesmanProfilePage() {
         /* PAGE-HERO 2: the business card layout (white, a small round photo beside the name). */
         .ap .aph.aph--card { --k0: #ffffff; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.16); --t1: #0f1115; --t2: rgba(15,17,21,.72); --t3: rgba(15,17,21,.52);
           background: #fff; color: #0f1115; border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(10,10,11,.04), 0 12px 32px rgba(10,10,11,.06); }
-        .aph--card .aph-in { gap: 14px; padding: 64px 18px 18px; }
-        .aph-bc { display: flex; align-items: center; gap: 16px; min-width: 0; }
-        .aph-bc-ph { flex-shrink: 0; width: 84px; height: 84px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; box-shadow: 0 0 0 1px var(--line2); }
+        .aph-band { position: absolute; left: 0; right: 0; top: 0; height: 128px; overflow: hidden; background: linear-gradient(120deg, var(--ap-a), var(--ap-a2)); }
+        .aph-band img { width: 100%; height: 100%; object-fit: cover; }
+        /* PageLook's Back/Share are white glass with white text (for the dark hero); on the card they sit on the
+           band, so a dark glass keeps them readable on any colour or cover photo. */
+        .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .aph-band::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 50%, rgba(0,0,0,.22)); }
+        .aph--card .aph-in { position: relative; gap: 14px; padding: 84px 18px 18px; }
+        .aph-bc { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+        .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
         .aph-bc-id { min-width: 0; }
         .ap .aph--card .aph-name { margin: 0 0 4px; color: #0f1115; font-size: clamp(34px, 9vw, 64px); }
@@ -1513,8 +1524,11 @@ export default function SalesmanProfilePage() {
             align-items: end; min-height: 0; gap: 16px 32px; padding: 76px 40px 32px; }
           .aph--card .aph-bc { grid-area: id; } .aph--card .aph-chips { grid-area: chips; } .aph--card .aph-bio { grid-area: bio; }
           .aph--card .aph-stats { grid-area: stats; } .aph--card .aph-cta { grid-area: cta; justify-self: end; }
-          .aph-bc { gap: 24px; }
-          .aph-bc-ph { width: 128px; height: 128px; }
+          .aph-band { height: 170px; }
+          .aph--card .aph-in { padding-top: 106px; }
+          .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
+          .aph-bc-id { padding-top: 76px; }
+          .aph-bc-ph { width: 136px; height: 136px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
           .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }
