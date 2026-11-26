@@ -1030,7 +1030,52 @@ export default function SalesmanProfilePage() {
   const heroCut = heroCutState === true;
   const heroWait = heroCutState === null && !!heroImg;
   const heroBio = profile.bio || malayLine;
-  const heroPro = pro && (
+  // PAGE-HERO 2 (owner, 2026-11-26): two layouts, picked in Settings > Your photo. 'card' = a white
+  // business card: a small round photo beside the name, then the same words, numbers and WhatsApp.
+  const heroCard = heroFrameSet.layout === 'card';
+  const cardPhoto = profile.avatar_url || heroImg;
+  const heroPro = pro && heroCard ? (
+    <header className="aph aph--card">
+      {topButtons}
+      <div className="aph-in">
+        <div className="aph-bc">
+          {cardPhoto
+            ? <img className="aph-bc-ph" src={cdnImg(cardPhoto, 240, 80)} alt={profile.full_name} />
+            : <div className="aph-bc-ph aph-mono" aria-hidden="true">{initial}</div>}
+          <div className="aph-bc-id">
+            <h1 className="aph-name">
+              {nameHead}
+              <span className="ap-last">{nameTail}{isVerified && (
+                <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              )}</span>
+            </h1>
+            {(agentNickname(seoProfile) || profile.job_title) && (
+              <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
+            )}
+            {dealer?.dealership && <p className="aph-role">Works at {dealer.dealership}</p>}
+          </div>
+        </div>
+        <div className="aph-chips">
+          <span>{sellerKind}</span>
+          {(locationCity || locationState) && <span className="aph-locchip"><MapPin size={12} style={{ flexShrink: 0 }} /><i className="aph-loc">{tidyPlace(locationCity, locationState)}</i></span>}
+          {isVerified && <span><ShieldCheck size={12} />ID verified by Drevo</span>}
+        </div>
+        {heroBio && <p className="aph-bio">{heroBio}</p>}
+        <div className="aph-stats">
+          {stats.map((st) => (
+            <div key={st.key}><b>{st.n}{st.suffix && <small>{st.suffix}</small>}</b><span>{st.l}</span></div>
+          ))}
+          {replyLabel && <div><b className="aph-small">{replyLabel}</b><span>Measured on chat</span></div>}
+        </div>
+        <div className="aph-cta">
+          {waHref && <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}<span>WhatsApp {firstName}</span></a>}
+          {socials.map((so) => (
+            <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="aph-ico" title={so.label} aria-label={so.label}>{SOCIAL_ICONS[so.key]}</a>
+          ))}
+        </div>
+      </div>
+    </header>
+  ) : pro && (
     <header className={`aph${profile.cover_url ? ' aph--cover' : ''}`}>
       {profile.cover_url && (
         <img className="aph-bg" src={cdnImg(profile.cover_url, 1600, 70)} alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
@@ -1408,6 +1453,24 @@ export default function SalesmanProfilePage() {
         /* PHONE (owner, 2026-11-25: "the hero is too long, it doesn't fit the screen"): the hero answers to the
            screen's height (svh), so the name, the WhatsApp button and the numbers show without a scroll. */
         .aph-in { display: flex; flex-direction: column; gap: 10px; padding: 54px 16px 16px; }
+        /* PAGE-HERO 2: the business card layout (white, a small round photo beside the name). */
+        .ap .aph.aph--card { --k0: #ffffff; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.16); --t1: #0f1115; --t2: rgba(15,17,21,.72); --t3: rgba(15,17,21,.52);
+          background: #fff; color: #0f1115; border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(10,10,11,.04), 0 12px 32px rgba(10,10,11,.06); }
+        .aph--card .aph-in { gap: 14px; padding: 64px 18px 18px; }
+        .aph-bc { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .aph-bc-ph { flex-shrink: 0; width: 84px; height: 84px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; box-shadow: 0 0 0 1px var(--line2); }
+        .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
+        .aph-bc-id { min-width: 0; }
+        .ap .aph--card .aph-name { margin: 0 0 4px; color: #0f1115; font-size: clamp(34px, 9vw, 64px); }
+        .aph--card .aph-name svg { width: .34em; height: .34em; }
+        .aph--card .aph-role { color: var(--t3); }
+        .aph--card .aph-chips span { border-color: var(--line2); background: transparent; color: var(--t2); }
+        .aph--card .aph-bio { color: var(--t2); }
+        .aph--card .aph-stats { margin-top: 0; border-top-color: var(--line); }
+        .aph--card .aph-stats b small { color: var(--t3); }
+        .aph--card .aph-stats span { color: var(--t3); }
+        .aph--card .aph-ico { color: #0f1115; background: transparent; border-color: var(--line2); }
+        .aph--card .aph-cta { margin-top: 0; }
         .aph-pic { order: -1; position: relative; height: clamp(130px, 22svh, 190px); display: flex; align-items: flex-end; justify-content: center; }
         .aph-pic--cut { height: clamp(170px, 31svh, 270px); }
         .aph-pic--wait .aph-me { opacity: 0; }
@@ -1446,6 +1509,12 @@ export default function SalesmanProfilePage() {
           .aph-chips { flex-wrap: wrap; }
           .aph-chips span:nth-child(n+3) { display: inline-flex; }
           .aph-in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: end; gap: 32px; min-height: 440px; padding: 76px 48px 36px; }
+          .aph--card .aph-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'id id' 'chips chips' 'bio bio' 'stats cta';
+            align-items: end; min-height: 0; gap: 16px 32px; padding: 76px 40px 32px; }
+          .aph--card .aph-bc { grid-area: id; } .aph--card .aph-chips { grid-area: chips; } .aph--card .aph-bio { grid-area: bio; }
+          .aph--card .aph-stats { grid-area: stats; } .aph--card .aph-cta { grid-area: cta; justify-self: end; }
+          .aph-bc { gap: 24px; }
+          .aph-bc-ph { width: 128px; height: 128px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
           .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }

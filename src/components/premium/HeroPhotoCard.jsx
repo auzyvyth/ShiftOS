@@ -35,6 +35,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   const [frame, setFrame] = useState(heroFrame(''));
   const [view, setView] = useState('phone');
   const [cars, setCars] = useState(null);             // the seller's cars whose first photo is a cut-out
+  const [avatar, setAvatar] = useState(null);         // the round profile photo (the business card uses it)
 
   useEffect(() => {
     let off = false;
@@ -52,11 +53,12 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
   useEffect(() => {
     let off = false;
     isCutoutModelSaved().then((v) => { if (!off) setModelSaved(!!v); }).catch(() => {});
-    supabase.from('profiles').select('hero_url').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
+    supabase.from('profiles').select('hero_url, avatar_url').eq('id', userId).maybeSingle().then(({ data, error: e }) => {
       if (off) return;
       if (e) { setNotReady(true); setSaved(null); return; }
       setSaved(data?.hero_url || null);
       setFrame(heroFrame(data?.hero_url));
+      setAvatar(data?.avatar_url || null);
     });
     return () => { off = true; };
   }, [userId]);
@@ -170,7 +172,28 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         The big photo of you at the top of your page, the first thing buyers see. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.
       </p>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }} role="group" aria-label="Preview">
+      <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Layout</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }} role="radiogroup" aria-label="Layout">
+        {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'White card, small round photo']].map(([k, t, d]) => {
+          const on = frame.layout === k;
+          return (
+            <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setFrame((f) => ({ ...f, layout: k }))}
+              disabled={k === 'card' && !saved && !preview}
+              style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: 'none', fontFamily: 'inherit', cursor: 'pointer',
+                background: on ? PD.text : PD.hover, color: on ? (PD.canvas || '#0b0c0f') : PD.text, opacity: k === 'card' && !saved && !preview ? 0.5 : 1 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{t}</span>
+              <span style={{ display: 'block', marginTop: 2, fontSize: 11.5, opacity: 0.75 }}>{d}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!saved && !preview && (
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Save a photo first; the layout is saved with it.</p>
+      )}
+      {frame.layout === 'card' && (
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}.</p>
+      )}
+      <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label="Preview">
         {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
           <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
             style={{ ...btn, minHeight: 36, padding: '0 12px', fontSize: 12.5, background: view === k ? PD.text : PD.hover, color: view === k ? PD.canvas || '#0b0c0f' : PD.text }}>
@@ -181,7 +204,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       <div style={{ position: 'relative' }}>
         {shown ? (
           <HeroPreview mode={view} url={shown.url} cut={shown.cut} frame={frame} carUrl={shown.cut ? carPhoto : null} accent={accent}
-            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} />
+            onMove={(x, y) => setFrame((f) => ({ ...f, x, y }))} avatarUrl={avatar} />
         ) : (
           <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
@@ -195,7 +218,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         )}
       </div>
 
-      {shown && (
+      {shown && frame.layout !== 'card' && (
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
           <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Drag the photo to move it. The phone and desktop previews use the same settings.</p>
           {[['Size', 'size', HERO_SIZE, '%'], ['Left / right', 'x', HERO_SHIFT, ''], ['Up / down', 'y', HERO_SHIFT, '']].map(([label, key, r, unit]) => (
@@ -214,7 +237,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         </div>
       )}
 
-      {shown?.cut && (
+      {shown?.cut && frame.layout !== 'card' && (
         <div style={{ marginTop: 16 }}>
           <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Car in front of you</p>
           {cars === null ? (
