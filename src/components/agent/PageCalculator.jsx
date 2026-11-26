@@ -59,7 +59,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
     <div id="ap-calc" className="pc-wrap" style={{ containerType: 'inline-size', scrollMarginTop: 72 }}>
     <div className="ps-head">
       <div>
-        <h2>Work out your monthly</h2>
+        <h2>Work out <span>your monthly</span></h2>
         <p>Before you talk to the bank. Pick a car, set the deposit and years, see the instalment.</p>
       </div>
     </div>

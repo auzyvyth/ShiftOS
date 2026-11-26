@@ -1,5 +1,5 @@
 // Premium page sections: rules + cleaning. Run: npm run test:pagesite
-import { cleanGround, groundPaint, keepLight, lum, groundVars, flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
+import { flowRows, cleanSite, noteProblem, promoProblem, deliveryProblem, activePromos, untilLabel, promoLine, deliveryLine, visibleSections, SITE_SECTIONS, PROMO_MAX } from '../src/utils/pageSite.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -55,19 +55,7 @@ is('flow: a lone half stays alone', ids(flowRows(f(['p', 'half'], ['m', 'full'],
 is('flow: three halves = a pair and a single', ids(flowRows(f(['a', 'half'], ['b', 'half'], ['c', 'half']))), [['a', 'b'], ['c']]);
 is('flow: empty', flowRows(null), []);
 
-is('custom ground kept', cleanSite({ ground: { from: '#E8F0FF', to: '#C9DAF5', angle: 135 } }).ground, { from: '#e8f0ff', to: '#c9daf5', angle: 135 });
-is('the default is not saved', cleanSite({ ground: { from: '#ffffff', to: '#f6f5f1', angle: 180 } }).ground, undefined);
-is('bad colour dropped', cleanSite({ ground: { from: 'red', to: '#fff' } }).ground, undefined);
-is('odd angle falls back to down', cleanGround({ from: '#eeeeee', to: '#dddddd', angle: 45 }).angle, 180);
-is('old preset name still reads', cleanGround('sage'), { from: '#fbfcfa', to: '#e3ece3', angle: 180 });
-is('a light pick is unchanged', keepLight('#f5e3df'), '#f5e3df');
-is('a dark pick is lightened until readable', lum(keepLight('#123456')) >= 0.75, true);
-is('pure black becomes light', lum(keepLight('#000000')) >= 0.75, true);
-const navy = groundPaint({ from: '#0b1d3a', to: '#0b1d3a', angle: 90 });
-is('a dark pick is flagged as lightened', navy.lightened, true);
-is('cards stand apart from a white ground', groundPaint(null).tile !== '#ffffff' && lum(groundPaint(null).tile) < lum('#ffffff'), true);
-is('cards go lighter on a coloured ground', lum(groundPaint({ from: '#e3ece3', to: '#cfdccf' }).tile) > lum('#d9e4d9'), true);
-is('ground vars', Object.keys(groundVars(null)), ['--pl-g1', '--pl-g2', '--pl-gangle', '--pl-tile']);
+is('a saved ground is ignored', cleanSite({ ground: { from: '#E8F0FF', to: '#C9DAF5', angle: 135 } }).ground, undefined);
 
 console.log(`pageSite: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

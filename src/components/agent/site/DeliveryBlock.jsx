@@ -14,7 +14,7 @@ export default function DeliveryBlock({ delivery, firstName, hasWa, waUrlFor, on
     <section className="ps" id="ap-delivery" aria-label="Delivery to your town">
       <div className="ps-head">
         <div>
-          <h2>From {base} to your door</h2>
+          <h2>From {base} <span>to your door</span></h2>
           <p>Pick your town to see how far {firstName} delivers.</p>
         </div>
       </div>

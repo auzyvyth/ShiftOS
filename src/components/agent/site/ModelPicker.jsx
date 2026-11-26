@@ -130,7 +130,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
     <section className="ps ps-dark" id="ap-models" aria-label="Pick your model">
       <div className="ps-head">
         <div>
-          <h2>Pick your model</h2>
+          <h2>Pick your <span>model</span></h2>
           <p>Choose the model, variant and colour, then ask {firstName} for the price and stock.</p>
         </div>
       </div>

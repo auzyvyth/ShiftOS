@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { premiumDark as PD } from '../../theme/tokens';
 import {
   cleanSite, promoProblem, deliveryProblem, noteProblem, siteErrorText, myToday,
-  GROUND_PRESETS, GROUND_ANGLES, DEFAULT_GROUND, groundPaint, mixHex, SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
+  SECTION_LABEL, PROMO_MAX, DELIVERY_MAX, PROMO_DAYS_MAX, NOTES_MAX, NOTE_MAX,
 } from '../../utils/pageSite';
 
 // Premium Settings > "Your page sections" (PAGE-SITE 2). The seller types their
@@ -84,58 +84,6 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      {(() => {
-        // Page background: the seller's own two colours + which way the fade runs (owner: "make it customizable").
-        const g = draft.ground || DEFAULT_GROUND;
-        const paint = groundPaint(g);
-        const acc = /^#[0-9a-f]{6}$/i.test(accent) ? accent.toLowerCase() : '#dc2626';
-        const presets = [...GROUND_PRESETS, { label: 'My colour', from: mixHex(acc, '#ffffff', 0.95), to: mixHex(acc, '#ffffff', 0.84) }];
-        const setG = (patch) => set({ ground: { ...g, ...patch } });
-        const DIR = { 180: 'Down', 135: 'Diagonal', 90: 'Across' };
-        const colourBox = (label, key) => (
-          <label style={{ flex: '1 1 140px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, padding: '6px 10px', borderRadius: PD.radius.row, background: PD.raised, cursor: 'pointer' }}>
-            <input type="color" value={g[key]} onChange={(e) => setG({ [key]: e.target.value })} aria-label={`${label} colour`}
-              style={{ width: 36, height: 36, padding: 0, border: 'none', borderRadius: 8, background: 'none', cursor: 'pointer' }} />
-            <span style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 12, color: PD.textMuted }}>{label}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: PD.text, fontFamily: 'ui-monospace, monospace' }}>{g[key].toUpperCase()}</span>
-            </span>
-          </label>
-        );
-        return (
-          <div style={card}>
-            <p style={h}>Page background</p>
-            <p style={hint}>The light part of your page, behind your cars and sections. Pick any two colours and which way they fade. Very dark colours are lightened a little so buyers can still read your page.</p>
-            <div aria-hidden="true" style={{ height: 96, borderRadius: 14, marginBottom: 12, background: `linear-gradient(${paint.angle}deg, ${paint.from}, ${paint.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{ width: 70, height: 44, borderRadius: 10, background: paint.tile }} />
-              <span style={{ width: 70, height: 44, borderRadius: 10, background: '#0f1115' }} />
-              <span style={{ width: 70, height: 44, borderRadius: 10, background: paint.tile }} />
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-              {colourBox('Top', 'from')}
-              {colourBox('Bottom', 'to')}
-            </div>
-            <div role="radiogroup" aria-label="Fade direction" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 12, background: PD.raised, marginBottom: 12 }}>
-              {GROUND_ANGLES.map((a) => (
-                <button key={a} type="button" role="radio" aria-checked={g.angle === a} onClick={() => setG({ angle: a })}
-                  style={{ ...btn, flex: 1, minHeight: 38, borderRadius: 9, background: g.angle === a ? '#fff' : 'transparent', color: g.angle === a ? '#0f1115' : PD.textSec }}>{DIR[a]}</button>
-              ))}
-            </div>
-            {paint.lightened && <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Lightened a little so your page stays readable. The preview shows what buyers will see.</p>}
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: PD.textMuted }}>Or start from one of these:</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {presets.map((p) => (
-                <button key={p.label} type="button" onClick={() => setG({ from: p.from, to: p.to })}
-                  style={{ ...soft, minHeight: 36, padding: '0 12px 0 6px', gap: 8, borderRadius: 10 }}>
-                  <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 6, background: `linear-gradient(180deg, ${p.from}, ${p.to})`, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       <div style={card}>
         <p style={h}>Sections on your page</p>
         <p style={hint}>The order buyers scroll through. Switch off what you do not want. A section with nothing in it never shows.</p>

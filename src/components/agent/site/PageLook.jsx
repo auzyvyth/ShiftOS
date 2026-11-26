@@ -1,150 +1,208 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
-// The Premium page's colour + hierarchy pass (owner, 2026-11-25: "it sucks ... good hierarchy,
-// good colouring, 60% white, 30% dark, 10% red, remove the upper lines"). Rules, from DESIGN.md:
-//  - WHITE ground (the seller-colour wash of PAGE-PRO is gone), light warm-grey tiles for cards,
-//    no card shadows: depth by tone, like the rest of Drevo.
-//  - DARK = ink #0f1115 only, on big objects: the hero, the promo strip, the "Pick your model"
-//    block and the calculator. On dark, a selected thing is WHITE; on light it is INK.
-//  - RED = the seller's accent (Drevo red unless they picked one), ONLY on the main buttons, the
-//    slider fill and an "ends soon" word. Never on a selected chip, a tick or an ornament.
-//  - No decorative lines: no accent bars, no dashes before a label, no rules above a block.
-//  - One heading system for every section: Bebas H2 + one muted line under it.
-//  - Corners: cards 16, buttons 12, chips + segments 8. No pills on anything with text.
-// Premium only: rendered next to SiteStyle, and every rule is under `.ap--pro`.
+// The Premium page's look (owner, 2026-11-26: "I wanted it like this", a black advisor site he sent).
+// We take its ORGANISATION and colouring, never its words or photos. Rules:
+//  - BLACK page, white words. No rounded cards: square corners and 1px hairlines between things.
+//  - Type by contrast: labels are tiny, light, wide-spaced capitals; the answer under them is big and
+//    bold. Headings are a wide face, a bold part then a light part ("PICK YOUR <light>MODEL</light>").
+//  - The main button is WHITE with black words. The seller's colour is only a small accent: the
+//    slider, the picked tab's underline, the promo dots. Never a big coloured block or a glow.
+//  - Things that float over the page (top buttons, section menu, bottom bar) are frosted glass.
+// Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The wide face (Archivo,
+// expanded) loads only here, so Lite pages and the rest of Drevo never download it.
+const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,300;125,500;125,700;125,800&display=swap';
+
 export default function PageLook() {
+  useEffect(() => {
+    if (document.querySelector('link[data-pl-font]')) return;
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = FONT_HREF; l.dataset.plFont = '1';
+    document.head.appendChild(l);
+  }, []);
   return (
     <style>{`
-      /* The light ground is the seller's own two colours + fade direction (groundPaint in pageSite.js, kept
-         light so text stays readable). The page root sets --pl-g1 / --pl-g2 / --pl-gangle / --pl-tile inline. */
-      .ap.ap--pro { --pl-g1: #ffffff; --pl-g2: #f6f5f1; --pl-tile: #f1f0eb; --ap-bg: var(--pl-g1); --ap-surf: var(--pl-tile);
-        --pl-ink: #0f1115; --pl-tile2: rgba(15,17,21,.06); --pl-mute: #6b7280; --pl-d1: #0f1115; --pl-d2: #181b21; --pl-d3: #22262e;
-        background: linear-gradient(var(--pl-gangle, 180deg), var(--pl-g1) 0%, var(--pl-g2) 100%); }
+      .ap.ap--pro { --k0: #0a0a0b; --k1: #111113; --k2: #18181b; --line: rgba(255,255,255,.12); --line2: rgba(255,255,255,.22);
+        --t1: #ffffff; --t2: rgba(255,255,255,.72); --t3: rgba(255,255,255,.5);
+        --wide: 'Archivo', var(--xd-font-body); --ap-bg: var(--k0); --ap-surf: var(--k1);
+        background: var(--k0); color: var(--t1); }
+      .ap--pro * { scrollbar-color: #333 transparent; }
 
-      /* Headings: one system */
-      .ap--pro .ap-sec { margin: 56px 0 16px; }
-      .ap--pro .ps { margin-top: 56px; }
-      .ap--pro .ps-head { margin-bottom: 18px; }
-      .ap--pro .ps-head h2, .ap--pro .ap-sec h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(32px, 3.4vw, 46px); line-height: .95; letter-spacing: .015em; color: var(--pl-ink); }
-      .ap--pro .ps-head p { margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--pl-mute); max-width: 52ch; }
-      .ap--pro .pc-wrap { margin-top: 56px; }
+      /* ---------- Type ---------- */
+      .ap--pro .ap-sec h2, .ap--pro .ps-head h2 { font-family: var(--wide); font-stretch: 125%; font-weight: 800; text-transform: uppercase;
+        font-size: clamp(22px, 2.6vw, 34px); line-height: 1.05; letter-spacing: -.005em; color: var(--t1); }
+      .ap--pro .ps-head h2 span, .ap--pro .ap-sec h2 small { font-weight: 300; }
+      .ap--pro .ap-sec h2 > span { font-family: var(--xd-font-body); font-weight: 400; font-size: .5em; color: var(--t3); vertical-align: middle; }
+      .ap--pro .ps-head p { margin-top: 10px; font-size: 14px; line-height: 1.55; color: var(--t2); max-width: 54ch; }
+      /* The label: tiny, light, wide-spaced capitals. The value under it carries the weight. */
+      .ap--pro .ps-lbl, .ap--pro .ps-spec dt, .ap--pro .pc-lbl, .ap--pro .pc-k, .ap--pro .aph-stats span, .ap--pro .ps-q-l,
+      .ap--pro .ps-big div span, .ap--pro .ps-steps, .ap--pro .ap-live-h, .ap--pro .ap-eyebrow {
+        font-family: var(--wide); font-stretch: 125%; font-size: 10.5px !important; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3) !important; }
+      .ap--pro .ps-lbl b { font-family: var(--wide); color: var(--t1); letter-spacing: .12em; }
+      .ap--pro .ap-sec { margin: 64px 0 18px; }
+      .ap--pro .ps, .ap--pro .pc-wrap { margin-top: 64px; }
       @media (max-width: 899px) {
-        .ap--pro .ap-sec, .ap--pro .ps, .ap--pro .pc-wrap { margin-top: 40px; }
-        .ap--pro .ps-head h2, .ap--pro .ap-sec h2 { font-size: 32px; }
+        .ap--pro .ap-sec, .ap--pro .ps, .ap--pro .pc-wrap { margin-top: 44px; }
+        .ap--pro .ap-sec h2, .ap--pro .ps-head h2 { font-size: 22px; }
       }
 
-      /* Cards: light tiles, no shadow, no border */
-      .ap--pro .ap-card, .ap--pro .ps-card { background: var(--pl-tile); box-shadow: none; border: none; border-radius: 16px; }
-      .ap--pro .ap-car:hover { box-shadow: 0 0 0 1px rgba(15,17,21,.08); transform: none; }
-      .ap--pro .ap-sticky { background: var(--pl-g1); box-shadow: 0 -1px 0 rgba(15,17,21,.06); }
-
-      /* Buttons: the main one is the accent key (radius 12, never a pill); the second is ink outline */
-      .ap--pro .ap-btn { border-radius: 12px; }
-      .ap--pro .ps-wa { border-radius: 12px; background: linear-gradient(var(--ap-a), var(--ap-b2, var(--ap-a))); box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -2px 0 rgb(9 10 12 / .25), 0 6px 16px rgba(var(--ap-rgb, 220 38 38), .28); }
-      .ap--pro .ps-ghost { border-radius: 12px; border-color: rgba(15,17,21,.22); }
-
-      /* Jump chips: no pills, light tiles, no shadow */
-      .ap--pro .pn { background: linear-gradient(var(--pl-g1) 72%, transparent); }
-      .ap--pro .pn a { border-radius: 8px; background: var(--pl-tile); box-shadow: none; font-weight: 600; }
-      .ap--pro .pn a:hover { box-shadow: 0 0 0 1px rgba(15,17,21,.1); }
-      .ap--pro .ap-brands button, .ap--pro .ap-seg { border-radius: 8px; }
-
-      /* Hero: no rule above the numbers */
-      .ap--pro .aph-stats { border-top: none; padding-top: 4px; }
-      .ap--pro .aph-chips span { border-radius: 8px; }
-
-      /* Promo strip: ink, the dots are the only red */
-      .ap--pro .ps-tick { background: var(--pl-d1); border-radius: 12px; }
-
-      /* Promos: one tile per promo, not lines */
-      .ap--pro .ps-promos { display: grid; gap: 8px; }
-      .ap--pro .ps-promos .ps-promo-row { background: var(--pl-tile); border-radius: 14px; border: none; }
-      .ap--pro .ps-promo-row + .ps-promo-row { border-top: none; }
-      .ap--pro .ps-pill { border-radius: 6px; background: rgba(15,17,21,.05); }
-
-      /* Delivery: chips are 8, selected = ink */
-      .ap--pro .ps-towns button, .ap--pro .ps-q-o button, .ap--pro .ps-steps button { border-radius: 8px; }
-
-      /* About / Why / Track / Find: tiles, ink ticks, no rules */
-      .ap--pro .ap-sold div + div { border-top: none; }
+      /* ---------- Surfaces: hairlines, square ---------- */
+      .ap--pro .ap-card, .ap--pro .ps-card { background: transparent; border: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+      .ap--pro .ap-car { border-radius: 0; }
+      .ap--pro .ap-car:hover { box-shadow: none; transform: none; border-color: var(--line2); }
+      .ap--pro .ap-ph, .ap--pro .ap-live-ph { background: var(--k1); border-radius: 0; }
+      .ap--pro .ap-cn, .ap--pro .ap-bhead, .ap--pro .ap-pr b, .ap--pro .ap-mo b, .ap--pro .ap-sold span:first-child, .ap--pro .ap-ml b,
+      .ap--pro .ap-ml span, .ap--pro .ap-who b, .ap--pro .ap-foot a, .ap--pro .ap-promise p, .ap--pro .ap-spec, .ap--pro .ap-more { color: var(--t1); }
+      .ap--pro .ap-cs, .ap--pro .ap-mo, .ap--pro .ap-st, .ap--pro .ap-sold span:last-child, .ap--pro .ap-who, .ap--pro .ap-foot,
+      .ap--pro .ap-safe p, .ap--pro .ap-bhead span, .ap--pro .ap-about-bio { color: var(--t2); }
+      .ap--pro .ap-pr { border-top-color: var(--line); }
+      .ap--pro .ap-ov { border-radius: 0; background: rgba(0,0,0,.7); }
+      .ap--pro .ap-sold div + div { border-top: 1px solid var(--line); }
+      .ap--pro .ap-sold div:nth-child(even) { background: transparent; }
       .ap--pro .ap-sold div { padding: 12px 16px; }
-      .ap--pro .ap-sold div:nth-child(even) { background: rgba(15,17,21,.03); }
-      .ap--pro .ap-about-bio + .ap-facts { border-top: none; padding-top: 8px; }
-      .ap--pro .ap-spec svg { background: var(--pl-ink); }
-      .ap--pro .ap-promise span { color: rgba(15,17,21,.18); }
+      .ap--pro .ap-facts li { background: transparent; border: 1px solid var(--line); border-radius: 0; color: var(--t1); }
+      .ap--pro .ap-facts svg { color: var(--t1); }
+      .ap--pro .ap-about-bio + .ap-facts { border-top: 1px solid var(--line); padding-top: 16px; }
+      .ap--pro .ap-spec svg { background: #fff; color: #0a0a0b; border-radius: 0; }
+      .ap--pro .ap-promise span { color: var(--line2); }
+      .ap--pro .ap-terms, .ap--pro .ap-terms * { color: var(--t2); }
+      .ap--pro .ap-map iframe { filter: grayscale(1) invert(.92) contrast(.9); }
+      .ap--pro .ap-reviews { margin-top: 44px; }
+      .ap--pro .ap-reviews, .ap--pro .ap-reviews p, .ap--pro .ap-reviews span, .ap--pro .ap-reviews h2, .ap--pro .ap-reviews h3 { color: var(--t1) !important; }
+      .ap--pro .ap-reviews [style*="background"] { background: transparent !important; }
+      .ap--pro .ap-reviews button { background: transparent !important; color: var(--t1) !important; border: 1px solid var(--line2) !important; border-radius: 0 !important; }
 
-      /* Reviews: the sign-in ask is a plain ink-outline button, not a pink tinted pill */
-      .ap--pro .ap-reviews { margin-top: 40px; }
-      .ap--pro .ap-reviews button { background: #fff !important; color: var(--pl-ink) !important; border: 1px solid rgba(15,17,21,.22) !important; border-radius: 12px !important; }
+      /* Switches, brand tabs, sort */
+      .ap--pro .ap-seg { background: transparent; border: 1px solid var(--line); border-radius: 0; }
+      .ap--pro .ap-seg button { color: var(--t2); }
+      .ap--pro .ap-seg button[aria-pressed="true"], .ap--pro .ap-brands button[aria-pressed="true"] { background: #fff; color: #0a0a0b; border-color: #fff; }
+      .ap--pro .ap-brands button { border-radius: 0; background: transparent !important; color: var(--t2); border-color: var(--line); }
+      .ap--pro .ap-brands button[aria-pressed="true"] { background: #fff !important; }
 
-      /* ---------- DARK: "Pick your model" is one ink block ---------- */
-      .ap--pro .ps-dark { background: var(--pl-d1); color: #fff; border-radius: 24px; padding: 28px 24px 24px; }
-      .ap--pro .ps-dark .ps-head h2 { color: #fff; }
-      .ap--pro .ps-dark .ps-head p, .ap--pro .ps-dark .ps-fine { color: rgba(255,255,255,.6); }
-      .ap--pro .ps-dark .ps-mtabs { border-bottom-color: rgba(255,255,255,.1); }
-      .ap--pro .ps-dark .ps-mtabs button { color: rgba(255,255,255,.45); }
-      .ap--pro .ps-dark .ps-mtabs button[aria-pressed="true"] { color: #fff; border-bottom-color: #fff; }
-      .ap--pro .ps-dark .ps-card { background: var(--pl-d2); }
-      .ap--pro .ps-dark .ps-media, .ap--pro .ps-dark .ps-shots { background: #E9E8E4; }
-      .ap--pro .ps-dark .ps-stage { background: linear-gradient(180deg, #f1f0ec, #e6e4df); }
-      .ap--pro .ps-dark .ps-mname, .ap--pro .ps-dark .ps-price, .ap--pro .ps-dark .ps-help-pick, .ap--pro .ps-dark .ps-help-price,
-      .ap--pro .ps-dark .ps-q-t, .ap--pro .ps-dark .ps-help-h h3 { color: #fff; }
-      .ap--pro .ps-dark .ps-mvar, .ap--pro .ps-dark .ps-est, .ap--pro .ps-dark .ps-lbl, .ap--pro .ps-dark .ps-colname,
-      .ap--pro .ps-dark .ps-help-h p, .ap--pro .ps-dark .ps-q-l, .ap--pro .ps-dark .ps-help-price small { color: rgba(255,255,255,.58); }
-      .ap--pro .ps-dark .ps-lbl b, .ap--pro .ps-dark .ps-help-facts { color: rgba(255,255,255,.86); }
-      .ap--pro .ps-dark .ps-spec { background: transparent; gap: 6px; }
-      .ap--pro .ps-dark .ps-spec div { background: var(--pl-d3); border-radius: 10px; }
-      .ap--pro .ps-dark .ps-spec dt { color: rgba(255,255,255,.5); }
-      .ap--pro .ps-dark .ps-spec dd { color: #fff; }
-      .ap--pro .ps-dark .ps-var { background: var(--pl-d3); border-color: transparent; color: #fff; }
-      .ap--pro .ps-dark .ps-var span:last-child { color: rgba(255,255,255,.65); }
-      .ap--pro .ps-dark .ps-var[aria-checked="true"] { background: #fff; border-color: #fff; box-shadow: none; color: var(--pl-ink); }
-      .ap--pro .ps-dark .ps-var[aria-checked="true"] span:last-child { color: #374151; }
-      .ap--pro .ps-dark .ps-col { box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset; }
-      .ap--pro .ps-dark .ps-col[aria-checked="true"] { border-color: var(--pl-d2); outline-color: #fff; }
-      .ap--pro .ps-dark .ps-note { background: var(--pl-d3); }
-      .ap--pro .ps-dark .ps-note p:last-child { color: rgba(255,255,255,.82); }
-      .ap--pro .ps-dark .ps-ghost { color: #fff; border-color: rgba(255,255,255,.3); }
-      .ap--pro .ps-dark .ps-ask { color: #fff; }
-      .ap--pro .ps-dark .ps-q, .ap--pro .ps-dark .ps-steps, .ap--pro .ps-dark .ps-help-r { border: none; }
-      .ap--pro .ps-dark .ps-steps { color: rgba(255,255,255,.5); }
-      .ap--pro .ps-dark .ps-steps button { color: #fff; border-color: rgba(255,255,255,.25); }
-      .ap--pro .ps-dark .ps-q-o button { color: rgba(255,255,255,.86); border-color: rgba(255,255,255,.18); }
-      .ap--pro .ps-dark .ps-q-o button[aria-checked="true"] { background: #fff; border-color: #fff; color: var(--pl-ink); }
-      .ap--pro .ps-dark .ps-help-r { background: var(--pl-d3); border-radius: 14px; padding: 16px; }
-      .ap--pro .ps-help-r { border: none; }
-      .ap--pro .ps-q { border-top: none; }
-      .ap--pro .ps-steps { border-top: none; }
-      @media (min-width: 1000px) {
-        .ap--pro .ps-dark { padding: 36px 36px 32px; }
-        .ap--pro .ps-dark .ps-help-r { padding: 20px; }
-      }
-      @media (max-width: 899px) { .ap--pro .ps-dark { padding: 22px 14px 16px; border-radius: 20px; } }
+      /* ---------- Buttons ---------- */
+      .ap--pro .ap-btn, .ap--pro .ps-wa { border-radius: 0 !important; background: #fff !important; color: #0a0a0b !important; box-shadow: none !important;
+        font-family: var(--wide); font-stretch: 125%; font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: #e9e9ea !important; }
+      .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; }
+      .ap--pro .ps-ghost { border-radius: 0; background: transparent; color: var(--t1); border-color: var(--line2);
+        font-family: var(--wide); font-stretch: 125%; font-weight: 700; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .ps-ask { color: var(--t1); }
 
-      /* ---------- DARK: the calculator card; the answer is the one WHITE card inside it ---------- */
-      .ap--pro .pc { background: var(--pl-d1); color: #fff; border-radius: 24px; }
-      .ap--pro .pc-tabs { background: var(--pl-d2); }
-      .ap--pro .pc-tabs button { color: rgba(255,255,255,.6); }
-      .ap--pro .pc-tabs button[aria-pressed="true"] { background: #fff; color: var(--pl-ink); box-shadow: none; }
-      .ap--pro .pc-car { background: var(--pl-d2); color: #fff; border-color: transparent; }
-      .ap--pro .pc-car[aria-pressed="true"] { background: var(--pl-d3); border-color: #fff; box-shadow: none; }
-      .ap--pro .pc-ph { background: #E9E8E4; }
-      .ap--pro .pc-field { background: var(--pl-d2); }
-      .ap--pro .pc-lbl, .ap--pro .pc-ticks { color: rgba(255,255,255,.55); }
-      .ap--pro .pc-fh b { color: #fff; }
+      /* ---------- Hero ---------- */
+      .ap--pro .aph { border-radius: 0; background: var(--k0); border: 1px solid var(--line); }
+      .ap--pro .aph-glow { background: radial-gradient(circle, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 65%); }
+      .ap--pro .aph--cover::before { background: linear-gradient(180deg, rgba(10,10,11,.6), rgba(10,10,11,.94) 58%); }
+      .ap--pro .aph-me { border-radius: 0; box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px var(--line2); }
+      .ap--pro .aph-pic--cut .aph-me { box-shadow: none; }
+      .ap--pro .aph-mono { background: var(--k2); color: var(--t1); }
+      .ap--pro .aph-chips span { border-radius: 0; border-color: var(--line2); background: transparent; font-family: var(--wide); font-stretch: 125%;
+        font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--t2); }
+      .ap--pro .aph-role { font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--t3); }
+      .ap--pro .aph .aph-name { font-family: var(--wide); font-stretch: 125%; font-weight: 800; text-transform: uppercase; letter-spacing: -.01em;
+        font-size: clamp(30px, 8.6vw, 68px); line-height: .98; }
+      .ap--pro .aph .aph-name .ap-last { font-weight: 300; }
+      .ap--pro .aph-ico { border-radius: 0; background: transparent; border-color: var(--line2); }
+      .ap--pro .aph-stats b { font-family: var(--wide); font-stretch: 125%; font-weight: 800; font-size: 26px; letter-spacing: -.01em; }
+      .ap--pro .aph-stats b.aph-small { font-family: var(--xd-font-body); font-weight: 600; font-size: 14px; }
+      .ap--pro .aph-stats { border-top: 1px solid var(--line); padding-top: 14px; }
+      /* Frosted glass on what floats over the photo */
+      .ap--pro .ap-back, .ap--pro .ap-share { background: rgba(255,255,255,.12) !important; color: #fff !important; border: 1px solid rgba(255,255,255,.18) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); box-shadow: none !important; border-radius: 0 !important; }
+      .ap--pro .ap-back:active, .ap--pro .ap-share:active { background: rgba(255,255,255,.2) !important; translate: 0 1px; }
+
+      /* ---------- Section menu + bottom bar: frosted strips ---------- */
+      .ap--pro .pn { background: rgba(10,10,11,.72); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+        border-bottom: 1px solid var(--line); gap: 0; padding: 0; margin: 0 0 4px; }
+      .ap--pro .pn a { height: 46px; padding: 0 16px; border-radius: 0; background: transparent; box-shadow: none; color: var(--t2);
+        font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+      .ap--pro .pn a:hover { background: transparent; color: var(--t1); box-shadow: inset 0 -2px 0 var(--ap-a); }
+      .ap--pro .ap-sticky { background: rgba(10,10,11,.78) !important; -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+        border-top: 1px solid var(--line); box-shadow: none; }
+      .ap--pro .ap-sticky .ap-mini { border-radius: 0; background: var(--k2); }
+      .ap--pro .ap-sticky .ap-btn { padding: 0 18px; }
+
+      /* ---------- Promos + ticker ---------- */
+      .ap--pro .ps-tick { background: transparent; border-radius: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .ap--pro .ps-tick-it { font-family: var(--wide); font-stretch: 125%; font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+      .ap--pro .ps-tick-it i { border-radius: 0; background: var(--ap-a); }
+      .ap--pro .ps-promos { display: block; border-top: 1px solid var(--line); }
+      .ap--pro .ps-promos .ps-promo-row, .ap--pro .ps-promo-row { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 16px 0; }
+      .ap--pro .ps-pm, .ap--pro .ps-pp { color: var(--t1); }
+      .ap--pro .ps-pt, .ap--pro .ps-fine, .ap--pro .ps-pp small { color: var(--t2); }
+      .ap--pro .ps-pill { border-radius: 0; background: transparent; border: 1px solid var(--line); color: var(--t2); }
+      .ap--pro .ps-pill b { color: var(--t1); }
+
+      /* ---------- Delivery ---------- */
+      .ap--pro .ps-del { padding: 20px; }
+      .ap--pro .ps-towns button { border-radius: 0; background: transparent; border-color: var(--line2); color: var(--t2); }
+      .ap--pro .ps-towns button[aria-pressed="true"] { background: #fff; border-color: #fff; color: #0a0a0b; }
+      .ap--pro .ps-route b, .ap--pro .ps-big div b { color: var(--t1); }
+      .ap--pro .ps-big div b { font-family: var(--wide); font-stretch: 125%; font-weight: 800; }
+      .ap--pro .ps-route i { background: repeating-linear-gradient(90deg, var(--line2) 0 6px, transparent 6px 12px); }
+      .ap--pro .ps-dot { border-color: #fff; background: var(--k0); border-radius: 0; }
+      .ap--pro .ps-dot--end { background: var(--ap-a); border-color: var(--ap-a); }
+
+      /* ---------- Pick your model (the page is black now, so the block is just a section) ---------- */
+      .ap--pro .ps-dark { background: transparent; color: var(--t1); border-radius: 0; padding: 0; }
+      .ap--pro .ps-dark .ps-head h2 { color: var(--t1); }
+      .ap--pro .ps-mtabs { border-bottom-color: var(--line); }
+      .ap--pro .ps-mtabs button { color: var(--t3); }
+      .ap--pro .ps-mtabs button b { font-family: var(--wide); font-stretch: 125%; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .ps-mtabs button[aria-pressed="true"] { color: var(--t1); border-bottom-color: var(--ap-a); }
+      .ap--pro .ps-dark .ps-card, .ap--pro .ps-model { background: transparent; border: 1px solid var(--line); }
+      .ap--pro .ps-media, .ap--pro .ps-dark .ps-media, .ap--pro .ps-dark .ps-shots, .ap--pro .ps-shots { background: var(--k0); border-radius: 0; }
+      .ap--pro .ps-stage, .ap--pro .ps-dark .ps-stage { background: radial-gradient(ellipse 70% 55% at 50% 38%, #2b2b2f 0%, #141416 55%, #0a0a0b 100%); }
+      .ap--pro .ps-stage-tag { border-radius: 0; background: transparent; border: 1px solid var(--line2); font-family: var(--wide); font-stretch: 125%;
+        font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; }
+      .ap--pro .ps-shots button { border-radius: 0; }
+      .ap--pro .ps-mname, .ap--pro .ps-price, .ap--pro .ps-help-pick, .ap--pro .ps-help-price, .ap--pro .ps-q-t, .ap--pro .ps-help-h h3 { color: var(--t1); }
+      .ap--pro .ps-mname, .ap--pro .ps-help-pick, .ap--pro .ps-help-h h3 { font-family: var(--wide); font-stretch: 125%; font-weight: 800; text-transform: uppercase; letter-spacing: -.005em; }
+      .ap--pro .ps-price { font-family: var(--wide); font-stretch: 125%; font-weight: 800; letter-spacing: -.01em; }
+      .ap--pro .ps-mvar, .ap--pro .ps-est, .ap--pro .ps-colname, .ap--pro .ps-help-h p, .ap--pro .ps-help-price small, .ap--pro .ps-help-facts { color: var(--t2); }
+      .ap--pro .ps-spec { background: transparent; gap: 0; border-radius: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .ap--pro .ps-spec div, .ap--pro .ps-dark .ps-spec div { background: transparent; border-radius: 0; padding: 12px 14px 12px 0; }
+      .ap--pro .ps-spec div + div { border-left: 1px solid var(--line); padding-left: 14px; }
+      .ap--pro .ps-spec dd { color: var(--t1); font-weight: 700; }
+      .ap--pro .ps-var, .ap--pro .ps-dark .ps-var { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--t2); }
+      .ap--pro .ps-var span:last-child, .ap--pro .ps-dark .ps-var span:last-child { color: var(--t2); }
+      .ap--pro .ps-var[aria-checked="true"], .ap--pro .ps-dark .ps-var[aria-checked="true"] { background: rgba(255,255,255,.06); border-color: var(--line); box-shadow: inset 2px 0 0 #fff; color: var(--t1); }
+      .ap--pro .ps-var[aria-checked="true"] span:last-child { color: var(--t1); }
+      .ap--pro .ps-col, .ap--pro .ps-dark .ps-col { box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset; }
+      .ap--pro .ps-col[aria-checked="true"], .ap--pro .ps-dark .ps-col[aria-checked="true"] { border-color: var(--k0); outline: 1px solid #fff; }
+      .ap--pro .ps-note, .ap--pro .ps-dark .ps-note { background: transparent; border-left: 1px solid var(--line2); border-radius: 0; padding: 4px 0 4px 14px; }
+      .ap--pro .ps-note p:last-child { color: var(--t2); }
+
+      /* ---------- Not sure which model ---------- */
+      .ap--pro .ps-help { background: transparent; border: 1px solid var(--line); }
+      .ap--pro .ps-q { border-top: 1px solid var(--line) !important; }
+      .ap--pro .ps-q-o button, .ap--pro .ps-steps button { border-radius: 0; background: transparent; color: var(--t2); border-color: var(--line2); }
+      .ap--pro .ps-q-o button[aria-checked="true"] { background: #fff; border-color: #fff; color: #0a0a0b; }
+      .ap--pro .ps-help-r, .ap--pro .ps-dark .ps-help-r { background: transparent; border: 1px solid var(--line) !important; border-radius: 0; padding: 16px; }
+
+      /* ---------- Calculator ---------- */
+      .ap--pro .pc { background: transparent; color: var(--t1); border-radius: 0; border: 1px solid var(--line); }
+      .ap--pro .pc-tabs { background: transparent; border: 1px solid var(--line); border-radius: 0; }
+      .ap--pro .pc-tabs button { color: var(--t2); border-radius: 0; }
+      .ap--pro .pc-tabs button[aria-pressed="true"] { background: #fff; color: #0a0a0b; box-shadow: none; }
+      .ap--pro .pc-car { background: transparent; color: var(--t1); border: 1px solid var(--line); border-radius: 0; }
+      .ap--pro .pc-car[aria-pressed="true"] { background: rgba(255,255,255,.06); border-color: #fff; box-shadow: none; }
+      .ap--pro .pc-ph { background: var(--k1); }
+      .ap--pro .pc-n { border-radius: 0; }
+      .ap--pro .pc-field { background: transparent; border-radius: 0; border-bottom: 1px solid var(--line); }
+      .ap--pro .pc-fh b { color: var(--t1); }
+      .ap--pro .pc-ticks { color: var(--t3); }
       .ap--pro .pc-range::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--ap-a, #dc2626) var(--pc-fill, 0%), rgba(255,255,255,.16) var(--pc-fill, 0%)); }
       .ap--pro .pc-range::-moz-range-track { background: rgba(255,255,255,.16); }
-      .ap--pro .pc-seg { background: var(--pl-d3); }
-      .ap--pro .pc-seg button { color: rgba(255,255,255,.65); }
-      .ap--pro .pc-seg button[aria-checked="true"] { background: #fff; color: var(--pl-ink); box-shadow: none; }
-      .ap--pro .pc-out { background: #fff; color: var(--pl-ink); border-radius: 16px; }
-      .ap--pro .pc-k, .ap--pro .pc-sum, .ap--pro .pc-rows dt { color: var(--pl-mute); }
-      .ap--pro .pc-big small { color: var(--pl-mute); }
-      .ap--pro .pc-rows { border-top: none; padding-top: 4px; }
-      .ap--pro .pc-link { background: var(--pl-ink); color: #fff; border-radius: 12px; }
-      .ap--pro .pc-fine { color: rgba(255,255,255,.55); }
-      .ap--pro .pc-none { color: var(--pl-ink); }
-      .ap--pro .pc-fine[style] { color: rgba(255,255,255,.55); }
+      .ap--pro .pc-seg { background: transparent; border: 1px solid var(--line); border-radius: 0; }
+      .ap--pro .pc-seg button { color: var(--t2); border-radius: 0; }
+      .ap--pro .pc-seg button[aria-checked="true"] { background: #fff; color: #0a0a0b; box-shadow: none; }
+      .ap--pro .pc-out { background: #fff; color: #0a0a0b; border-radius: 0; }
+      .ap--pro .pc-out .pc-k { color: rgba(10,10,11,.5) !important; }
+      .ap--pro .pc-big { font-family: var(--wide); font-stretch: 125%; font-weight: 800; }
+      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(10,10,11,.55); }
+      .ap--pro .pc-rows { border-top: 1px solid rgba(10,10,11,.1); padding-top: 10px; }
+      .ap--pro .pc-link { background: #0a0a0b; color: #fff; border-radius: 0; font-family: var(--wide); font-stretch: 125%; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .pc-fine, .ap--pro .pc-fine[style] { color: var(--t3); }
+      .ap--pro .pc-none { color: var(--t1); }
     `}</style>
   );
 }

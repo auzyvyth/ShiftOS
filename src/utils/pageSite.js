@@ -27,61 +27,8 @@ export const SECTION_LABEL = {
   delivery: 'Delivery to your town',
 };
 // Sections whose switch means something to the seller (cars + calculator hide on their own when empty).
-// The page's light ground (owner, 2026-11-25: "make it customizable"). The seller picks ANY two
-// colours and the direction of the fade; saved as page_site.ground = { from, to, angle }.
-// One guard: the ground stays LIGHT (each colour is mixed with white until it is light enough), so
-// the page's dark text, prices and buttons stay readable on whatever was picked. The card colour
-// is worked out from the ground so cards always show on it. The presets are only quick starts.
-export const GROUND_ANGLES = [180, 135, 90];          // down, diagonal, across
-export const GROUND_MIN_LUM = 0.75;                   // lightest-text guard (relative luminance)
-const HEX = /^#[0-9a-f]{6}$/i;
-const toRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const toHex = (rgb) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
-export const mixHex = (a, b, t) => { const x = toRgb(a), y = toRgb(b); return toHex(x.map((v, i) => v + (y[i] - v) * t)); };
-export function lum(hex) {
-  const c = toRgb(hex).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
-  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-}
-// Mix with white, in small steps, until light enough. A light pick comes back unchanged.
-export function keepLight(hex, min = GROUND_MIN_LUM) {
-  if (!HEX.test(String(hex || ''))) return '#ffffff';
-  let h = hex.toLowerCase();
-  for (let t = 0.05; lum(h) < min && t <= 1.0001; t += 0.05) h = mixHex(hex.toLowerCase(), '#ffffff', t);
-  return h;
-}
-export const GROUND_PRESETS = [
-  { label: 'White', from: '#ffffff', to: '#f6f5f1' },
-  { label: 'Ivory', from: '#fffdf8', to: '#f5eee2' },
-  { label: 'Stone', from: '#fbfbfc', to: '#e6e9ee' },
-  { label: 'Sage', from: '#fbfcfa', to: '#e3ece3' },
-  { label: 'Sky', from: '#fbfdff', to: '#e1ecf7' },
-  { label: 'Blush', from: '#fffbfa', to: '#f5e3df' },
-];
-// The legacy preset names saved during the first try map onto the same colours.
-const LEGACY = { white: 0, ivory: 1, stone: 2, sage: 3, sky: 4, blush: 5 };
-export const DEFAULT_GROUND = { from: '#ffffff', to: '#f6f5f1', angle: 180 };
-
-// Any saved value -> { from, to, angle } or null (= default). Never throws.
-export function cleanGround(g) {
-  if (typeof g === 'string' && LEGACY[g] != null) { const p = GROUND_PRESETS[LEGACY[g]]; return { from: p.from, to: p.to, angle: 180 }; }
-  if (!g || typeof g !== 'object' || !HEX.test(String(g.from || '')) || !HEX.test(String(g.to || ''))) return null;
-  const angle = GROUND_ANGLES.includes(Number(g.angle)) ? Number(g.angle) : 180;
-  const out = { from: g.from.toLowerCase(), to: g.to.toLowerCase(), angle };
-  return out.from === DEFAULT_GROUND.from && out.to === DEFAULT_GROUND.to && angle === 180 ? null : out;
-}
-// What the page actually paints: the light-guarded colours and a card colour that shows on them.
-export function groundPaint(g) {
-  const c = cleanGround(g) || DEFAULT_GROUND;
-  const from = keepLight(c.from), to = keepLight(c.to);
-  const mid = mixHex(from, to, 0.5);
-  // On a near-white ground cards go a shade DARKER, on a coloured one they go LIGHTER (towards white).
-  const tile = lum(mid) > 0.9 ? mixHex(mid, '#0f1115', 0.045) : mixHex(mid, '#ffffff', 0.72);
-  return { from, to, angle: c.angle, tile, lightened: from !== c.from || to !== c.to };
-}
-export const groundVars = (g) => {
-  const p = groundPaint(g);
-  return { '--pl-g1': p.from, '--pl-g2': p.to, '--pl-gangle': `${p.angle}deg`, '--pl-tile': p.tile };
-};
+// The page background is NOT the seller's pick any more (owner, 2026-11-26: the black look of the
+// reference he sent; a seller-chosen colour fights black-and-white). page_site.ground is ignored.
 
 export const PROMO_MAX = 12;
 export const DELIVERY_MAX = 12;
@@ -141,8 +88,7 @@ export function cleanSite(raw) {
     items.push({ town, km, ...(min > 0 && min <= MIN_MAX ? { min } : {}) });
     if (items.length >= DELIVERY_MAX) break;
   }
-  const ground = cleanGround(r.ground) || undefined;
-  return { v: SITE_VERSION, ...(ground ? { ground } : {}), order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items } };
+  return { v: SITE_VERSION, order, off, promos, notes, delivery: { base: clean(d.base, TOWN_MAX), items } };
 }
 
 // What is wrong with one promo row, in words for the seller, or '' when fine.

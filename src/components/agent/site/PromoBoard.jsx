@@ -31,7 +31,7 @@ export default function PromoBoard({ site, firstName, hasWa, waUrlFor, waIcon, o
     <section className="ps" id="ap-promos" aria-label="Promos this month">
       <div className="ps-head">
         <div>
-          <h2>Promos this month</h2>
+          <h2>Promos <span>this month</span></h2>
           <p>Set by {firstName}. Each one disappears on its last day.</p>
         </div>
       </div>
