@@ -293,6 +293,10 @@ function drawCard(ctx, k, o) {
   const W = 1080, H = 1920, PX = 119, PW = 842;
   const tint = photos[0] ? averageTint(photos[0]) : CARD_FALLBACK_TINT;
   ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
+  // the card's own gradient: a lift of light at the top, deepening to the foot
+  const wash = ctx.createLinearGradient(0, 0, 0, H);
+  wash.addColorStop(0, 'rgba(255,255,255,0.14)'); wash.addColorStop(0.45, 'rgba(255,255,255,0)'); wash.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = wash; ctx.fillRect(0, 0, W, H);
 
   // seller name with a red dot on top
   const who = String(seller?.full_name || '').trim().toUpperCase();
@@ -328,7 +332,12 @@ function drawCard(ctx, k, o) {
       ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
       k.box(bx, by, fitSz.w, fitSz.h, 8, tint); ctx.restore();
       ctx.save(); roundRectPath(ctx, bx, by, fitSz.w, fitSz.h, 8); ctx.clip();
-      ctx.drawImage(src, bx, by, fitSz.w, fitSz.h); ctx.restore();
+      ctx.drawImage(src, bx, by, fitSz.w, fitSz.h);
+      // the photo melts into the card at its foot (and is a touch darker at the top)
+      const sheen = ctx.createLinearGradient(0, by, 0, by + fitSz.h);
+      sheen.addColorStop(0, 'rgba(0,0,0,0.12)'); sheen.addColorStop(0.3, 'rgba(0,0,0,0)'); sheen.addColorStop(0.6, 'rgba(0,0,0,0)'); sheen.addColorStop(1, tint);
+      ctx.fillStyle = sheen; ctx.fillRect(bx, by, fitSz.w, fitSz.h);
+      ctx.restore();
     }
   }
 
