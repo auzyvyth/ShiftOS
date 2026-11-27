@@ -44,6 +44,16 @@ const w = carPnl({ ...base, warrantyMonths: 12 }, NOW);
 eq(w.lines.find((l) => l.key === 'warranty').val, 2400, '2% of RM120k');
 eq(Math.abs(carPnl({ ...base, warrantyMonths: 12, asking: w.breakeven }, NOW).net) <= 1, true, 'break-even with a warranty reserve');
 
+// The screen's RM6 question: break-even = every cost, with the warranty reserve worked at the
+// BREAK-EVEN price. The list shows it at the asking price, so the list sums to a little less.
+const rm6 = carPnl({ purchase: 346000, asking: 350500, startDate: ago(5), warrantyMonths: 12, cfg: { floor_plan_rate: 0, monthly_overhead: 3000, avg_fleet_size: 30, admin_fee: 300, runner_fee: 0, warranty_reserve_pct: 1 } }, NOW);
+const listed = rm6.costTotal;
+eq(rm6.lines.find((l) => l.key === 'warranty').val, 3505, 'warranty at asking = 1% of 350,500');
+eq(rm6.warrantyAtBreakeven, Math.round(rm6.breakeven * 0.01), 'warranty at the break-even price');
+eq(rm6.breakeven - listed, rm6.warrantyAtBreakeven - 3505, 'break-even minus listed costs = the warranty difference, nothing else');
+eq(carPnl({ ...base }, NOW).warrantyAtBreakeven, 0, 'no warranty, no difference');
+eq(carPnl({ ...base, isSold: true, soldPrice: 118000, soldDate: ago(4) }, NOW).warrantyAtBreakeven, 0, 'sold: no break-even');
+
 // Recon: the larger of estimate and logged jobs (one rule).
 eq(carPnl({ ...base, reconJobs: [{ cost: 3000 }] }, NOW).lines.find((l) => l.key === 'recon').val, 3000, 'jobs over estimate win');
 eq(carPnl({ ...base, reconJobs: [{ cost: 500 }] }, NOW).lines.find((l) => l.key === 'recon').val, 2000, 'a job never lowers recon');

@@ -304,6 +304,11 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
             </div>
           ))}
         </div>
+        {!v.isSold && v.warrantyAtBreakeven > 0 && v.lines.find((l) => l.key === 'warranty')?.val !== v.warrantyAtBreakeven && (
+          <div style={{ fontSize: 12, color: PL.textMuted, marginTop: 8, lineHeight: 1.45 }}>
+            Break-even counts the warranty reserve at that price ({rm(v.warrantyAtBreakeven)}). The list below shows it at the asking price ({rm(v.lines.find((l) => l.key === 'warranty')?.val || 0)}), so it adds up to a little less.
+          </div>
+        )}
         {!v.isSold && v.projections.length > 0 && perDay > 0 && (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 11, color: PL.textMuted, marginBottom: 4 }}>If it is still here in</div>

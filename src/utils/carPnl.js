@@ -92,6 +92,10 @@ export function carPnl(i = {}, now = Date.now()) {
   // lot until today's profit is eaten by holding cost.
   const fixed = costTotal - warranty;
   const breakeven = isSold ? null : Math.round((fixed - back) / (1 - warrantyPct / 100));
+  // The warranty reserve is a % of the PRICE, so at the break-even price it is a little more than at the
+  // asking price (the list shows it at asking). That gap is the few ringgit between the break-even and
+  // the sum of the listed costs: it is not an error, so the screen says it (owner question, 2026-11-27).
+  const warrantyAtBreakeven = breakeven == null ? 0 : Math.round((breakeven * warrantyPct) / 100);
   const daysUntilZero = !isSold && net > 0 && perDay.total > 0 ? Math.floor(net / perDay.total) : null;
   const projections = isSold ? [] : [30, 60, 90].map((d) => ({ days: d, net: Math.round(net - perDay.total * d) }));
 
@@ -99,6 +103,6 @@ export function carPnl(i = {}, now = Date.now()) {
     revenue, lines, costTotal, front, back, net, margin, isSold,
     commissionParts: { team: n(i.commission), broker: brokerComm },
     days, perDay, holding, transfer, transferIsEstimate: !hasHandover,
-    breakeven, daysUntilZero, projections, startKnown: days != null,
+    breakeven, warrantyAtBreakeven, daysUntilZero, projections, startKnown: days != null,
   };
 }
