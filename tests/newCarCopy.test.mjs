@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { newModelCopy, modelDisplayName, aliasOf } from "../src/utils/newCars.js";
+import { newModelCopy, modelDisplayName, aliasOf, ecoKind } from "../src/utils/newCars.js";
 
 const rows = [{ brand: "Jaecoo", model: "Omoda C9", variant: "2.0T 2WD", price_peninsular: "168800", is_active: true }];
 
@@ -23,4 +23,11 @@ assert.ok(!j7.intro.includes("Omoda"));
 
 // Other brands are unchanged.
 assert.equal(newModelCopy("Honda", "City", rows).title, "New Honda City price in Malaysia | Drevo");
+// The leaf on the banner: electrified models only, read from the spec sheet.
+assert.equal(ecoKind({ battery_kwh: 60, range_km: 410 }), "EV");
+assert.equal(ecoKind({ range_km: 345 }), "EV");
+assert.equal(ecoKind({ engine: "1.5L Atkinson-cycle + electric motor (i-DCD)", battery_kwh: 1.2 }), "Hybrid");
+assert.equal(ecoKind({ engine: "1.5L 4-cyl", ev_range_km: 83, battery_kwh: 18.4 }), "Plug-in hybrid");
+assert.equal(ecoKind({ engine: "1.3L 4-cyl", power_ps: 95 }), null);
+assert.equal(ecoKind(null), null);
 console.log("newCarCopy ok");

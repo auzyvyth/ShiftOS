@@ -539,7 +539,7 @@ export default function ListingsTab({
  )}
  {/* Moving poster (IDEA-29): five animated designs from this car's photos. */}
  {openMotionPoster && (
- <button onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
+ <button data-tour-id="lst-motion" onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
  <Play size={13} /> {t("salesmanPremium.lst.motionPoster")}
  </button>
  )}

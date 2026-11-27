@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cdnImg } from '../../utils/img';
@@ -22,6 +22,52 @@ const rmFrom = (n) => (n ? `From RM ${Number(n).toLocaleString('en-MY')}` : 'See
 // A brand tile's price is its cheapest live model: the one number a buyer
 // choosing between brands wants.
 const brandFrom = (b) => b.models.reduce((lo, m) => (m.from && (!lo || m.from < lo) ? m.from : lo), null);
+
+// The model row scrolls sideways. A mouse has no swipe, so on desktop it gets a
+// round arrow on each side, shown only while there is more to see that way
+// (owner, 2026-11-27: "no scroll left button"). Touch screens keep swiping.
+function ModelRail({ children }) {
+  const ref = useRef(null);
+  const [edge, setEdge] = useState({ l: false, r: false });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const l = el.scrollLeft > 4;
+    const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    setEdge((e) => (e.l === l && e.r === r ? e : { l, r }));
+  }, []);
+  useEffect(() => {
+    measure();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure, children]);
+  const go = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: calm ? 'auto' : 'smooth' });
+  };
+  return (
+    <div className="mp-ncp-rail">
+      <div ref={ref} onScroll={measure} className={`mp-ncp-models${edge.l ? ' is-l' : ''}${edge.r ? ' is-r' : ''}`}>
+        {children}
+      </div>
+      {edge.l && (
+        <button type="button" className="mp-ncp-arrow is-prev" onClick={() => go(-1)} aria-label="Scroll models left">
+          <ChevronLeft size={18} />
+        </button>
+      )}
+      {edge.r && (
+        <button type="button" className="mp-ncp-arrow is-next" onClick={() => go(1)} aria-label="Scroll models right">
+          <ChevronRight size={18} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function NewCarPicker({ brands }) {
   const [brand, setBrand] = useState(null);
@@ -49,7 +95,7 @@ export default function NewCarPicker({ brands }) {
         </div>
       ) : (
         <div key="models" className="mp-ncp-step">
-          <div className="mp-ncp-models">
+          <ModelRail>
             {models.map((m) => {
               const img = cdnImg(m.photo, 300, 65);
               return (
@@ -62,7 +108,7 @@ export default function NewCarPicker({ brands }) {
                 </Link>
               );
             })}
-          </div>
+          </ModelRail>
           <button type="button" className="mp-ncp-back" onClick={() => setBrand(null)}>
             <ChevronLeft size={15} /> All brands
           </button>
@@ -90,8 +136,21 @@ export const NEW_CAR_PICKER_CSS = `
   .mp-ncp-sub { font-size:12.5px; font-weight:500; color:#6e6e73; font-variant-numeric:tabular-nums; letter-spacing:.005em; }
   .mp-ncp-models { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(140px,1fr); gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; padding:4px 4px 10px; margin:-4px -4px 0; }
   .mp-ncp-models::-webkit-scrollbar { display:none; }
-  /* Soft right edge: says "there is more" without a hard cut through a card. */
-  .mp-ncp-models { -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent); mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent); }
+  .mp-ncp-rail { position:relative; }
+  /* Soft edges say "there is more" that way, without a hard cut through a card. */
+  .mp-ncp-models.is-r { -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent); mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent); }
+  .mp-ncp-models.is-l { -webkit-mask-image:linear-gradient(90deg,transparent,#000 28px); mask-image:linear-gradient(90deg,transparent,#000 28px); }
+  .mp-ncp-models.is-l.is-r { -webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent); mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent); }
+  /* Mouse-only arrows: a phone swipes, so it never shows them. */
+  .mp-ncp-arrow { display:none; }
+  @media (hover:hover) and (pointer:fine) {
+    .mp-ncp-arrow { display:flex; align-items:center; justify-content:center; position:absolute; top:calc(50% - 22px); width:36px; height:36px; padding:0; border:none; border-radius:50%; background:#fff; color:#1d1d1f; cursor:pointer; z-index:2;
+      box-shadow:0 0 0 1px rgba(15,17,21,.06), 0 4px 14px rgba(15,17,21,.14); transition:transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s cubic-bezier(.22,1,.36,1); }
+    .mp-ncp-arrow.is-prev { left:-6px; }
+    .mp-ncp-arrow.is-next { right:-6px; }
+    .mp-ncp-arrow:hover { transform:scale(1.06); box-shadow:0 0 0 1px rgba(15,17,21,.08), 0 6px 18px rgba(15,17,21,.18); }
+    .mp-ncp-arrow:active { transform:scale(.94); transition-duration:.1s; }
+  }
   .mp-ncp-model { scroll-snap-align:start; display:flex; flex-direction:column; text-decoration:none; overflow:hidden; }
   .mp-ncp-img { display:block; aspect-ratio:4/3; background:#F5F5F7 center/cover no-repeat; }
   .mp-ncp-meta { display:flex; flex-direction:column; gap:3px; padding:10px 12px 12px; min-width:0; }

@@ -8,6 +8,7 @@ import ReferralCard from "../components/referral/ReferralCard";
 import MyNewModels from "../components/newcar/MyNewModels";
 import PremiumUpgradeCard from "../components/premium/PremiumUpgradeCard";
 import PremiumLookNews from "../components/news/PremiumLookNews";
+import MotionPosterNews from "../components/news/MotionPosterNews";
 import ChangePasswordCard from "../components/account/ChangePasswordCard";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
@@ -6888,6 +6889,7 @@ export default function SalesmanLite() {
       {renderTour()}
       {/* NEWS-1: the once-only "Premium has a new look" pop-up (7-day trial only when unused). */}
       <PremiumLookNews userId={userId} profile={profile} isPremium={false} blocked={tourOpen} onPremiumScreen={goPremium} />
+      <MotionPosterNews userId={userId} profile={profile} isPremium={false} blocked={tourOpen} />
 
       {/* Telegram setup nudge modal */}
       {telegramSetupModal && (

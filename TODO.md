@@ -94,6 +94,20 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
   the ones the app actually ships to the browser or api/ first.
 
+## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
+Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
+COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
+Accountant net profit no longer counts commission twice, mini page owner buttons, poster MP4 duration.
+Live DB: `20261127a` and `20261127b` APPLIED 2026-11-28 00:2x MYT (probed in rolled-back transactions).
+- [ ] Apply `20261128a_move_old_costs.sql` (moves 7 old repair/ad rows into car_costs; one orphan repair row
+  on a deleted stock record stays). The tool asks to confirm deletes: confirm the prompt. After midnight MYT.
+- [ ] Production release of the above (owner's "ship tonight").
+- [ ] Then: drop `recon_jobs` / `ad_spend` reads from `lib/carCosts.js` and the old tables (one migration).
+- [ ] Bill photo on a cost (needs a private storage folder).
+- [ ] Next DMS step: stock status ladder (in transit, in repair, ready...) + movement history.
+- [ ] Accountant GP is the sale-time GP (no holding/transfer/admin/warranty): make it read carPnl (one engine).
+- [ ] `stock_units` has three unused chassis columns (`chassis_number`, `vin`, `vin_number`): retire.
+
 ## NEWS-1: "Premium has a new look" pop-up (owner, 2026-11-26) - waiting on the owner's GIF
 - [ ] Owner records the business card ring on staging, makes a GIF, sends it.
 - [ ] Save it as `public/news/premium-new-look.gif`, flip `NEWS_READY = true` in `src/components/news/PremiumLookNews.jsx`, ship with the prod release.

@@ -47,8 +47,8 @@ function groupBy(rows, keyFn, build) {
 const sumOf = (rows, f) => rows.reduce((s, r) => s + f(r), 0);
 const lineVal = (r, k) => r.p.lines.find((x) => x.key === k)?.val || 0;
 const plural = (c, one, many) => `${c} ${c === 1 ? one : many}`;
-const COST_LABEL = { purchase: 'Buy price', recon: 'Recon', holding: 'Holding (days on lot)', ads: 'Advertising', services: 'Included services', commission: 'Commission', transfer: 'Transfer and handover', admin: 'Admin and documents', warranty: 'Warranty reserve' };
-const SPEND_NAME = { recon: 'Recon', holding: 'Holding (days on lot)', ads: 'Advertising', commission: 'Commission', transfer: 'Transfer and road tax', admin: 'Admin and documents', warranty: 'Warranty reserve', services: 'Included services' };
+const COST_LABEL = { purchase: 'Buy price', recon: 'Recon', holding: 'Holding (days on lot)', ads: 'Advertising', other: 'Transport, inspection, other', services: 'Included services', commission: 'Commission', transfer: 'Transfer and handover', admin: 'Admin and documents', warranty: 'Warranty reserve' };
+const SPEND_NAME = { recon: 'Recon', holding: 'Holding (days on lot)', ads: 'Advertising', other: 'Transport, inspection, other', commission: 'Commission', transfer: 'Transfer and road tax', admin: 'Admin and documents', warranty: 'Warranty reserve', services: 'Included services' };
 
 /**
  * @param m          the result of ownerMoney()
@@ -108,7 +108,7 @@ export function explain(m, periodKey, key) {
   if (key === 'gross') {
     const costed = sold.filter((r) => !r.costMissing);
     const den = sumOf(costed, (r) => r.p.revenue + r.addonRevenue);
-    const costRows = ['purchase', 'recon', 'holding', 'ads', 'services', 'commission', 'transfer', 'admin', 'warranty']
+    const costRows = ['purchase', 'recon', 'holding', 'ads', 'other', 'services', 'commission', 'transfer', 'admin', 'warranty']
       .map((k) => ({ label: COST_LABEL[k], value: sumOf(costed, (r) => lineVal(r, k)) }))
       .filter((x) => x.value > 0);
     const addonCost = sumOf(costed, (r) => r.addonRevenue - r.p.back);

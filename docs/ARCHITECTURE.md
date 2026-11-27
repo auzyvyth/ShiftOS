@@ -267,8 +267,8 @@ What drifts today, and the fix for each: `docs/DEALER_NUMBERS_AUDIT.md` (#1-#8 b
 flowchart LR
   subgraph SRC["Sources (tables)"]
     SU["stock_units<br/>buy price, purchase date, recon est."]
-    RJ["recon_jobs"]
-    AD["ad_spend"]
+    CC["car_costs (COSTS-1)<br/>repairs, transport, inspection,<br/>ads, other; estimate / owed / paid"]
+    RJ["recon_jobs + ad_spend<br/>(older, still read; retiring)"]
     CL["car_listings<br/>asking, status, sold_at, sold_price,<br/>commission, services cost"]
     PST["post_sale_tasks<br/>transfer step costs"]
     DP["deal_products<br/>add-ons sold"]
@@ -286,8 +286,9 @@ flowchart LR
   end
 
   SU --> PNL
-  RJ --> PNL
-  AD --> PNL
+  CC --> LCC["loadCarCosts()<br/>src/lib/carCosts.js<br/>one read, rules in utils/carCosts.js"]
+  RJ --> LCC
+  LCC --> PNL
   CL --> PNL
   PST --> PNL
   DP --> PNL
@@ -333,7 +334,7 @@ flowchart LR
 
 | Number | ONE source | Shown in | Today |
 |---|---|---|---|
-| Profit of one car | `carPnl()` | Car pop-up Owner, Stock row + P&L, Reports drill-down | OK (2026-11-12) |
+| Profit of one car | `carPnl()`; costs after buying through `loadCarCosts()` (COSTS-1, 2026-11-27) | Car pop-up Owner, Stock row + P&L, Reports drill-down | OK (2026-11-12) |
 | Gross this month | sum of `carPnl()` over cars sold this month | Overview, Reports > Revenue, Stock strip | DRIFT #1: `gm_pnl_snapshot` sums `stock_units.gross_profit` (no holding, ads, transfer, admin, warranty) |
 | Profit when buy price missing | none: say "Add the buy price", leave the car out of totals and say how many | everywhere | DRIFT #2: 100 of 142 cars show a fake profit |
 | Days on lot | `daysHeld()`: purchase date, else stock created, else listing created | row badge, Stock, Overview, Performance, AI Manager | DRIFT #3: four clocks; stored `days_in_stock` stale for 125 cars |

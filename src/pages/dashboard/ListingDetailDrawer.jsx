@@ -10,7 +10,7 @@ import CarDetailsPanel, { CarSheetTabs } from "../../components/inventory/CarDet
 import CarAnalyticsPanel from "../../components/inventory/CarAnalyticsPanel";
 import { color, border } from "../../theme/tokens";
 import { calcMonthly, DEFAULT_EIR } from "../../utils/financing";
-import { Trash2, X, DollarSign, Clock, Copy, Check, UserPlus, Tag, ChevronRight, CheckCircle2, Pencil, Clipboard, Save, Megaphone, Shield, ChevronLeft, Calculator, Printer, Wrench, Film, ShieldCheck } from "lucide-react";
+import { Trash2, X, DollarSign, Clock, Copy, Check, UserPlus, Tag, ChevronRight, CheckCircle2, Pencil, Clipboard, Save, Shield, ChevronLeft, Calculator, Printer, Film, ShieldCheck, Plus } from "lucide-react";
 const FinancingCalculator = React.lazy(() => import("../../components/FinancingCalculator"));
 
 export default function ListingDetailDrawer({
@@ -126,9 +126,8 @@ export default function ListingDetailDrawer({
                 {drawerTab === 'owner' && canViewCosts && (
                   <>
                     {[
-                      ['Edit Costs', DollarSign, () => setOwnerTool('prices')],
-                      ['Recon Jobs', Wrench, () => setOwnerTool('recon')],
-                      ['Ad Spend', Megaphone, () => setOwnerTool('ad')],
+                      ['Add cost', Plus, () => setOwnerTool('cost')],
+                      ['Buy price', DollarSign, () => setOwnerTool('prices')],
                       ['Compliance', Shield, () => setOwnerTool('compliance')],
                       ['Condition', ShieldCheck, () => setOwnerTool('appraisal')],
                       ['Activity', Clock, () => setOwnerTool('activity')],
