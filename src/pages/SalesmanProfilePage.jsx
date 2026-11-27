@@ -1588,7 +1588,8 @@ export default function SalesmanProfilePage() {
           .aph-band.aph-band--ring { height: auto; }
           .aph--card .aph-in { padding-top: 126px; }
           .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
-          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 34cqw; --under: 44px; }
+          /* The front car is the star (owner, 2026-11-27): ~half the band wide, the side cars tucked behind it. */
+          .aph-band .cring { padding-top: 22px; --spread: 25cqw; --car-w: 51.5cqw; --side: .1; --under: 44px; }
           .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 64px; }
           .aph-band .cring-label b { font-size: 44px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }

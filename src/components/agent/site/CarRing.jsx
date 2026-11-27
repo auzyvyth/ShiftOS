@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { isSeeThroughPhoto, cdnImg } from '../../../utils/img';
 import { seeThroughBox } from '../../../utils/seeThrough';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { modelFacts, rm as formatRm } from '../../../utils/newCars';
+import { ChevronLeft, ChevronRight, Leaf } from 'lucide-react';
+import { modelFacts, ecoKind, rm as formatRm } from '../../../utils/newCars';
 import { fromPrice } from '../../../utils/configurator';
 import { useNewCarInfos } from '../../newcar/NewCarListingInfo';
 
@@ -23,7 +23,7 @@ const STEP_MS = 3400;
 const TURN_MS = 1100;
 const SLOT_DEG = 58;     // angle between neighbours on the turntable
 const SHOW = 1.5;        // slots either side still visible (1 = the side cars, fading out by 1.5)
-const SIDE_SCALE = 0.6;  // a side car's size; it grows to full size as it reaches the front (owner, 2026-11-26: "needs to grow bigger")
+const SIDE_SCALE = 0.6;  // default side-car size; the page can set `--side` on the ring (desktop: small, so a big front car overlaps them)
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 export const brandKeyOf = (b) => String(b || '').trim().toLowerCase();
 
@@ -87,8 +87,9 @@ export function ringCarsFor(cars, brand) {
 const CSS = `
 .cring { position: relative; container-type: inline-size; --spread: 41cqw; --car-w: 50cqw; --under: 44px; padding: 58px 0 0; }
 .cring-label { position: relative; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
-.cring-label span { font: 500 11px/1 var(--xd-font-body); letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.6); }
-.cring-label b { font: 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .02em; white-space: nowrap; }
+.cring-label span { font: italic 600 11px/1 var(--xd-font-body); letter-spacing: .26em; text-transform: uppercase; color: color-mix(in srgb, var(--ap-a, #dc2626) 55%, #fff); }
+.cring-label b { font: italic 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .03em; white-space: nowrap; padding-right: .08em;
+  background: linear-gradient(180deg, #fff 35%, color-mix(in srgb, var(--ap-a, #dc2626) 40%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @keyframes cringIn { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
 /* The stage is exactly as tall as the tallest car at full size, plus the floor margin under it. */
 .cring-stage { position: relative; margin-top: 10px; height: calc(var(--car-w) * var(--ratio, .5) + var(--under, 26px)); }
@@ -109,19 +110,25 @@ const CSS = `
 @media (hover: hover) and (pointer: fine) { .cring-arrow:hover { background: rgba(12,13,16,.8); transform: scale(1.06); } }
 .cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 16px 0; color: #fff; }
 .cring-buy { display: grid; justify-items: start; gap: 6px; min-width: 0; }
-.cring-from { font: 500 12px/1 var(--xd-font-body); color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
-.cring-go { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px 0 14px; border: 1px solid rgba(255,255,255,.55); border-radius: 12px; background: rgba(12,13,16,.5); color: #fff; cursor: pointer;
-  font: 600 13px/1 var(--xd-font-body); -webkit-tap-highlight-color: transparent; }
+.cring-from { font: italic 500 12px/1 var(--xd-font-body); color: rgba(255,255,255,.66); font-variant-numeric: tabular-nums; }
+.cring-from b { font-size: 17px; font-weight: 700; color: #fff; margin-left: 3px; }
+.cring-go { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 12px 0 16px; border: 0; border-radius: 12px; color: #fff; cursor: pointer;
+  background: linear-gradient(var(--ap-a, #dc2626), var(--ap-b2, #b91c1c)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px rgba(var(--ap-rgb, 220,38,38), .35);
+  font: italic 700 13px/1 var(--xd-font-body); -webkit-tap-highlight-color: transparent; }
 .cring-go:active { transform: scale(.97); }
 .cring-dots { display: flex; align-items: center; gap: 2px; }
 .cring-dots button { display: flex; align-items: center; justify-content: center; width: 22px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
 .cring-dots i { display: block; width: 10px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); transition: width .3s cubic-bezier(.22,1,.36,1), background .3s; }
-.cring-dots button[aria-current="true"] i { width: 22px; background: #fff; }
+.cring-dots button[aria-current="true"] i { width: 22px; background: color-mix(in srgb, var(--ap-a, #dc2626) 60%, #fff); }
 .cring-count { font: 600 12px/1 var(--xd-font-body); color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; }
 .cring-facts { display: flex; justify-content: flex-end; gap: 18px; min-width: 0; }
-.cring-facts div { display: grid; gap: 3px; text-align: left; min-width: 0; }
-.cring-facts b { font: 700 14px/1 var(--xd-font-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cring-facts span { font: 500 11px/1.1 var(--xd-font-body); color: rgba(255,255,255,.62); }
+.cring-facts div { display: grid; gap: 3px; text-align: left; min-width: 0; padding-left: 16px; border-left: 1px solid rgba(255,255,255,.16); }
+.cring-facts div:first-child { border-left: 0; padding-left: 0; }
+.cring-facts b { display: inline-flex; align-items: center; gap: 5px; font: italic 700 16px/1 var(--xd-font-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cring-facts .is-eco b { color: #4ade80; }
+.cring-facts .is-eco svg { color: #22c55e; fill: rgba(34,197,94,.25); }
+.cring-facts span { font: italic 500 11px/1.1 var(--xd-font-body); color: rgba(255,255,255,.6); }
+.cring-facts .is-eco span { color: rgba(134,239,172,.8); }
 @container (max-width: 640px) {
   .cring-foot { grid-template-columns: minmax(0, 1fr) auto; }
   .cring-facts { display: none; }
@@ -156,8 +163,9 @@ export default function CarRing({ cars, small = false }) {
       const x = Math.sin(Math.max(-Math.PI / 2, Math.min(Math.PI / 2, th)));
       const depth = (Math.cos(Math.min(Math.PI / 2, Math.abs(th))) + 1) / 2; // 1 front .. .5 at the side
       const fade = Math.abs(k) <= 1 ? 1 : Math.max(0, (SHOW - Math.abs(k)) / (SHOW - 1));
-      const sc = SIDE_SCALE + (1 - SIDE_SCALE) * ((depth - 0.5) * 2); // grows from the tyres: the landing never moves
-      el.style.transform = `translateX(-50%) translateX(calc(${x.toFixed(4)} * var(--spread))) scale(${sc.toFixed(4)})`;
+      const t = (depth - 0.5) * 2; // 0 at the sides .. 1 at the front
+      // Grows from the tyres: the landing never moves. `--side` = a side car's size as a share of the front one.
+      el.style.transform = `translateX(-50%) translateX(calc(${x.toFixed(4)} * var(--spread))) scale(calc(var(--side, ${SIDE_SCALE}) + (1 - var(--side, ${SIDE_SCALE})) * ${t.toFixed(4)}))`;
       el.style.zIndex = String(Math.round(depth * 100));
       el.style.opacity = fade.toFixed(3);
       el.style.visibility = fade > 0 ? 'visible' : 'hidden';
@@ -205,7 +213,15 @@ export default function CarRing({ cars, small = false }) {
   const vs = (info?.variants || []).filter((v) => v);
   const cheapest = vs.slice().sort((a, b) => (Number(a.price) || 1e12) - (Number(b.price) || 1e12))[0];
   const from = car?.card ? fromPrice({ selling_price: car.price }, info) : null;
-  const facts = cheapest ? modelFacts(cheapest.specs).slice(0, 3) : [];
+  // Up to three facts. A hybrid / EV / plug-in leads with a green leaf (from the spec sheet, never typed).
+  const eco = cheapest ? ecoKind(cheapest.specs) : null;
+  const rangeKm = cheapest?.specs?.range_km || cheapest?.specs?.ev_range_km;
+  const facts = cheapest
+    ? [
+        ...(eco ? [{ eco: true, value: eco, label: rangeKm ? `${rangeKm} km range` : 'electrified' }] : []),
+        ...modelFacts(cheapest.specs).filter((f) => !(eco && /range/i.test(f.label))).map((f) => (f.label.length > 16 ? { ...f, label: 'power' } : f)),
+      ].slice(0, 3)
+    : [];
   const step = (d) => turnTo(Math.round(rot.current) + d);
   const explore = () => { window.dispatchEvent(new CustomEvent('ap-pick-model', { detail: { id: car.id } })); };
   // Height of the tallest car per unit of width, so the stage fits the cars and nothing more.
@@ -244,7 +260,7 @@ export default function CarRing({ cars, small = false }) {
       {!small && (
         <div className="cring-foot">
           <div className="cring-buy">
-            {from ? <span className="cring-from">From {formatRm(from)}</span> : null}
+            {from ? <span className="cring-from">From <b>{formatRm(from)}</b></span> : null}
             {car?.card && <button type="button" className="cring-go" onClick={explore}>Explore details <ChevronRight size={15} /></button>}
           </div>
           {n > 1 && (n <= 8
@@ -256,7 +272,11 @@ export default function CarRing({ cars, small = false }) {
             : <span className="cring-count" aria-live="polite">{front + 1} / {n}</span>)}
           {facts.length > 0 && (
             <div className="cring-facts">
-              {facts.map((f) => <div key={f.label}><b>{f.value}</b><span>{f.label}</span></div>)}
+              {facts.map((f) => (
+                <div key={f.label} className={f.eco ? 'is-eco' : undefined}>
+                  <b>{f.eco && <Leaf size={14} aria-hidden="true" />}{f.value}</b><span>{f.label}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
