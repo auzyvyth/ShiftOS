@@ -175,7 +175,7 @@ export default function CarRing({ cars, small = false }) {
       el.style.zIndex = String(Math.round(depth * 100));
       el.style.opacity = fade.toFixed(3);
       el.style.visibility = fade > 0 ? 'visible' : 'hidden';
-      el.style.setProperty('--lit', (0.35 + 0.65 * ((depth - 0.5) * 2)).toFixed(3));
+      el.style.setProperty('--lit', (0.18 + 0.82 * t * t).toFixed(3)); // side cars sit well back in the dark (owner, 2026-11-27)
     }
   };
 
