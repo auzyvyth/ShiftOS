@@ -1089,20 +1089,23 @@ export default function SalesmanProfilePage() {
       {topButtons}
       <div className="aph-in">
         <div className="aph-bc">
-          {/* Business card: Share sits on the right, level with the middle of the photo (owner, 2026-11-26). */}
-          <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
-            {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
-          </button>
           {cardPhoto
             ? <img className="aph-bc-ph" src={cdnImg(cardPhoto, 240, 80)} alt={profile.full_name} />
             : <div className="aph-bc-ph aph-mono" aria-hidden="true">{initial}</div>}
           <div className="aph-bc-id">
-            <h1 className="aph-name">
-              {nameHead}
-              <span className="ap-last">{nameTail}{isVerified && (
-                <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              )}</span>
-            </h1>
+            <div className="aph-name-row">
+              <h1 className="aph-name">
+                {nameHead}
+                <span className="ap-last">{nameTail}{isVerified && (
+                  <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}</span>
+              </h1>
+              {/* Business card: Share sits on the right, level with the middle of the photo on a phone (owner, 2026-11-26);
+                  on desktop it sits next to the name (owner, 2026-11-27). */}
+              <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
+                {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+              </button>
+            </div>
             {(agentNickname(seoProfile) || profile.job_title) && (
               <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
             )}
@@ -1587,15 +1590,19 @@ export default function SalesmanProfilePage() {
           .aph-band { height: 190px; }
           .aph-band.aph-band--ring { height: auto; }
           .aph--card .aph-in { padding-top: 126px; }
-          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
+          /* The photo rides up into the band's bottom-left corner (owner, 2026-11-27: "let the PFP sit where the price is"), the price starts level with the name, and the section is ~60px shorter. */
+          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -100px; }
+          .aph--card:has(.aph-band--ring) .aph-bc-id { padding-top: 112px; }
+          .aph-band .cring-foot { padding-left: 200px; }
+          .aph-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 20px; }
+          .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; top: auto; right: auto; left: auto; flex: none; }
           /* The front car is the star (owner, 2026-11-27): ~half the band wide, the side cars tucked behind it. */
           .aph-band .cring { padding-top: 22px; --spread: 35cqw; --car-w: 51.5cqw; --side: .1; --under: 22px; }
-          .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 84px; }
+          .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 28px; }
           .aph-band .cring-label b { font-size: 44px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }
           .aph-bc-ph { width: 136px; height: 136px; }
-          .ap--pro .aph--card .aph-bc .aph-bc-share { top: 50px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
           .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }
