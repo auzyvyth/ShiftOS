@@ -133,9 +133,10 @@ const CSS = `
   /* Phone (owner, 2026-11-27): no dots, the button on the left and the price on the right, one short row. */
   .cring-foot { grid-template-columns: minmax(0, 1fr); padding-top: 0; }
   .cring-dots, .cring-count, .cring-facts { display: none; }
-  .cring-buy { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: 10px; }
+  /* Right-hand corner: the small button over the price (the photo takes the left). */
+  .cring-buy { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 6px; }
   .cring-from b { font-size: 22px; white-space: nowrap; }
-  .cring-go { white-space: nowrap; margin-right: auto; }
+  .cring-go { white-space: nowrap; min-height: 28px; padding: 0 8px 0 11px; border-radius: 10px; font-size: 11.5px; }
   .cring-arrow { width: 38px; height: 38px; top: calc(50% - 19px); }
   .cring-arrow.is-prev { left: 6px; } .cring-arrow.is-next { right: 6px; }
 }

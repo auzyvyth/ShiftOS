@@ -1527,11 +1527,13 @@ export default function SalesmanProfilePage() {
         .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
         .aph--card .aph-in > * { pointer-events: auto; }
-        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
-        .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 60px; } /* 46px the card overlaps + a gap above the photo */
+        /* Phone (owner, 2026-11-27): the photo rides up into the band's bottom-left, level with the price on the right. */
+        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -90px; }
+        .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 22px; }
+        .aph-name-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
         .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
         .aph--card > .ap-share { display: none; }
-        .ap--pro .aph--card .aph-bc .aph-bc-share { left: auto; right: 0; top: 30px; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; flex: none; left: auto; right: auto; top: auto; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
         .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
         .aph-bc-id { min-width: 0; }
@@ -1594,8 +1596,7 @@ export default function SalesmanProfilePage() {
           .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -100px; }
           .aph--card:has(.aph-band--ring) .aph-bc-id { padding-top: 112px; }
           .aph-band .cring-foot { padding-left: 200px; }
-          .aph-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 20px; }
-          .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; top: auto; right: auto; left: auto; flex: none; }
+          .aph-name-row { justify-content: flex-start; gap: 6px 20px; }
           /* The front car is the star (owner, 2026-11-27): ~half the band wide, the side cars tucked behind it. */
           .aph-band .cring { padding-top: 22px; --spread: 35cqw; --car-w: 51.5cqw; --side: .1; --under: 22px; }
           .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 28px; }
