@@ -6,6 +6,8 @@ import { carPnl } from '../../utils/carPnl';
 import { supabase } from '../../supabaseClient';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
+import { loadCarCosts } from '../../lib/carCosts';
+import { totalsByUnit } from '../../utils/carCosts';
 import { Target, ChevronRight } from 'lucide-react';
 import { premiumLight as PL } from '../../theme/tokens';
 
@@ -250,14 +252,16 @@ export function GoalTracker({ dealerId, mtdRevenue, mtdProfit, mtdUnits }) {
 // P&L modal exactly (purchase + recon + services + commission + handover +
 // holding + ad spend, plus F&I back-end). Assembled client-side from a handful of
 // dealer-scoped, grouped queries (no N+1) rather than a fragile SQL RPC.
-function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost, brokerComm = 0) {
+function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost, brokerComm = 0, otherCosts = 0) {
   // The ONE profit engine (src/utils/carPnl.js). "handover" here carries transfer + admin +
   // warranty reserve, so the drill-down rows still add up to the gross.
   const sold = !!(l.sold_date || l.sold_at || l.status === 'sold');
   const e = carPnl({
     purchase: Number(stock?.purchase_price) || Number(l.purchase_price) || 0,
     reconEstimate: Number(stock?.recon_cost) || Number(l.recon_cost) || 0,
-    servicesCost: l.included_services_cost, commission: l.commission_amount, brokerCommission: brokerComm, adSpend,
+    // Logged repairs, from the DB trigger's total of every repair row (same input as Overview).
+    reconJobs: Number(stock?.recon_actual) > 0 ? [{ cost: stock.recon_actual }] : [],
+    servicesCost: l.included_services_cost, commission: l.commission_amount, brokerCommission: brokerComm, adSpend, otherCosts,
     handoverCost: sold ? handover : null, addonRevenue: addonRev, addonCost,
     asking: l.selling_price, soldPrice: l.sold_price, isSold: sold,
     startDate: stock?.purchase_date || stock?.created_at || l.created_at, soldDate: l.sold_date || l.sold_at,
@@ -267,7 +271,7 @@ function unitGross(l, stock, cfg, adSpend, handover, addonRev, addonCost, broker
   return {
     revenue: e.revenue, purchase: line('purchase'), recon: line('recon'), services: line('services'),
     commission: line('commission'), handover: line('transfer') + line('admin') + line('warranty'),
-    holding: e.holding, adSpend: line('ads'), addonRev, addonCost, gross: e.net, days: e.days,
+    holding: e.holding, adSpend: line('ads'), other: line('other'), addonRev, addonCost, gross: e.net, days: e.days,
   };
 }
 
@@ -288,9 +292,10 @@ export function RevenueBreakdown({ dealerId }) {
     (async () => {
       const [sold, stock, leads, ads, addons, tasks, cfg, team, bc] = await Promise.all([
         supabase.from('car_listings').select('id, brand, model, year, sold_date, sold_at, sold_price, selling_price, assigned_to, commission_amount, included_services_cost, purchase_price, recon_cost, created_at').eq('dealer_id', dealerId).eq('status', 'sold'),
-        supabase.from('stock_units').select('listing_id, purchase_price, recon_cost, purchase_date, created_at').eq('dealer_id', dealerId).not('listing_id', 'is', null),
+        supabase.from('stock_units').select('id, listing_id, purchase_price, recon_cost, recon_actual, purchase_date, created_at').eq('dealer_id', dealerId).not('listing_id', 'is', null),
         supabase.from('leads').select('car_listing_id').eq('dealer_id', dealerId).not('car_listing_id', 'is', null),
-        supabase.from('ad_spend').select('listing_id, amount').eq('dealer_id', dealerId).not('listing_id', 'is', null),
+        // The cars' cost lists (COSTS-1); a failed read leaves the old breakdown in place (no rosier numbers).
+        loadCarCosts({ dealerId }).then((r) => r.rows, () => undefined),
         supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', dealerId),
         supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', dealerId),
         supabase.from('dealer_cost_settings').select('*').eq('dealer_id', dealerId).maybeSingle(),
@@ -300,13 +305,16 @@ export function RevenueBreakdown({ dealerId }) {
       if (cancelled) return;
       const stockBy = {}; (stock.data || []).forEach((s) => { stockBy[s.listing_id] = s; });
       const leadsBy = {}; (leads.data || []).forEach((x) => { leadsBy[x.car_listing_id] = (leadsBy[x.car_listing_id] || 0) + 1; });
-      const adsBy = {}; (ads.data || []).forEach((a) => { adsBy[a.listing_id] = (adsBy[a.listing_id] || 0) + (Number(a.amount) || 0); });
+      if (ads === undefined) return;
+      const unitTot = totalsByUnit(ads);
+      const adsBy = {}; const otherBy = {};
+      (stock.data || []).forEach((s) => { const t = unitTot[s.id]; if (t) { adsBy[s.listing_id] = (adsBy[s.listing_id] || 0) + t.ads; otherBy[s.listing_id] = (otherBy[s.listing_id] || 0) + t.other; } });
       const handoverBy = {}; (tasks.data || []).forEach((t) => { if (t.status !== 'na') handoverBy[t.listing_id] = (handoverBy[t.listing_id] || 0) + (Number(t.cost) || 0); });
       const addRevBy = {}; const addCostBy = {};
       (addons.data || []).forEach((d) => { addRevBy[d.listing_id] = (addRevBy[d.listing_id] || 0) + (Number(d.sold_price) || 0); addCostBy[d.listing_id] = (addCostBy[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); });
       const nameBy = {}; (team.data || []).forEach((p) => { nameBy[p.id] = p.full_name; });
       const out = (sold.data || []).map((l) => {
-        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] ?? null, addRevBy[l.id] || 0, addCostBy[l.id] || 0, brokerAmount(bc?.byCar, l.id));
+        const m = unitGross(l, stockBy[l.id], cfg.data, adsBy[l.id] || 0, handoverBy[l.id] ?? null, addRevBy[l.id] || 0, addCostBy[l.id] || 0, brokerAmount(bc?.byCar, l.id), otherBy[l.id] || 0);
         return {
           ...l,
           ...m,
@@ -460,6 +468,7 @@ export function RevenueBreakdown({ dealerId }) {
                               ['Handover', r.handover, true],
                               ['Holding', r.holding, true],
                               ['Ad spend', r.adSpend, true],
+                              ['Transport, inspection, other', r.other, true],
                               ['F&I add-ons', r.addonRev - r.addonCost, false],
                             ].filter(([, v]) => v).map(([label, val, neg]) => (
                               <div key={label}>

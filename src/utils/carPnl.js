@@ -48,7 +48,7 @@ export function daysHeld(start, end, now = Date.now()) {
  *  (BROKER-2). It is ONE line with the team's commission, so every screen that shows commission
  *  shows both; `commissionParts` says how it splits.)
  *  handoverCost  number = the real handover step costs (deal won); null/undefined = not sold yet, estimate it
- *  adSpend, addonRevenue, addonCost, asking, soldPrice, isSold,
+ *  adSpend, otherCosts (transport / inspection / other, utils/carCosts.js), addonRevenue, addonCost, asking, soldPrice, isSold,
  *  startDate, soldDate, engineCc, warrantyMonths, cfg (dealer_cost_settings row)
  * @param {number} now  ms, for tests
  */
@@ -76,6 +76,8 @@ export function carPnl(i = {}, now = Date.now()) {
     { key: 'recon', label: 'Recon', val: recon, kind: 'actual' },
     { key: 'holding', label: days == null ? 'Holding' : `Holding, ${days} day${days === 1 ? '' : 's'}`, val: holding, kind: 'accruing' },
     { key: 'ads', label: 'Advertising', val: n(i.adSpend), kind: 'actual' },
+    // Transport, inspection and other costs from the car's cost list (utils/carCosts.js, COSTS-1).
+    { key: 'other', label: 'Transport, inspection, other', val: n(i.otherCosts), kind: 'actual' },
     { key: 'services', label: 'Included services', val: n(i.servicesCost), kind: 'actual' },
     { key: 'commission', label: brokerComm > 0 ? 'Commission, team and broker' : 'Commission', val: n(i.commission) + brokerComm, kind: 'actual' },
     { key: 'transfer', label: hasHandover ? 'Transfer and handover' : 'Transfer, JPJ, B5, road tax', val: transfer, kind: hasHandover ? 'actual' : 'estimate' },

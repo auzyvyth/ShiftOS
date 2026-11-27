@@ -20,6 +20,8 @@ import { StatusPills, InvTile, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_I
 import { Car, Trash2, X, TrendingUp, Clock, ChevronRight, CheckCircle2, Phone, Search, Save, Lock, Facebook, AlertTriangle, Banknote, Wrench, Upload } from "lucide-react";
 import { loadBrokerCommission, brokerAmount } from "../../lib/brokerCommission";
 import { carPnl, daysHeld, AGEING_DAYS } from "../../utils/carPnl";
+import { loadCarCosts } from "../../lib/carCosts";
+import { totalsByUnit, pnlInputs } from "../../utils/carCosts";
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 
 function bucketGPByMonth(units, months = 6) {
@@ -72,7 +74,7 @@ function stockCostBasis(u) {
 // stockNetProfit() below is just front + addonNet for callers that only want
 // one combined number (row badges, loss filter).
 function stockNetProfitParts(u, ctx = {}) {
-  const { ads = {}, handover = {}, addRev = {}, addCost = {}, broker = {} } = ctx;
+  const { ads = {}, other = {}, handover = {}, addRev = {}, addCost = {}, broker = {} } = ctx;
   // `cfg` is null until dealer_cost_settings answers, and the cars paint first from the
   // device copy, so a default of {} (undefined only) was not enough: Stock crashed on reopen.
   const cfg = ctx.cfg || {};
@@ -82,11 +84,12 @@ function stockNetProfitParts(u, ctx = {}) {
   const revenue = isSold ? (Number(u.sold_price) || 0) : (Number(u.asking_price) || Number(c.selling_price) || 0);
   if (revenue === 0 && cost === 0) return null;
   if (isSold && !u.sold_price && cost === 0) return null;
-  // The ONE profit engine (src/utils/carPnl.js); recon jobs are not loaded per row, so the
-  // estimate stands in (effectiveRecon never goes below it).
+  // The ONE profit engine (src/utils/carPnl.js). Logged repairs come from stock_units.recon_actual
+  // (kept by the DB trigger from every repair row), the same input Overview uses (ownerMoney.carRow).
   const p = carPnl({
     purchase: cost, reconEstimate: u.recon_cost, servicesCost: c.included_services_cost,
-    commission: c.commission_amount, brokerCommission: broker[u.listing_id] || 0, adSpend: ads[u.id] || 0,
+    reconJobs: Number(u.recon_actual) > 0 ? [{ cost: u.recon_actual }] : [],
+    commission: c.commission_amount, brokerCommission: broker[u.listing_id] || 0, adSpend: ads[u.id] || 0, otherCosts: other[u.id] || 0,
     handoverCost: handover[u.listing_id] ?? null,
     asking: Number(u.asking_price) || Number(c.selling_price) || 0, soldPrice: u.sold_price, isSold,
     startDate: u.purchase_date || u.created_at, soldDate: u.sold_date,
@@ -297,24 +300,27 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // the full per-unit P&L modal: ad spend (per stock unit), handover processing
   // (per listing), and F&I back-end (per listing). Without these the inline gross
   // was rosy — a 0-margin car with recon/ads/holding never tripped the loss filter.
-  const [costExtras, setCostExtras] = useState({ ads: {}, handover: {}, addRev: {}, addCost: {}, broker: {} });
+  const [costExtras, setCostExtras] = useState({ ads: {}, other: {}, handover: {}, addRev: {}, addCost: {}, broker: {} });
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const [ads, tasks, dp, bc] = await Promise.all([
-        supabase.from('ad_spend').select('stock_unit_id, amount').eq('dealer_id', userId),
+      const [costs, tasks, dp, bc] = await Promise.all([
+        // The car's cost list (COSTS-1): ads + transport / inspection / other, per stock unit.
+        loadCarCosts({ dealerId: userId }).catch(() => null),
         supabase.from('post_sale_tasks').select('listing_id, status, cost').eq('dealer_id', userId),
         supabase.from('deal_products').select('listing_id, sold_price, dealer_products(cost_price)').eq('dealer_id', userId),
         loadBrokerCommission(userId).catch(() => null), // BROKER-2: part of the one commission line
       ]);
       if (cancelled) return;
       const bk = {}; Object.entries(bc?.byCar || {}).forEach(([id, v]) => { bk[id] = v.amount; });
-      const a = {}; (ads.data || []).forEach(r => { if (r.stock_unit_id) a[r.stock_unit_id] = (a[r.stock_unit_id] || 0) + (Number(r.amount) || 0); });
+      const byUnit = totalsByUnit(costs?.rows || []);
+      const a = {}; const o = {};
+      Object.entries(byUnit).forEach(([id, t]) => { a[id] = t.ads; o[id] = t.other; });
       const h = {}; (tasks.data || []).forEach(t => { if (t.status !== 'na' && t.listing_id) h[t.listing_id] = (h[t.listing_id] || 0) + (Number(t.cost) || 0); });
       const ar = {}; const ac = {};
       (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
-      setCostExtras({ ads: a, handover: h, addRev: ar, addCost: ac, broker: bk });
+      setCostExtras({ ads: a, other: o, handover: h, addRev: ar, addCost: ac, broker: bk });
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -338,7 +344,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // A role without "View gross profit" gets no profit anywhere in this tab: every row badge,
   // the "In loss" filter, the profit sorts and the P&L button read null (only a tile was hidden).
   const netProfit = (u) => (can('view_gross') ? stockNetProfit(u, {
-    cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
+    cfg: costCfg || {}, ads: costExtras.ads, other: costExtras.other, handover: costExtras.handover,
     addRev: costExtras.addRev, addCost: costExtras.addCost, broker: costExtras.broker,
   }) : null);
 
@@ -581,14 +587,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     const listingId = unit.listing_id || unit.car_listings?.id;
     let addons = [];
     let handoverTasks = [];
-    let reconJobsList = [];
-    let adSpendList = [];
-    const [{ data: rj }, { data: ads }] = await Promise.all([
-      supabase.from('recon_jobs').select('cost, status').eq('stock_unit_id', unit.id),
-      supabase.from('ad_spend').select('amount').eq('stock_unit_id', unit.id),
-    ]);
-    reconJobsList = rj || [];
-    adSpendList = ads || [];
+    // The car's cost list (COSTS-1): the same rows and rules as the car pop-up's Owner tab.
+    let costIn = { reconJobs: [], adSpend: 0, otherCosts: 0 };
+    try { costIn = pnlInputs((await loadCarCosts({ dealerId: userId, unitId: unit.id })).rows); }
+    catch { toast.error('Could not load this car\'s costs'); setPnlLoading(false); setPnlUnit(null); return; }
+    const reconJobsList = costIn.reconJobs;
     // BROKER-2: what an approved broker sale on this car owes the broker (one commission line).
     let pnlBroker = 0;
     try { pnlBroker = brokerAmount((await loadBrokerCommission(userId)).byCar, listingId); } catch { /* keep 0, the read failed */ }
@@ -615,7 +618,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       servicesCost: cl.included_services_cost, commission: cl.commission_amount,
       brokerCommission: pnlBroker,
       handoverCost: handoverTasks.length ? handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0) : null,
-      adSpend: adSpendList.reduce((s, a) => s + (Number(a.amount) || 0), 0),
+      adSpend: costIn.adSpend, otherCosts: costIn.otherCosts,
       addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0),
       addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
       asking: Number(unit.asking_price) || Number(cl.selling_price) || 0, soldPrice: unit.sold_price,
@@ -629,7 +632,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       servicesCost: line('services'), commission: line('commission'),
       // Shown as one "Handover processing" line here: transfer (estimated until the deal), admin, warranty reserve.
       handoverCost: line('transfer') + line('admin') + line('warranty'),
-      holdingCost: e.holding, holdingDays: e.days || 0, dailyHold: e.perDay.total, adSpend: line('ads'),
+      holdingCost: e.holding, holdingDays: e.days || 0, dailyHold: e.perDay.total, adSpend: line('ads'), otherCost: line('other'),
       addonRevenue: addons.reduce((s, a) => s + (Number(a.sold_price) || 0), 0), addonCost: addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
       revenue: e.revenue, frontGross: e.front, backGross: e.back, totalCosts: e.costTotal + addons.reduce((s, a) => s + (Number(a.dealer_products?.cost_price) || 0), 0),
       netPnl: e.net, addons, isSold: e.isSold,
@@ -1444,6 +1447,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       ['Commission paid', pnlData.commission],
                       ['Handover processing', pnlData.handoverCost],
                       ['Advertising', pnlData.adSpend],
+                      ['Transport, inspection, other', pnlData.otherCost],
                       [`Holding (${pnlData.holdingDays}d)`, pnlData.holdingCost],
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>

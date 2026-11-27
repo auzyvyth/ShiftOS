@@ -23,7 +23,7 @@ export const monthKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).
 export const dayKey = (d) => (d ? new Date(new Date(d).getTime() + MY_OFFSET).toISOString().slice(0, 10) : null);
 const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const UNSOLD = ['available', 'reserved', 'unpublished', 'pending_approval', 'in_stock'];
-const COST_KEYS = ['recon', 'holding', 'ads', 'commission', 'transfer', 'admin', 'warranty', 'services'];
+const COST_KEYS = ['recon', 'holding', 'ads', 'other', 'commission', 'transfer', 'admin', 'warranty', 'services'];
 
 // One row per car: the listing and its stock record joined. A stock record with NO listing
 // (bought, not listed yet) still counts. A stock record whose listing is not in `listings` does
@@ -55,6 +55,7 @@ export function carRow({ listing, unit }, ctx = {}, now = Date.now()) {
     brokerCommission: broker?.amount,
     handoverCost: tasks == null ? null : tasks,
     adSpend: ctx.ads?.[u.id] || 0,
+    otherCosts: ctx.other?.[u.id] || 0,
     addonRevenue: addons.rev, addonCost: addons.cost,
     asking: n(l.selling_price) || n(u.asking_price),
     soldPrice: n(l.sold_price) || n(u.sold_price),

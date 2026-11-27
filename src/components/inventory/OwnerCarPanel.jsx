@@ -2,25 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabaseClient';
 import { toast } from 'sonner';
-import {
-  Wrench, Megaphone, ShieldCheck, ClipboardCheck,
-  X, Plus, Trash2, UserCheck, Clock,
-} from 'lucide-react';
+import { ShieldCheck, ClipboardCheck, X, UserCheck, Clock } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { carPnl } from '../../utils/carPnl';
 import { loadBrokerCommission, brokerAmount } from '../../lib/brokerCommission';
 import { premiumLight as PL } from '../../theme/tokens';
 import { plPill } from '../../theme/plStatus';
 import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
+import { CarCostsCard, AddCostSheet } from './CarCostsCard';
+import { loadCarCosts, addCarCost, markCarCostPaid, deleteCarCost } from '../../lib/carCosts';
+import { pnlInputs } from '../../utils/carCosts';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
 const ago = (d) => { if (!d) return '—'; const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000); return days <= 0 ? 'today' : days === 1 ? '1d ago' : `${days}d ago`; };
 
-const AD_CHANNELS = [
-  { v: 'mudah', l: 'Mudah' }, { v: 'carlist', l: 'Carlist' }, { v: 'facebook', l: 'Facebook' },
-  { v: 'tiktok', l: 'TikTok' }, { v: 'instagram', l: 'Instagram' }, { v: 'other', l: 'Other' },
-];
 const ENC_OPTS = [
   { v: 'clear', l: 'Clear title', c: '#16a34a' },
   { v: 'under_hp', l: 'Under HP', c: '#dc2626' },
@@ -65,8 +61,11 @@ function ToolModal({ title, onClose, children, footer }) {
 export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool, onStatusChange, statusUpdating, onMarkSold }) {
   const [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState(null);
-  const [recon, setRecon] = useState([]);
-  const [ads, setAds] = useState([]);
+  // The car's cost list (COSTS-1): one read merging car_costs with the older recon_jobs / ad_spend.
+  const [costs, setCosts] = useState([]);
+  const [costsFailed, setCostsFailed] = useState(false);
+  const [ledgerLive, setLedgerLive] = useState(true);
+  const [payees, setPayees] = useState([]);
   const [addons, setAddons] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [costCfg, setCostCfg] = useState(null);
@@ -77,8 +76,6 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   // tool form state
   const [costForm, setCostForm] = useState({ purchase_price: '', recon_cost: '' });
   const [compForm, setCompForm] = useState({ puspakom_b5_date: '', puspakom_b7_date: '', encumbrance_status: 'unknown' });
-  const [reconForm, setReconForm] = useState({ title: '', cost: '' });
-  const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '' });
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState(null);
   const [apprDraft, setApprDraft] = useState(null);
@@ -103,13 +100,14 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     setAddons(dp.data || []);
     setTasks(pst.data || []);
     if (u) {
-      const [rj, ad] = await Promise.all([
-        supabase.from('recon_jobs').select('*').eq('stock_unit_id', u.id).order('created_at', { ascending: false }),
-        supabase.from('ad_spend').select('*').eq('stock_unit_id', u.id).order('spent_at', { ascending: false }),
-      ]);
-      setRecon(rj.data || []);
-      setAds(ad.data || []);
-    } else { setRecon([]); setAds([]); }
+      try {
+        const r = await loadCarCosts({ dealerId: userId, unitId: u.id });
+        setCosts(r.rows); setLedgerLive(r.ledgerLive); setCostsFailed(false);
+      } catch { setCosts([]); setCostsFailed(true); }
+      // Supplier names to suggest in "Paid to" (the owner's saved vendors; others simply get none).
+      supabase.from('vendors').select('name').eq('dealer_id', userId).eq('is_active', true).order('name')
+        .then(({ data }) => setPayees((data || []).map((v) => v.name).filter(Boolean)));
+    } else { setCosts([]); }
     setLoading(false);
   }, [listing.id, userId]);
 
@@ -149,13 +147,12 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
   const pnl = unit ? carPnl({
     purchase: unit.purchase_price,
     reconEstimate: unit.recon_cost,
-    reconJobs: recon,
+    ...pnlInputs(costs), // repairs, ads and transport / inspection / other from the cost list
     servicesCost: listing.included_services_cost,
     commission: listing.commission_amount,
     brokerCommission: brokerComm,
     // The handover checklist exists only after the win; until then transfer costs are estimated.
     handoverCost: tasks.length ? tasks.filter((t) => t.status !== 'na').reduce((sum, t) => sum + (Number(t.cost) || 0), 0) : null,
-    adSpend: ads.reduce((sum, a) => sum + (Number(a.amount) || 0), 0),
     addonRevenue: addons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0),
     addonCost: addons.reduce((sum, a) => sum + (Number(a.dealer_products?.cost_price) || 0), 0),
     asking: listing.selling_price || unit.asking_price,
@@ -204,33 +201,22 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     toast.success('Appraisal saved'); close();
   };
 
-  const addRecon = async () => {
-    if (!reconForm.title.trim()) { toast.error('Enter a job title'); return; }
-    const { data, error } = await supabase.from('recon_jobs').insert({
-      dealer_id: userId, stock_unit_id: unit.id, title: reconForm.title.trim(),
-      category: 'other', cost: reconForm.cost ? Number(reconForm.cost) : null, status: 'pending',
-    }).select().single();
-    if (error) { toast.error('Failed to add'); return; }
-    setRecon((p) => [data, ...p]); setReconForm({ title: '', cost: '' });
+  // ---- the cost list (COSTS-1) ----
+  const saveNewCost = async (row) => {
+    try {
+      const added = await addCarCost({ dealerId: userId, unitId: unit.id, row });
+      setCosts((p) => [added, ...p]);
+      toast.success('Cost added'); close();
+    } catch (e) { toast.error(e?.message?.includes('car_costs_wrong') ? 'This car is not on your account' : 'Could not save the cost'); throw e; }
   };
-  const delRecon = async (id) => {
-    const { error } = await supabase.from('recon_jobs').delete().eq('id', id);
-    if (error) { toast.error('Failed to delete'); return; }
-    setRecon((p) => p.filter((j) => j.id !== id));
+  const payCost = async (r) => {
+    try { const upd = await markCarCostPaid(r.id); setCosts((p) => p.map((x) => (x.source === r.source && x.id === r.id ? upd : x))); toast.success('Marked paid'); }
+    catch { toast.error('Could not mark it paid'); }
   };
-  const addAd = async () => {
-    if (!adForm.amount || Number(adForm.amount) <= 0) { toast.error('Enter an amount'); return; }
-    const { data, error } = await supabase.from('ad_spend').insert({
-      dealer_id: userId, stock_unit_id: unit.id, listing_id: listing.id,
-      channel: adForm.channel, amount: Number(adForm.amount), spent_at: new Date().toISOString().slice(0, 10),
-    }).select().single();
-    if (error) { toast.error('Failed to add'); return; }
-    setAds((p) => [data, ...p]); setAdForm({ channel: 'mudah', amount: '' });
-  };
-  const delAd = async (id) => {
-    const { error } = await supabase.from('ad_spend').delete().eq('id', id);
-    if (error) { toast.error('Failed to delete'); return; }
-    setAds((p) => p.filter((a) => a.id !== id));
+  const removeCost = async (r) => {
+    if (!window.confirm(`Delete "${r.label}" (${rm(r.amount)})?`)) return;
+    try { await deleteCarCost(r); setCosts((p) => p.filter((x) => !(x.source === r.source && x.id === r.id))); toast.success('Cost deleted'); }
+    catch { toast.error('Could not delete it'); }
   };
 
   if (loading) return <p style={{ fontSize: 13, color: '#6b7280', padding: '20px 0', textAlign: 'center' }}>Loading owner detail…</p>;
@@ -266,8 +252,6 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         ? `${rm(v.net)} profit if it sells today. Holding eats it in ${v.daysUntilZero} more day${v.daysUntilZero === 1 ? '' : 's'}.`
         : `${rm(v.net)} profit if it sells at the asking price today.`;
 
-  const reconTotal = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-  const adTotal = ads.reduce((s, a) => s + (Number(a.amount) || 0), 0);
   const enc = encCfg(unit.encumbrance_status || 'unknown');
 
   const Badge = ({ ok, label, color }) => (
@@ -328,33 +312,16 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         {!v.startKnown && <div style={{ fontSize: 12, color: PL.textMuted, marginTop: 6 }}>No start date on this car, so days and holding are not counted.</div>}
       </div>
 
-      {/* Every cost so far, one list. Estimates say so; holding grows daily until the sale. */}
-      <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: '4px 14px', marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 13 }}>
-          <span style={{ color: PL.textSec }}>{v.isSold ? 'Sold for' : 'Asking price'}</span>
-          <span style={{ fontWeight: 700, color: PL.text, fontVariantNumeric: 'tabular-nums' }}>{rm(v.revenue)}</span>
+      {/* The cost list (COSTS-1): what was typed, then what is worked out. Adds up to the profit above. */}
+      <CarCostsCard unit={unit} pnl={v} rows={costs} failed={costsFailed}
+        onAdd={() => setTool && setTool('cost')} onPay={payCost} onDelete={removeCost}
+        onEditBuy={() => setTool && setTool('prices')} />
+      {(v.back !== 0 || addons.length > 0) && (
+        <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+          <span style={{ color: PL.textSec }}>Add-ons sold ({addons.length}), after their cost</span>
+          <span style={{ color: v.back >= 0 ? PL.up : PL.accentText, fontVariantNumeric: 'tabular-nums' }}>{signed(v.back)}</span>
         </div>
-        {v.lines.filter((l) => l.val > 0 || l.key === 'purchase' || l.key === 'holding').map((l) => (
-          <div key={l.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderTop: `1px solid ${PL.line}`, fontSize: 13 }}>
-            <span style={{ color: PL.textSec }}>
-              {l.label}
-              {l.kind === 'estimate' && <span style={{ color: PL.textMuted }}> · estimate</span>}
-              {l.kind === 'accruing' && !v.isSold && perDay > 0 && <span style={{ color: PL.textMuted }}> · +{rm(perDay)}/day</span>}
-            </span>
-            <span style={{ color: PL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>− {rm(l.val)}</span>
-          </div>
-        ))}
-        {(v.back !== 0 || addons.length > 0) && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderTop: `1px solid ${PL.line}`, fontSize: 13 }}>
-            <span style={{ color: PL.textSec }}>Add-ons sold ({addons.length}), after their cost</span>
-            <span style={{ color: v.back >= 0 ? PL.up : PL.accentText, fontVariantNumeric: 'tabular-nums' }}>{signed(v.back)}</span>
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 0', borderTop: `1px solid ${PL.line}`, fontSize: 14, fontWeight: 800 }}>
-          <span style={{ color: PL.text }}>{v.isSold ? 'Profit' : 'Profit if sold today'}</span>
-          <span style={{ color: loss ? PL.accentText : PL.up, fontVariantNumeric: 'tabular-nums' }}>{signed(v.net)}</span>
-        </div>
-      </div>
+      )}
 
       {/* ---------- READ-ONLY VIEW ---------- */}
       <Section icon={UserCheck} title="Status & Attribution">
@@ -381,30 +348,6 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
               : <span style={{ color: '#9ca3af' }}>Open — any salesman can sell this</span>}
           {status === 'reserved' && reservedBy && <span>Reserved by <b>{reservedBy.full_name}</b></span>}
         </div>
-      </Section>
-
-      <Section icon={Wrench} title="Recon Jobs" right={<span style={{ fontSize: 12, fontWeight: 700, color: PL.text }}>{rm(reconTotal)}</span>}>
-        {recon.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No recon work logged.</p> : recon.map((j) => (
-          <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${PL.line}` }}>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 12, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</p>
-              <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0', textTransform: 'capitalize' }}>{(j.status || 'pending').replace('_', ' ')}{j.vendor ? ` · ${j.vendor}` : ''}</p>
-            </div>
-            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600, flexShrink: 0 }}>{j.cost ? rm(j.cost) : '—'}</span>
-          </div>
-        ))}
-      </Section>
-
-      <Section icon={Megaphone} title="Advertising Spend" right={<span style={{ fontSize: 12, fontWeight: 700, color: PL.text }}>{rm(adTotal)}</span>}>
-        {ads.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>No ad spend logged.</p> : ads.map((a) => (
-          <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${PL.line}` }}>
-            <div>
-              <p style={{ fontSize: 12, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}</p>
-              {a.spent_at && <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{fmtD(a.spent_at)}</p>}
-            </div>
-            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
-          </div>
-        ))}
       </Section>
 
       <Section icon={ShieldCheck} title="Compliance">
@@ -474,50 +417,10 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         </ToolModal>
       )}
 
-      {tool === 'recon' && (
-        <ToolModal title="Recon Jobs" onClose={close} footer={
-          <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
-        }>
-          {recon.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No recon work logged yet.</p>}
-          {recon.map((j) => (
-            <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PL.line}` }}>
-              <p style={{ fontSize: 12.5, color: '#111827', margin: 0 }}>{j.title}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{j.cost ? rm(j.cost) : '—'}</span>
-                <button onClick={() => delRecon(j.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 13, height: 13 }} /></button>
-              </div>
-            </div>
-          ))}
-          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-            <input placeholder="Job (e.g. polish)" value={reconForm.title} onChange={(e) => setReconForm((p) => ({ ...p, title: e.target.value }))} style={{ ...inp, flex: 2 }} />
-            <input type="number" placeholder="RM" value={reconForm.cost} onChange={(e) => setReconForm((p) => ({ ...p, cost: e.target.value }))} style={{ ...inp, flex: 1 }} />
-            <button onClick={addRecon} style={{ background: '#d97706', border: 'none', color: '#fff', borderRadius: 7, padding: '0 12px', cursor: 'pointer' }}><Plus style={{ width: 15, height: 15 }} /></button>
-          </div>
-        </ToolModal>
-      )}
-
-      {tool === 'ad' && (
-        <ToolModal title="Advertising Spend" onClose={close} footer={
-          <button onClick={close} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
-        }>
-          {ads.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 10px' }}>No ad spend logged yet.</p>}
-          {ads.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PL.line}` }}>
-              <p style={{ fontSize: 12.5, color: '#111827', margin: 0, textTransform: 'capitalize' }}>{a.channel}{a.spent_at ? ` · ${fmtD(a.spent_at)}` : ''}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12.5, color: '#374151', fontWeight: 600 }}>{rm(a.amount)}</span>
-                <button onClick={() => delAd(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 2 }}><Trash2 style={{ width: 13, height: 13 }} /></button>
-              </div>
-            </div>
-          ))}
-          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-            <select value={adForm.channel} onChange={(e) => setAdForm((p) => ({ ...p, channel: e.target.value }))} style={{ ...inp, flex: 2 }}>
-              {AD_CHANNELS.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-            </select>
-            <input type="number" placeholder="RM" value={adForm.amount} onChange={(e) => setAdForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inp, flex: 1 }} />
-            <button onClick={addAd} style={{ background: '#db2777', border: 'none', color: '#fff', borderRadius: 7, padding: '0 12px', cursor: 'pointer' }}><Plus style={{ width: 15, height: 15 }} /></button>
-          </div>
-        </ToolModal>
+      {tool === 'cost' && (
+        <AddCostSheet carName={[listing.year, listing.brand, listing.model].filter(Boolean).join(' ')} payees={payees}
+          disabledReason={ledgerLive ? null : 'Adding costs switches on with tonight\'s update. The costs already logged are shown and counted.'}
+          onSave={saveNewCost} onClose={close} />
       )}
 
       {tool === 'activity' && (
