@@ -1,6 +1,6 @@
 // npm run test:posterstyles
 import assert from 'node:assert/strict';
-import { fitInside, CUTOUT_STYLES, featureStrip, featureList, specParts, photoPlan, styleAvailable, ribbonsFor, tintFromRgb, CARD_FALLBACK_TINT, paletteOf, styleOf } from '../src/utils/posterStyles.js';
+import { mixHex, fitInside, CUTOUT_STYLES, featureStrip, featureList, specParts, photoPlan, styleAvailable, ribbonsFor, tintFromRgb, CARD_FALLBACK_TINT, paletteOf, styleOf } from '../src/utils/posterStyles.js';
 
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('ok -', name); };
@@ -52,5 +52,10 @@ t('fitInside never crops and never leaves the box', () => {
   assert.deepEqual(fitInside(768, 1024, 842, 600), { w: 450, h: 600 });
   assert.deepEqual(fitInside(0, 10, 5, 5), { w: 0, h: 0 });
   assert.deepEqual(CUTOUT_STYLES, ['showroom', 'card']);
+});
+t('mixHex keeps the hue and clamps', () => {
+  assert.equal(mixHex('#000000', '#ffffff', 0.5), '#808080');
+  assert.equal(mixHex('#402030', '#000000', 0), '#402030');
+  assert.equal(mixHex('#402030', '#ffffff', 5), '#ffffff');
 });
 console.log(`${n} passed`);

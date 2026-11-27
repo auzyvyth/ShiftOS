@@ -117,3 +117,12 @@ export function fitInside(iw, ih, maxW, maxH) {
 }
 // Styles that can put a cut-out car straight on the colour.
 export const CUTOUT_STYLES = ['showroom', 'card'];
+
+// Mix two #rrggbb colours (t = 0 gives a, 1 gives b). The card's gradient is
+// built from its own colour this way, so a lift or a deepening keeps the hue
+// instead of washing it grey with white or black.
+export function mixHex(a, b, t) {
+  const rgb = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || '')); const n = m ? parseInt(m[1], 16) : 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const A = rgb(a), B = rgb(b), k = Math.max(0, Math.min(1, Number(t) || 0));
+  return `#${A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, '0')).join('')}`;
+}

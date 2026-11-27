@@ -13,7 +13,7 @@
 import { roundRectPath, drawCover, drawCircle } from '../../utils/posterImage';
 import { POSTER_COPY, fmtRM, fmtPct } from '../../utils/loanPoster';
 import {
-  fitInside, styleOf, paletteOf, RIBBON_TEXT, photosOf, featureStrip, specParts, photoPlan, tintFromRgb, CARD_FALLBACK_TINT, styleAvailable,
+  mixHex, fitInside, styleOf, paletteOf, RIBBON_TEXT, photosOf, featureStrip, specParts, photoPlan, tintFromRgb, CARD_FALLBACK_TINT, styleAvailable,
 } from '../../utils/posterStyles';
 import { renderLoanPoster, cachedImage, ensureFonts } from './renderLoanPoster';
 import { cutoutBounds, placeCar, drawCarShadow } from '../studio/backdrops';
@@ -292,11 +292,11 @@ function drawCard(ctx, k, o) {
   const { car, seller, numbers, c, lang, photos } = o;
   const W = 1080, H = 1920, PX = 119, PW = 842;
   const tint = photos[0] ? averageTint(photos[0]) : CARD_FALLBACK_TINT;
-  ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
-  // the card's own gradient: a lift of light at the top, deepening to the foot
-  const wash = ctx.createLinearGradient(0, 0, 0, H);
-  wash.addColorStop(0, 'rgba(255,255,255,0.14)'); wash.addColorStop(0.45, 'rgba(255,255,255,0)'); wash.addColorStop(1, 'rgba(0,0,0,0.35)');
-  ctx.fillStyle = wash; ctx.fillRect(0, 0, W, H);
+  // The card's own gradient, built from its colour so the hue stays rich: a lift
+  // at the top, the colour itself in the middle, a deeper tone at the foot.
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, mixHex(tint, '#ffffff', 0.10)); bg.addColorStop(0.42, tint); bg.addColorStop(1, mixHex(tint, '#000000', 0.35));
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
   // seller name with a red dot on top
   const who = String(seller?.full_name || '').trim().toUpperCase();
@@ -322,7 +322,8 @@ function drawCard(ctx, k, o) {
   if (src && fitSz.w) {
     if (o.cutout) {
       const spot = ctx.createRadialGradient(W / 2, by + fitSz.h * 0.55, 0, W / 2, by + fitSz.h * 0.55, 620);
-      spot.addColorStop(0, 'rgba(255,255,255,0.16)'); spot.addColorStop(1, 'rgba(255,255,255,0)');
+      const glowHex = mixHex(tint, '#ffffff', 0.32);
+      spot.addColorStop(0, `${glowHex}99`); spot.addColorStop(1, `${glowHex}00`);
       ctx.fillStyle = spot; ctx.fillRect(0, by - 200, W, fitSz.h + 500);
       drawCarShadow(ctx, { dx: bx, dw: fitSz.w, dh: fitSz.h, floorY: by + fitSz.h });
       ctx.save(); ctx.imageSmoothingQuality = 'high';
