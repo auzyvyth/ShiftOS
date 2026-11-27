@@ -10,6 +10,7 @@ import { holdingPerDay } from "../utils/carPnl";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { lookupCarSpec } from "../utils/carSpecs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
+import { isChassisDupError, chassisDupMessage } from "../utils/chassisDup";
 import { decodeChassis, isChassisCode, isMalaysianVin } from "../utils/chassisDecode";
 import { color } from "../theme/tokens";
 import AppraisalChecklist, { summarizeAppraisal } from "./AppraisalChecklist";
@@ -417,7 +418,7 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
       else if (form.publish) onPublished?.(listing);
       else onStocked?.();
     } catch (err) {
-      setError(err.message || "Could not save. Please try again.");
+      setError(isChassisDupError(err) ? chassisDupMessage(err) : (err.message || "Could not save. Please try again."));
       setSaving(false);
     }
   };

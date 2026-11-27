@@ -8,6 +8,7 @@ import StepIndicator from "../components/ImportStockPage/StepIndicator";
 import Step1Upload from "../components/ImportStockPage/Step1Upload";
 import Step2Preview from "../components/ImportStockPage/Step2Preview";
 import Step3Import from "../components/ImportStockPage/Step3Import";
+import { isChassisDupError, chassisDupMessage } from "../utils/chassisDup";
 
 const AI_PROXY = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/ai/messages`
@@ -536,7 +537,7 @@ export default function ImportStockPage() {
 
       setImported(inserted.length);
     } catch (e) {
-      setImportError(e.message || "Import failed");
+      setImportError(isChassisDupError(e) ? `${chassisDupMessage(e)} Nothing was imported: remove that row from the file and try again.` : (e.message || "Import failed"));
     }
     setImporting(false);
   };
