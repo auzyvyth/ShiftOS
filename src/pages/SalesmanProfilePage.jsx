@@ -1525,6 +1525,7 @@ export default function SalesmanProfilePage() {
         .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
         .aph--card .aph-in > * { pointer-events: auto; }
         .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
+        .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 46px; }
         .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
         .aph--card > .ap-share { display: none; }
         .ap--pro .aph--card .aph-bc .aph-bc-share { left: auto; right: 0; top: 30px; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
@@ -1588,6 +1589,7 @@ export default function SalesmanProfilePage() {
           .aph--card .aph-in { padding-top: 126px; }
           .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
           .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 34cqw; --under: 44px; }
+          .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 64px; }
           .aph-band .cring-label b { font-size: 44px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }

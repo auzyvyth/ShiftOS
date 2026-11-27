@@ -219,6 +219,19 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
   const stageRef = useRef(null);
   // ONE call for every model's variants + specs: the rail's "from" prices and the helper read it.
   const infos = useNewCarInfos(models.map((c) => c.id));
+  // The top banner's "Explore details" (CarRing) asks for a model: pick it and bring its panel into view.
+  useEffect(() => {
+    const onPick = (e) => {
+      const id = e?.detail?.id;
+      const b = brands.find((x) => x.models.some((c) => c.id === id));
+      if (!b) return;
+      setBrandKey(b.brand);
+      setPickId(id);
+      setTimeout(() => document.getElementById('ap-models')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+    };
+    window.addEventListener('ap-pick-model', onPick);
+    return () => window.removeEventListener('ap-pick-model', onPick);
+  }, [brands]);
   if (!models.length) return null;
 
   const brand = brands.find((b) => b.brand === brandKey) || brands.find((b) => b.models.some((c) => c.id === pickId)) || brands[0];

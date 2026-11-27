@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { isSeeThroughPhoto, cdnImg } from '../../../utils/img';
 import { seeThroughBox } from '../../../utils/seeThrough';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { modelFacts, rm as formatRm } from '../../../utils/newCars';
+import { fromPrice } from '../../../utils/configurator';
+import { useNewCarInfos } from '../../newcar/NewCarListingInfo';
 
 // CAR-RING (owner, 2026-11-26): the business card's top band. ONE brand's cars (the seller picks it
 // in Settings > Your photo, saved as `hb` on the hero link; none picked = the brand with the most) go
@@ -34,7 +38,7 @@ export function useRingCars(listings) {
       const urls = (Array.isArray(c.images) ? c.images : []).slice(0, 4).filter(isSeeThroughPhoto);
       if (!urls.length) continue;
       seen.add(key);
-      out.push({ id: c.id, brand: c.brand || '', model: c.model || '', urls });
+      out.push({ id: c.id, brand: c.brand || '', model: c.model || '', urls, card: !!c.is_model_card, price: Number(c.selling_price) || 0 });
     }
     return out.slice(0, MAX_CARS);
   }, [listings]);
@@ -46,7 +50,7 @@ export function useRingCars(listings) {
       const found = await Promise.all(cands.map(async (c) => {
         for (const u of c.urls) {
           const box = await seeThroughBox(u);
-          if (box) return { id: c.id, brand: c.brand, model: c.model, url: u, box };
+          if (box) return { id: c.id, brand: c.brand, model: c.model, url: u, box, card: c.card, price: c.price };
         }
         return null;
       }));
@@ -95,6 +99,35 @@ const CSS = `
 .cring-crop img { position: absolute; max-width: none; pointer-events: none; }
 /* One contact shadow under every car, at the shared floor line: the tyres land on it. */
 .cring-shadow { position: absolute; left: 6%; right: 6%; bottom: -7px; height: 14px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.65), rgba(0,0,0,0)); }
+/* PAGE-BANNER (owner, 2026-11-27: "like this" Bezza banner): round arrows on both sides, dots, then one
+   foot row: price + one button on the left, dots in the middle, three spec-sheet facts on the right. */
+.cring-arrow { position: absolute; z-index: 300; top: calc(50% - 22px); width: 44px; height: 44px; padding: 0; border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: #fff; background: rgba(12,13,16,.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer;
+  transition: transform .25s cubic-bezier(.22,1,.36,1), background .25s; -webkit-tap-highlight-color: transparent; }
+.cring-arrow.is-prev { left: 12px; } .cring-arrow.is-next { right: 12px; }
+.cring-arrow:active { transform: scale(.92); transition-duration: .1s; }
+@media (hover: hover) and (pointer: fine) { .cring-arrow:hover { background: rgba(12,13,16,.8); transform: scale(1.06); } }
+.cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 16px 0; color: #fff; }
+.cring-buy { display: grid; justify-items: start; gap: 6px; min-width: 0; }
+.cring-from { font: 500 12px/1 var(--xd-font-body); color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+.cring-go { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px 0 14px; border: 1px solid rgba(255,255,255,.55); border-radius: 12px; background: rgba(12,13,16,.5); color: #fff; cursor: pointer;
+  font: 600 13px/1 var(--xd-font-body); -webkit-tap-highlight-color: transparent; }
+.cring-go:active { transform: scale(.97); }
+.cring-dots { display: flex; align-items: center; gap: 2px; }
+.cring-dots button { display: flex; align-items: center; justify-content: center; width: 22px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
+.cring-dots i { display: block; width: 10px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); transition: width .3s cubic-bezier(.22,1,.36,1), background .3s; }
+.cring-dots button[aria-current="true"] i { width: 22px; background: #fff; }
+.cring-count { font: 600 12px/1 var(--xd-font-body); color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; }
+.cring-facts { display: flex; justify-content: flex-end; gap: 18px; min-width: 0; }
+.cring-facts div { display: grid; gap: 3px; text-align: left; min-width: 0; }
+.cring-facts b { font: 700 14px/1 var(--xd-font-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cring-facts span { font: 500 11px/1.1 var(--xd-font-body); color: rgba(255,255,255,.62); }
+@container (max-width: 640px) {
+  .cring-foot { grid-template-columns: minmax(0, 1fr) auto; }
+  .cring-facts { display: none; }
+  .cring-arrow { width: 38px; height: 38px; top: calc(50% - 19px); }
+  .cring-arrow.is-prev { left: 6px; } .cring-arrow.is-next { right: 6px; }
+}
 .cring--sm { padding-top: 10px; --under: 30px; }
 .cring--sm .cring-label span { font-size: 8px; }
 .cring--sm .cring-label b { font-size: 18px; }
@@ -165,6 +198,16 @@ export default function CarRing({ cars, small = false }) {
   };
 
   const car = cars[front];
+  // The banner's price + facts: the brand price list's cheapest variant, read once for the whole ring.
+  // The Settings preview (`small`) asks for nothing.
+  const infos = useNewCarInfos(small ? [] : cars.filter((c) => c.card).map((c) => c.id));
+  const info = car?.card ? infos[car.id] : null;
+  const vs = (info?.variants || []).filter((v) => v);
+  const cheapest = vs.slice().sort((a, b) => (Number(a.price) || 1e12) - (Number(b.price) || 1e12))[0];
+  const from = car?.card ? fromPrice({ selling_price: car.price }, info) : null;
+  const facts = cheapest ? modelFacts(cheapest.specs).slice(0, 3) : [];
+  const step = (d) => turnTo(Math.round(rot.current) + d);
+  const explore = () => { window.dispatchEvent(new CustomEvent('ap-pick-model', { detail: { id: car.id } })); };
   // Height of the tallest car per unit of width, so the stage fits the cars and nothing more.
   const ratio = Math.max(0.3, ...cars.map((c) => c.box.h / Math.max(0.01, c.box.w * c.box.ar)));
   return (
@@ -191,7 +234,33 @@ export default function CarRing({ cars, small = false }) {
           </button>
         );
       })}
+      {!small && n > 1 && (
+        <>
+          <button type="button" className="cring-arrow is-prev" onClick={() => step(-1)} aria-label="Previous model"><ChevronLeft size={22} /></button>
+          <button type="button" className="cring-arrow is-next" onClick={() => step(1)} aria-label="Next model"><ChevronRight size={22} /></button>
+        </>
+      )}
       </div>
+      {!small && (
+        <div className="cring-foot">
+          <div className="cring-buy">
+            {from ? <span className="cring-from">From {formatRm(from)}</span> : null}
+            {car?.card && <button type="button" className="cring-go" onClick={explore}>Explore details <ChevronRight size={15} /></button>}
+          </div>
+          {n > 1 && (n <= 8
+            ? <div className="cring-dots" role="group" aria-label="Models">
+                {cars.map((c, i) => (
+                  <button key={c.id} type="button" onClick={() => bring(i)} aria-label={`${c.brand} ${c.model}`} aria-current={i === front}><i /></button>
+                ))}
+              </div>
+            : <span className="cring-count" aria-live="polite">{front + 1} / {n}</span>)}
+          {facts.length > 0 && (
+            <div className="cring-facts">
+              {facts.map((f) => <div key={f.label}><b>{f.value}</b><span>{f.label}</span></div>)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
