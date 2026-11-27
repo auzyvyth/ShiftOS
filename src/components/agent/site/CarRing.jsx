@@ -110,8 +110,8 @@ const CSS = `
 @media (hover: hover) and (pointer: fine) { .cring-arrow:hover { background: rgba(12,13,16,.8); transform: scale(1.06); } }
 .cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 4px 16px 0; color: #fff; }
 .cring-buy { display: grid; justify-items: start; gap: 6px; min-width: 0; }
-.cring-from { font: italic 500 12px/1 var(--xd-font-body); color: rgba(255,255,255,.66); font-variant-numeric: tabular-nums; }
-.cring-from b { font-size: 17px; font-weight: 700; color: #fff; margin-left: 3px; }
+.cring-from { display: flex; align-items: baseline; font: italic 500 13px/1 var(--xd-font-body); color: rgba(255,255,255,.66); font-variant-numeric: tabular-nums; }
+.cring-from b { font-size: 26px; font-weight: 700; letter-spacing: -.01em; color: #fff; margin-left: 4px; }
 .cring-go { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 12px 0 16px; border: 0; border-radius: 12px; color: #fff; cursor: pointer;
   background: linear-gradient(var(--ap-a, #dc2626), var(--ap-b2, #b91c1c)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px rgba(var(--ap-rgb, 220,38,38), .35);
   font: italic 700 13px/1 var(--xd-font-body); -webkit-tap-highlight-color: transparent; }
