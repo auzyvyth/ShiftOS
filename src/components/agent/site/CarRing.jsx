@@ -85,7 +85,7 @@ export function ringCarsFor(cars, brand) {
 // The ring's own styles, so the page and the Settings preview draw the same thing. The page sizes it
 // for desktop with `.aph-band .cring...` rules; `small` is the Settings preview.
 const CSS = `
-.cring { position: relative; container-type: inline-size; --spread: 44cqw; --car-w: 50cqw; --under: 20px; padding: 16px 0 0; }
+.cring { position: relative; container-type: inline-size; --spread: 44cqw; --car-w: 62.5cqw; --side: .35; --under: 14px; padding: 16px 0 0; }
 .cring-label { position: relative; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
 .cring-label span { font: italic 600 11px/1 var(--xd-font-body); letter-spacing: .26em; text-transform: uppercase; color: color-mix(in srgb, var(--ap-a, #dc2626) 55%, #fff); }
 .cring-label b { font: italic 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .03em; white-space: nowrap; padding-right: .08em;
@@ -130,17 +130,17 @@ const CSS = `
 .cring-facts span { font: italic 500 11px/1.1 var(--xd-font-body); color: rgba(255,255,255,.6); }
 .cring-facts .is-eco span { color: rgba(134,239,172,.8); }
 @container (max-width: 640px) {
-  .cring-foot { grid-template-columns: minmax(0, 1fr) auto; }
-  .cring-facts { display: none; }
+  /* Phone (owner, 2026-11-27): no dots, the button on the left and the price on the right, one short row. */
+  .cring-foot { grid-template-columns: minmax(0, 1fr); padding-top: 0; }
+  .cring-dots, .cring-count, .cring-facts { display: none; }
+  .cring-buy { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: 10px; }
   .cring-from b { font-size: 22px; white-space: nowrap; }
-  .cring-go { white-space: nowrap; }
-  .cring-dots button { width: 16px; }
-  .cring-dots i { width: 6px; }
-  .cring-dots button[aria-current="true"] i { width: 14px; }
+  .cring-go { white-space: nowrap; margin-right: auto; }
   .cring-arrow { width: 38px; height: 38px; top: calc(50% - 19px); }
   .cring-arrow.is-prev { left: 6px; } .cring-arrow.is-next { right: 6px; }
 }
-.cring--sm { padding-top: 10px; --under: 30px; }
+}
+.cring--sm { padding-top: 10px; --under: 30px; --car-w: 50cqw; --side: .6; --spread: 41cqw; }
 .cring--sm .cring-label span { font-size: 8px; }
 .cring--sm .cring-label b { font-size: 18px; }
 .cring--sm .cring-stage { margin-top: 4px; }
