@@ -28,7 +28,7 @@ const AUTO_HOW = {
   commission: () => 'On the sale',
 };
 
-function Row({ icon: Icon, title, sub, amount, state, onPay, onDelete, onTap, busy }) {
+function Row({ icon: Icon, title, sub, amount, state, action, onDelete, onTap, busy }) {
   const st = STATE_WORD[state] || STATE_WORD.paid;
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${PL.line}` }}>
@@ -39,8 +39,8 @@ function Row({ icon: Icon, title, sub, amount, state, onPay, onDelete, onTap, bu
       </button>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: PL.text, ...num }}>{rm(amount)}</div>
-        {onPay
-          ? <button type="button" onClick={onPay} disabled={busy} style={{ marginTop: 3, fontSize: 11.5, fontWeight: 700, border: 'none', borderRadius: 999, padding: '4px 10px', background: PL.text, color: '#fff', cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Mark paid</button>
+        {action
+          ? <button type="button" onClick={action.run} disabled={busy} style={{ marginTop: 3, fontSize: 11.5, fontWeight: 700, border: 'none', borderRadius: 999, padding: '4px 10px', background: action.dark ? PL.text : PL.raised, color: action.dark ? '#fff' : PL.text, cursor: 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap' }}>{action.label}</button>
           : <div style={{ fontSize: 11.5, fontWeight: 600, color: st.c, marginTop: 2 }}>{st.w}</div>}
       </div>
       {onDelete && (
@@ -51,10 +51,11 @@ function Row({ icon: Icon, title, sub, amount, state, onPay, onDelete, onTap, bu
 }
 
 /**
- * unit: stock_units row. pnl: carPnl() result. rows: cost rows (shared shape, utils/carCosts.js).
- * Handlers return promises; the card shows its own busy state.
+ * unit: stock_units row. pnl: carPnl() result, optional (no "Worked out" block without it).
+ * rows: cost rows (shared shape, utils/carCosts.js). onState(row, 'owed'|'paid'), onEdit(row), onDelete(row).
+ * Handlers may return promises; the card shows its own busy state.
  */
-export function CarCostsCard({ unit, pnl, rows, failed, onAdd, onPay, onDelete, onEditBuy }) {
+export function CarCostsCard({ unit, pnl = null, rows, failed, onAdd, onState, onEdit, onDelete, onEditBuy, failedNote }) {
   const [busy, setBusy] = useState(null);
   const run = async (id, fn) => { setBusy(id); try { await fn(); } finally { setBusy(null); } };
   const purchase = Number(unit.purchase_price) || 0;
@@ -63,7 +64,7 @@ export function CarCostsCard({ unit, pnl, rows, failed, onAdd, onPay, onDelete, 
   const budgetLeft = Math.max(0, (Number(unit.recon_cost) || 0) - repairs);
   const totals = stateTotals(rows);
   totals.paid += purchase; totals.estimate += budgetLeft;
-  const autoLines = pnl.lines.filter((l) => AUTO_KEYS.includes(l.key) && l.val > 0);
+  const autoLines = (pnl?.lines || []).filter((l) => AUTO_KEYS.includes(l.key) && l.val > 0);
   const autoTotal = autoLines.reduce((s, l) => s + l.val, 0);
   return (
     <>
@@ -72,7 +73,7 @@ export function CarCostsCard({ unit, pnl, rows, failed, onAdd, onPay, onDelete, 
           <div style={{ fontSize: 15, fontWeight: 800, color: PL.text }}>Costs</div>
           <button type="button" onClick={onAdd} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 999, padding: '8px 14px', background: PL.accent, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}><Plus size={15} /> Add cost</button>
         </div>
-        {failed && <div className="pl-note-bad" style={{ marginTop: 10, fontSize: 12.5 }}>Could not load this car's costs, so the profit above may be too high. Close and open the car again.</div>}
+        {failed && <div className="pl-note-bad" style={{ marginTop: 10, fontSize: 12.5 }}>{failedNote || "Could not load this car's costs. Close and open the car again."}</div>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, margin: '12px 0 4px' }}>
           {[['Paid', totals.paid, PL.text], ['Owed', totals.owed, totals.owed ? PL.accentText : PL.text], ['Estimated', totals.estimate, PL.text]].map(([k, v, c]) => (
             <div key={k} style={{ background: PL.raised, borderRadius: 12, padding: '8px 10px', minWidth: 0 }}>
@@ -90,7 +91,10 @@ export function CarCostsCard({ unit, pnl, rows, failed, onAdd, onPay, onDelete, 
           <Row key={`${r.source}:${r.id}`} icon={KIND_ICON[r.kind] || Receipt} title={r.label}
             sub={[r.payee, fmtD(r.date), r.state === 'owed' && r.due ? `due ${fmtD(r.due)}` : ''].filter(Boolean).join(' · ')}
             amount={r.amount} state={r.state} busy={busy === r.id}
-            onPay={r.source === 'car_costs' && r.state === 'owed' ? () => run(r.id, () => onPay(r)) : null}
+            action={r.source !== 'car_costs' ? null
+              : r.state === 'owed' ? { label: 'Mark paid', dark: true, run: () => run(r.id, () => onState(r, 'paid')) }
+              : r.state === 'estimate' ? { label: 'Got the bill', run: () => run(r.id, () => onState(r, 'owed')) } : null}
+            onTap={r.source === 'car_costs' && onEdit ? () => onEdit(r) : null}
             onDelete={() => run(r.id, () => onDelete(r))} />
         ))}
         {rows.length === 0 && !failed && <div style={{ fontSize: 12.5, color: PL.textMuted, padding: '10px 0 2px', borderTop: `1px solid ${PL.line}` }}>Repairs, transport, inspection, ads: add each one here so the profit is real.</div>}
@@ -119,11 +123,14 @@ export function CarCostsCard({ unit, pnl, rows, failed, onAdd, onPay, onDelete, 
   );
 }
 
-/** The "Add a cost" pop-up. onSave(row) must throw on failure. */
-export function AddCostSheet({ carName, payees = [], disabledReason, onSave, onClose }) {
+/** The "Add a cost" pop-up; with `initial` (a row) it edits that cost. onSave(row) must throw on failure. */
+export function AddCostSheet({ carName, payees = [], disabledReason, onSave, onClose, initial = null }) {
   useModalHistory(true, onClose);
   useEffect(() => { document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = ''; }; }, []);
-  const [f, setF] = useState({ kind: 'recon', label: '', amount: '', payee: '', state: 'paid', due: '' });
+  const [f, setF] = useState(() => (initial
+    ? { kind: initial.kind, label: initial.label, amount: String(initial.amount), payee: initial.payee || '', state: initial.state, due: initial.due || '' }
+    : { kind: 'recon', label: '', amount: '', payee: '', state: 'paid', due: '' }));
+  const title = initial ? 'Edit cost' : 'Add a cost';
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e?.target ? e.target.value : e }));
@@ -140,9 +147,9 @@ export function AddCostSheet({ carName, payees = [], disabledReason, onSave, onC
   const err = (k) => errors[k] && <div style={{ fontSize: 12, color: PL.accentText, marginTop: 4 }}>{errors[k]}</div>;
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(17,24,39,.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add a cost" style={{ width: '100%', maxWidth: 520, maxHeight: '92vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '16px 18px calc(18px + env(safe-area-inset-bottom))', boxShadow: PL.shadow, boxSizing: 'border-box' }}>
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title} style={{ width: '100%', maxWidth: 520, maxHeight: '92vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '16px 18px calc(18px + env(safe-area-inset-bottom))', boxShadow: PL.shadow, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: PL.text }}>Add a cost</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: PL.text }}>{title}</div>
           <span style={{ fontSize: 12.5, color: PL.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{carName}</span>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 34, height: 34, flexShrink: 0, border: 'none', borderRadius: 999, background: PL.raised, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><X size={16} /></button>
         </div>

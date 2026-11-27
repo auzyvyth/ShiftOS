@@ -21,6 +21,8 @@ import { Car, Trash2, X, TrendingUp, Clock, ChevronRight, CheckCircle2, Phone, S
 import { loadBrokerCommission, brokerAmount } from "../../lib/brokerCommission";
 import { carPnl, daysHeld, AGEING_DAYS } from "../../utils/carPnl";
 import { loadCarCosts } from "../../lib/carCosts";
+import CarCostsModal from "../../components/inventory/CarCostsModal";
+import BillsToPay from "../../components/inventory/BillsToPay";
 import { totalsByUnit, pnlInputs } from "../../utils/carCosts";
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 
@@ -148,20 +150,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   useModalHistory(!!pnlUnit, () => setPnlUnit(null));
   const [pnlData, setPnlData] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
-  const [reconUnit, setReconUnit] = useState(null);
-  useModalHistory(!!reconUnit, () => setReconUnit(null));
-  const [reconJobs, setReconJobs] = useState([]);
-  const [reconLoading, setReconLoading] = useState(false);
-  const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
-  const [reconSaving, setReconSaving] = useState(false);
-  const [showReconAdd, setShowReconAdd] = useState(false);
-  // Advertising spend per unit (DMS-6)
-  const [adUnit, setAdUnit] = useState(null);
-  useModalHistory(!!adUnit, () => setAdUnit(null));
-  const [adEntries, setAdEntries] = useState([]);
-  const [adLoading, setAdLoading] = useState(false);
-  const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
-  const [adSaving, setAdSaving] = useState(false);
+  // The car's cost list (COSTS-1): one pop-up, the same list as the car pop-up's Owner tab.
+  const [costsUnit, setCostsUnit] = useState(null);
+  const [costsVersion, setCostsVersion] = useState(0);
+  // Every cost row of the dealer (Bills to pay reads the owed ones).
+  const [costRows, setCostRows] = useState([]);
   const [showCsvImport, setShowCsvImport] = useState(false);
   useModalHistory(showCsvImport, () => setShowCsvImport(false));
   const [showVendors, setShowVendors] = useState(false);
@@ -321,9 +314,10 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
       const ar = {}; const ac = {};
       (dp.data || []).forEach(d => { if (d.listing_id) { ar[d.listing_id] = (ar[d.listing_id] || 0) + (Number(d.sold_price) || 0); ac[d.listing_id] = (ac[d.listing_id] || 0) + (Number(d.dealer_products?.cost_price) || 0); } });
       setCostExtras({ ads: a, other: o, handover: h, addRev: ar, addCost: ac, broker: bk });
+      setCostRows(costs?.rows || []);
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, costsVersion]);
 
   // carPnl's one clock (daysHeld): from the purchase date, else the day the stock record was
   // made, else the listing; stops on the sale. The stored days_in_stock was stale for most cars.
@@ -640,19 +634,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     setPnlLoading(false);
   };
 
-  const RECON_CATS = [
-    { value: 'wash',        label: 'Wash & Detail' },
-    { value: 'polish',      label: 'Polish / Paint' },
-    { value: 'engine',      label: 'Engine / Mechanical' },
-    { value: 'tyres',       label: 'Tyres' },
-    { value: 'upholstery',  label: 'Upholstery / Interior' },
-    { value: 'bodywork',    label: 'Bodywork / Dents' },
-    { value: 'inspection',  label: 'Inspection' },
-    { value: 'electrical',  label: 'Electrical' },
-    { value: 'accessories', label: 'Accessories' },
-    { value: 'other',       label: 'Other' },
-  ];
-
   const handleCsvFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -768,83 +749,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     if (!error) setVendors(p => p.map(v => v.id === id ? { ...v, is_active } : v));
   };
 
-  const fetchReconJobs = async (unit) => {
-    setReconUnit(unit);
-    setReconJobs([]);
-    setReconLoading(true);
-    setShowReconAdd(false);
-    setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
-    const { data } = await supabase
-      .from('recon_jobs')
-      .select('*')
-      .eq('stock_unit_id', unit.id)
-      .order('created_at', { ascending: true });
-    setReconJobs(data || []);
-    setReconLoading(false);
-  };
-
-  const openAdSpend = async (unit) => {
-    setAdUnit(unit);
-    setAdEntries([]);
-    setAdLoading(true);
-    setAdForm({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
-    const { data } = await supabase.from('ad_spend').select('*').eq('stock_unit_id', unit.id).order('spent_at', { ascending: false });
-    setAdEntries(data || []);
-    setAdLoading(false);
-  };
-  const handleAddAdSpend = async () => {
-    if (!adForm.amount || Number(adForm.amount) <= 0) { toast.error('Enter an amount'); return; }
-    setAdSaving(true);
-    const { data, error } = await supabase.from('ad_spend').insert({
-      dealer_id: userId,
-      stock_unit_id: adUnit.id,
-      listing_id: adUnit.listing_id || null,
-      channel: adForm.channel,
-      amount: Number(adForm.amount),
-      spent_at: adForm.spent_at || null,
-      notes: adForm.notes.trim() || null,
-    }).select().single();
-    if (error) { toast.error('Failed to add spend'); }
-    else {
-      setAdEntries(p => [data, ...p]);
-      setAdForm({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
-    }
-    setAdSaving(false);
-  };
-  const handleDeleteAdSpend = async (id) => {
-    const { error } = await supabase.from('ad_spend').delete().eq('id', id);
-    if (error) { toast.error('Failed to delete'); return; }
-    setAdEntries(p => p.filter(e => e.id !== id));
-  };
-
-  const handleAddReconJob = async () => {
-    if (!reconForm.title.trim()) { toast.error('Enter a job title'); return; }
-    setReconSaving(true);
-    const { data, error } = await supabase.from('recon_jobs').insert({
-      dealer_id: userId,
-      stock_unit_id: reconUnit.id,
-      title: reconForm.title.trim(),
-      category: reconForm.category,
-      vendor: reconForm.vendor.trim() || null,
-      cost: reconForm.cost ? Number(reconForm.cost) : null,
-      eta_date: reconForm.eta_date || null,
-      notes: reconForm.notes.trim() || null,
-      status: 'pending',
-    }).select().single();
-    if (error) { toast.error('Failed to add job'); }
-    else {
-      logActivity({ dealerId: userId, actor: profile, tableName: 'recon_jobs', recordId: data.id, action: 'created', summary: `Recon job — ${data.title}${data.cost ? ` · RM ${Number(data.cost).toLocaleString()}` : ''}${data.vendor ? ` · ${data.vendor}` : ''}` });
-      setReconJobs(p => [...p, data]); setShowReconAdd(false); setReconForm({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
-    }
-    setReconSaving(false);
-  };
-
-  const handleReconStatus = async (jobId, newStatus) => {
-    const patch = { status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null };
-    const { error } = await supabase.from('recon_jobs').update(patch).eq('id', jobId);
-    if (!error) setReconJobs(p => p.map(j => j.id === jobId ? { ...j, ...patch } : j));
-  };
-
   const fetchHistory = async (unit) => {
     setHistoryUnit(unit);
     setHistoryLogs([]);
@@ -926,6 +830,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
           </div>
         ))}
       </div>}
+
+      {/* Every owed bill across the cars (COSTS-1); renders nothing when none is owed. */}
+      {can('view_cost') && (
+        <BillsToPay rows={costRows} onChanged={() => setCostsVersion((v) => v + 1)}
+          carName={(unitId) => { const u = units.find((x) => x.id === unitId); return u ? [u.car_listings?.year || u.year, u.car_listings?.brand || u.brand, u.car_listings?.model || u.model].filter(Boolean).join(' ') : 'A car'; }} />
+      )}
 
       <div style={{ ...INV_CARD, overflow: 'hidden' }}>
         <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvFile} />
@@ -1252,8 +1162,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
                 {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', 'primary', null, null, () => setSoldTarget(u))}
                 {can('view_gross') && ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
-                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', null, null, null, () => fetchReconJobs(u))}
-                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', null, null, null, () => openAdSpend(u))}
+                {can('view_cost') && ACTION_BTN('Costs', 'Every cost on this car: repairs, transport, ads. Add one, mark a bill paid', null, null, null, () => setCostsUnit(u))}
                 {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', null, null, null, () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
                 {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', null, null, null, () => fetchHistory(u))}
               </div>
@@ -1521,156 +1430,13 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
         </div>
       , document.body)}
 
-      {/* Advertising Spend Modal (DMS-6) */}
-      {adUnit && createPortal(
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Advertising Spend</h3>
-                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                  {adUnit.car_listings?.brand || adUnit.brand} {adUnit.car_listings?.model || adUnit.model} {adUnit.car_listings?.year || adUnit.year}
-                  {adUnit.car_listings?.plate_number || adUnit.registration_number ? ` · ${adUnit.car_listings?.plate_number || adUnit.registration_number}` : ''}
-                </p>
-              </div>
-              <button onClick={() => { setAdUnit(null); setAdEntries([]); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-5">
-              {/* Add form */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                <select value={adForm.channel} onChange={e => setAdForm(f => ({ ...f, channel: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
-                  {['mudah', 'carlist', 'facebook', 'tiktok', 'instagram', 'other'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                </select>
-                <input type="number" value={adForm.amount} onChange={e => setAdForm(f => ({ ...f, amount: e.target.value }))} placeholder="Amount (RM)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
-                <input type="date" value={adForm.spent_at} onChange={e => setAdForm(f => ({ ...f, spent_at: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none', colorScheme: 'light' }} />
-                <input value={adForm.notes} onChange={e => setAdForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes (optional)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
-                <button onClick={handleAddAdSpend} disabled={adSaving} style={{ gridColumn: '1/-1', background: '#ec4899', color: '#fff', border: 'none', borderRadius: 6, padding: '9px', fontSize: 13, fontWeight: 600, cursor: adSaving ? 'default' : 'pointer' }}>{adSaving ? 'Adding…' : 'Add spend'}</button>
-              </div>
-              {/* List */}
-              {adLoading ? (
-                <p className="text-gray-500 text-sm text-center py-6">Loading…</p>
-              ) : adEntries.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-6">No advertising logged for this car yet.</p>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f3f4f6', borderRadius: 8, marginBottom: 10, fontSize: 12 }}>
-                    <span style={{ color: '#6b7280' }}>{adEntries.length} entr{adEntries.length === 1 ? 'y' : 'ies'}</span>
-                    <span style={{ fontWeight: 700, color: '#111827' }}>Total: RM {adEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0).toLocaleString()}</span>
-                  </div>
-                  {adEntries.map(e => (
-                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid #f3f4f6', borderRadius: 8, marginBottom: 6 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', textTransform: 'capitalize' }}>{e.channel}</span>
-                        <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{e.spent_at ? new Date(e.spent_at).toLocaleDateString('en-MY') : ''}</span>
-                        {e.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{e.notes}</p>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>RM {Number(e.amount).toLocaleString()}</span>
-                        <button onClick={() => handleDeleteAdSpend(e.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Recon Job Card Modal */}
-      {reconUnit && createPortal(
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '88vh', background: '#fff' }}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h3 className="font-semibold text-gray-900" style={{ fontSize: 15 }}>Recon Job Card</h3>
-                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                  {reconUnit.car_listings?.brand} {reconUnit.car_listings?.model} {reconUnit.car_listings?.year}
-                  {reconUnit.car_listings?.plate_number || reconUnit.registration_number ? ` · ${reconUnit.car_listings?.plate_number || reconUnit.registration_number}` : ''}
-                </p>
-              </div>
-              <button onClick={() => { setReconUnit(null); setReconJobs([]); }} className="text-gray-400 hover:text-gray-700 p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-5">
-              {reconLoading ? (
-                <p className="text-gray-500 text-sm text-center py-8">Loading…</p>
-              ) : (
-                <>
-                  {/* Job list */}
-                  {reconJobs.length === 0 && !showReconAdd && (
-                    <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No recon jobs yet.</p>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                    {reconJobs.map(job => {
-                      const statusColor = job.status === 'done' ? '#34d399' : job.status === 'in_progress' ? '#f59e0b' : '#9ca3af';
-                      const cat = RECON_CATS.find(c => c.value === job.category)?.label || job.category;
-                      return (
-                        <div key={job.id} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{job.title}</p>
-                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                <span style={{ fontSize: 10, color: '#6b7280' }}>{cat}</span>
-                                {job.vendor && <span style={{ fontSize: 10, color: '#6b7280' }}>· {job.vendor}</span>}
-                                {job.cost != null && <span style={{ fontSize: 10, fontWeight: 600, color: '#374151' }}>RM {Number(job.cost).toLocaleString()}</span>}
-                                {job.eta_date && <span style={{ fontSize: 10, color: '#9ca3af' }}>ETA {new Date(job.eta_date).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}</span>}
-                              </div>
-                            </div>
-                            <select value={job.status} onChange={e => handleReconStatus(job.id, e.target.value)}
-                              style={{ fontSize: 10, fontWeight: 600, color: statusColor, background: '#eceef1', border: 'none', borderRadius: 5, padding: '3px 7px', cursor: 'pointer', appearance: 'none', outline: 'none' }}>
-                              <option value="pending">Pending</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="done">Done</option>
-                            </select>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Summary */}
-                  {reconJobs.length > 0 && (() => {
-                    const totalCost = reconJobs.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-                    const done = reconJobs.filter(j => j.status === 'done').length;
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f3f4f6', borderRadius: 8, marginBottom: 12, fontSize: 12 }}>
-                        <span style={{ color: '#6b7280' }}>{done}/{reconJobs.length} jobs done</span>
-                        {totalCost > 0 && <span style={{ fontWeight: 600, color: '#111827' }}>Total: RM {totalCost.toLocaleString()}</span>}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Add job form */}
-                  {showReconAdd ? (
-                    <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: 14 }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: premiumLight.textSec, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <input value={reconForm.title} onChange={e => setReconForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
-                        <select value={reconForm.category} onChange={e => setReconForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
-                          {RECON_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                        </select>
-                        <input value={reconForm.vendor} onChange={e => setReconForm(f => ({ ...f, vendor: e.target.value }))} placeholder="Vendor / workshop" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
-                        <input type="number" value={reconForm.cost} onChange={e => setReconForm(f => ({ ...f, cost: e.target.value }))} placeholder="Cost (RM)" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
-                        <input type="date" value={reconForm.eta_date} onChange={e => setReconForm(f => ({ ...f, eta_date: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none', colorScheme: 'light' }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                        <button onClick={() => setShowReconAdd(false)} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleAddReconJob} disabled={reconSaving} style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f59e0b', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: reconSaving ? 0.6 : 1 }}>
-                          {reconSaving ? 'Saving…' : 'Add Job'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: premiumLight.radius.row, background: premiumLight.raised, border: 'none', color: premiumLight.text, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      + Add Recon Job
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      , document.body)}
+      {/* The car's cost list (COSTS-1): the same list as the car pop-up's Owner tab. */}
+      {costsUnit && (
+        <CarCostsModal dealerId={userId} unit={costsUnit}
+          carName={[costsUnit.car_listings?.year || costsUnit.year, costsUnit.car_listings?.brand || costsUnit.brand, costsUnit.car_listings?.model || costsUnit.model].filter(Boolean).join(' ') || 'Car'}
+          onChanged={() => { setCostsVersion((v) => v + 1); fetchUnits(); }}
+          onClose={() => setCostsUnit(null)} />
+      )}
 
       {/* CSV Import Modal */}
       {showCsvImport && (

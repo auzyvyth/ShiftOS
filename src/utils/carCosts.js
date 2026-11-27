@@ -88,3 +88,14 @@ export function checkCost(f = {}) {
   return { ok, errors, row: ok ? { kind: f.kind, label: label.slice(0, 80), payee: String(f.payee || '').trim().slice(0, 80) || null,
     amount: Math.round(amount * 100) / 100, state: f.state, due_date: f.state === 'owed' && f.due ? f.due : null } : null };
 }
+
+// Owed bills across cars, for "Bills to pay": overdue first (most overdue on top), then by due
+// date, bills with no due date last. Days are counted on the Malaysia calendar.
+export function billsToPay(rows = [], now = Date.now()) {
+  const today = new Date(now + 8 * 3600000).toISOString().slice(0, 10);
+  const dayN = (d) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 86400000);
+  return rows
+    .filter((r) => r.state === 'owed' && r.source === 'car_costs')
+    .map((r) => ({ ...r, overdueDays: r.due ? Math.max(0, dayN(today) - dayN(String(r.due).slice(0, 10))) : 0 }))
+    .sort((a, b) => (b.overdueDays - a.overdueDays) || ((a.due ? dayN(a.due) : Infinity) - (b.due ? dayN(b.due) : Infinity)));
+}

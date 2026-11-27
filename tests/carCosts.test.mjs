@@ -1,6 +1,6 @@
 // Run: npm run test:carcosts. The cost list's rules, and that the SQL repair kinds match.
 import fs from 'fs';
-import { bucketOf, RECON_KINDS, fromLedger, fromReconJob, fromAdSpend, pnlInputs, totalsByUnit, stateTotals, checkCost } from '../src/utils/carCosts.js';
+import { billsToPay, bucketOf, RECON_KINDS, fromLedger, fromReconJob, fromAdSpend, pnlInputs, totalsByUnit, stateTotals, checkCost } from '../src/utils/carCosts.js';
 import { carPnl } from '../src/utils/carPnl.js';
 
 let pass = 0; const fails = [];
@@ -35,6 +35,19 @@ eq(checkCost({ kind: 'recon', label: '  4  tyres ', amount: 'RM 1,280', state: '
   { kind: 'recon', label: '4 tyres', payee: null, amount: 1280, state: 'owed', due_date: '2026-12-10' }, 'form cleans the input');
 eq(checkCost({ kind: 'recon', label: 'x', amount: 5, state: 'paid', due: '2026-12-10' }).row.due_date, null, 'a due date only on an owed bill');
 eq(Object.keys(checkCost({ kind: 'nope', label: '', amount: 0, state: 'x' }).errors).sort(), ['amount', 'kind', 'label', 'state'], 'every error named');
+
+// Bills to pay: owed only, overdue first, then by due date, no date last; Malaysia calendar.
+const T = Date.UTC(2026, 10, 27, 17, 0); // 28 Nov 01:00 in Malaysia
+const bills = billsToPay([
+  { id: 'a', source: 'car_costs', state: 'owed', due: '2026-12-10', amount: 1 },
+  { id: 'b', source: 'car_costs', state: 'owed', due: null, amount: 1 },
+  { id: 'c', source: 'car_costs', state: 'owed', due: '2026-11-20', amount: 1 },
+  { id: 'd', source: 'car_costs', state: 'paid', due: null, amount: 1 },
+  { id: 'e', source: 'car_costs', state: 'owed', due: '2026-11-27', amount: 1 },
+  { id: 'f', source: 'recon_jobs', state: 'owed', amount: 1 },
+], T);
+eq(bills.map((x) => x.id), ['c', 'e', 'a', 'b'], 'order: most overdue, overdue, by due date, no date');
+eq(bills.map((x) => x.overdueDays), [8, 1, 0, 0], 'days overdue on the Malaysia date');
 
 const sql = fs.readFileSync(new URL('../supabase/migrations/20261127b_car_costs.sql', import.meta.url), 'utf8');
 eq(sql.includes(`c.kind in (${RECON_KINDS.map((k) => `'${k}'`).join(', ')})`), true, 'SQL repair kinds = RECON_KINDS');

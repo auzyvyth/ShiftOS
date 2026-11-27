@@ -51,3 +51,10 @@ export async function deleteCarCost(row) {
   if (error) throw error;
   if (!data?.length) throw new Error('not_deleted');
 }
+
+/** Edit a row (state, amount, label...). Same "a row came back" check as markCarCostPaid. */
+export async function updateCarCost(id, patch) {
+  const { data, error } = await supabase.from('car_costs').update(patch).eq('id', id).select().single();
+  if (error) throw error;
+  return fromLedger(data);
+}

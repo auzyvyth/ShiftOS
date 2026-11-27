@@ -10,7 +10,7 @@ import { premiumLight as PL } from '../../theme/tokens';
 import { plPill } from '../../theme/plStatus';
 import AppraisalChecklist, { summarizeAppraisal } from '../AppraisalChecklist';
 import { CarCostsCard, AddCostSheet } from './CarCostsCard';
-import { loadCarCosts, addCarCost, markCarCostPaid, deleteCarCost } from '../../lib/carCosts';
+import { useCarCosts, LEDGER_OFF_REASON } from '../../hooks/useCarCosts';
 import { pnlInputs } from '../../utils/carCosts';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
@@ -61,11 +61,10 @@ function ToolModal({ title, onClose, children, footer }) {
 export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool, setTool, onStatusChange, statusUpdating, onMarkSold }) {
   const [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState(null);
-  // The car's cost list (COSTS-1): one read merging car_costs with the older recon_jobs / ad_spend.
-  const [costs, setCosts] = useState([]);
-  const [costsFailed, setCostsFailed] = useState(false);
-  const [ledgerLive, setLedgerLive] = useState(true);
-  const [payees, setPayees] = useState([]);
+  // The car's cost list (COSTS-1), shared with the Stock tab's Costs pop-up (hooks/useCarCosts.js).
+  const cc = useCarCosts(userId, unit?.id);
+  const costs = cc.rows;
+  const [editingCost, setEditingCost] = useState(null);
   const [addons, setAddons] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [costCfg, setCostCfg] = useState(null);
@@ -99,15 +98,6 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     loadBrokerCommission(userId).then((b) => setBrokerComm(brokerAmount(b.byCar, listing.id))).catch(() => { /* keep what is shown */ });
     setAddons(dp.data || []);
     setTasks(pst.data || []);
-    if (u) {
-      try {
-        const r = await loadCarCosts({ dealerId: userId, unitId: u.id });
-        setCosts(r.rows); setLedgerLive(r.ledgerLive); setCostsFailed(false);
-      } catch { setCosts([]); setCostsFailed(true); }
-      // Supplier names to suggest in "Paid to" (the owner's saved vendors; others simply get none).
-      supabase.from('vendors').select('name').eq('dealer_id', userId).eq('is_active', true).order('name')
-        .then(({ data }) => setPayees((data || []).map((v) => v.name).filter(Boolean)));
-    } else { setCosts([]); }
     setLoading(false);
   }, [listing.id, userId]);
 
@@ -201,25 +191,8 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     toast.success('Appraisal saved'); close();
   };
 
-  // ---- the cost list (COSTS-1) ----
-  const saveNewCost = async (row) => {
-    try {
-      const added = await addCarCost({ dealerId: userId, unitId: unit.id, row });
-      setCosts((p) => [added, ...p]);
-      toast.success('Cost added'); close();
-    } catch (e) { toast.error(e?.message?.includes('car_costs_wrong') ? 'This car is not on your account' : 'Could not save the cost'); throw e; }
-  };
-  const payCost = async (r) => {
-    try { const upd = await markCarCostPaid(r.id); setCosts((p) => p.map((x) => (x.source === r.source && x.id === r.id ? upd : x))); toast.success('Marked paid'); }
-    catch { toast.error('Could not mark it paid'); }
-  };
-  const removeCost = async (r) => {
-    if (!window.confirm(`Delete "${r.label}" (${rm(r.amount)})?`)) return;
-    try { await deleteCarCost(r); setCosts((p) => p.filter((x) => !(x.source === r.source && x.id === r.id))); toast.success('Cost deleted'); }
-    catch { toast.error('Could not delete it'); }
-  };
-
-  if (loading) return <p style={{ fontSize: 13, color: '#6b7280', padding: '20px 0', textAlign: 'center' }}>Loading owner detail…</p>;
+  // Wait for the cost list too: a profit shown without its costs would read too high.
+  if (loading || (unit && cc.loading)) return <p style={{ fontSize: 13, color: '#6b7280', padding: '20px 0', textAlign: 'center' }}>Loading owner detail…</p>;
 
   if (!unit) {
     return (
@@ -313,8 +286,9 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
       </div>
 
       {/* The cost list (COSTS-1): what was typed, then what is worked out. Adds up to the profit above. */}
-      <CarCostsCard unit={unit} pnl={v} rows={costs} failed={costsFailed}
-        onAdd={() => setTool && setTool('cost')} onPay={payCost} onDelete={removeCost}
+      <CarCostsCard unit={unit} pnl={v} rows={costs} failed={cc.failed}
+        failedNote="Could not load this car's costs, so the profit above may be too high. Close and open the car again."
+        onAdd={() => setTool && setTool('cost')} onEdit={setEditingCost} onState={cc.setState} onDelete={cc.remove}
         onEditBuy={() => setTool && setTool('prices')} />
       {(v.back !== 0 || addons.length > 0) && (
         <div style={{ background: PL.raised, borderRadius: PL.radius.row, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
@@ -417,10 +391,11 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
         </ToolModal>
       )}
 
-      {tool === 'cost' && (
-        <AddCostSheet carName={[listing.year, listing.brand, listing.model].filter(Boolean).join(' ')} payees={payees}
-          disabledReason={ledgerLive ? null : 'Adding costs switches on with tonight\'s update. The costs already logged are shown and counted.'}
-          onSave={saveNewCost} onClose={close} />
+      {(tool === 'cost' || editingCost) && (
+        <AddCostSheet carName={[listing.year, listing.brand, listing.model].filter(Boolean).join(' ')} payees={cc.payees}
+          initial={editingCost} disabledReason={cc.ledgerLive ? null : LEDGER_OFF_REASON}
+          onSave={async (row) => { if (editingCost) { await cc.edit(editingCost, row); setEditingCost(null); } else { await cc.add(row); close(); } }}
+          onClose={() => { setEditingCost(null); close(); }} />
       )}
 
       {tool === 'activity' && (
