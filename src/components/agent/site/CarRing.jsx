@@ -110,8 +110,8 @@ const CSS = `
 @media (hover: hover) and (pointer: fine) { .cring-arrow:hover { background: rgba(12,13,16,.8); transform: scale(1.06); } }
 .cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 4px 16px 0; color: #fff; }
 .cring-buy { display: grid; justify-items: start; gap: 6px; min-width: 0; }
-.cring-from { display: flex; align-items: baseline; font: italic 500 13px/1 var(--xd-font-body); color: rgba(255,255,255,.66); font-variant-numeric: tabular-nums; }
-.cring-from b { font-size: 26px; font-weight: 700; letter-spacing: -.01em; color: #fff; margin-left: 4px; }
+.cring-from { display: flex; align-items: baseline; font: italic 500 16px/1 var(--xd-font-body); color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+.cring-from b { font-size: 40px; font-weight: 700; letter-spacing: -.01em; color: #fff; margin-left: 4px; }
 .cring-go { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 12px 0 16px; border: 0; border-radius: 12px; color: #fff; cursor: pointer;
   background: linear-gradient(var(--ap-a, #dc2626), var(--ap-b2, #b91c1c)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px rgba(var(--ap-rgb, 220,38,38), .35);
   font: italic 700 13px/1 var(--xd-font-body); -webkit-tap-highlight-color: transparent; }
@@ -121,13 +121,13 @@ const CSS = `
 .cring-dots i { display: block; width: 10px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); transition: width .3s cubic-bezier(.22,1,.36,1), background .3s; }
 .cring-dots button[aria-current="true"] i { width: 22px; background: color-mix(in srgb, var(--ap-a, #dc2626) 60%, #fff); }
 .cring-count { font: 600 12px/1 var(--xd-font-body); color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; }
-.cring-facts { display: flex; justify-content: flex-end; gap: 18px; min-width: 0; }
-.cring-facts div { display: grid; gap: 3px; text-align: left; min-width: 0; padding-left: 16px; border-left: 1px solid rgba(255,255,255,.16); }
+.cring-facts { display: flex; justify-content: flex-end; gap: 26px; min-width: 0; }
+.cring-facts div { display: grid; gap: 3px; text-align: left; min-width: 0; padding-left: 24px; border-left: 1px solid rgba(255,255,255,.18); }
 .cring-facts div:first-child { border-left: 0; padding-left: 0; }
-.cring-facts b { display: inline-flex; align-items: center; gap: 5px; font: italic 700 16px/1 var(--xd-font-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cring-facts b { display: inline-flex; align-items: center; gap: 5px; font: italic 700 23px/1 var(--xd-font-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cring-facts .is-eco b { color: #4ade80; }
 .cring-facts .is-eco svg { color: #22c55e; fill: rgba(34,197,94,.25); }
-.cring-facts span { font: italic 500 11px/1.1 var(--xd-font-body); color: rgba(255,255,255,.6); }
+.cring-facts span { font: italic 500 14px/1.1 var(--xd-font-body); color: rgba(255,255,255,.68); }
 .cring-facts .is-eco span { color: rgba(134,239,172,.8); }
 @container (max-width: 640px) {
   /* Phone (owner, 2026-11-27): no dots, the button on the left and the price on the right, one short row. */
@@ -135,6 +135,7 @@ const CSS = `
   .cring-dots, .cring-count, .cring-facts { display: none; }
   /* Right-hand corner: the small button over the price (the photo takes the left). */
   .cring-buy { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 6px; }
+  .cring-from { font-size: 13px; }
   .cring-from b { font-size: 22px; white-space: nowrap; }
   .cring-go { white-space: nowrap; min-height: 28px; padding: 0 8px 0 11px; border-radius: 10px; font-size: 11.5px; }
   .cring-arrow { width: 38px; height: 38px; top: calc(50% - 19px); }
