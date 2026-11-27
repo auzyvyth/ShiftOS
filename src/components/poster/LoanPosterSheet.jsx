@@ -19,7 +19,11 @@ import {
   loanPosterNumbers, defaultDeposit, posterTitle,
   POSTER_ERRORS, LITE_POSTERS_PER_MONTH,
 } from '../../utils/loanPoster';
-import { renderLoanPoster, posterBlob } from './renderLoanPoster';
+import { posterBlob } from './renderLoanPoster';
+import { renderPoster } from './renderCarPoster';
+import {
+  POSTER_STYLES, PALETTES, styleOf, photosOf, styleAvailable, ribbonsFor, RIBBON_TEXT, styleLocked, paletteLocked,
+} from '../../utils/posterStyles';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { premiumDark as P } from '../../theme/tokens';
 
@@ -45,7 +49,10 @@ const PREMIUM = {
   fieldBorder: 'transparent', radius: P.radius.row, sheetRadius: P.radius.card,
 };
 
-const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
+const STYLE_KEY = 'xd_poster_style';
+const readStyle = () => { try { const v = localStorage.getItem(STYLE_KEY); return POSTER_STYLES.some((x) => x.id === v) ? v : 'kiraan'; } catch { return 'kiraan'; } };
+
+const fileName = (car, style) => `${style === 'kiraan' ? 'loan' : style}-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
 
 // onDownloaded: called once a clean file was saved or shared (the Premium
 // poster intro ends on it). bottomInset: extra scroll room under the content,
@@ -59,12 +66,22 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   const [rate, setRate] = useState(String(DEFAULT_EIR));
   const [basis, setBasis] = useState('eir');
   const [lang, setLang] = useState(readLang);
+  const [style, setStyle] = useState(readStyle);
+  const [palette, setPalette] = useState('carbon');
+  const [ribbon, setRibbon] = useState('none');
   const [quota, setQuota] = useState(null);
   const [busy, setBusy] = useState(false);
   const [limitHit, setLimitHit] = useState(false);
   const previewRef = useRef(null);
 
   const numbers = useMemo(() => loanPosterNumbers({ price, deposit, rate, basis }), [price, deposit, rate, basis]);
+  const nPhotos = photosOf(car).length;
+  const ribbons = useMemo(() => ribbonsFor(car), [car]);
+  const unlimited = quota ? !!quota.unlimited : null;
+  // a saved choice the car cannot use (too few photos) falls back to Kiraan
+  const activeStyle = styleAvailable(style, nPhotos) ? style : 'kiraan';
+  const sty = styleOf(activeStyle);
+  const lockedNow = styleLocked(activeStyle, unlimited) || (activeStyle === 'showroom' && paletteLocked(palette, unlimited));
   const pageUrl = seller?.slug ? `${SITE_URL}/s/${seller.slug}` : null;
 
   useEffect(() => {
@@ -79,16 +96,17 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   }, []);
 
   useEffect(() => { try { localStorage.setItem(LANG_KEY, lang); } catch { /* private mode */ } }, [lang]);
+  useEffect(() => { try { localStorage.setItem(STYLE_KEY, style); } catch { /* private mode */ } }, [style]);
 
   // Redraw the preview shortly after typing stops.
   useEffect(() => {
     if (!numbers.ok || !previewRef.current) return undefined;
     const id = setTimeout(() => {
-      renderLoanPoster(previewRef.current, { car, seller, numbers, lang, pageUrl, preview: true, dpr: 1 })
+      renderPoster(previewRef.current, { style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: true, dpr: 1 })
         .catch((e) => console.error('loan poster preview', e));
     }, 180);
     return () => clearTimeout(id);
-  }, [numbers, lang, car, seller, pageUrl]);
+  }, [numbers, lang, car, seller, pageUrl, activeStyle, palette, ribbon]);
 
   const left = quota && !quota.unlimited ? Math.max(0, (quota.limit || LITE_POSTERS_PER_MONTH) - (quota.used || 0)) : null;
 
@@ -102,13 +120,15 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
     }
     if (!data.reused && quota && !quota.unlimited) setQuota((q) => ({ ...q, used: (q?.used || 0) + 1 }));
     const canvas = document.createElement('canvas');
-    await renderLoanPoster(canvas, { car, seller, numbers, lang, pageUrl, preview: false, dpr: 2 });
+    // Same function, same inputs as the preview: the file is what was shown.
+    await renderPoster(canvas, { style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: false, dpr: 2 });
     const blob = await posterBlob(canvas);
-    return blob ? new File([blob], fileName(car), { type: 'image/jpeg' }) : null;
+    return blob ? new File([blob], fileName(car, activeStyle), { type: 'image/jpeg' }) : null;
   };
 
   const run = async (mode) => {
     if (!numbers.ok || busy) return;
+    if (lockedNow) { setLimitHit('style'); return; }
     setBusy(true);
     try {
       const file = await makeFile();
@@ -182,7 +202,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
         <style>{'.xd-poster-sheet button, .xd-poster-sheet input { font-family: inherit; }'}</style>
         <div style={{ position: 'sticky', top: 0, zIndex: 1, background: S.bg, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${theme === 'premium' ? P.line : S.border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Loan poster</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{activeStyle === 'kiraan' ? 'Loan poster' : 'Car poster'}</p>
             <p style={{ margin: 0, fontSize: 12, color: S.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{posterTitle(car)}</p>
           </div>
           <button onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, borderRadius: '50%', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -193,15 +213,79 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, padding: 16 }}>
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', justifyContent: 'center' }}>
             {numbers.ok ? (
-              <canvas ref={previewRef} style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: '1080 / 1350', borderRadius: 10, background: '#fff', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }} />
+              <canvas ref={previewRef} style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: `${sty.w} / ${sty.h}`, borderRadius: 10, background: '#fff', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }} />
             ) : (
-              <div style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: '1080 / 1350', borderRadius: 10, border: `1px dashed ${theme === 'premium' ? 'rgba(255,255,255,0.14)' : S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: S.sub, fontSize: 13 }}>
+              <div style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: `${sty.w} / ${sty.h}`, borderRadius: 10, border: `1px dashed ${theme === 'premium' ? 'rgba(255,255,255,0.14)' : S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: S.sub, fontSize: 13 }}>
                 {POSTER_ERRORS[numbers.error]}
               </div>
             )}
           </div>
 
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Style</span>
+              <div data-tour-id="poster-style" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {POSTER_STYLES.map((x) => {
+                  const ok = styleAvailable(x.id, nPhotos);
+                  const lock = styleLocked(x.id, unlimited);
+                  return (
+                    <button key={x.id} type="button" disabled={!ok} onClick={() => { setStyle(x.id); setLimitHit(false); }}
+                      title={ok ? '' : `Needs ${x.minPhotos} photos`}
+                      style={{ flex: '1 1 70px', padding: '7px 0', fontSize: 12, fontWeight: 700, borderRadius: theme === 'premium' ? 999 : 8, cursor: ok ? 'pointer' : 'default', opacity: ok ? 1 : 0.4,
+                        border: `1px solid ${activeStyle === x.id ? S.onBorder : S.border}`,
+                        background: activeStyle === x.id ? S.onBg : (theme === 'premium' ? S.panel : 'transparent'), color: activeStyle === x.id ? S.onText : S.sub }}>
+                      {x.name}{lock && <Lock size={10} style={{ marginLeft: 4, verticalAlign: -1 }} />}
+                    </button>
+                  );
+                })}
+              </div>
+              {nPhotos < 3 && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>Story needs 3 photos on the car.</span>}
+            </div>
+            {activeStyle === 'showroom' && (
+              <>
+                <div>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Colour</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {PALETTES.map((p) => (
+                      <button key={p.id} type="button" aria-label={p.name} onClick={() => { setPalette(p.id); setLimitHit(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
+                          border: `1px solid ${palette === p.id ? S.onBorder : S.border}`, background: palette === p.id ? S.onBg : 'transparent', color: palette === p.id ? S.onText : S.sub }}>
+                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: p.accent, border: '1px solid rgba(255,255,255,0.3)' }} />{p.name}
+                        {paletteLocked(p.id, unlimited) && <Lock size={10} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {ribbons.length > 1 && (
+                  <div>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Ribbon</span>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {ribbons.map((r) => (
+                        <button key={r} type="button" onClick={() => setRibbon(r)}
+                          style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
+                            border: `1px solid ${ribbon === r ? S.onBorder : S.border}`, background: ribbon === r ? S.onBg : 'transparent', color: ribbon === r ? S.onText : S.sub }}>
+                          {r === 'none' ? 'None' : RIBBON_TEXT[lang][r]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {activeStyle === 'story' && ribbons.length > 1 && (
+              <div>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Label</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {ribbons.map((r) => (
+                    <button key={r} type="button" onClick={() => setRibbon(r)}
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
+                        border: `1px solid ${ribbon === r ? S.onBorder : S.border}`, background: ribbon === r ? S.onBg : 'transparent', color: ribbon === r ? S.onText : S.sub }}>
+                      {r === 'none' ? 'For sale' : RIBBON_TEXT[lang][r]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div data-tour-id="poster-numbers" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {field('Car price', price, setPrice)}
             <div>
@@ -228,8 +312,8 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
             {limitHit ? (
               <div style={{ border: `1px solid ${S.border}`, borderRadius: S.radius, padding: 14, background: S.panel }}>
-                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={14} /> {LITE_POSTERS_PER_MONTH} free posters used this month</p>
-                <p style={{ margin: '0 0 12px', fontSize: 12, color: S.sub }}>Cars you already made a poster for stay free. Premium makes posters for every car.</p>
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={14} /> {limitHit === 'style' ? 'This style is Premium' : `${LITE_POSTERS_PER_MONTH} free posters used this month`}</p>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: S.sub }}>{limitHit === 'style' ? 'Free posters use Kiraan or Showroom in Carbon. Premium has every style and colour.' : 'Cars you already made a poster for stay free. Premium makes posters for every car.'}</p>
                 {onUpgrade && (
                   <button onClick={() => { onClose(); onUpgrade(); }} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: S.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                     See Premium

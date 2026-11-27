@@ -3001,6 +3001,7 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 - [ ] **POSTER-4: Studio "Monthly Deal" template prints "LOW DEPOSIT · FAST LOAN" and
   "BULAN INI SAHAJA" on every poster** (`carTemplates.js:246`, `:251`). "Fast loan" reads
   as an approval promise. Remove or make them editable-and-empty.
+- [ ] **POSTER-6: car poster styles (owner, 2026-11-27) - WIRED, on the branch, not on staging.** Showroom (3 colours + ribbon), Story (3+ photos), Card (colour from the photo) next to Kiraan in `LoanPosterSheet.jsx`; drawing in `components/poster/renderCarPoster.js`, rules in `utils/posterStyles.js` (`npm run test:posterstyles`). Preview and download use the same function (download is 2x, no PREVIEW word). Lite gets Kiraan + Showroom Carbon (`LITE_STYLES`, client-side look gate only). Plan + mockup: `docs/POSTER_TEMPLATES_PLAN.md`. Left: 4-car sheet from Listings > Select, cut-out hero (POSTER-2b), POSTER-4 fix, owner calls on Lite styles + ribbon list.
 - [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
   WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
 
