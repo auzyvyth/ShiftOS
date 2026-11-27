@@ -6,6 +6,7 @@ import { pageCalc } from '../../../utils/pageCalc';
 import { modelNote, modelRm as rm } from '../../../utils/modelPick';
 import { groupBrands, fromPrice, variantLine, stageTag, orderSpecs } from '../../../utils/configurator';
 import { LOGOS } from '../../../config/brandLogos';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNewCarInfo, useNewCarVariant, useNewCarInfos, specRows } from '../../newcar/NewCarListingInfo';
 import ModelHelper from './ModelHelper';
 
@@ -164,6 +165,41 @@ function Build({ car, note, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   );
 }
 
+// The model rail scrolls sideways. A mouse has no swipe, so on desktop it gets a round arrow on
+// each side, shown only while there is more to see that way (owner, 2026-11-27). Touch keeps swiping.
+function ScrollRail({ label, children }) {
+  const ref = useRef(null);
+  const [edge, setEdge] = useState({ l: false, r: false });
+  const measure = () => {
+    const el = ref.current;
+    if (!el) return;
+    const l = el.scrollLeft > 4;
+    const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    setEdge((e) => (e.l === l && e.r === r ? e : { l, r }));
+  };
+  useEffect(() => {
+    measure();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  const go = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: calm ? 'auto' : 'smooth' });
+  };
+  return (
+    <div className="cfg-railwrap">
+      <div ref={ref} onScroll={measure} className="cfg-rail keep-alpha" role="group" aria-label={label}>{children}</div>
+      {edge.l && <button type="button" className="cfg-arrow is-prev" onClick={() => go(-1)} aria-label="Scroll models left"><ChevronLeft size={18} /></button>}
+      {edge.r && <button type="button" className="cfg-arrow is-next" onClick={() => go(1)} aria-label="Scroll models right"><ChevronRight size={18} /></button>}
+    </div>
+  );
+}
+
 export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, onWhatsApp, onCalc }) {
   const models = useMemo(() => (cars || []).filter((c) => c.is_model_card), [cars]);
   const brands = useMemo(() => groupBrands(models), [models]);
@@ -206,7 +242,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
         </div>
       )}
 
-      {brand.models.length > 1 && <div className="cfg-rail keep-alpha" role="group" aria-label={`${brand.brand} models`}>
+      {brand.models.length > 1 && <ScrollRail label={`${brand.brand} models`}>
         {brand.models.map((c) => {
           const from = fromPrice(c, infos[c.id]);
           return (
@@ -217,7 +253,7 @@ export default function ModelPicker({ cars, site, firstName, hasWa, waUrlFor, on
             </button>
           );
         })}
-      </div>}
+      </ScrollRail>}
 
       <div ref={stageRef} style={{ scrollMarginTop: 70 }}>
         <Build key={car.id} car={car} note={modelNote(site, car)} firstName={firstName} hasWa={hasWa} waUrlFor={waUrlFor} onWhatsApp={onWhatsApp} onCalc={onCalc} />
@@ -261,8 +297,19 @@ function ConfigStyle() {
 
       /* Model rail: photo tiles */
       .cfg-rail { display: grid; grid-auto-flow: column; grid-auto-columns: 158px; width: max-content; max-width: 100%; gap: 0; overflow-x: auto; scroll-snap-type: x proximity;
-        scrollbar-width: none; border: 1px solid var(--c-line); border-radius: var(--c-rc); margin: 0 0 18px; }
+        scrollbar-width: none; border: 1px solid var(--c-line); border-radius: var(--c-rc); margin: 0; }
       .cfg-rail::-webkit-scrollbar { display: none; }
+      .cfg-railwrap { position: relative; width: max-content; max-width: 100%; margin: 0 0 18px; }
+      .cfg-arrow { display: none; }
+      @media (hover: hover) and (pointer: fine) {
+        .cfg-arrow { display: flex; align-items: center; justify-content: center; position: absolute; top: calc(50% - 18px); width: 36px; height: 36px; padding: 0; border: none; border-radius: 50%;
+          background: #fff; color: #0f1115; cursor: pointer; z-index: 2; box-shadow: 0 0 0 1px rgba(15,17,21,.08), 0 4px 14px rgba(15,17,21,.18);
+          transition: transform .25s cubic-bezier(.22,1,.36,1); }
+        .cfg-arrow.is-prev { left: -10px; }
+        .cfg-arrow.is-next { right: -10px; }
+        .cfg-arrow:hover { transform: scale(1.06); }
+        .cfg-arrow:active { transform: scale(.94); transition-duration: .1s; }
+      }
       .cfg-rail button { scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px 14px; min-width: 0;
         border: none; background: none; cursor: pointer; text-align: left; color: var(--c-t1); font-family: inherit; box-shadow: inset 0 -2px 0 transparent; transition: background .2s, box-shadow .2s; }
       .cfg-rail button + button { border-left: 1px solid var(--c-line); }
