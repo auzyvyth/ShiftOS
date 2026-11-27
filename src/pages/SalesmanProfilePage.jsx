@@ -1102,8 +1102,8 @@ export default function SalesmanProfilePage() {
               </h1>
               {/* Business card: Share sits on the right, level with the middle of the photo on a phone (owner, 2026-11-26);
                   on desktop it sits next to the name (owner, 2026-11-27). */}
-              <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
-                {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+              <button className="ap-share aph-bc-share" onClick={sharePage} aria-label={shareCopied ? "Link copied" : "Share this page"} title={shareCopied ? "Link copied" : "Share this page"}>
+                {shareCopied ? <Check size={17} /> : <Share2 size={17} />}
               </button>
             </div>
             {(agentNickname(seoProfile) || profile.job_title) && (
@@ -1533,7 +1533,8 @@ export default function SalesmanProfilePage() {
         .aph-name-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
         .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
         .aph--card > .ap-share { display: none; }
-        .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; flex: none; left: auto; right: auto; top: auto; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; flex: none; left: auto; right: auto; top: auto; width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; background: #f0f1f4 !important; color: #0f1115 !important; border: 1px solid rgba(17,24,39,.1) !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share:hover { background: #e4e6ea !important; }
         .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
         .aph-bc-id { min-width: 0; }
