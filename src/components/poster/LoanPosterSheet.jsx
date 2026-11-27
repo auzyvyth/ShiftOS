@@ -20,9 +20,11 @@ import {
   POSTER_ERRORS, LITE_POSTERS_PER_MONTH,
 } from '../../utils/loanPoster';
 import { posterBlob } from './renderLoanPoster';
-import { renderPoster } from './renderCarPoster';
+import { renderPoster, cachedCutout, rememberCutout } from './renderCarPoster';
+import { cutOutBackground, cutoutErrorText, CUTOUT_MODEL_BYTES } from '../../lib/cutout';
+import { loadImg } from '../../utils/posterImage';
 import {
-  POSTER_STYLES, PALETTES, styleOf, photosOf, styleAvailable, ribbonsFor, RIBBON_TEXT, styleLocked, paletteLocked,
+  POSTER_STYLES, CUTOUT_STYLES, PALETTES, styleOf, photosOf, styleAvailable, ribbonsFor, RIBBON_TEXT, styleLocked, paletteLocked,
 } from '../../utils/posterStyles';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { premiumDark as P } from '../../theme/tokens';
@@ -69,6 +71,10 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   const [style, setStyle] = useState(readStyle);
   const [palette, setPalette] = useState('carbon');
   const [ribbon, setRibbon] = useState('none');
+  const [cut, setCut] = useState(null);          // the cut-out car (Image) once made
+  const [useCut, setUseCut] = useState(false);
+  const [cutBusy, setCutBusy] = useState(null);  // null | status text
+  const [cutErr, setCutErr] = useState(null);
   const [quota, setQuota] = useState(null);
   const [busy, setBusy] = useState(false);
   const [limitHit, setLimitHit] = useState(false);
@@ -81,6 +87,9 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   // a saved choice the car cannot use (too few photos) falls back to Kiraan
   const activeStyle = styleAvailable(style, nPhotos) ? style : 'kiraan';
   const sty = styleOf(activeStyle);
+  const mainPhoto = photosOf(car)[0] || null;
+  const canCut = CUTOUT_STYLES.includes(activeStyle) && !!mainPhoto;
+  const cutNow = canCut && useCut && cut ? cut : null;
   const lockedNow = styleLocked(activeStyle, unlimited) || (activeStyle === 'showroom' && paletteLocked(palette, unlimited));
   const pageUrl = seller?.slug ? `${SITE_URL}/s/${seller.slug}` : null;
 
@@ -96,17 +105,35 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   }, []);
 
   useEffect(() => { try { localStorage.setItem(LANG_KEY, lang); } catch { /* private mode */ } }, [lang]);
+  // a cut-out made earlier this session for this photo comes straight back
+  useEffect(() => { const hit = cachedCutout(mainPhoto); setCut(hit); if (hit) setUseCut(true); }, [mainPhoto]);
+  const removeBackground = async () => {
+    if (cutBusy || !mainPhoto) return;
+    if (unlimited === false) { setLimitHit('style'); return; }
+    setCutErr(null); setCutBusy('Starting...');
+    try {
+      const blob = await cutOutBackground(mainPhoto, {
+        onProgress: (p) => setCutBusy(p.stage === 'download'
+          ? `Getting the tool, once only: ${Math.round(p.loaded / 1e6)} of ${Math.round(p.total / 1e6)} MB`
+          : 'Removing the background... this can take a minute'),
+      });
+      const url = URL.createObjectURL(blob);
+      const img = await loadImg(url);
+      if (!img) throw new Error('cutout_failed');
+      rememberCutout(mainPhoto, img); setCut(img); setUseCut(true);
+    } catch (e) { setCutErr(cutoutErrorText(e)); } finally { setCutBusy(null); }
+  };
   useEffect(() => { try { localStorage.setItem(STYLE_KEY, style); } catch { /* private mode */ } }, [style]);
 
   // Redraw the preview shortly after typing stops.
   useEffect(() => {
     if (!numbers.ok || !previewRef.current) return undefined;
     const id = setTimeout(() => {
-      renderPoster(previewRef.current, { style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: true, dpr: 1 })
+      renderPoster(previewRef.current, { cutout: cutNow, style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: true, dpr: 1 })
         .catch((e) => console.error('loan poster preview', e));
     }, 180);
     return () => clearTimeout(id);
-  }, [numbers, lang, car, seller, pageUrl, activeStyle, palette, ribbon]);
+  }, [numbers, lang, car, seller, pageUrl, activeStyle, palette, ribbon, cutNow]);
 
   const left = quota && !quota.unlimited ? Math.max(0, (quota.limit || LITE_POSTERS_PER_MONTH) - (quota.used || 0)) : null;
 
@@ -121,7 +148,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
     if (!data.reused && quota && !quota.unlimited) setQuota((q) => ({ ...q, used: (q?.used || 0) + 1 }));
     const canvas = document.createElement('canvas');
     // Same function, same inputs as the preview: the file is what was shown.
-    await renderPoster(canvas, { style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: false, dpr: 2 });
+    await renderPoster(canvas, { cutout: cutNow, style: activeStyle, palette, ribbon, car, seller, numbers, lang, pageUrl, preview: false, dpr: 2 });
     const blob = await posterBlob(canvas);
     return blob ? new File([blob], fileName(car, activeStyle), { type: 'image/jpeg' }) : null;
   };
@@ -284,6 +311,26 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+            {canCut && (
+              <div>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Car photo</span>
+                {cutBusy ? (
+                  <p style={{ margin: 0, fontSize: 12, color: S.sub }}>{cutBusy}</p>
+                ) : cut ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {pill(!useCut, 'Whole photo', () => setUseCut(false))}
+                    {pill(useCut, 'Car only', () => setUseCut(true))}
+                  </div>
+                ) : (
+                  <button type="button" onClick={removeBackground}
+                    style={{ width: '100%', padding: '9px 0', fontSize: 12, fontWeight: 700, borderRadius: theme === 'premium' ? 999 : 8, cursor: 'pointer', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.text }}>
+                    {unlimited === false && <Lock size={11} style={{ marginRight: 5, verticalAlign: -1 }} />}Remove the background
+                  </button>
+                )}
+                {!cut && !cutBusy && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>Done on your phone, the photo is not uploaded. Takes up to a minute{`; the first time downloads a ${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB tool once.`}</span>}
+                {cutErr && <span style={{ display: 'block', fontSize: 11, color: S.accent, marginTop: 5 }}>{cutErr}</span>}
               </div>
             )}
             <div data-tour-id="poster-numbers" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

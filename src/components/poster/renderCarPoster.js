@@ -13,9 +13,10 @@
 import { roundRectPath, drawCover, drawCircle } from '../../utils/posterImage';
 import { POSTER_COPY, fmtRM, fmtPct } from '../../utils/loanPoster';
 import {
-  styleOf, paletteOf, RIBBON_TEXT, photosOf, featureStrip, specParts, photoPlan, tintFromRgb, CARD_FALLBACK_TINT, styleAvailable,
+  fitInside, styleOf, paletteOf, RIBBON_TEXT, photosOf, featureStrip, specParts, photoPlan, tintFromRgb, CARD_FALLBACK_TINT, styleAvailable,
 } from '../../utils/posterStyles';
 import { renderLoanPoster, cachedImage, ensureFonts } from './renderLoanPoster';
+import { cutoutBounds, placeCar, drawCarShadow } from '../studio/backdrops';
 
 const FAMILY = "'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 const DISPLAY = "'Bebas Neue', 'Outfit', Impact, sans-serif";
@@ -110,14 +111,23 @@ function drawShowroom(ctx, k, o) {
 
   // right-hand wedge sits BEHIND the photo, like the glow
   ctx.save(); ctx.globalAlpha = 0.4; k.poly([[W, 300], [W, 660], [W - 150, 660]], pal.accent); ctx.restore();
-  // hero photo, faded into the page top and bottom
+  // Hero. A cut-out car stands on the glow with its shadow; otherwise the photo
+  // fills the band (and fades into the page top and bottom).
   const HY = 300, HH = 480;
-  if (photos[0]) drawCover(ctx, photos[0], 0, HY, W, HH, 0);
-  else { ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(0, HY, W, HH); k.text(c.noPhoto, W / 2, HY + HH / 2, { size: 30, weight: 600, color: 'rgba(255,255,255,0.5)', align: 'center' }); }
-  k.vfade(0, HY, W, 150, pal.bg, 'rgba(0,0,0,0)');
-  const bottomFade = ctx.createLinearGradient(0, HY + HH - 200, 0, HY + HH);
-  bottomFade.addColorStop(0, 'rgba(0,0,0,0)'); bottomFade.addColorStop(1, pal.bg);
-  ctx.fillStyle = bottomFade; ctx.fillRect(0, HY + HH - 200, W, 200);
+  if (o.cutout) {
+    const place = placeCar({ bounds: cutoutBounds(o.cutout), W, H, zone: { x: 4, y: (HY / H) * 100, w: 92, h: (HH / H) * 100 }, fit: { size: 1, lift: 0 } });
+    drawCarShadow(ctx, place);
+    ctx.save(); ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(o.cutout, place.sx, place.sy, place.sw, place.sh, place.dx, place.dy, place.dw, place.dh);
+    ctx.restore();
+  } else {
+    if (photos[0]) drawCover(ctx, photos[0], 0, HY, W, HH, 0);
+    else { ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(0, HY, W, HH); k.text(c.noPhoto, W / 2, HY + HH / 2, { size: 30, weight: 600, color: 'rgba(255,255,255,0.5)', align: 'center' }); }
+    k.vfade(0, HY, W, 150, pal.bg, 'rgba(0,0,0,0)');
+    const bottomFade = ctx.createLinearGradient(0, HY + HH - 200, 0, HY + HH);
+    bottomFade.addColorStop(0, 'rgba(0,0,0,0)'); bottomFade.addColorStop(1, pal.bg);
+    ctx.fillStyle = bottomFade; ctx.fillRect(0, HY + HH - 200, W, 200);
+  }
 
   // corner wedge, top left (over the photo's fade)
   ctx.save(); ctx.globalAlpha = 0.9; k.poly([[0, 0], [210, 0], [0, 150]], pal.accent); ctx.restore();
@@ -293,32 +303,51 @@ function drawCard(ctx, k, o) {
     k.text(f.str, x0 + 52, 73, { size: f.size, weight: 700, spacing: 2 });
   }
 
-  // photo
-  const PY = 211, PHH = 1075;
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
-  k.box(PX, PY, PW, PHH, 8, tint); ctx.restore();
-  if (photos[0]) drawCover(ctx, photos[0], PX, PY, PW, PHH, 8);
-  ctx.save(); roundRectPath(ctx, PX, PY, PW, PHH, 8); ctx.clip();
-  const sheen = ctx.createLinearGradient(0, PY, 0, PY + PHH);
-  sheen.addColorStop(0, 'rgba(0,0,0,0.12)'); sheen.addColorStop(0.3, 'rgba(0,0,0,0)'); sheen.addColorStop(0.62, 'rgba(0,0,0,0)'); sheen.addColorStop(1, tint);
-  ctx.fillStyle = sheen; ctx.fillRect(PX, PY, PW, PHH); ctx.restore();
+  // The car. Never cropped: a cut-out stands on the colour with a shadow, a
+  // plain photo is shown whole (contain) on a soft card. The photo + the name
+  // and facts under it are one block, centred between the top bar and the price.
+  const REGION_Y = 130, REGION_H = 1440, GAPN = 56, TEXTH = 96;
+  const src = o.cutout || photos[0];
+  const cb = o.cutout ? cutoutBounds(o.cutout) : null;
+  const iw = cb ? cb.w : (src?.naturalWidth || src?.width || 0), ih = cb ? cb.h : (src?.naturalHeight || src?.height || 0);
+  const maxH = REGION_H - GAPN - TEXTH;
+  const fitSz = o.cutout ? fitInside(iw, ih, 960, Math.min(maxH, 760)) : fitInside(iw, ih, PW, maxH);
+  const blockH = fitSz.h + GAPN + TEXTH;
+  const by = REGION_Y + Math.max(0, (REGION_H - blockH) / 2);
+  const bx = (W - fitSz.w) / 2;
+  if (src && fitSz.w) {
+    if (o.cutout) {
+      const spot = ctx.createRadialGradient(W / 2, by + fitSz.h * 0.55, 0, W / 2, by + fitSz.h * 0.55, 620);
+      spot.addColorStop(0, 'rgba(255,255,255,0.16)'); spot.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = spot; ctx.fillRect(0, by - 200, W, fitSz.h + 500);
+      drawCarShadow(ctx, { dx: bx, dw: fitSz.w, dh: fitSz.h, floorY: by + fitSz.h });
+      ctx.save(); ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(o.cutout, cb.x, cb.y, cb.w, cb.h, bx, by, fitSz.w, fitSz.h);
+      ctx.restore();
+    } else {
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+      k.box(bx, by, fitSz.w, fitSz.h, 8, tint); ctx.restore();
+      ctx.save(); roundRectPath(ctx, bx, by, fitSz.w, fitSz.h, 8); ctx.clip();
+      ctx.drawImage(src, bx, by, fitSz.w, fitSz.h); ctx.restore();
+    }
+  }
 
   // grade: only a recon car with a grade the seller typed, worded as theirs
   const recon = car?.is_recon === true || String(car?.condition || '').toLowerCase() === 'recon';
   if (recon && car?.auction_grade) {
-    const gx = PX + PW - 24 - 170, gy = PY + 24;
-    k.box(gx, gy, 170, 112, 20, 'rgba(8,10,14,0.72)');
-    ctx.save(); roundRectPath(ctx, gx, gy, 170, 112, 20); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.stroke(); ctx.restore();
-    k.text(c.auctionGrade, gx + 85, gy + 34, { size: 17, weight: 700, color: 'rgba(255,255,255,0.7)', align: 'center', spacing: 3 });
+    const gxx = Math.max(PX, Math.min(PX + PW, bx + fitSz.w) - 170 - 24), gy = by + 24;
+    k.box(gxx, gy, 170, 112, 20, 'rgba(8,10,14,0.72)');
+    ctx.save(); roundRectPath(ctx, gxx, gy, 170, 112, 20); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.stroke(); ctx.restore();
+    k.text(c.auctionGrade, gxx + 85, gy + 34, { size: 17, weight: 700, color: 'rgba(255,255,255,0.7)', align: 'center', spacing: 3 });
     const gv = k.fit(String(car.auction_grade).trim(), 140, 64, 800, 28);
-    k.text(gv.str, gx + 85, gy + 92, { size: gv.size, weight: 800, align: 'center' });
+    k.text(gv.str, gxx + 85, gy + 92, { size: gv.size, weight: 800, align: 'center' });
   }
 
   // name + facts
   const nm = k.fit([car?.year, car?.brand, car?.model].filter(Boolean).join(' ') || 'Car', W - 80, 50, 700, 28);
-  k.text(nm.str, W / 2, 1352, { size: nm.size, weight: 700, align: 'center' });
+  k.text(nm.str, W / 2, by + fitSz.h + GAPN, { size: nm.size, weight: 700, align: 'center' });
   const facts = [car?.variant, ...specParts(car).filter((p) => /KM$/i.test(p)).map((p) => p.toLowerCase())].filter(Boolean).join(' · ');
-  if (facts) { const f = k.fit(facts, W - 120, 30, 500, 18); k.text(f.str, W / 2, 1404, { size: f.size, weight: 500, color: 'rgba(255,255,255,0.7)', align: 'center' }); }
+  if (facts) { const f = k.fit(facts, W - 120, 30, 500, 18); k.text(f.str, W / 2, by + fitSz.h + GAPN + 52, { size: f.size, weight: 500, color: 'rgba(255,255,255,0.7)', align: 'center' }); }
 
   // red wash at the foot, then the monthly
   k.vfade(0, H - 576, W, 576, 'rgba(140,20,30,0)', 'rgba(140,20,30,0.55)');
@@ -336,8 +365,14 @@ function drawCard(ctx, k, o) {
   if (phone) k.text(phone, PX + PW, 1884, { size: 28, weight: 700, align: 'right' });
 }
 
+// Cut-outs made this session, by photo URL, so reopening the sheet (or changing
+// style) never runs the 30 to 80 second job twice. Memory only, never uploaded.
+const cutCache = new Map();
+export const cachedCutout = (url) => cutCache.get(url) || null;
+export const rememberCutout = (url, img) => { if (url && img) cutCache.set(url, img); };
+
 // ───────────────────────── entry point ─────────────────────────
-// opts: { style, palette, ribbon, car, seller, numbers, lang, pageUrl, preview, dpr }
+// opts: { cutout (an Image with a clear background, Showroom + Card only), style, palette, ribbon, car, seller, numbers, lang, pageUrl, preview, dpr }
 export async function renderPoster(canvas, opts) {
   const style = styleOf(opts.style);
   if (style.id === 'kiraan') return renderLoanPoster(canvas, opts);

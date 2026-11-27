@@ -107,3 +107,13 @@ export const LITE_STYLES = ['kiraan', 'showroom'];
 export const LITE_PALETTES = ['carbon'];
 export const styleLocked = (styleId, unlimited) => unlimited === false && !LITE_STYLES.includes(styleId);
 export const paletteLocked = (paletteId, unlimited) => unlimited === false && !LITE_PALETTES.includes(paletteId);
+
+// Fit a picture inside a box WITHOUT cropping it (contain). Returns the drawn
+// size. Used by the Card, so a landscape photo is shown whole, not zoomed in.
+export function fitInside(iw, ih, maxW, maxH) {
+  if (!(iw > 0) || !(ih > 0) || !(maxW > 0) || !(maxH > 0)) return { w: 0, h: 0 };
+  const k = Math.min(maxW / iw, maxH / ih);
+  return { w: Math.round(iw * k), h: Math.round(ih * k) };
+}
+// Styles that can put a cut-out car straight on the colour.
+export const CUTOUT_STYLES = ['showroom', 'card'];

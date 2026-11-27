@@ -1,6 +1,6 @@
 // npm run test:posterstyles
 import assert from 'node:assert/strict';
-import { featureStrip, featureList, specParts, photoPlan, styleAvailable, ribbonsFor, tintFromRgb, CARD_FALLBACK_TINT, paletteOf, styleOf } from '../src/utils/posterStyles.js';
+import { fitInside, CUTOUT_STYLES, featureStrip, featureList, specParts, photoPlan, styleAvailable, ribbonsFor, tintFromRgb, CARD_FALLBACK_TINT, paletteOf, styleOf } from '../src/utils/posterStyles.js';
 
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('ok -', name); };
@@ -46,5 +46,11 @@ t('card tint is dark, and falls back on bad input', () => {
 t('unknown ids fall back to the first', () => {
   assert.equal(paletteOf('nope').id, 'carbon');
   assert.equal(styleOf('nope').id, 'kiraan');
+});
+t('fitInside never crops and never leaves the box', () => {
+  assert.deepEqual(fitInside(1024, 768, 842, 1075), { w: 842, h: 632 });
+  assert.deepEqual(fitInside(768, 1024, 842, 600), { w: 450, h: 600 });
+  assert.deepEqual(fitInside(0, 10, 5, 5), { w: 0, h: 0 });
+  assert.deepEqual(CUTOUT_STYLES, ['showroom', 'card']);
 });
 console.log(`${n} passed`);
