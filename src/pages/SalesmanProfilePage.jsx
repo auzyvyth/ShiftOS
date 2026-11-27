@@ -1097,7 +1097,7 @@ export default function SalesmanProfilePage() {
               <h1 className="aph-name">
                 {nameHead}
                 <span className="ap-last">{nameTail}{isVerified && (
-                  <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#fff" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#0f1115" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 )}</span>
               </h1>
               {/* Business card: Share sits on the right, level with the middle of the photo on a phone (owner, 2026-11-26);
@@ -1650,6 +1650,33 @@ export default function SalesmanProfilePage() {
         @media (min-width: 1024px) {
           .ap--pro .ap-cols { display: block; }
           .ap--pro .ap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+        /* DARK CARD (owner, 2026-11-27: "make it dark theme"): the business card is dark like the car band above it, so the
+           two read as one block. Colours come from the card's own variables; the seller's accent stays on the WhatsApp key. */
+        .ap .aph.aph--card { --k0: #0f1115; --line: rgba(255,255,255,.09); --line2: rgba(255,255,255,.16); --t1: #fff; --t2: rgba(255,255,255,.76); --t3: rgba(255,255,255,.5);
+          background: #0f1115; color: #fff; border-color: rgba(255,255,255,.08); box-shadow: 0 14px 40px rgba(10,10,11,.28); }
+        .ap .aph--card .aph-name { color: #fff; }
+        .aph--card .aph-chips span { background: rgba(255,255,255,.05); }
+        .aph--card .aph-ico { color: #fff; background: rgba(255,255,255,.06); border-color: var(--line2); }
+        .aph-bc-ph { background: #1b1e24; border-color: #0f1115; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { background: rgba(255,255,255,.08) !important; color: #fff !important; border-color: var(--line2) !important; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share:hover { background: rgba(255,255,255,.16) !important; }
+        @media (min-width: 900px) {
+          /* The seller side, top to bottom: who they are, what they are (sentence case, not shouted), the numbers as one row of tiles
+             with the measured reply time under them, the pitch, then WhatsApp with the social keys in one even row. */
+          .aph--card:has(.aph-band--ring) .aph-bc { border-bottom: 0; padding-bottom: 0; }
+          .aph--card:has(.aph-band--ring) .aph-chips span { font-family: var(--xd-font-body); text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; }
+          .aph--card:has(.aph-band--ring) .aph-chips { gap: 6px; }
+          .aph--card:has(.aph-band--ring) .aph-chips .aph-locchip { order: 3; flex-basis: 100%; }
+          .aph--card:has(.aph-band--ring) .aph-stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; border: 0; }
+          .aph--card:has(.aph-band--ring) .aph-stats > div { flex: 1 1 84px; padding: 10px 12px; border: 0; border-radius: 12px; background: rgba(255,255,255,.05); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:first-child { padding-left: 12px; }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:has(.aph-small) { flex-basis: 100%; }
+          .aph--card:has(.aph-band--ring) .aph-stats .aph-small { height: auto; display: block; font-size: 13.5px; margin-bottom: 3px; }
+          .aph--card:has(.aph-band--ring) .aph-bio { color: rgba(255,255,255,.76); }
+          .aph--card:has(.aph-band--ring) .aph-cta { gap: 8px; }
+          .aph--card:has(.aph-band--ring) .aph-cta .ap-btn { flex: 1 1 100%; }
+          .aph--card:has(.aph-band--ring) .aph-cta .aph-ico { flex: 1 1 0; width: auto; height: 44px; border-radius: 12px; }
         }
         @media (prefers-reduced-motion: reduce) { .ap--pro .ap-btn, .ap--pro .ap-back, .ap--pro .ap-share { transition: none; } .ap--pro .ap-btn:active, .ap--pro .ap-back:active, .ap--pro .ap-share:active { translate: none; } }
         /* PAGE-PRO 2: the person, after the cars. */
