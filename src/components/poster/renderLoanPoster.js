@@ -34,17 +34,17 @@ const font = (size, weight = 400) => `${weight} ${size}px ${FAMILY}`;
 // Image cache across re-renders of the same sheet: the preview redraws on
 // every keystroke and must not refetch the photo each time.
 const imgCache = new Map();
-function cachedImage(url) {
+export function cachedImage(url) {
   if (!url) return Promise.resolve(null);
   if (!imgCache.has(url)) imgCache.set(url, fetchDataUrl(url).then(loadImg).catch(() => null));
   return imgCache.get(url);
 }
 
 let fontsReady = null;
-function ensureFonts() {
+export function ensureFonts() {
   if (!fontsReady) {
     const loads = typeof document !== 'undefined' && document.fonts
-      ? Promise.all(['400', '600', '700', '800'].map((w) => document.fonts.load(`${w} 40px Outfit`)))
+      ? Promise.all([...['400', '600', '700', '800'].map((w) => document.fonts.load(`${w} 40px Outfit`)), document.fonts.load('400 40px "Bebas Neue"')])
       : Promise.resolve();
     // A slow font must never block the poster: fall back after 1.5s.
     fontsReady = Promise.race([loads, new Promise((r) => setTimeout(r, 1500))]).catch(() => {});

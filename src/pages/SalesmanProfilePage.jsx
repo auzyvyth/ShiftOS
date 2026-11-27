@@ -70,6 +70,9 @@ const LIGHT_REVIEW_TH = {
 // The report sheet is a modal over a dimmed page, so its card must be opaque.
 const LIGHT_SHEET_TH = { ...LIGHT_REVIEW_TH, card2: '#F0EEE8', inputBorder: 'rgba(0,0,0,0.12)' };
 
+// Height of the owner-only setup strip (fixed at the top); the page makes room for exactly this much.
+const SETUP_BAR_H = 44;
+
 // Owner controls over the cover (Dashboard, Live presentation). Solid dark at
 // 0.78 like every photo overlay on the marketplace: no blur, no pill.
 const ownerChip = {
@@ -1089,20 +1092,23 @@ export default function SalesmanProfilePage() {
       {topButtons}
       <div className="aph-in">
         <div className="aph-bc">
-          {/* Business card: Share sits on the right, level with the middle of the photo (owner, 2026-11-26). */}
-          <button className="ap-share aph-bc-share" onClick={sharePage} aria-label="Share this page">
-            {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
-          </button>
           {cardPhoto
             ? <img className="aph-bc-ph" src={cdnImg(cardPhoto, 240, 80)} alt={profile.full_name} />
             : <div className="aph-bc-ph aph-mono" aria-hidden="true">{initial}</div>}
           <div className="aph-bc-id">
-            <h1 className="aph-name">
-              {nameHead}
-              <span className="ap-last">{nameTail}{isVerified && (
-                <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#0f1115" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              )}</span>
-            </h1>
+            <div className="aph-name-row">
+              <h1 className="aph-name">
+                {nameHead}
+                <span className="ap-last">{nameTail}{isVerified && (
+                  <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#fff" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#0f1115" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}</span>
+              </h1>
+              {/* Business card: Share sits on the right, level with the middle of the photo on a phone (owner, 2026-11-26);
+                  on desktop it sits next to the name (owner, 2026-11-27). */}
+              <button className="ap-share aph-bc-share" onClick={sharePage} aria-label={shareCopied ? "Link copied" : "Share this page"} title={shareCopied ? "Link copied" : "Share this page"}>
+                {shareCopied ? <Check size={17} /> : <Share2 size={17} />}
+              </button>
+            </div>
             {(agentNickname(seoProfile) || profile.job_title) && (
               <p className="aph-role">{[agentNickname(seoProfile) && `@${agentNickname(seoProfile)}`, profile.job_title].filter(Boolean).join(' · ')}</p>
             )}
@@ -1524,10 +1530,14 @@ export default function SalesmanProfilePage() {
         .ap--pro .aph--card .ap-back, .ap--pro .aph--card .ap-share { background: rgba(12,13,16,.42) !important; border-color: rgba(255,255,255,.22) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
         .aph--card .aph-in { position: relative; gap: 14px; padding: 104px 18px 18px; pointer-events: none; }
         .aph--card .aph-in > * { pointer-events: auto; }
-        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -46px; }
+        /* Phone (owner, 2026-11-27): the photo rides up into the band's bottom-left, level with the price on the right. */
+        .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -90px; }
+        .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 22px; }
+        .aph-name-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
         .aph-bc { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
         .aph--card > .ap-share { display: none; }
-        .ap--pro .aph--card .aph-bc .aph-bc-share { left: auto; right: 0; top: 30px; background: #0f1115 !important; color: #fff !important; border-color: #0f1115 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 4px 14px rgba(10,10,11,.18); }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { position: relative; flex: none; left: auto; right: auto; top: auto; width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; background: #f0f1f4 !important; color: #0f1115 !important; border: 1px solid rgba(17,24,39,.1) !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share:hover { background: #e4e6ea !important; }
         .aph-bc-ph { flex-shrink: 0; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; background: #f1f1f3; border: 4px solid #fff; box-shadow: 0 6px 18px rgba(10,10,11,.18); }
         .aph-bc-ph.aph-mono { display: flex; align-items: center; justify-content: center; font-size: 44px; }
         .aph-bc-id { min-width: 0; }
@@ -1586,13 +1596,48 @@ export default function SalesmanProfilePage() {
           .aph-band { height: 190px; }
           .aph-band.aph-band--ring { height: auto; }
           .aph--card .aph-in { padding-top: 126px; }
-          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -64px; }
-          .aph-band .cring { padding-top: 22px; --spread: 31cqw; --car-w: 34cqw; --under: 44px; }
+          /* The photo rides up into the band's bottom-left corner (owner, 2026-11-27: "let the PFP sit where the price is"), the price starts level with the name, and the section is ~60px shorter. */
+          .aph--card:has(.aph-band--ring) .aph-in { padding-top: 0; margin-top: -100px; }
+          .aph--card:has(.aph-band--ring) .aph-bc-id { padding-top: 112px; }
+          .aph-band .cring-foot { padding-left: 200px; }
+          .aph-name-row { justify-content: flex-start; gap: 6px 20px; }
+          /* The front car is the star (owner, 2026-11-27): ~half the band wide, the side cars tucked behind it. */
+          .aph-band .cring { padding-top: 22px; --spread: 37cqw; --car-w: 39cqw; --side: .14; --under: 22px; }
+          .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 28px; }
           .aph-band .cring-label b { font-size: 44px; }
+          /* SPLIT TOP (owner, 2026-11-27: "scale the slide to the marked size, the buyer info right beside it"): with the car band
+             on desktop the header is two columns, the seller on the left, the slide on the right, so a buyer sees who they are
+             dealing with without scrolling. Phones keep the stacked layout. */
+          .aph--card:has(.aph-band--ring) { display: grid; grid-template-columns: minmax(340px, 31%) minmax(0, 1fr); align-items: stretch; }
+          .aph--card:has(.aph-band--ring) .aph-band { grid-column: 2; grid-row: 1; }
+          .aph--card:has(.aph-band--ring) .aph-in { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 0; padding: 56px 24px 22px; min-height: 0; }
+          .aph--card:has(.aph-band--ring) .ap-back { left: calc(max(340px, 31%) + 12px); }
+          .aph--card:has(.aph-band--ring) .aph-bc { flex-direction: row; align-items: center; gap: 16px; }
+          .aph--card:has(.aph-band--ring) .aph-bc-ph { width: 88px; height: 88px; flex: none; }
+          .aph--card:has(.aph-band--ring) .aph-bc-id { padding-top: 0; }
+          .ap .aph--card:has(.aph-band--ring) .aph-name { font-size: clamp(30px, 3vw, 40px); line-height: .95; }
+          .aph--card:has(.aph-band--ring) .aph-name-row { gap: 6px 10px; }
+          .aph--card:has(.aph-band--ring) .aph-cta { justify-self: start; justify-content: flex-start; flex-wrap: wrap; }
+          .aph--card:has(.aph-band--ring) .aph-stats { flex-wrap: wrap; justify-self: start; justify-content: flex-start; gap: 6px 22px; }
+          .aph--card:has(.aph-band--ring) .aph-bio { margin: 0; }
+          /* Seller side, top to bottom (owner, 2026-11-27: "reorganize the whole seller side"): who they are, the facts that build
+             trust, one line of pitch, then the contact block pinned to the bottom so the column fills the slide's height. */
+          .aph--card:has(.aph-band--ring) .aph-in { padding: 26px 26px 24px; gap: 14px; align-items: stretch; }
+          .aph--card:has(.aph-band--ring) .aph-bc { padding-bottom: 14px; border-bottom: 1px solid rgba(17,24,39,.08); }
+          .aph--card:has(.aph-band--ring) .aph-chips { order: 2; }
+          .aph--card:has(.aph-band--ring) .aph-stats { order: 3; display: flex; flex-wrap: wrap; gap: 10px 0; padding: 12px 0; margin: 0; border: 0; border-top: 1px solid rgba(17,24,39,.08); border-bottom: 1px solid rgba(17,24,39,.08); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div { padding: 0 18px; border-left: 1px solid rgba(17,24,39,.1); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:first-child { padding-left: 0; border-left: 0; }
+          .aph--card:has(.aph-band--ring) .aph-bio { order: 4; color: rgba(15,17,21,.72); font-size: 13.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .aph--card:has(.aph-band--ring) .aph-cta { order: 5; margin-top: auto; width: 100%; display: flex; align-items: center; gap: 8px; }
+          .aph--card:has(.aph-band--ring) .aph-cta .ap-btn { flex: 1 1 auto; justify-content: center; min-height: 46px; }
+          .aph--card:has(.aph-band--ring) .aph-ico { flex: none; }
+          .aph-band .cring-foot { padding-left: 20px; }
+          .aph-band .cring { --spread: 33cqw; --car-w: 56cqw; --side: .16; }
+          .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 14px; }
           .aph-bc { flex-direction: row; align-items: flex-start; gap: 24px; }
           .aph-bc-id { padding-top: 76px; }
           .aph-bc-ph { width: 136px; height: 136px; }
-          .ap--pro .aph--card .aph-bc .aph-bc-share { top: 50px; }
           .aph-pic { order: 0; height: 100%; min-height: 340px; }
           .aph-pic--cut { height: 500px; align-self: end; }
           .aph-pic:not(.aph-pic--cut) { align-items: center; }
@@ -1608,6 +1653,33 @@ export default function SalesmanProfilePage() {
         @media (min-width: 1024px) {
           .ap--pro .ap-cols { display: block; }
           .ap--pro .ap-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+        /* DARK CARD (owner, 2026-11-27: "make it dark theme"): the business card is dark like the car band above it, so the
+           two read as one block. Colours come from the card's own variables; the seller's accent stays on the WhatsApp key. */
+        .ap .aph.aph--card { --k0: #0f1115; --line: rgba(255,255,255,.09); --line2: rgba(255,255,255,.16); --t1: #fff; --t2: rgba(255,255,255,.76); --t3: rgba(255,255,255,.5);
+          background: #0f1115; color: #fff; border-color: rgba(255,255,255,.08); box-shadow: 0 14px 40px rgba(10,10,11,.28); }
+        .ap .aph--card .aph-name { color: #fff; }
+        .aph--card .aph-chips span { background: rgba(255,255,255,.05); }
+        .aph--card .aph-ico { color: #fff; background: rgba(255,255,255,.06); border-color: var(--line2); }
+        .aph-bc-ph { background: #1b1e24; border-color: #0f1115; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+        .ap--pro .aph--card .aph-bc .aph-bc-share { background: rgba(255,255,255,.08) !important; color: #fff !important; border-color: var(--line2) !important; }
+        .ap--pro .aph--card .aph-bc .aph-bc-share:hover { background: rgba(255,255,255,.16) !important; }
+        @media (min-width: 900px) {
+          /* The seller side, top to bottom: who they are, what they are (sentence case, not shouted), the numbers as one row of tiles
+             with the measured reply time under them, the pitch, then WhatsApp with the social keys in one even row. */
+          .aph--card:has(.aph-band--ring) .aph-bc { border-bottom: 0; padding-bottom: 0; }
+          .aph--card:has(.aph-band--ring) .aph-chips span { font-family: var(--xd-font-body); text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; }
+          .aph--card:has(.aph-band--ring) .aph-chips { gap: 6px; }
+          .aph--card:has(.aph-band--ring) .aph-chips .aph-locchip { order: 3; flex-basis: 100%; }
+          .aph--card:has(.aph-band--ring) .aph-stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; border: 0; }
+          .aph--card:has(.aph-band--ring) .aph-stats > div { flex: 1 1 84px; padding: 10px 12px; border: 0; border-radius: 12px; background: rgba(255,255,255,.05); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:first-child { padding-left: 12px; }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:has(.aph-small) { flex-basis: 100%; }
+          .aph--card:has(.aph-band--ring) .aph-stats .aph-small { height: auto; display: block; font-size: 13.5px; margin-bottom: 3px; }
+          .aph--card:has(.aph-band--ring) .aph-bio { color: rgba(255,255,255,.76); }
+          .aph--card:has(.aph-band--ring) .aph-cta { gap: 8px; }
+          .aph--card:has(.aph-band--ring) .aph-cta .ap-btn { flex: 1 1 100%; }
+          .aph--card:has(.aph-band--ring) .aph-cta .aph-ico { flex: 1 1 0; width: auto; height: 44px; border-radius: 12px; }
         }
         @media (prefers-reduced-motion: reduce) { .ap--pro .ap-btn, .ap--pro .ap-back, .ap--pro .ap-share { transition: none; } .ap--pro .ap-btn:active, .ap--pro .ap-back:active, .ap--pro .ap-share:active { translate: none; } }
         /* PAGE-PRO 2: the person, after the cars. */
@@ -1654,10 +1726,14 @@ export default function SalesmanProfilePage() {
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
       <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
+        {/* The strip below is FIXED, so it sat on top of the page's own Back / Share / Dashboard /
+            Live presentation buttons (owner, 2026-11-27: "they are gone"). This spacer, the strip's
+            own height, moves the page down while the strip shows. */}
+        <div aria-hidden="true" style={{ height: isOwner && setupHref && !setupDismissed && setupSlideIn ? SETUP_BAR_H : 0, transition: 'height .3s ease' }} />
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>
-            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '10px clamp(16px,4vw,48px)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '0 clamp(16px,4vw,48px)', height: SETUP_BAR_H, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10 }}>
               <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, textDecoration: 'none' }}>
                 <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', fontWeight: 700, flexShrink: 0 }}>Only you</span>
                 <span style={{ fontSize: 13, color: '#fff', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

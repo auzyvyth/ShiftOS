@@ -201,6 +201,18 @@ export function modelFacts(specs) {
   return out.slice(0, 4);
 }
 
+// Is this model electrified, and how? From the spec sheet only: a battery or an EV range, or an
+// engine line that says hybrid / electric motor. null = a petrol (or diesel) model, no leaf.
+export function ecoKind(specs) {
+  const s = specs || {};
+  const engine = String(s.engine || "");
+  const hasEngine = engine.trim() !== "";
+  if (!hasEngine && (s.range_km || s.battery_kwh)) return "EV";
+  if (hasEngine && s.ev_range_km) return "Plug-in hybrid";
+  if (hasEngine && (s.battery_kwh || /hybrid|electric motor|e:HEV|e-power|HEV/i.test(engine))) return "Hybrid";
+  return null;
+}
+
 // "1.5L NA" -> "1.5L" ("NA" = naturally aspirated, jargon to a buyer); "1.5L turbo" stays.
 export const engineLabel = (e) => String(e || "").replace(/\s+NA$/i, "").trim();
 

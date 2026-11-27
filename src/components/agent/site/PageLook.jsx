@@ -26,12 +26,12 @@ export default function PageLook() {
   useEffect(() => {
     // index.css paints body with !important, so this must be important too.
     const b = document.body, was = b.style.getPropertyValue('background-color'), prio = b.style.getPropertyPriority('background-color');
-    b.style.setProperty('background-color', '#ffffff', 'important');
+    b.style.setProperty('background-color', '#e9ebef', 'important');
     return () => { if (was) b.style.setProperty('background-color', was, prio); else b.style.removeProperty('background-color'); };
   }, []);
   return (
     <style>{`
-      .ap.ap--pro { --k0: #ffffff; --k1: #f4f4f6; --k2: #ebebee; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
+      .ap.ap--pro { --k0: #e9ebef; --k1: #f6f7f9; --k2: #dcdfe5; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
         --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #dc2626; --ink-2: #b91c1c; --on-ink: #ffffff;
         --wide: 'Inter', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
         --r-card: 16px; --r-btn: 12px; --r-chip: 9px; --ap-bg: var(--k0); --ap-surf: var(--k1);
@@ -136,8 +136,8 @@ export default function PageLook() {
       .ap--pro .ap-sticky .ap-btn { padding: 0 18px; }
 
       /* ---------- Promos + ticker ---------- */
-      .ap--pro .ps-tick { background: transparent; border-radius: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-      .ap--pro .ps-tick-it { font-family: var(--wide); font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; }
+      .ap--pro .ps-tick { color: var(--t1); background: transparent; border-radius: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .ap--pro .ps-tick-it { color: var(--t1); font-family: var(--wide); font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; }
       .ap--pro .ps-tick-it i { border-radius: var(--r-chip); background: var(--ap-a); }
       .ap--pro .ps-promos { display: block; border-top: 1px solid var(--line); }
       .ap--pro .ps-promos .ps-promo-row, .ap--pro .ps-promo-row { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 16px 0; }

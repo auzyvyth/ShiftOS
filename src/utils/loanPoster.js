@@ -78,6 +78,12 @@ export const POSTER_COPY = {
     disclaimer: 'Anggaran sahaja. Kelulusan, kadar dan jumlah loan ditentukan oleh bank.',
     highValue: 'Kereta melebihi RM300k: bank menilai setiap kes. Anggaran sahaja.',
     preview: 'PRATONTON',
+    cash: 'Tunai',
+    fromMonth: 'Dari / bulan',
+    forSale: 'Dijual',
+    auctionGrade: 'GRED LELONG',
+    warranty: (m) => `Waranti ${m} bulan`,
+    terms: (deposit, years, rate, basis) => `Deposit RM ${deposit} · ${years} tahun · ${rate} ${basis === 'flat' ? 'flat' : 'EIR'}`,
   },
   en: {
     kicker: 'INSTALMENT ESTIMATE',
@@ -98,6 +104,12 @@ export const POSTER_COPY = {
     disclaimer: 'Estimate only. Approval, rate and loan amount are decided by the bank.',
     highValue: 'Cars above RM300k: banks decide case by case. Estimate only.',
     preview: 'PREVIEW',
+    cash: 'Cash',
+    fromMonth: 'From / month',
+    forSale: 'For sale',
+    auctionGrade: 'AUCTION GRADE',
+    warranty: (m) => `${m}-month warranty`,
+    terms: (deposit, years, rate, basis) => `Deposit RM ${deposit} · ${years} years · ${rate} ${basis === 'flat' ? 'flat' : 'EIR'}`,
   },
 };
 

@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drevo car posters - mockup (POSTER-6)</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- MOCKUP ONLY. Static HTML. Photos are placeholders from the ad harness; seller, prices and monthly are MOCK DATA.
+     Every number on a real poster comes from loanPoster.js / financing.js, never typed here. -->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0f17;color:#e5e7eb;font-family:Outfit,system-ui,sans-serif;padding:24px}
+.page-h{font-family:'Bebas Neue';font-size:40px;letter-spacing:.04em;color:#fff}
+.page-p{color:#9ca3af;font-size:14px;margin:6px 0 28px;max-width:720px;line-height:1.5}
+.gallery{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.cell{flex:0 0 auto}
+.cell h3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;font-weight:700}
+.frame{overflow:hidden;position:relative;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.frame>.poster{transform-origin:0 0}
+body.raw{padding:0;background:#000}body.raw .page-h,body.raw .page-p,body.raw .cell h3{display:none}
+body.raw .gallery{gap:0;display:block}body.raw .frame{border-radius:0;box-shadow:none}
+
+/* ============ shared poster atoms ============ */
+.poster{position:relative;overflow:hidden;font-family:Outfit,sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+.disp{font-family:'Bebas Neue',sans-serif;font-weight:400;letter-spacing:.01em}
+.skew{display:inline-block;transform:skewX(-9deg)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ============ A: Showroom 1080x1350 (Bentley / Ferrari / Range Rover / Urus references) ============ */
+.pa{width:1080px;height:1350px;background:var(--bg)}
+.pa .glow{position:absolute;left:-10%;right:-10%;top:150px;height:700px;background:radial-gradient(60% 60% at 50% 55%,var(--glow) 0%,transparent 70%)}
+.pa .wedge1{position:absolute;left:0;top:0;width:210px;height:150px;background:var(--accent);clip-path:polygon(0 0,100% 0,0 100%);opacity:.9}
+.pa .wedge2{position:absolute;right:0;top:300px;width:150px;height:360px;background:linear-gradient(180deg,var(--accent),transparent);clip-path:polygon(100% 0,100% 100%,0 100%);opacity:.55}
+.pa .hd{position:absolute;left:0;right:0;top:40px;text-align:center;z-index:5}
+.pa .eyebrow{font-size:24px;font-weight:700;letter-spacing:.42em;color:rgba(255,255,255,.75);text-transform:uppercase;padding-left:.42em}
+.pa .title{font-size:140px;line-height:.96;margin-top:2px;text-transform:uppercase;text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.pa .title em{font-style:normal;color:var(--accent)}
+.pa .specs{margin-top:6px;font-size:26px;font-weight:600;letter-spacing:.28em;color:#fff;text-transform:uppercase;display:flex;gap:22px;justify-content:center;align-items:center}
+.pa .specs i{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block}
+.pa .hero{position:absolute;left:0;right:0;top:300px;height:480px;overflow:hidden}
+.pa .hero img{width:100%;height:100%;object-fit:cover;object-position:50% 58%;filter:contrast(1.06) saturate(1.05)}
+.pa .hero:before,.pa .hero:after{content:'';position:absolute;left:0;right:0;z-index:2;pointer-events:none}
+.pa .hero:before{top:0;height:150px;background:linear-gradient(180deg,var(--bg),transparent)}
+.pa .hero:after{bottom:0;height:200px;background:linear-gradient(0deg,var(--bg),transparent)}
+.pa .strip{position:absolute;left:36px;right:36px;top:778px;height:72px;display:flex;align-items:center;border-top:2px solid var(--accent);border-bottom:2px solid rgba(255,255,255,.14)}
+.pa .strip div{flex:1;text-align:center;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pa .strip div+div{border-left:2px solid var(--accent)}
+.pa .thumbs{position:absolute;left:24px;right:24px;top:866px;height:176px;display:flex;gap:18px}
+.pa .th{flex:1;position:relative;background:var(--accent);clip-path:polygon(34px 0,100% 0,calc(100% - 34px) 100%,0 100%)}
+.pa .th img{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:cover;clip-path:polygon(31px 0,100% 0,calc(100% - 31px) 100%,0 100%)}
+.pa .rib{position:absolute;left:120px;right:120px;top:1054px;height:54px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,transparent,var(--accent) 12%,var(--accent) 88%,transparent);transform:skewX(-14deg)}
+.pa .rib span{display:inline-block;transform:skewX(14deg);font-size:28px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-style:italic}
+.pa .prices{position:absolute;left:36px;right:36px;top:1150px;height:90px;display:flex;gap:30px}
+.pa.norib .thumbs{height:226px}.pa.norib .prices{top:1150px}
+.pa .plate{flex:1;position:relative;background:var(--plate);border:2px solid var(--accent);transform:skewX(-12deg);display:flex;flex-direction:column;justify-content:center;padding:0 26px}
+.pa .plate>*{transform:skewX(12deg)}
+.pa .plate small{position:absolute;left:-2px;top:-24px;background:var(--accent);color:#fff;font-weight:800;font-size:19px;letter-spacing:.12em;padding:2px 22px 2px 18px;text-transform:uppercase;transform:none}
+.pa .plate small{transform:skewX(12deg);left:6px}
+.pa .plate b{font-size:56px;font-weight:800;line-height:1;white-space:nowrap;color:var(--platetx)}
+.pa .plate b s{text-decoration:none;font-size:26px;font-weight:700;margin-left:4px;opacity:.8}
+.pa .plate b span{font-size:40px;font-weight:800;margin-right:8px;opacity:.9}
+.pa .sell{position:absolute;left:0;right:0;bottom:0;height:86px;background:rgba(0,0,0,.45);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:16px;padding:0 36px}
+.pa .av{width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;flex:0 0 auto}
+.pa .sell .nm{font-size:25px;font-weight:800;line-height:1.1}
+.pa .sell .sub{font-size:18px;color:rgba(255,255,255,.62);font-weight:500;margin-top:2px}
+.pa .sell .wa{margin-left:auto;text-align:right}
+.pa .sell .wa small{display:block;font-size:14px;letter-spacing:.2em;color:rgba(255,255,255,.55);font-weight:700}
+.pa .sell .wa b{font-size:31px;font-weight:800}
+.pa .fine{position:absolute;left:36px;right:36px;bottom:94px;font-size:16px;color:rgba(255,255,255,.5);font-weight:500;text-align:center}
+.pa.carbon{--bg:#0a0c11;--glow:rgba(225,29,42,.30);--accent:#e11d2a;--plate:rgba(10,12,17,.86);--platetx:#fff}
+.pa.gun{--bg:#15171b;--glow:rgba(245,184,0,.16);--accent:#f2b705;--plate:rgba(30,32,38,.9);--platetx:#fff}
+.pa.forest{--bg:#06231f;--glow:rgba(40,150,110,.28);--accent:#dc2626;--plate:rgba(5,28,24,.9);--platetx:#fff}
+.pa.light{--plate:#fff;--platetx:#d9141f}
+.pa.light .plate b span{color:#111}
+
+/* ============ B: Story collage 1080x1920 (matthewmotors reference) ============ */
+.pb{width:1080px;height:1920px;background:#0d0d0f}
+.pb .g{position:absolute;inset:0 0 150px 0;display:grid;grid-template-columns:540px 540px;grid-template-rows:360px 470px 450px 478px;gap:4px}
+.pb .g>*{overflow:hidden;position:relative;background:#222}
+.pb .g img{width:100%;height:100%;object-fit:cover;display:block}
+.pb .wide{grid-column:1/3}
+.pb .txt{background:#0d0d0f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 34px;gap:6px}
+.pb .tag{font-size:24px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ac,#e11d2a)}
+.pb .nm{font-size:38px;font-weight:700;line-height:1.14}
+.pb .vr{font-size:22px;color:rgba(255,255,255,.7);font-weight:500;line-height:1.35}
+.pb .km{font-size:26px;font-weight:700}
+.pb .pr{margin-top:8px;background:#fff;color:#0d0d0f;font-size:50px;font-weight:800;padding:10px 34px;width:100%;line-height:1.1}
+.pb .mo{font-size:26px;color:rgba(255,255,255,.75);font-weight:600;margin-top:2px}
+.pb .sell{position:absolute;left:0;right:0;bottom:0;height:146px;background:#000;display:flex;align-items:center;gap:20px;padding:0 44px}
+.pb .av{width:76px;height:76px;border-radius:50%;background:#e11d2a;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800}
+.pb .sell .n{font-size:32px;font-weight:800}.pb .sell .s{font-size:21px;color:rgba(255,255,255,.62);margin-top:3px;font-weight:500}
+.pb .sell .wa{margin-left:auto;text-align:right}.pb .sell .wa small{display:block;font-size:15px;letter-spacing:.2em;color:rgba(255,255,255,.55);font-weight:700}.pb .sell .wa b{font-size:38px;font-weight:800}
+.pb .fine{position:absolute;left:0;right:0;bottom:150px;text-align:center;font-size:17px;color:rgba(255,255,255,.55);padding:6px;background:rgba(0,0,0,.55)}
+
+/* ============ C: Card series 540x960 per card, 4 on one 1080x1920 sheet (KSS reference) ============ */
+.pc{width:1080px;height:1920px;background:#05070b;display:grid;grid-template-columns:540px 540px;grid-template-rows:960px 960px;gap:3px}
+.card{position:relative;overflow:hidden;background:var(--tint,#1d1410)}
+.card .ph{position:absolute;left:11%;right:11%;top:11%;height:56%;border-radius:4px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.card .ph img{width:100%;height:100%;object-fit:cover}
+.card .ph:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),transparent 30%,transparent 62%,var(--tint) 100%);opacity:.9}
+.card .top{position:absolute;left:0;right:0;top:20px;text-align:center;display:flex;justify-content:center;align-items:center;gap:8px;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.card .top i{width:22px;height:22px;border-radius:50%;background:#dc2626;display:inline-block}
+.card .nm{position:absolute;left:0;right:0;top:68%;text-align:center;font-size:25px;font-weight:700;padding:0 20px;margin-top:-8px}
+.card .sp{position:absolute;left:0;right:0;top:calc(68% + 28px);text-align:center;font-size:15px;color:rgba(255,255,255,.7);font-weight:500;letter-spacing:.04em}
+.card .bot{position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(180deg,transparent,rgba(140,20,30,.55))}
+.card .mo{position:absolute;left:11%;bottom:92px}
+.card .mo small{display:block;font-size:14px;color:rgba(255,255,255,.65);font-weight:600}
+.card .mo b{font-size:62px;font-weight:800;line-height:1}.card .mo b s{text-decoration:none;font-size:22px;font-weight:600;opacity:.85;margin-left:3px}
+.card .gd{position:absolute;right:calc(11% + 12px);top:calc(11% + 12px);background:rgba(8,10,14,.72);text-align:center;border:2px solid rgba(255,255,255,.75);border-radius:10px;padding:6px 12px}
+.card .gd small{display:block;font-size:11px;letter-spacing:.14em;font-weight:700;color:rgba(255,255,255,.7)}.card .gd b{font-size:34px;font-weight:800;line-height:1}
+.card .tm{position:absolute;left:11%;right:11%;bottom:46px;font-size:12px;color:rgba(255,255,255,.62);font-weight:500;line-height:1.35}
+.card .wr{position:absolute;left:11%;right:11%;bottom:20px;font-size:14px;font-weight:700;color:#f5d68a}
+.card .wa{position:absolute;right:11%;bottom:20px;font-size:14px;font-weight:700}
+</style></head>
+<body>
+<div class="page-h">Drevo car posters - mockup</div>
+<div class="page-p">Three layout families remade in the Drevo way. Photos are placeholders, the seller and every price are mock data. Real posters read cash price from the listing and the monthly from <b>financing.js</b> (EIR, bank decides). Nothing here is copied from the reference ads: their words, logos, plates and the "est. loan" figure are not used.</div>
+<div class="gallery" id="g"></div>
+
+<script>
+const PH='car-posters-photos/';
+const seller={name:'Aiman Razak',role:'Sales advisor',wa:'012-345 6789',slug:'aimanrazak'};
+const cars={
+ civic:{brand:'HONDA',model:'CIVIC',variant:'TYPE R',year:2025,km:'4,200 KM',eng:'2.0L TURBO',price:389000,imgs:['civic-fl5-2025.jpg','gr86-2025.jpg','mini-jcw-2022.jpg','mx5-2024.jpg','defender-90-2023.jpg'],feats:['Manual 6-speed','Brembo brakes','Full service record'],tag:'Direct import'},
+ gr86:{brand:'TOYOTA',model:'GR86',variant:'RC',year:2025,km:'8,900 KM',eng:'2.4L BOXER',price:268000,imgs:['gr86-2025.jpg','civic-fl5-2025.jpg','mx5-2024.jpg','mini-jcw-2022.jpg','defender-90-2023.jpg'],feats:['Sport seats','Limited slip diff','1 owner'],tag:''},
+ def:{brand:'LAND ROVER',model:'DEFENDER',variant:'90 P400',year:2023,km:'12,300 KM',eng:'3.0L MILD HYBRID',price:549000,imgs:['defender-90-2023.jpg','mini-jcw-2022.jpg','civic-fl5-2025.jpg','gr86-2025.jpg','mx5-2024.jpg'],feats:['Panoramic roof','Air suspension','Meridian audio'],tag:'Recon'},
+};
+const rm=n=>'RM '+Math.round(n).toLocaleString('en-MY');
+// mock only: 10% down, 9 years, 4.8% EIR (real poster: financing.js)
+const monthly=(p)=>{const L=p*.9,r=.048/12,n=108;return Math.round(L*r/(1-Math.pow(1+r,-n)));};
+const fine=(p)=>`${rm(p)} cash · 10% down · 9 years · 4.8% EIR. Estimate only, the bank decides.`;
+const sellA=()=>`<div class="sell"><div class="av">${seller.name[0]}</div><div><div class="nm">${seller.name}</div><div class="sub">${seller.role} · drevo.my/s/${seller.slug}</div></div><div class="wa"><small>WHATSAPP</small><b>${seller.wa}</b></div></div>`;
+
+function A(c,cls,label){
+ const m=monthly(c.price);
+ return `<div class="poster pa ${cls} ${c.tag?'':'norib'}"><div class="glow"></div><div class="wedge1"></div><div class="wedge2"></div>
+ <div class="hd"><div class="eyebrow">${c.brand}</div><div class="title disp"><span class="skew">${c.model} <em>${c.variant}</em></span></div>
+ <div class="specs"><span>${c.year}</span><i></i><span>${c.km}</span><i></i><span>${c.eng}</span></div></div>
+ <div class="hero"><img src="${PH}${c.imgs[0]}"></div>
+ <div class="strip">${c.feats.map(f=>`<div>${f}</div>`).join('')}</div>
+ <div class="thumbs"><div class="th"><img src="${PH}${c.imgs[1]}"></div><div class="th"><img src="${PH}${c.imgs[2]}"></div></div>
+ ${c.tag?`<div class="rib"><span>${c.tag}</span></div>`:''}
+ <div class="prices"><div class="plate"><small>Cash</small><b class="num">${rm(c.price)}</b></div><div class="plate"><small>From / month</small><b class="num"><span>RM</span>${m.toLocaleString('en-MY')}<s>/mo</s></b></div></div>
+ <div class="fine">${fine(c.price)}</div>${sellA()}</div>`;
+}
+function B(c){
+ const m=monthly(c.price);
+ return `<div class="poster pb"><div class="g">
+  <div><img src="${PH}${c.imgs[1]}"></div><div><img src="${PH}${c.imgs[2]}"></div>
+  <div class="wide"><img src="${PH}${c.imgs[0]}" style="object-position:50% 60%"></div>
+  <div><img src="${PH}${c.imgs[3]}"></div>
+  <div class="txt"><div class="tag">${c.tag||'For sale'}</div><div class="nm">${c.year} ${c.brand[0]+c.brand.slice(1).toLowerCase()} ${c.model[0]+c.model.slice(1).toLowerCase()}</div><div class="vr">${c.variant} · ${c.km.toLowerCase()}<br>${c.feats.slice(0,2).join(' · ')}</div><div class="pr num">${rm(c.price)}</div><div class="mo">from ${rm(m)}/mo</div></div>
+  <div class="wide"><img src="${PH}${c.imgs[4]}" style="object-position:50% 55%"></div></div>
+  <div class="fine">${fine(c.price)}</div>
+  <div class="sell"><div class="av">${seller.name[0]}</div><div><div class="n">${seller.name}</div><div class="s">${seller.role} · drevo.my/s/${seller.slug}</div></div><div class="wa"><small>WHATSAPP</small><b>${seller.wa}</b></div></div></div>`;
+}
+const stock=[
+ {n:'2021 Honda Civic',s:'EX · 20,744 km',p:125000,img:'civic-fl5-2025.jpg',g:'5',w:36},
+ {n:'2022 Toyota GR86',s:'RC · 16,330 km',p:128000,img:'gr86-2025.jpg',g:'',w:0},
+ {n:'2022 Mini Cooper',s:'JCW · 11,813 km',p:137000,img:'mini-jcw-2022.jpg',g:'4.5',w:12},
+ {n:'2024 Mazda MX-5',s:'RF · 7,100 km',p:219000,img:'mx5-2024.jpg',g:'',w:0},
+];
+function C(){
+ return `<div class="poster pc">${stock.map((c,i)=>`<div class="card" data-img="${PH}${c.img}"><div class="top"><i></i>${seller.name}</div>
+ <div class="ph"><img src="${PH}${c.img}"></div><div class="nm">${c.n}</div><div class="sp">${c.s}</div><div class="bot"></div>
+ <div class="mo"><small>From</small><b class="num">${rm(monthly(c.p))}<s>/mo</s></b></div>
+ ${c.g?`<div class="gd"><small>AUCTION GRADE</small><b>${c.g}</b></div>`:''}
+ <div class="tm">${rm(c.p)} · 10% down · 9 years · 4.8% EIR. Estimate only, the bank decides.</div>
+ ${c.w?`<div class="wr">${c.w}-month warranty</div>`:''}<div class="wa">${seller.wa}</div></div>`).join('')}</div>`;
+}
+const items=[
+ ['A1 Showroom · Carbon (default Drevo red), with import ribbon · 1080x1350',A(cars.civic,'carbon'),1080,1350],
+ ['A2 Showroom · Gunmetal + amber, no ribbon · 1080x1350',A(cars.gr86,'gun'),1080,1350],
+ ['A3 Showroom · Forest + white price plates · 1080x1350',A(cars.def,'forest light'),1080,1350],
+ ['B Story collage · 5 photos + text panel · 1080x1920',B(cars.civic),1080,1920],
+ ['C Card series · colour taken from each photo, 4 cars on one sheet · 1080x1920',C(),1080,1920],
+];
+const raw=location.search.includes('raw');
+if(raw)document.body.classList.add('raw');
+const only=new URLSearchParams(location.search).get('only');
+const scale=raw?1:Math.min(1,(Math.min(innerWidth,720)-48)/1080);
+const g=document.getElementById('g');
+items.forEach(([t,h,w,hh],i)=>{
+ if(only!==null&&+only!==i)return;
+ const d=document.createElement('div');d.className='cell';
+ d.innerHTML=`<h3>${t}</h3><div class="frame" id="f${i}" style="width:${w*scale}px;height:${hh*scale}px"><div style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${hh}px">${h}</div></div>`;
+ g.appendChild(d);
+});
+// Card series: tint = the photo's average colour, pulled dark (auto, no picker)
+function tint(img,card){
+ try{const c=document.createElement('canvas');c.width=c.height=8;const x=c.getContext('2d');x.drawImage(img,0,0,8,8);
+ const d=x.getImageData(0,0,8,8).data;let r=0,g=0,b=0;for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2]}const n=d.length/4;
+ r/=n;g/=n;b/=n;const k=.34,a=(r+g+b)/3,sat=1.9,f=c=>Math.max(0,Math.min(255,Math.round((a+(c-a)*sat)*k)));card.style.setProperty('--tint',`rgb(${f(r)},${f(g)},${f(b)})`);}catch(e){}
+}
+document.querySelectorAll('.card').forEach(card=>{const im=new Image();im.onload=()=>tint(im,card);im.src=card.dataset.img;});
+document.fonts.ready.then(()=>document.body.dataset.ready=1);
+</script></body></html>

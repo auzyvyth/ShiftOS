@@ -19,7 +19,7 @@ const QR_FILE = "premium-payment-qr.png";
 // the share sheet offers "Save image" and the banking apps; elsewhere it downloads.
 // The file is fetched on mount so the tap itself shares straight away (a fetch
 // inside the tap can lose the "user tapped" permission the share sheet needs).
-function SaveQrButton() {
+export function SaveQrButton() {
   const blob = useRef(null);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
@@ -68,8 +68,8 @@ export default function PremiumPayBox({ profile, lead = "" }) {
         {lead}
         Scan to pay RM{PREMIUM_PRICE}, then send us a WhatsApp. We switch you to Premium as soon as we see it.
       </p>
-      <img src="/payment-qr.png" alt="DuitNow payment QR" width="180" height="180"
-        style={{ display: "block", width: 180, height: 180, marginTop: 12, borderRadius: 8, background: "#fff", padding: 6 }} />
+      <img src="/payment-qr.png" alt="DuitNow payment QR" width="220" height="340"
+        style={{ display: "block", width: 220, height: "auto", marginTop: 12, borderRadius: 8, background: "#fff" }} />
       <SaveQrButton />
       <a href={`https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"
         style={{ display: "inline-block", marginTop: 14, padding: "10px 16px", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>

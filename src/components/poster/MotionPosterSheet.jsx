@@ -39,6 +39,19 @@ const pickMime = () => {
 };
 const fileSafe = (s) => String(s || 'car').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'car';
 
+async function fixMp4Duration(blob) {
+  try {
+    const m = await import('mediabunny');
+    const input = new m.Input({ source: new m.BlobSource(blob), formats: m.ALL_FORMATS });
+    const output = new m.Output({ format: new m.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new m.BufferTarget() });
+    const conversion = await m.Conversion.init({ input, output });
+    if (!conversion.isValid) return blob;
+    await conversion.execute();
+    const buf = output.target.buffer;
+    return buf && buf.byteLength ? new Blob([buf], { type: 'video/mp4' }) : blob;
+  } catch { return blob; }
+}
+
 export default function MotionPosterSheet({ car, seller, onClose }) {
   useModalHistory(true, onClose);
   const [design, setDesign] = useState(null); // picked once the photos load
@@ -145,13 +158,16 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
     } catch { setSaved({ error: 'Could not start the recording on this browser.' }); return; }
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       clearInterval(recRef.current?.timer);
       recRef.current = null;
-      setRec(null);
       const type = mime.split(';')[0];
-      const blob = new Blob(chunks, { type });
-      if (!blob.size) { setSaved({ error: 'The recording came out empty. Keep this screen open while it records.' }); return; }
+      let blob = new Blob(chunks, { type });
+      if (!blob.size) { setRec(null); setSaved({ error: 'The recording came out empty. Keep this screen open while it records.' }); return; }
+      // Chrome records a FRAGMENTED mp4 whose header says "duration 0", so WhatsApp's editor read it
+      // as 1 second. Rewrite it as a normal mp4 (same video, not re-encoded). Any failure keeps the original.
+      if (type === 'video/mp4') blob = await fixMp4Duration(blob);
+      setRec(null);
       const ext = type === 'video/mp4' ? 'mp4' : 'webm';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -228,7 +244,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
             </div>
             <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 'min(320px, 70vw)' }}>
               <button onClick={() => setStartAt(performance.now())} disabled={!!rec} style={{ ...pill(false), flex: 1, opacity: rec ? 0.5 : 1 }}>Play again</button>
-              <button onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
+              <button data-tour-id="motion-download" onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
                 style={{ ...pill(false), flex: 1.4, background: P.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: (!imgs || !design || !numbers.ok) ? 0.5 : 1 }}>
                 <Download size={14} /> {rec ? `Recording ${rec.left}s` : 'Download video'}
               </button>

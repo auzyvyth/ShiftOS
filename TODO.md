@@ -72,20 +72,25 @@
 
 ## SECURITY-NOW: read every session (owner, 2026-11-26) - security first
 Order agreed 2026-11-26. Details live in the items named; this is the queue.
-- [ ] 1. SEC-3 finish (2026-11-26). The private bucket + signed links shipped in October; every listing
-  now points at car-docs. Left: 23 old document files still in the public bucket (5 duplicates of
-  private copies, 18 used by nothing). The October move could not delete them (the admin could not
-  see files in that bucket). Fix = migration `20261126a_public_doc_leftovers.sql` (QUEUED, after
-  midnight) + the Posture card's button (`PublicDocsMover.jsx`, `clearPublicDocLeftovers`). Unused files
-  are kept privately in `car-docs/orphaned/` (admin only), not deleted. After applying: run the button,
-  check 0 left with `get_public_doc_leftovers()`, then delete the two SEC-3 entries below.
+- [ ] 1. SEC-3 finish: migration `20261126a` APPLIED 2026-11-27 00:47 MYT (verified: admin sees the 23 public
+  doc files, non-admins get nothing, anon cannot call it). LEFT: owner presses "Move to private storage" in
+  /platform Safety > Posture once, then check `get_public_doc_leftovers()` returns 0 and delete this item plus the
+  two old SEC-3 entries below.
+- [x] SEC-12 (2026-11-26) buyer purchase tracker now matches only a verified sign-in identity; migration
+  `20261126b` APPLIED 2026-11-27 00:47 MYT, probe-verified. Delete this line next session.
 - [ ] 2. One pass over the ~129 SECURITY DEFINER functions anon can call (see INPUT-1).
-- [ ] 3. HONEYPOT-1 tripwire: decoy database objects + decoy web paths that no screen uses.
+- [ ] 3. HONEYPOT-1 tripwire (infrastructure migration `20261127a` APPLIED 2026-11-28 02:1x MYT, anon has no access; still to do: create the decoys with the two builder functions, set the env var for the web paths): decoy database objects + decoy web paths that no screen uses.
   Any touch = log + `notify_ops` alert (phone + Telegram). Alarm, NOT an IP block on the
   database: buyers talk to Supabase directly and Malaysian carriers share one IP across many
   phones, so blocking hurts real buyers and a hacker just changes IP. Block only on the decoy
   web paths (Vercel). Decoy names must look ordinary and must not be listed in this repo.
   Database part = DDL, after midnight only.
+  **Built 2026-11-27, not live yet:** web decoys in `middleware.js` read their paths from the Vercel env var
+  `HONEYPOT_PATHS` (unset = off); database side = migration `20261127a_honeypot_infra.sql` (QUEUED: log table,
+  `honeypot_record`, two builders). Left: (a) owner sets `HONEYPOT_PATHS` in Vercel, (b) after midnight apply
+  `20261127a`, then create the decoys by calling `honeypot_make_table` / `honeypot_make_rpc` from the SQL
+  editor (names live only in `honeypot_decoys`), (c) probe in a rolled-back transaction as anon, (d) catching
+  READS of a decoy table needs the API logs (a read-only request cannot write), not built, (e) release after midnight.
 - [ ] 4. SEC-A5 waitlist lookup via the server key, revoke from anon (see AUDIT-1021).
 - [ ] 5. SEC-9 login lock-out by email: key on IP as well (see SEC).
 - [ ] 6. Owner: revoke the old Anthropic + remove.bg keys at the provider (removed from Vercel 2026-10-28).
@@ -93,6 +98,18 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 8. SEC-5 leaked-password protection: needs Supabase Pro.
 - [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
   the ones the app actually ships to the browser or api/ first.
+
+## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
+Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
+COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
+Accountant net profit no longer counts commission twice, mini page owner buttons, poster MP4 duration.
+Live DB: `20261127a` and `20261127b` APPLIED 2026-11-28 00:2x MYT (probed in rolled-back transactions).
+- [x] `20261128a_move_old_costs` APPLIED 2026-11-28 02:1x MYT (car_costs 7 rows, 1 orphan repair row left). Released to production 2026-11-28 with the rest of staging. Delete these two lines next session.
+- [ ] Then: drop `recon_jobs` / `ad_spend` reads from `lib/carCosts.js` and the old tables (one migration).
+- [ ] Bill photo on a cost (needs a private storage folder).
+- [ ] Next DMS step: stock status ladder (in transit, in repair, ready...) + movement history.
+- [ ] Accountant GP is the sale-time GP (no holding/transfer/admin/warranty): make it read carPnl (one engine).
+- [ ] `stock_units` has three unused chassis columns (`chassis_number`, `vin`, `vin_number`): retire.
 
 ## NEWS-1: "Premium has a new look" pop-up (owner, 2026-11-26) - waiting on the owner's GIF
 - [ ] Owner records the business card ring on staging, makes a GIF, sends it.
@@ -3001,6 +3018,7 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 - [ ] **POSTER-4: Studio "Monthly Deal" template prints "LOW DEPOSIT · FAST LOAN" and
   "BULAN INI SAHAJA" on every poster** (`carTemplates.js:246`, `:251`). "Fast loan" reads
   as an approval promise. Remove or make them editable-and-empty.
+- [ ] **POSTER-6: car poster styles (owner, 2026-11-27) - WIRED, on the branch, not on staging.** Showroom (3 colours + ribbon), Story (3+ photos), Card (colour from the photo) next to Kiraan in `LoanPosterSheet.jsx`; drawing in `components/poster/renderCarPoster.js`, rules in `utils/posterStyles.js` (`npm run test:posterstyles`). Preview and download use the same function (download is 2x, no PREVIEW word). Lite gets Kiraan + Showroom Carbon (`LITE_STYLES`, client-side look gate only). Plan + mockup: `docs/POSTER_TEMPLATES_PLAN.md`. Left: 4-car sheet from Listings > Select, cut-out hero (POSTER-2b), POSTER-4 fix, owner calls on Lite styles + ribbon list.
 - [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
   WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
 
@@ -3144,6 +3162,7 @@ Background (from the idea):
 - **IDEA-44 (owner, 2026-11-21): buyer-side AI like Autotrader's, as a plain-wording search, not a chatbot.** Autotrader (US) has a Shopping Assistant on search + car pages; Autotrader UK starts from words ("Big boot", "Family cars", 13 categories); US/UK/Canada also have a ChatGPT app. Only search summaries were read (their hosts are blocked in the sandbox), so check their own pages. Direction: a "describe what you want" box on /showroom where AI turns the words into the filters we already accept (`src/config/marketplaceConfig.js` whitelists), so it never talks to the buyer or quotes a price and fits the AI trust rule (2026-08-23). A chat assistant on car pages needs an owner call first (answers only from listing data, never price / loan / approval). ChatGPT app = later, needs listing volume. Not built, not scheduled.
 - **IDEA-47 (owner, 2026-11-22): "Sold" handover photos in Salesman Premium.** Salesmen post a photo with the buyer and the car at handover (the owner sent a Perodua SA's TikTok one). Direction: a Premium section where the seller uploads these, shown on their `/s/:slug` page as proof they really sell cars. Do NOT build a second version: the dealer "Happy customers" design already exists (`sections/Deliveries.jsx`, `DeliveryPhotos.jsx`, migration `20261121b`, gate `DB_PHASE_C`, still QUEUED) and its rules carry over: the buyer's face is personal data (PDPA s.6 consent tick, s.38 delete in one tap), no buyer name / phone / plate, caption rules in `src/utils/deliveryCaption.js`. New problem for sellers: the number PLATE shows in these photos (in the owner's sample it is half covered by a heart sticker), so the upload needs a plate BLUR tool (owner, 2026-11-22: "just add a blur tool"; drag a box over the plate, blur baked into the saved image on the phone before upload, so the original never reaches the server). Could tie to a won deal (`customers` row) so only real sales get a photo. Needs: owner decision, then extend `20261121b` to salesmen rather than a new table.
 - **IDEA-46 (owner, 2026-11-22, from a 9-month-old plan): "My Garage" for car OWNERS, the buyer dashboard.** Today a buyer's /account is saved cars, price alerts, chats and a push switch; nothing for after they buy. Owner's old plan had four parts: (1) car health + records: mileage, last engine oil, last gear oil, manual/auto, tyre age, service history, upgrades; (2) garage showcase: make/model/year/nickname, photo + video gallery, mod timeline; (3) social: likes, comments, share, follow a garage, profile with followers/following/posts grid; (4) a Sell button that turns the garage car into a listing. Advice given: build (1) + (4) only, as the retention loop (oil/road tax/insurance reminders bring the owner back; the Sell button feeds stock; a won deal's `customers` row could pre-fill the car). Skip (3) for now: a social network needs thousands of users before it feels alive and adds moderation work. Not before: buyer traffic exists to make it worth it; seller revenue comes first.
+  Research (owner, 2026-11-27, asking sportscar owners on Instagram what they use for records): #1 = a man who owned a Civic FK8 and a Mustang GT500 and may have moved to a Corvette (multi-car, buys and sells often, the high end, not a typical owner). Asked how he proved history to the buyer when he sold: "Photo" (photos in chat, no booklet, no app). Still to ask: what he uses to track servicing / road tax / insurance dates, and where he sold. Also ask 1-2 ordinary used-car owners before building.
 - **IDEA-45 (owner, 2026-11-21): sounds on the website.** Owner: "start adding sounds". Not decided what kind. Limits: browsers block sound until the visitor taps, iPhones on silent play nothing, and buyers browse in public or at work, so a sound on the marketplace would surprise people. Safer starting point: short, quiet sounds on the seller's own app (a new lead, a sale marked won), with an off switch. Needs: what the sounds are for, who hears them, and our own sound files (no copied app sounds).
 - **VARIANTS-1 (owner 2026-11-21, migration `20261122a_car_variants.sql` QUEUED, not applied):** one row per real variant (`car_variants`: brand, model, generation, trim, nominal engine cc, fuel), `car_listings.variant_id`, definer-only `get_or_create_car_variant`. Soft catalogue: rows come from real cars, buyers see only variants with a live car, the strict locked form stays parked. Backfills the 80 marketplace cars (43 spellings -> 31 variants; Premium = Premier, JBL = option, GR Yaris one model); the Vios `AUDIT-TEST` (2035) stays unlinked. Tested on a local Postgres 16 stub (counts, idempotent find-or-create, guest / buyer / anon / direct insert refused); NOT probed on the live DB. Apply after midnight, nobody live, then add `car_variants` to `docs/ARCHITECTURE.md`. Next: make `tools/stocklist/stocklist.py` call `get_or_create_car_variant` so the 256-car import links variants, then the form picker (Year > Brand > Model > Variant, Carlist-style).
 - **STOCKLIST-GAPS (owner 2026-11-21):** cars made by `tools/stocklist/stocklist.py create` carry only what the PDF says, so some fields come in blank: fuel (only filled when the PDF says Hybrid), engine cc (e.g. Stepwagon), transmission, a real colour name ("Pearl"), a full registration date ("Mar 2025"). CarForm needs a "fill in the gaps" step: for a seller's car, list the blank fields that matter to a buyer and let them fill each in one tap, shown from the car's card or a to-do on Listings. Not built; check the form for an existing completeness check (`carListingScore`, `src/utils/carCoach.js`) before adding a second one.

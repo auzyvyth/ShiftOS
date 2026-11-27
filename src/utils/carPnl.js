@@ -48,7 +48,7 @@ export function daysHeld(start, end, now = Date.now()) {
  *  (BROKER-2). It is ONE line with the team's commission, so every screen that shows commission
  *  shows both; `commissionParts` says how it splits.)
  *  handoverCost  number = the real handover step costs (deal won); null/undefined = not sold yet, estimate it
- *  adSpend, addonRevenue, addonCost, asking, soldPrice, isSold,
+ *  adSpend, otherCosts (transport / inspection / other, utils/carCosts.js), addonRevenue, addonCost, asking, soldPrice, isSold,
  *  startDate, soldDate, engineCc, warrantyMonths, cfg (dealer_cost_settings row)
  * @param {number} now  ms, for tests
  */
@@ -76,6 +76,8 @@ export function carPnl(i = {}, now = Date.now()) {
     { key: 'recon', label: 'Recon', val: recon, kind: 'actual' },
     { key: 'holding', label: days == null ? 'Holding' : `Holding, ${days} day${days === 1 ? '' : 's'}`, val: holding, kind: 'accruing' },
     { key: 'ads', label: 'Advertising', val: n(i.adSpend), kind: 'actual' },
+    // Transport, inspection and other costs from the car's cost list (utils/carCosts.js, COSTS-1).
+    { key: 'other', label: 'Transport, inspection, other', val: n(i.otherCosts), kind: 'actual' },
     { key: 'services', label: 'Included services', val: n(i.servicesCost), kind: 'actual' },
     { key: 'commission', label: brokerComm > 0 ? 'Commission, team and broker' : 'Commission', val: n(i.commission) + brokerComm, kind: 'actual' },
     { key: 'transfer', label: hasHandover ? 'Transfer and handover' : 'Transfer, JPJ, B5, road tax', val: transfer, kind: hasHandover ? 'actual' : 'estimate' },
@@ -92,6 +94,10 @@ export function carPnl(i = {}, now = Date.now()) {
   // lot until today's profit is eaten by holding cost.
   const fixed = costTotal - warranty;
   const breakeven = isSold ? null : Math.round((fixed - back) / (1 - warrantyPct / 100));
+  // The warranty reserve is a % of the PRICE, so at the break-even price it is a little more than at the
+  // asking price (the list shows it at asking). That gap is the few ringgit between the break-even and
+  // the sum of the listed costs: it is not an error, so the screen says it (owner question, 2026-11-27).
+  const warrantyAtBreakeven = breakeven == null ? 0 : Math.round((breakeven * warrantyPct) / 100);
   const daysUntilZero = !isSold && net > 0 && perDay.total > 0 ? Math.floor(net / perDay.total) : null;
   const projections = isSold ? [] : [30, 60, 90].map((d) => ({ days: d, net: Math.round(net - perDay.total * d) }));
 
@@ -99,6 +105,6 @@ export function carPnl(i = {}, now = Date.now()) {
     revenue, lines, costTotal, front, back, net, margin, isSold,
     commissionParts: { team: n(i.commission), broker: brokerComm },
     days, perDay, holding, transfer, transferIsEstimate: !hasHandover,
-    breakeven, daysUntilZero, projections, startKnown: days != null,
+    breakeven, warrantyAtBreakeven, daysUntilZero, projections, startKnown: days != null,
   };
 }

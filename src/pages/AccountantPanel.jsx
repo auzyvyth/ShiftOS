@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient";
 import { flatToEir, loanTotals } from "../utils/financing";
 import { liveChannel } from "../lib/liveChannel";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { rowGross } from "../utils/accountantNet";
 
 const ACCENT = "#22c55e";
 
@@ -152,10 +153,7 @@ export default function AccountantPanel() {
   const [overviewRows, setOverviewRows] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewKey, setOverviewKey] = useState(0);
-  const [netProfitData, setNetProfitData] = useState({
-    expenses: 0,
-    commPaid: 0,
-  });
+  const [netProfitData, setNetProfitData] = useState({ expenses: 0 });
 
   // ── Inline grid editing ───────────────────────────────────────
   const [editingCell, setEditingCell] = useState(null); // { rowIdx, field }
@@ -303,7 +301,7 @@ export default function AccountantPanel() {
   useEffect(() => {
     if (activeNav !== "overview" || !profile?.dealer_id) return;
     setOverviewLoading(true);
-    setNetProfitData({ expenses: 0, commPaid: 0 });
+    setNetProfitData({ expenses: 0 });
     const dealerId = profile.dealer_id;
     const start = new Date(viewMonth);
     const end = new Date(start);
@@ -312,7 +310,7 @@ export default function AccountantPanel() {
     Promise.all([
       supabase
         .from("car_listings")
-        .select("id,brand,model,year,selling_price,recon_cost,sold_at")
+        .select("id,brand,model,year,selling_price,recon_cost,sold_at,commission_amount")
         .eq("dealer_id", dealerId)
         .eq("status", "sold")
         .gte("sold_at", start.toISOString())
@@ -330,19 +328,11 @@ export default function AccountantPanel() {
         .eq("dealer_id", dealerId)
         .gte("expense_date", start.toISOString().slice(0, 10))
         .lt("expense_date", end.toISOString().slice(0, 10)),
-      supabase
-        .from("deal_financials")
-        .select("commission_amount")
-        .eq("dealer_id", dealerId)
-        .eq("commission_paid", true)
-        .gte("commission_paid_at", start.toISOString())
-        .lt("commission_paid_at", end.toISOString()),
     ]).then(
       ([
         { data: cars },
         { data: units },
         { data: expData },
-        { data: commData },
       ]) => {
         const unitMap = {};
         (units || []).forEach((u) => {
@@ -355,10 +345,8 @@ export default function AccountantPanel() {
           const recon = unit.recon_cost ?? car.recon_cost ?? 0;
           const sold = unit.sold_price || car.selling_price || 0;
           const services = unit.included_services_cost ?? 0;
-          const gp =
-            unit.gross_profit != null
-              ? unit.gross_profit
-              : sold - purchase - recon - services;
+          // One meaning of GP: AFTER the car's commission (utils/accountantNet.js).
+          const gp = rowGross({ unitGp: unit.gross_profit, sold, purchase, recon, services, commission: car.commission_amount });
           return {
             car_listing_id: car.id,
             stock_unit_id: unit.id || null,
@@ -373,6 +361,7 @@ export default function AccountantPanel() {
             gross_profit: gp,
             days_in_stock: unit.days_in_stock ?? null,
             services_cost: services,
+            commission: Number(car.commission_amount) || 0,
           };
         });
 
@@ -395,11 +384,7 @@ export default function AccountantPanel() {
           (s, r) => s + (r.amount || 0),
           0,
         );
-        const totalCommPaid = (commData || []).reduce(
-          (s, r) => s + (r.commission_amount || 0),
-          0,
-        );
-        setNetProfitData({ expenses: totalExpenses, commPaid: totalCommPaid });
+        setNetProfitData({ expenses: totalExpenses });
         setOverviewRows(rows);
         setOverviewLoading(false);
       },
@@ -447,7 +432,7 @@ export default function AccountantPanel() {
       field === "purchase_price" ? numVal : row.purchase_price || 0;
     const recon = field === "recon_cost" ? numVal : row.recon_cost || 0;
     const sold = field === "sold_price" ? numVal : row.sold_price || 0;
-    const newGP = sold - purchase - recon - (row.services_cost || 0);
+    const newGP = rowGross({ sold, purchase, recon, services: row.services_cost, commission: row.commission });
 
     // optimistic update + live summary recalc
     setOverviewRows((prev) => {
@@ -2124,19 +2109,16 @@ export default function AccountantPanel() {
                     value:
                       overviewLoading || !overviewStats
                         ? "—"
-                        : `RM ${(overviewStats.totalGP - netProfitData.expenses - netProfitData.commPaid).toLocaleString()}`,
+                        : `RM ${(overviewStats.totalGP - netProfitData.expenses).toLocaleString()}`,
                     accent: overviewStats
-                      ? overviewStats.totalGP -
-                          netProfitData.expenses -
-                          netProfitData.commPaid >=
-                        0
+                      ? overviewStats.totalGP - netProfitData.expenses >= 0
                         ? "#4ade80"
                         : "#f87171"
                       : ACCENT,
                     breakdown:
                       overviewLoading || !overviewStats
                         ? null
-                        : `GP ${rm(overviewStats.totalGP)} − Exp ${rm(netProfitData.expenses)} − Comm ${rm(netProfitData.commPaid)}`,
+                        : `GP after commission ${rm(overviewStats.totalGP)} − Exp ${rm(netProfitData.expenses)}`,
                   },
                 ].map((c, i) => (
                   <div

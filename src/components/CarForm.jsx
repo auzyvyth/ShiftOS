@@ -63,6 +63,7 @@ import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { CAR_DOCS_BUCKET, openDoc, removeDocFile } from "../utils/carDocs";
 import { minPhotosFor, photosMissingLabel } from "../utils/listingRules";
 import { askSocialConsent } from "./social/askSocialConsent";
+import { isChassisDupError, chassisDupMessage } from "../utils/chassisDup";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -742,11 +743,18 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       setConflictWarning(p => ({ ...p, [field]: null }));
       return;
     }
-    const col = field === 'plate' ? 'plate_number' : 'vin_number';
-    const query = supabase.from('car_listings').select('id, brand, model, year').eq('dealer_id', dealerId).ilike(col, trimmed);
-    if (listing?.id) query.neq('id', listing.id);
-    const { data } = await query.maybeSingle();
-    setDupWarning(p => ({ ...p, [field]: data ? `Already exists: ${[data.brand, data.model, data.year].filter(Boolean).join(' ')}` : null }));
+    let label = null;
+    if (field === 'vin') {
+      // One rule, in the database: my_chassis_in_use (same chassis ignoring case, spaces, hyphens).
+      const { data: hit } = await supabase.rpc('my_chassis_in_use', { p_value: trimmed, p_exclude: listing?.id ?? null });
+      label = hit || null;
+    } else {
+      const q = supabase.from('car_listings').select('brand, model, year').eq('dealer_id', dealerId).eq('plate_number', trimmed).neq('status', 'archived').limit(1);
+      const { data: rows } = listing?.id ? await q.neq('id', listing.id) : await q;
+      const r = rows?.[0];
+      label = r ? [r.brand, r.model, r.year].filter(Boolean).join(' ') : null;
+    }
+    setDupWarning(p => ({ ...p, [field]: label ? `Already exists: ${label}` : null }));
 
     // Cross-dealer clone check: same VIN/plate live on a DIFFERENT dealer.
     const { data: otherCount } = await supabase.rpc('count_other_dealer_vin_plate', {
@@ -2161,6 +2169,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       // account/permission problem (see uploadImages).
       if (err?.__imageUpload) {
         toast.error(`${msg}. Remove that photo and add it again, then publish.`);
+      } else if (isChassisDupError(err)) {
+        toast.error(chassisDupMessage(err));
       } else if (isPrivateLimitError(err)) {
         toast.error(`You already have ${PRIVATE_CAR_LIMIT} private cars. Publish or delete one, or untick "Keep it private".`);
       } else if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
