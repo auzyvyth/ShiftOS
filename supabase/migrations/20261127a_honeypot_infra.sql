@@ -108,14 +108,14 @@ revoke all on function public.honeypot_make_table(text) from public, anon, authe
 
 -- Builder 2: a decoy RPC. Callable by anon, returns an empty array, logs the call.
 create or replace function public.honeypot_make_rpc(p_name text) returns void
-language plpgsql security definer set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp as $out$
 begin
   if p_name !~ '^[a-z][a-z0-9_]{2,40}$' then raise exception 'bad name'; end if;
   execute format($f$create or replace function public.%I() returns jsonb language plpgsql security definer set search_path = public, pg_temp as $b$ begin perform public.honeypot_record('rpc', %L, 'CALL'); return '[]'::jsonb; end $b$$f$, p_name, p_name);
   execute format('revoke all on function public.%I() from public', p_name);
   execute format('grant execute on function public.%I() to anon, authenticated', p_name);
   insert into public.honeypot_decoys (kind, name) values ('rpc', p_name) on conflict do nothing;
-end $$;
+end $out$;
 revoke all on function public.honeypot_make_rpc(text) from public, anon, authenticated;
 
 commit;

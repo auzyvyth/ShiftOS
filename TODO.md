@@ -79,7 +79,7 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [x] SEC-12 (2026-11-26) buyer purchase tracker now matches only a verified sign-in identity; migration
   `20261126b` APPLIED 2026-11-27 00:47 MYT, probe-verified. Delete this line next session.
 - [ ] 2. One pass over the ~129 SECURITY DEFINER functions anon can call (see INPUT-1).
-- [ ] 3. HONEYPOT-1 tripwire: decoy database objects + decoy web paths that no screen uses.
+- [ ] 3. HONEYPOT-1 tripwire (infrastructure migration `20261127a` APPLIED 2026-11-28 02:1x MYT, anon has no access; still to do: create the decoys with the two builder functions, set the env var for the web paths): decoy database objects + decoy web paths that no screen uses.
   Any touch = log + `notify_ops` alert (phone + Telegram). Alarm, NOT an IP block on the
   database: buyers talk to Supabase directly and Malaysian carriers share one IP across many
   phones, so blocking hurts real buyers and a hacker just changes IP. Block only on the decoy
@@ -104,9 +104,7 @@ Built this session (all on staging, see the handoff): chassis rule (one live car
 COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
 Accountant net profit no longer counts commission twice, mini page owner buttons, poster MP4 duration.
 Live DB: `20261127a` and `20261127b` APPLIED 2026-11-28 00:2x MYT (probed in rolled-back transactions).
-- [ ] Apply `20261128a_move_old_costs.sql` (moves 7 old repair/ad rows into car_costs; one orphan repair row
-  on a deleted stock record stays). The tool asks to confirm deletes: confirm the prompt. After midnight MYT.
-- [ ] Production release of the above (owner's "ship tonight").
+- [x] `20261128a_move_old_costs` APPLIED 2026-11-28 02:1x MYT (car_costs 7 rows, 1 orphan repair row left). Released to production 2026-11-28 with the rest of staging. Delete these two lines next session.
 - [ ] Then: drop `recon_jobs` / `ad_spend` reads from `lib/carCosts.js` and the old tables (one migration).
 - [ ] Bill photo on a cost (needs a private storage folder).
 - [ ] Next DMS step: stock status ladder (in transit, in repair, ready...) + movement history.
