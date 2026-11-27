@@ -85,7 +85,7 @@ export function ringCarsFor(cars, brand) {
 // The ring's own styles, so the page and the Settings preview draw the same thing. The page sizes it
 // for desktop with `.aph-band .cring...` rules; `small` is the Settings preview.
 const CSS = `
-.cring { position: relative; container-type: inline-size; --spread: 41cqw; --car-w: 50cqw; --under: 44px; padding: 58px 0 0; }
+.cring { position: relative; container-type: inline-size; --spread: 44cqw; --car-w: 50cqw; --under: 20px; padding: 16px 0 0; }
 .cring-label { position: relative; z-index: 200; display: grid; justify-items: center; gap: 2px; text-align: center; color: #fff; pointer-events: none; animation: cringIn .45s ease-out both; }
 .cring-label span { font: italic 600 11px/1 var(--xd-font-body); letter-spacing: .26em; text-transform: uppercase; color: color-mix(in srgb, var(--ap-a, #dc2626) 55%, #fff); }
 .cring-label b { font: italic 400 30px/1 'Bebas Neue', sans-serif; letter-spacing: .03em; white-space: nowrap; padding-right: .08em;
@@ -108,7 +108,7 @@ const CSS = `
 .cring-arrow.is-prev { left: 12px; } .cring-arrow.is-next { right: 12px; }
 .cring-arrow:active { transform: scale(.92); transition-duration: .1s; }
 @media (hover: hover) and (pointer: fine) { .cring-arrow:hover { background: rgba(12,13,16,.8); transform: scale(1.06); } }
-.cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 16px 0; color: #fff; }
+.cring-foot { position: relative; z-index: 300; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 4px 16px 0; color: #fff; }
 .cring-buy { display: grid; justify-items: start; gap: 6px; min-width: 0; }
 .cring-from { font: italic 500 12px/1 var(--xd-font-body); color: rgba(255,255,255,.66); font-variant-numeric: tabular-nums; }
 .cring-from b { font-size: 17px; font-weight: 700; color: #fff; margin-left: 3px; }
