@@ -244,7 +244,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
             </div>
             <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 'min(320px, 70vw)' }}>
               <button onClick={() => setStartAt(performance.now())} disabled={!!rec} style={{ ...pill(false), flex: 1, opacity: rec ? 0.5 : 1 }}>Play again</button>
-              <button onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
+              <button data-tour-id="motion-download" onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
                 style={{ ...pill(false), flex: 1.4, background: P.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: (!imgs || !design || !numbers.ok) ? 0.5 : 1 }}>
                 <Download size={14} /> {rec ? `Recording ${rec.left}s` : 'Download video'}
               </button>

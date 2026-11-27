@@ -41,6 +41,8 @@ import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
 import { chosenPageColor } from "../utils/pageAccent";
 import PremiumLookNews from "../components/news/PremiumLookNews";
+import MotionPosterNews from "../components/news/MotionPosterNews";
+import MotionPosterGuide from "../components/news/MotionPosterGuide";
 import HeroPhotoCard from "../components/premium/HeroPhotoCard";
 import PageSiteCard from "../components/premium/PageSiteCard";
 import PageGradientPicker from "../components/premium/PageGradientPicker";
@@ -430,6 +432,7 @@ export default function SalesmanPremium() {
  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
  const [motionCar, setMotionCar] = useState(null); // Moving poster sheet target (IDEA-29)
+ const [posterGuide, setPosterGuide] = useState(false); // "Show me" walkthrough (NEWS-2)
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
  // invisible unless you happened to open that tab.
@@ -483,6 +486,22 @@ export default function SalesmanPremium() {
  // to "profile"), so a phone lands on the list rather than mid-form.
  const [settingsNav, setSettingsNav] = useState(null);
 
+
+ // "Show me" on the Moving poster pop-up. The walkthrough needs a live car
+ // with photos; without one, send them to add it first.
+ function showMotionPoster() {
+ const ready = myListings.some((car) => (!car.status || car.status === "active" || car.status === "available") && car.images?.length > 0);
+ switchTab("listings");
+ setListingsSubTab("cars");
+ setFilterStatus("available");
+ setActionMenuCarId(null);
+ if (!ready) {
+ toast.info(String(i18n.language || "").startsWith("ms") ? "Tambah kereta dengan gambar dahulu." : "Add a car with photos first.");
+ setTimeout(() => setShowAddForm(true), 100);
+ return;
+ }
+ setPosterGuide(true);
+ }
 
  // opts is passed straight to navigate(): the tour uses { replace: true } so a
  // 14-step run does not leave 13 history entries for the back gesture to walk.
@@ -7791,6 +7810,9 @@ export default function SalesmanPremium() {
  {renderFirstSale()}
  {/* NEWS-1: the once-only "Premium has a new look" pop-up. */}
  <PremiumLookNews userId={userId} profile={profile} isPremium blocked={tourStep !== null} />
+ {/* NEWS-2: Moving poster pop-up + its walkthrough. */}
+ <MotionPosterNews userId={userId} profile={profile} isPremium blocked={tourStep !== null} onShowMe={showMotionPoster} />
+ {posterGuide && activeTab === "listings" && <MotionPosterGuide onClose={() => setPosterGuide(false)} />}
 
  {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
  desktop sidebar, mobile topbar) open this instead of calling
