@@ -21,11 +21,20 @@ import ModelHelper from './ModelHelper';
 
 const carName = (c) => [c?.brand, c?.model].filter(Boolean).join(' ');
 
-function Photo({ src, alt, w, q, className, eager }) {
+// PHOTO-SPEED (owner, 2026-11-27): the console's new-car photos are already framed + compressed WebP
+// (about 75 KB, never over 150 KB), so the free wsrv.nl resizer only added a cold third-party hop for
+// no saving. Big views load them straight from storage (cached for a year); the small rail and
+// shot tiles still go through cdnImg, where the resize does cut bytes. A card carrying the
+// seller's own photos keeps the resizer.
+const isModelPhoto = (u) => typeof u === 'string' && u.includes('/new-car-models/');
+// seeThroughBox reads `url + ?a=1` with CORS; the same string on the <img> lets one download serve both.
+const measured = (u) => u + (u.includes('?') ? '&' : '?') + 'a=1';
+
+function Photo({ src, alt, w, q, className, eager, raw }) {
   const [bad, setBad] = useState(false);
   useEffect(() => { setBad(false); }, [src]);
   if (!src || bad) return <span className={`cfg-nophoto ${className || ''}`} aria-hidden="true">{alt}</span>;
-  return <img className={className} src={cdnImg(src, w, q)} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setBad(true)} />;
+  return <img className={className} src={raw && isModelPhoto(src) ? src : cdnImg(src, w, q)} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setBad(true)} />;
 }
 
 // STAGE-FIT (owner, 2026-11-26: "why's the HR-V so large"): a cut-out is cropped to the car's own
@@ -40,12 +49,14 @@ function StageCar({ src, alt }) {
     seeThroughBox(src).then((b) => { if (!off) setBox(b || null); }, () => { if (!off) setBox(null); });
     return () => { off = true; };
   }, [src]);
-  if (box === undefined) return <div className="cfg-car cfg-car--wait" />;
-  if (!box) return <div className="cfg-car"><Photo src={src} alt={alt} w={1280} q={80} eager /></div>;
+  const direct = isModelPhoto(src);
+  // While the outline is being read, the same file is already downloading (one fetch, not two in a row).
+  if (box === undefined) return <div className="cfg-car cfg-car--wait">{direct && <img src={measured(src)} alt="" crossOrigin="anonymous" decoding="async" style={{ display: 'none' }} />}</div>;
+  if (!box) return <div className="cfg-car"><Photo src={src} alt={alt} w={1280} q={80} eager raw /></div>;
   return (
     <div className="cfg-fit" style={{ '--car-ar': ((box.w * box.ar) / box.h).toFixed(4) }}>
       <span className="cfg-crop">
-        <img src={cdnImg(src, 1280, 80)} alt={alt} decoding="async"
+        <img src={direct ? measured(src) : cdnImg(src, 1280, 80)} alt={alt} crossOrigin={direct ? 'anonymous' : undefined} decoding="async"
           style={{ width: `${(100 / box.w).toFixed(3)}%`, height: `${(100 / box.h).toFixed(3)}%`, left: `${(-box.x / box.w * 100).toFixed(3)}%`, top: `${(-box.y / box.h * 100).toFixed(3)}%` }} />
       </span>
     </div>
