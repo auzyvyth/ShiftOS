@@ -70,6 +70,9 @@ const LIGHT_REVIEW_TH = {
 // The report sheet is a modal over a dimmed page, so its card must be opaque.
 const LIGHT_SHEET_TH = { ...LIGHT_REVIEW_TH, card2: '#F0EEE8', inputBorder: 'rgba(0,0,0,0.12)' };
 
+// Height of the owner-only setup strip (fixed at the top); the page makes room for exactly this much.
+const SETUP_BAR_H = 44;
+
 // Owner controls over the cover (Dashboard, Live presentation). Solid dark at
 // 0.78 like every photo overlay on the marketplace: no blur, no pill.
 const ownerChip = {
@@ -1723,10 +1726,14 @@ export default function SalesmanProfilePage() {
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
       <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
+        {/* The strip below is FIXED, so it sat on top of the page's own Back / Share / Dashboard /
+            Live presentation buttons (owner, 2026-11-27: "they are gone"). This spacer, the strip's
+            own height, moves the page down while the strip shows. */}
+        <div aria-hidden="true" style={{ height: isOwner && setupHref && !setupDismissed && setupSlideIn ? SETUP_BAR_H : 0, transition: 'height .3s ease' }} />
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>
-            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '10px clamp(16px,4vw,48px)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '0 clamp(16px,4vw,48px)', height: SETUP_BAR_H, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10 }}>
               <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, textDecoration: 'none' }}>
                 <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', fontWeight: 700, flexShrink: 0 }}>Only you</span>
                 <span style={{ fontSize: 13, color: '#fff', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
