@@ -72,13 +72,12 @@
 
 ## SECURITY-NOW: read every session (owner, 2026-11-26) - security first
 Order agreed 2026-11-26. Details live in the items named; this is the queue.
-- [ ] 1. SEC-3 finish (2026-11-26). The private bucket + signed links shipped in October; every listing
-  now points at car-docs. Left: 23 old document files still in the public bucket (5 duplicates of
-  private copies, 18 used by nothing). The October move could not delete them (the admin could not
-  see files in that bucket). Fix = migration `20261126a_public_doc_leftovers.sql` (QUEUED, after
-  midnight) + the Posture card's button (`PublicDocsMover.jsx`, `clearPublicDocLeftovers`). Unused files
-  are kept privately in `car-docs/orphaned/` (admin only), not deleted. After applying: run the button,
-  check 0 left with `get_public_doc_leftovers()`, then delete the two SEC-3 entries below.
+- [ ] 1. SEC-3 finish: migration `20261126a` APPLIED 2026-11-27 00:47 MYT (verified: admin sees the 23 public
+  doc files, non-admins get nothing, anon cannot call it). LEFT: owner presses "Move to private storage" in
+  /platform Safety > Posture once, then check `get_public_doc_leftovers()` returns 0 and delete this item plus the
+  two old SEC-3 entries below.
+- [x] SEC-12 (2026-11-26) buyer purchase tracker now matches only a verified sign-in identity; migration
+  `20261126b` APPLIED 2026-11-27 00:47 MYT, probe-verified. Delete this line next session.
 - [ ] 2. One pass over the ~129 SECURITY DEFINER functions anon can call (see INPUT-1).
 - [ ] 3. HONEYPOT-1 tripwire: decoy database objects + decoy web paths that no screen uses.
   Any touch = log + `notify_ops` alert (phone + Telegram). Alarm, NOT an IP block on the
