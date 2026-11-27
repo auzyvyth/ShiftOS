@@ -1616,6 +1616,18 @@ export default function SalesmanProfilePage() {
           .aph--card:has(.aph-band--ring) .aph-cta { justify-self: start; justify-content: flex-start; flex-wrap: wrap; }
           .aph--card:has(.aph-band--ring) .aph-stats { flex-wrap: wrap; justify-self: start; justify-content: flex-start; gap: 6px 22px; }
           .aph--card:has(.aph-band--ring) .aph-bio { margin: 0; }
+          /* Seller side, top to bottom (owner, 2026-11-27: "reorganize the whole seller side"): who they are, the facts that build
+             trust, one line of pitch, then the contact block pinned to the bottom so the column fills the slide's height. */
+          .aph--card:has(.aph-band--ring) .aph-in { padding: 26px 26px 24px; gap: 14px; align-items: stretch; }
+          .aph--card:has(.aph-band--ring) .aph-bc { padding-bottom: 14px; border-bottom: 1px solid rgba(17,24,39,.08); }
+          .aph--card:has(.aph-band--ring) .aph-chips { order: 2; }
+          .aph--card:has(.aph-band--ring) .aph-stats { order: 3; display: flex; flex-wrap: wrap; gap: 10px 0; padding: 12px 0; margin: 0; border: 0; border-top: 1px solid rgba(17,24,39,.08); border-bottom: 1px solid rgba(17,24,39,.08); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div { padding: 0 18px; border-left: 1px solid rgba(17,24,39,.1); }
+          .aph--card:has(.aph-band--ring) .aph-stats > div:first-child { padding-left: 0; border-left: 0; }
+          .aph--card:has(.aph-band--ring) .aph-bio { order: 4; color: rgba(15,17,21,.72); font-size: 13.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          .aph--card:has(.aph-band--ring) .aph-cta { order: 5; margin-top: auto; width: 100%; display: flex; align-items: center; gap: 8px; }
+          .aph--card:has(.aph-band--ring) .aph-cta .ap-btn { flex: 1 1 auto; justify-content: center; min-height: 46px; }
+          .aph--card:has(.aph-band--ring) .aph-ico { flex: none; }
           .aph-band .cring-foot { padding-left: 20px; }
           .aph-band .cring { --spread: 33cqw; --car-w: 56cqw; --side: .16; }
           .aph-band--ring .cring:not(.cring--sm) { padding-bottom: 14px; }
