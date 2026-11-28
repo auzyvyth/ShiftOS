@@ -4350,7 +4350,19 @@
     "plansPricing": "Pelan & Harga",
     "switchAnyTimeYourProgress": "Tukar bila-bila masa — kemajuan anda dikekalkan dalam produk yang sama.",
     "close": "Tutup",
-    "switchingBetweenSalesmanAndDealer": "Bertukar antara salesman dan dealer memulakan semula onboarding produk itu."
+    "switchingBetweenSalesmanAndDealer": "Bertukar antara salesman dan dealer memulakan semula onboarding produk itu.",
+    "noCard": "Tiada kad kredit diperlukan.",
+    "switchAny": "Tukar bila-bila masa.",
+    "yourChoice": "Pilihan anda",
+    "chooseLite": "Pilih Lite",
+    "liteNote": "Percuma, tiada kad kredit diperlukan.",
+    "trialBadge": "{{days}} hari percuma",
+    "startTrial": "Mula {{days}} hari percuma",
+    "trialNote": "Tiada kad kredit diperlukan. Selepas {{days}} hari anda kekal di Lite percuma melainkan anda pilih untuk bayar.",
+    "dealerQ": "Anda ada dealership?",
+    "dealerLink": "Lihat pelan dealer",
+    "sellerQ": "Jual secara sendiri?",
+    "sellerLink": "Lihat pelan seller"
   },
   "starterPicker": {
     "1Variant": "1 varian",

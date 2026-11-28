@@ -4333,7 +4333,19 @@
     "plansPricing": "Plans & Pricing",
     "switchAnyTimeYourProgress": "Switch any time — your progress is kept within the same product.",
     "close": "Close",
-    "switchingBetweenSalesmanAndDealer": "Switching between salesman and dealer restarts that product's onboarding."
+    "switchingBetweenSalesmanAndDealer": "Switching between salesman and dealer restarts that product's onboarding.",
+    "noCard": "No credit card needed.",
+    "switchAny": "Switch any time.",
+    "yourChoice": "Your choice",
+    "chooseLite": "Choose Lite",
+    "liteNote": "Free, no credit card needed.",
+    "trialBadge": "{{days}} days free",
+    "startTrial": "Start {{days}} days free",
+    "trialNote": "No credit card needed. After {{days}} days you stay on free Lite unless you choose to pay.",
+    "dealerQ": "Run a dealership?",
+    "dealerLink": "See dealer plans",
+    "sellerQ": "Selling on your own?",
+    "sellerLink": "See seller plans"
   },
   "starterPicker": {
     "1Variant": "1 variant",
