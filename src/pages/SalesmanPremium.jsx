@@ -102,6 +102,7 @@ import {
  Pencil,
  Settings,
  Bell,
+ MessageSquareText,
  TrendingUp,
  Banknote,
  Calendar,
@@ -156,7 +157,9 @@ import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
 const OutreachHub = React.lazy(loadOutreachHub);
 import ThisWeek from "../components/crm/ThisWeek";
-import { buildThisWeek } from "../utils/thisWeek";
+import { buildThisWeek, waLink as weekWaLink } from "../utils/thisWeek";
+import { buildAssistantCards, readStore as readAssistantStore, writeStore as writeAssistantStore, quietCar, unquietCar, addDone } from "../components/assistant/assistantRules";
+import { copyFor as assistantCopyFor, carName as assistantCarName } from "../components/assistant/assistantCopy";
 import NotificationPanel from "../components/notifications/NotificationPanel";
 import SoldCustomers, { ComingUp } from "./salesmanPremium/SoldCustomers";
 import { useServicePackages } from "../hooks/useServicePackages";
@@ -167,6 +170,7 @@ const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
 // DrevoOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
+const AssistantFeed = React.lazy(() => import("../components/assistant/AssistantFeed"));
 const MotionPosterSheet = React.lazy(() => import("../components/poster/MotionPosterSheet"));
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
@@ -877,6 +881,10 @@ export default function SalesmanPremium() {
  // notifications
  const [notifications, setNotifications] = useState([]);
  const [notifOpen, setNotifOpen] = useState(false);
+ // ASSIST-1: the Assistant feed (Premium, beside the bell). Keep / Snooze are remembered on this device only.
+ const [assistantOpen, setAssistantOpen] = useState(false);
+ const [assistantStore, setAssistantStore] = useState({ quiet: {}, done: [] });
+ useEffect(() => { if (profile?.id) setAssistantStore(readAssistantStore(profile.id)); }, [profile?.id]);
  // The list defaults to Available, so a rejected car looked like it had
  // vanished. While a rejection is unread, open Listings on Rejected instead
  // (once per session — after that the seller's own tab choice wins).
@@ -2464,10 +2472,11 @@ export default function SalesmanPremium() {
 
  const updateApptStatus = async (apptId, status) => {
  const { error } = await supabase.from("appointments").update({ status }).eq("id", apptId);
- if (error) { console.error("updateApptStatus:", error); toast.error(t("salesmanPremium.errors.updateBooking")); return; }
+ if (error) { console.error("updateApptStatus:", error); toast.error(t("salesmanPremium.errors.updateBooking")); return false; }
  setAppointments((p) =>
  p.map((a) => (a.id === apptId? { ...a, status } : a)),
  );
+ return true;
  };
 
  // ── booking lifecycle (ported from SalesmanLite) ───────────────────────────
@@ -3222,6 +3231,62 @@ export default function SalesmanPremium() {
  const leadsNeedingFollowUp = buildThisWeek({
  leads, customers, nudges: dueNudges, packages: servicePackages, repName: profile?.full_name,
  }).filter((i) => i.leadId).length;
+
+ // ASSIST-1: the Assistant feed. Premium on its own account only (a linked salesman's cars and
+ // bookings belong to the dealer). Rules: src/components/assistant/assistantRules.js.
+ const showAssistant = isPremium && !isLinked;
+ const assistantCards = showAssistant
+ ? buildAssistantCards({ appointments, notifications, silentPick, store: assistantStore, leadsToChase: leadsNeedingFollowUp })
+ : null;
+ const saveAssistantStore = (next) => { setAssistantStore(next); writeAssistantStore(profile?.id, next); };
+ const assistantAction = async (card, key) => {
+ const ac = assistantCopyFor(i18n.language);
+ if (card.kind === "booking") {
+ if (key === "confirm") {
+ const ok = await updateApptStatus(card.apptId, "confirmed");
+ if (ok) {
+ const label = [card.name, card.car ? assistantCarName(card.car) : ""].filter(Boolean).join(", ");
+ saveAssistantStore(addDone(assistantStore, { id: `confirmed:${card.apptId}`, kind: "confirmed", label }));
+ toast.success(ac.toast.confirmed);
+ }
+ } else if (key === "reschedule") {
+ setAssistantOpen(false); switchTab("enquiries"); setInboxSubTab("bookings");
+ } else if (key === "whatsapp") {
+ const when = new Date(card.when).toLocaleString("en-MY", { weekday: "long", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kuala_Lumpur" });
+ const href = weekWaLink(card.phone, ac.booking.wa(card, when));
+ if (href) window.open(href, "_blank", "noopener,noreferrer");
+ }
+ } else if (card.kind === "silent") {
+ const label = assistantCarName(card.car);
+ if (key === "share") handleListingShare(card.car);
+ else if (key === "poster") { setAssistantOpen(false); setPosterCar(card.car); }
+ else if (key === "keep" || key === "snooze") saveAssistantStore(quietCar(assistantStore, { carId: card.car.id, kind: key, label }));
+ } else if (card.kind === "brief") {
+ setAssistantOpen(false); switchTab("dashboard");
+ } else if (card.notif) {
+ // A buyer who wrote: open it where it lives and count it as seen.
+ setAssistantOpen(false);
+ openNotif(card.notif);
+ markNotifsSeen([card.notif.id]);
+ }
+ };
+ const renderAssistantBtn = () => showAssistant && (
+ <button
+ onClick={() => setAssistantOpen(true)}
+ aria-label={assistantCopyFor(i18n.language).open}
+ style={{
+ position: "relative", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 8, color: "#64748b", padding: "8px 10px", cursor: "pointer", display: "flex", alignItems: "center", marginRight: 6,
+ }}
+ >
+ <MessageSquareText size={15} />
+ {assistantCards?.badge > 0 && (
+ <span style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+ {assistantCards.badge > 9 ? "9+" : assistantCards.badge}
+ </span>
+ )}
+ </button>
+ );
 
  // Sidebar rows, shared by the desktop sidebar and the phone drawer so the two
  // keep one shape (owner, 2026-10-25: "keep the colour, just shape and
@@ -7391,6 +7456,7 @@ export default function SalesmanPremium() {
  <>
  <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" style={{ height: 15, width: "auto", display: "block" }} />
  <div style={{ flex: 1 }} />
+ {renderAssistantBtn()}
  <button
  onClick={() => setNotifOpen((v) =>!v)}
  style={{
@@ -7475,6 +7541,7 @@ export default function SalesmanPremium() {
  · {isPremium? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
  </div>
+ {renderAssistantBtn()}
  <button
  onClick={() => setNotifOpen((v) =>!v)}
  style={{
@@ -8560,6 +8627,14 @@ export default function SalesmanPremium() {
  <LoanPosterSheet theme="premium" car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
  onDownloaded={() => { if (tourMode === "poster") dismissTour(); }}
  bottomInset={tourMode === "poster" ? TOUR_BAR_H + 40 : 0} />
+ </Suspense>
+ )}
+ {assistantOpen && assistantCards && (
+ <Suspense fallback={null}>
+ <AssistantFeed cards={assistantCards} lang={i18n.language} isMobile={isMobile}
+ onAction={assistantAction}
+ onUndo={(d) => saveAssistantStore(unquietCar(assistantStore, d.carId))}
+ onClose={() => setAssistantOpen(false)} />
  </Suspense>
  )}
 

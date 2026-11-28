@@ -154,6 +154,10 @@ flowchart LR
   OPS["Errors, signups,<br/>pending listings, JPJ failure,<br/>Sensus demo requests"] --> NO["notify_ops()"] --> TG[Telegram ops channel] & AP[Your phone push]
 ```
 
+**Assistant feed (ASSIST-1, Premium only):** a second screen beside the bell (`src/components/assistant/`), built on the
+page's own state: pending bookings, unread `salesman_notifications`, the coach's silent car and "This week". It writes nothing
+new to the database except a booking's Confirm (`appointments.status`); Keep it / Snooze live on the device only.
+
 ---
 
 ## 4. Scheduled jobs (pg_cron, live list)
