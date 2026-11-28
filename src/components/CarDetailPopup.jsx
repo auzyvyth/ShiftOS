@@ -1,6 +1,7 @@
 import React from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Car, ChevronLeft, ChevronRight, Copy, FileText, Hash,
   MapPin, PlayCircle, X, ZoomIn,
@@ -85,6 +86,7 @@ export default function CarDetailPopup({
   const pick = mono ? P.text : C.accent; // selected thumb + tab: ink on premium, red fills only
   // Back closes the photo viewer first, then the car (before the early return:
   // hooks must run on every render).
+  const { t } = useTranslation();
   useModalHistory(!!selectedCar, () => setSelectedCar(null));
   useModalHistory(!!selectedCar && !!carDetailLbOpen, () => setCarDetailLbOpen(false));
   const car = selectedCar;
@@ -239,12 +241,12 @@ export default function CarDetailPopup({
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: T.size.sm, color: C.textDim, textDecoration: "line-through" }}>RM {op.toLocaleString("en-MY")}</span>
                     <span style={{ fontSize: T.size.xs, color: C.infoTextHi, background: withAlpha(C.info, 0.12), border: `1px solid ${withAlpha(C.info, 0.25)}`, borderRadius: 4, padding: "1px 6px" }}>
-                      SAVE RM {saving.toLocaleString("en-MY")}
+                      {t("carPopup.save")} RM {saving.toLocaleString("en-MY")}
                     </span>
                   </div>
                 )}
                 {monthly > 0 && (
-                  <p style={{ fontSize: T.size.sm, color: C.textMuted, marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · {DEFAULT_EIR}% EIR</p>
+                  <p style={{ fontSize: T.size.sm, color: C.textMuted, marginTop: 4 }}>{t("carPopup.estMonthly", { amount: monthly.toLocaleString(), rate: DEFAULT_EIR })}</p>
                 )}
               </div>
 
@@ -260,64 +262,64 @@ export default function CarDetailPopup({
                     onClick={() => setCarDetailTab(tab)}
                     style={{ padding: "8px 14px", fontSize: T.size.sm, whiteSpace: "nowrap", color: carDetailTab === tab ? C.text : C.textMuted, background: "none", border: "none", borderBottom: carDetailTab === tab ? `2px solid ${pick}` : "2px solid transparent", cursor: "pointer", fontFamily: font }}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {t(`carPopup.tab.${tab}`)}
                   </button>
                 ))}
               </div>
 
               {carDetailTab === "specs" && (
                 <Grid C={C} rows={[
-                  { k: "Year", v: car.year || "—" },
-                  { k: "Condition", v: car.condition || "—" },
-                  { k: "Body Type", v: car.body_type || "—" },
-                  { k: "Colour", v: car.colour || "—" },
-                  { k: "Mileage", v: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
-                  { k: "Transmission", v: car.transmission || "—" },
-                  { k: "Engine", v: car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : "—" },
-                  { k: "Fuel Type", v: car.fuel_type || "—" },
-                  { k: "Location", v: [car.city, car.state].filter(Boolean).join(", ") || "—" },
+                  { k: t("carPopup.k.year"), v: car.year || "—" },
+                  { k: t("carPopup.k.condition"), v: car.condition || "—" },
+                  { k: t("carPopup.k.bodyType"), v: car.body_type || "—" },
+                  { k: t("carPopup.k.colour"), v: car.colour || "—" },
+                  { k: t("carPopup.k.mileage"), v: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
+                  { k: t("carPopup.k.transmission"), v: car.transmission || "—" },
+                  { k: t("carPopup.k.engine"), v: car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : "—" },
+                  { k: t("carPopup.k.fuelType"), v: car.fuel_type || "—" },
+                  { k: t("carPopup.k.location"), v: [car.city, car.state].filter(Boolean).join(", ") || "—" },
                 ]} />
               )}
 
               {carDetailTab === "mechanical" && (
                 <Grid C={C} rows={[
-                  { k: "Horsepower", v: car.horsepower ? `${car.horsepower} hp` : "—" },
-                  { k: "Cylinders", v: car.cylinders ? `${car.cylinders} cyl` : "—" },
-                  { k: "Doors", v: car.doors || "—" },
-                  { k: "Seats", v: car.seats || "—" },
-                  { k: "Fuel Consumption", v: car.fuel_consumption ? `${car.fuel_consumption} L/100km` : "—" },
+                  { k: t("carPopup.k.horsepower"), v: car.horsepower ? `${car.horsepower} hp` : "—" },
+                  { k: t("carPopup.k.cylinders"), v: car.cylinders ? `${car.cylinders} cyl` : "—" },
+                  { k: t("carPopup.k.doors"), v: car.doors || "—" },
+                  { k: t("carPopup.k.seats"), v: car.seats || "—" },
+                  { k: t("carPopup.k.fuelConsumption"), v: car.fuel_consumption ? `${car.fuel_consumption} L/100km` : "—" },
                 ]} />
               )}
 
               {carDetailTab === "paperwork" && (
                 <div>
                   <Grid C={C} rows={[
-                    { k: "VIN", v: car.vin_number || "—" },
-                    { k: "Plate Number", v: car.plate_number || "—" },
-                    { k: "Registration Date", v: fmtDate(car.registration_date) || "—" },
-                    { k: "Previous Owners", v: car.previous_owners ?? "—" },
-                    { k: "Chassis Status", v: car.chassis_status ? car.chassis_status.replace(/_/g, " ") : "—" },
-                    { k: "Road Tax Expiry", v: rtLabel || "—", valueColor: rtColor },
-                    { k: "Warranty", v: car.warranty_months > 0 ? `${car.warranty_months} months` : "—" },
-                    { k: "Payment Type", v: car.payment_type ? car.payment_type.replace(/_/g, " ") : "—" },
-                    { k: "Loan Eligible", v: car.loan_eligible == null ? "—" : car.loan_eligible ? "Yes" : "No" },
-                    { k: "Deposit Amount", v: car.deposit_amount > 0 ? `RM ${Number(car.deposit_amount).toLocaleString("en-MY")}` : "—" },
+                    { k: t("carPopup.k.vin"), v: car.vin_number || "—" },
+                    { k: t("carPopup.k.plate"), v: car.plate_number || "—" },
+                    { k: t("carPopup.k.regDate"), v: fmtDate(car.registration_date) || "—" },
+                    { k: t("carPopup.k.prevOwners"), v: car.previous_owners ?? "—" },
+                    { k: t("carPopup.k.chassis"), v: car.chassis_status ? car.chassis_status.replace(/_/g, " ") : "—" },
+                    { k: t("carPopup.k.roadTax"), v: rtLabel || "—", valueColor: rtColor },
+                    { k: t("carPopup.k.warranty"), v: car.warranty_months > 0 ? t("carPopup.months", { count: car.warranty_months }) : "—" },
+                    { k: t("carPopup.k.paymentType"), v: car.payment_type ? car.payment_type.replace(/_/g, " ") : "—" },
+                    { k: t("carPopup.k.loanEligible"), v: car.loan_eligible == null ? "—" : car.loan_eligible ? t("carPopup.yes") : t("carPopup.no") },
+                    { k: t("carPopup.k.deposit"), v: car.deposit_amount > 0 ? `RM ${Number(car.deposit_amount).toLocaleString("en-MY")}` : "—" },
                   ]} />
 
-                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 4px" }}>Recon / Import</p>
+                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 4px" }}>{t("carPopup.reconImport")}</p>
                   <Grid C={C} rows={[
-                    { k: "Unit Type", v: car.is_recon === true ? "Recon (Imported)" : car.is_recon === false ? "Local Unit" : "—" },
-                    { k: "Auction Grade", v: car.auction_grade || "—" },
-                    { k: "Interior Grade", v: car.interior_grade || "—" },
-                    { k: "Import Country", v: car.import_country || "—" },
-                    { k: "Auction House", v: car.auction_house || "—" },
-                    { k: "Local Reg. Date", v: fmtDate(car.local_reg_date) || "—" },
+                    { k: t("carPopup.k.unitType"), v: car.is_recon === true ? t("carPopup.recon") : car.is_recon === false ? t("carPopup.local") : "—" },
+                    { k: t("carPopup.k.auctionGrade"), v: car.auction_grade || "—" },
+                    { k: t("carPopup.k.interiorGrade"), v: car.interior_grade || "—" },
+                    { k: t("carPopup.k.importCountry"), v: car.import_country || "—" },
+                    { k: t("carPopup.k.auctionHouse"), v: car.auction_house || "—" },
+                    { k: t("carPopup.k.localReg"), v: fmtDate(car.local_reg_date) || "—" },
                   ]} />
 
-                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 8px" }}>Documents</p>
+                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 8px" }}>{t("carPopup.documents")}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                     {docs.length === 0 ? (
-                      <p style={{ fontSize: T.size.base, color: C.textMuted, margin: 0 }}>No documents on file.</p>
+                      <p style={{ fontSize: T.size.base, color: C.textMuted, margin: 0 }}>{t("carPopup.noDocs")}</p>
                     ) : (
                       docs.map((d, i) => {
                         const cfg = DOC_TYPES.find((t) => t.key === d.type) || DOC_TYPES[DOC_TYPES.length - 1];
@@ -331,7 +333,7 @@ export default function CarDetailPopup({
                   </div>
                   {isHttpUrl(car.video_url) && (
                     <a href={car.video_url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, color: C.infoText, textDecoration: "none" }}>
-                      <PlayCircle size={14} /> Watch video
+                      <PlayCircle size={14} /> {t("carPopup.watchVideo")}
                     </a>
                   )}
                 </div>
@@ -340,7 +342,7 @@ export default function CarDetailPopup({
               {carDetailTab === "features" && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {features.length === 0 ? (
-                    <p style={{ fontSize: T.size.base, color: C.textMuted }}>No features listed.</p>
+                    <p style={{ fontSize: T.size.base, color: C.textMuted }}>{t("carPopup.noFeatures")}</p>
                   ) : (
                     features.map((f, i) => (
                       <span key={i} style={{ fontSize: T.size.sm, color: C.textSec, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 10px" }}>{f}</span>
@@ -352,7 +354,7 @@ export default function CarDetailPopup({
               {carDetailTab === "options" && (
                 <div>
                   {!car.options || !car.options.trim() ? (
-                    <p style={{ fontSize: T.size.base, color: C.textMuted }}>No options listed.</p>
+                    <p style={{ fontSize: T.size.base, color: C.textMuted }}>{t("carPopup.noOptions")}</p>
                   ) : (
                     <p style={{ fontSize: T.size.base, color: C.textSec, lineHeight: 1.5, margin: 0 }}>{car.options}</p>
                   )}
@@ -362,7 +364,7 @@ export default function CarDetailPopup({
               {/* What's Included — dealer add-on services bundled into the sale */}
               {Array.isArray(car.included_services) && car.included_services.length > 0 && (
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.line}` }}>
-                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, marginBottom: 10 }}>What's Included</p>
+                  <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, marginBottom: 10 }}>{t("carPopup.included")}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {car.included_services.map((svc, i) => {
                       const cfg = getCategoryCfg(svc.category);
@@ -377,7 +379,7 @@ export default function CarDetailPopup({
                   </div>
                   {car.included_services_cost > 0 && (
                     <p style={{ fontSize: T.size.sm, color: C.textMuted, marginTop: 10 }}>
-                      Est. add-on value: <span style={{ color: C.infoText, fontWeight: T.weight.bold }}>RM {Number(car.included_services_cost).toLocaleString("en-MY")}</span>
+                      {t("carPopup.addonValue")} <span style={{ color: C.infoText, fontWeight: T.weight.bold }}>RM {Number(car.included_services_cost).toLocaleString("en-MY")}</span>
                     </p>
                   )}
                 </div>
@@ -392,7 +394,7 @@ export default function CarDetailPopup({
                 is the other half of that rule — without it a flex child still
                 refuses to go below its content width. */}
             <div style={{ flex: isMobile ? "none" : "0 1 200px", minWidth: 0, width: isMobile ? "100%" : undefined, padding: isMobile ? "12px 16px 32px" : 20, display: "flex", flexDirection: "column", gap: 8, borderTop: isMobile ? `1px solid ${C.border}` : "none" }}>
-              <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 4px" }}>Actions</p>
+              <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 4px" }}>{t("carPopup.actions")}</p>
               {actions.map(({ key, label, color, bg, border, onClick }) => (
                 <button
                   key={key}
@@ -405,11 +407,11 @@ export default function CarDetailPopup({
 
               {/* Performance */}
               <div style={{ marginTop: 8, background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 12 }}>
-                <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 8px" }}>Performance</p>
+                <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 8px" }}>{t("carPopup.performance")}</p>
                 {[
-                  { label: "Views", val: views, color: mono ? C.text : C.infoText },
-                  { label: "Enquiries", val: enqs, color: mono ? C.text : C.warnText },
-                  { label: "CVR", val: cvr !== null ? `${cvr}%` : "—", color: mono ? C.text : C.successText },
+                  { label: t("carPopup.views"), val: views, color: mono ? C.text : C.infoText },
+                  { label: t("carPopup.enquiries"), val: enqs, color: mono ? C.text : C.warnText },
+                  { label: t("carPopup.cvr"), val: cvr !== null ? `${cvr}%` : "—", color: mono ? C.text : C.successText },
                 ].map(({ label, val, color }) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{label}</span>
@@ -420,12 +422,12 @@ export default function CarDetailPopup({
 
               {/* Status */}
               <div style={{ background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 12 }}>
-                <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 6px" }}>Status</p>
+                <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 6px" }}>{t("carPopup.status")}</p>
                 <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, textTransform: "capitalize", color: car.status === "available" ? C.successText : car.status === "sold" ? C.textMuted : C.warnText }}>
                   {car.status || "available"}
                 </span>
                 {car.created_at && (
-                  <p style={{ fontSize: T.size.sm, color: C.textMuted, margin: "8px 0 0" }}>Listed {fmtDate(car.created_at)}</p>
+                  <p style={{ fontSize: T.size.sm, color: C.textMuted, margin: "8px 0 0" }}>{t("carPopup.listed", { date: fmtDate(car.created_at) })}</p>
                 )}
               </div>
             </div>

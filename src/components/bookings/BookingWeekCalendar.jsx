@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { premiumDark as PD, panelType as T } from "../../theme/tokens";
 
 // Premium Bookings, week view. The seller's side of the calendar buyers
@@ -36,17 +37,16 @@ const PALETTE = {
   wait: { fill: PD.hover,  border: "#6b7280", name: PD.text,   sub: PD.textSec, dot: PD.accentText }, // 13.9 / 6.6:1
   done: { fill: PD.raised, border: "#262a31", name: "#a3a9b5", sub: "#848b98", dot: "#848b98" },     //  7.4 / 5.0:1
 };
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // When a seller has set no hours, buyers get an open Mon-Sun 9am-6pm grid
 // (BookingCalendar.jsx fallback), so that is what "outside hours" means here.
 const FALLBACK_HOURS = { weekdays: [0, 1, 2, 3, 4, 5, 6], start_hour: 9, end_hour: 18, slot_minutes: 60 };
 
 const STATUS = {
-  pending:     { key: "wait", label: "Needs your OK" },
-  confirmed:   { key: "ok",   label: "Confirmed" },
-  rescheduled: { key: "ok",   label: "Moved" },
-  completed:   { key: "done", label: "Done" },
-  no_show:     { key: "done", label: "No-show" },
+  pending:     { key: "wait", lk: "needsOk" },
+  confirmed:   { key: "ok",   lk: "confirmed" },
+  rescheduled: { key: "ok",   lk: "moved" },
+  completed:   { key: "done", lk: "done" },
+  no_show:     { key: "done", lk: "noShow" },
 };
 
 const startOfWeek = (d) => {
@@ -62,15 +62,15 @@ const fmtTime = (d) => {
   const h = d.getHours(), m = d.getMinutes();
   return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "AM" : "PM"}`;
 };
-const fmtRange = (a, b) => {
-  const mo = (d) => d.toLocaleDateString("en-MY", { month: "short" });
+const fmtRange = (a, b, loc = "en-MY") => {
+  const mo = (d) => d.toLocaleDateString(loc, { month: "short" });
   return a.getMonth() === b.getMonth()
     ? `${a.getDate()} – ${b.getDate()} ${mo(b)} ${b.getFullYear()}`
     : `${a.getDate()} ${mo(a)} – ${b.getDate()} ${mo(b)} ${b.getFullYear()}`;
 };
-const carName = (car) => (car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked");
+const carName = (car, t) => (car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : t("bookingCal.noCar"));
 // "Mon – Sat", "Mon – Fri, Sun": consecutive open days collapse into a range.
-const hoursText = (h) => {
+const hoursText = (h, t) => {
   const open = [1, 2, 3, 4, 5, 6, 0].map((d) => h.weekdays.includes(d)); // Mon-first
   const runs = [];
   open.forEach((on, i) => {
@@ -78,8 +78,8 @@ const hoursText = (h) => {
     const last = runs[runs.length - 1];
     if (last && last[1] === i - 1) last[1] = i; else runs.push([i, i]);
   });
-  const days = runs.length === 1 && runs[0][0] === 0 && runs[0][1] === 6 ? "Every day"
-    : runs.map(([a, z]) => (a === z ? DAY_NAMES[a] : `${DAY_NAMES[a]} – ${DAY_NAMES[z]}`)).join(", ");
+  const days = runs.length === 1 && runs[0][0] === 0 && runs[0][1] === 6 ? t("bookingCal.everyDay")
+    : runs.map(([a, z]) => (a === z ? t(`bookingCal.day.${a}`) : `${t(`bookingCal.day.${a}`)} – ${t(`bookingCal.day.${z}`)}`)).join(", ");
   return `${days} · ${fmtHour(h.start_hour)} – ${fmtHour(h.end_hour)}`;
 };
 
@@ -100,6 +100,8 @@ function layDay(items) {
 }
 
 export default function BookingWeekCalendar({ appointments, hours, nowTick, onOpen, onConfirm, onMove, onEditHours }) {
+  const { t, i18n } = useTranslation();
+  const loc = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
   const now = new Date(nowTick || Date.now());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(now));
   const [dayIdx, setDayIdx] = useState(() => (now.getDay() + 6) % 7);
@@ -159,10 +161,10 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
         className={`bwc-bk bwc-${st.key}`}
         style={{ top: y(b.start) + 2, height: h, left: `calc(${w * b.lane}% + 3px)`, width: `calc(${w}% - 6px)` }}
         onClick={() => onOpen(b.apt)}
-        aria-label={`${b.apt.buyer_name || "Buyer"}, ${carName(b.apt.car_listings)}, ${fmtTime(b.date)}, ${st.label}`}
+        aria-label={`${b.apt.buyer_name || t("bookingCal.buyer")}, ${carName(b.apt.car_listings, t)}, ${fmtTime(b.date)}, ${t(`bookingCal.status.${st.lk}`)}`}
       >
-        <b><i />{b.apt.buyer_name || "Buyer"}</b>
-        {h > 34 && <span>{carName(b.apt.car_listings)}{showTime ? ` · ${fmtTime(b.date)}` : ""}</span>}
+        <b><i />{b.apt.buyer_name || t("bookingCal.buyer")}</b>
+        {h > 34 && <span>{carName(b.apt.car_listings, t)}{showTime ? ` · ${fmtTime(b.date)}` : ""}</span>}
       </button>
     );
   };
@@ -188,13 +190,13 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
         <div className="bwc-card bwc-main">
           <div className="bwc-head">
             <div style={{ minWidth: 0 }}>
-              <h2>Test drives &amp; viewings</h2>
-              <p className="bwc-sub">{fmtRange(days[0], days[6])} · {all.length} booked</p>
+              <h2>{t("bookingCal.title")}</h2>
+              <p className="bwc-sub">{fmtRange(days[0], days[6], loc)} · {t("bookingCal.booked", { count: all.length })}</p>
             </div>
             <div className="bwc-ctrls">
-              <button type="button" className="bwc-btn bwc-icon" onClick={() => go(-1)} aria-label="Previous week"><ChevronLeft size={16} /></button>
-              <button type="button" className="bwc-btn" onClick={goToday}>Today</button>
-              <button type="button" className="bwc-btn bwc-icon" onClick={() => go(1)} aria-label="Next week"><ChevronRight size={16} /></button>
+              <button type="button" className="bwc-btn bwc-icon" onClick={() => go(-1)} aria-label={t("bookingCal.prevWeek")}><ChevronLeft size={16} /></button>
+              <button type="button" className="bwc-btn" onClick={goToday}>{t("bookingCal.today")}</button>
+              <button type="button" className="bwc-btn bwc-icon" onClick={() => go(1)} aria-label={t("bookingCal.nextWeek")}><ChevronRight size={16} /></button>
             </div>
           </div>
 
@@ -204,9 +206,9 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
               <div />
               {days.map((d, i) => (
                 <div key={i} className={`bwc-day${sameDay(d, now) ? " bwc-today" : ""}${isOpenDay(d) ? "" : " bwc-closed"}`}>
-                  <div className="bwc-dn">{DAY_NAMES[i]}</div>
+                  <div className="bwc-dn">{t(`bookingCal.day.${i}`)}</div>
                   <div className="bwc-dd">{d.getDate()}</div>
-                  <div className="bwc-dc">{byDay[i].length ? `${byDay[i].length} booked` : isOpenDay(d) ? "" : "Closed"}</div>
+                  <div className="bwc-dc">{byDay[i].length ? t("bookingCal.booked", { count: byDay[i].length }) : isOpenDay(d) ? "" : t("bookingCal.closed")}</div>
                 </div>
               ))}
             </div>
@@ -227,7 +229,7 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
             <div className="bwc-strip">
               {days.map((d, i) => (
                 <button key={i} type="button" className={`${i === dayIdx ? "bwc-on" : ""}${sameDay(d, now) ? " bwc-today" : ""}`} onClick={() => setDayIdx(i)}>
-                  <span className="bwc-dn">{DAY_NAMES[i]}</span>
+                  <span className="bwc-dn">{t(`bookingCal.day.${i}`)}</span>
                   <span className="bwc-dd">{d.getDate()}</span>
                   <span className="bwc-dots">
                     {byDay[i].slice(0, 3).map((b) => <i key={b.apt.id} className={`bwc-dot-${(STATUS[b.apt.status] || STATUS.confirmed).key}`} />)}
@@ -236,7 +238,7 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
               ))}
             </div>
             {byDay[dayIdx].length === 0 && (
-              <p className="bwc-dayempty">{isOpenDay(sel) ? "No bookings this day." : "Closed. Buyers can't book this day."}</p>
+              <p className="bwc-dayempty">{isOpenDay(sel) ? t("bookingCal.noBookDay") : t("bookingCal.closedDay")}</p>
             )}
             <div className="bwc-body bwc-mbody" style={{ height: gridH }}>
               {timeCol}
@@ -248,45 +250,45 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
             </div>
           </div>
 
-          {empty && <p className="bwc-empty">No bookings this week. Buyers book from the Book a Viewing button on your car pages, inside the hours below.</p>}
+          {empty && <p className="bwc-empty">{t("bookingCal.emptyWeek")}</p>}
 
           <div className="bwc-legend">
-            <span><i className="bwc-dot-ok" />Confirmed</span>
-            <span><i className="bwc-dot-wait" />Needs your OK</span>
-            <span><i className="bwc-dot-done" />Done</span>
-            <span><i className="bwc-hatch" />Outside your hours, buyers can't pick it</span>
+            <span><i className="bwc-dot-ok" />{t("bookingCal.status.confirmed")}</span>
+            <span><i className="bwc-dot-wait" />{t("bookingCal.status.needsOk")}</span>
+            <span><i className="bwc-dot-done" />{t("bookingCal.status.done")}</span>
+            <span><i className="bwc-hatch" />{t("bookingCal.legendOutside")}</span>
           </div>
         </div>
 
         <div className="bwc-rail">
           <div className="bwc-card bwc-pad bwc-r-ok">
-            <p className="bwc-eb">Needs your OK · {pending.length}</p>
-            {pending.length === 0 && <p className="bwc-muted">Nothing waiting. New booking requests show up here first.</p>}
+            <p className="bwc-eb">{t("bookingCal.needsOkCount", { count: pending.length })}</p>
+            {pending.length === 0 && <p className="bwc-muted">{t("bookingCal.nothingWaiting")}</p>}
             {pending.slice(0, 6).map((a) => {
               const d = new Date(a.appointment_date);
               const passed = d < now;
               return (
                 <div key={a.id} className="bwc-req">
-                  <div className="bwc-who">{a.buyer_name || "Buyer"}</div>
-                  <div className="bwc-what">{carName(a.car_listings)}</div>
+                  <div className="bwc-who">{a.buyer_name || t("bookingCal.buyer")}</div>
+                  <div className="bwc-what">{carName(a.car_listings, t)}</div>
                   <div className={passed ? "bwc-when bwc-passed" : "bwc-when"}>
-                    {d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}, {fmtTime(d)}{passed ? " · time has passed" : ""}
+                    {d.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" })}, {fmtTime(d)}{passed ? t("bookingCal.timePassed") : ""}
                   </div>
                   <div className="bwc-acts">
                     <button type="button" className="bwc-primary" onClick={() => onConfirm(a)}>
-                      {a.buyer_phone ? "Confirm on WhatsApp" : "Confirm"}
+                      {a.buyer_phone ? t("bookingCal.confirmWa") : t("bookingCal.confirm")}
                     </button>
-                    <button type="button" className="bwc-btn" onClick={() => onMove(a)}>Move</button>
+                    <button type="button" className="bwc-btn" onClick={() => onMove(a)}>{t("bookingCal.move")}</button>
                   </div>
                 </div>
               );
             })}
-            {pending.length > 6 && <p className="bwc-muted">{pending.length - 6} more in the List view.</p>}
+            {pending.length > 6 && <p className="bwc-muted">{t("bookingCal.moreInList", { count: pending.length - 6 })}</p>}
           </div>
           <div className="bwc-card bwc-pad">
-            <p className="bwc-eb bwc-row">Your booking hours <button type="button" className="bwc-link" onClick={onEditHours}>Edit</button></p>
-            <p className="bwc-what">{hours ? hoursText(rule) : "Not set yet. Buyers can pick any day, 9 AM – 6 PM."}</p>
-            <p className="bwc-muted">{rule.slot_minutes || 60} min per booking</p>
+            <p className="bwc-eb bwc-row">{t("bookingCal.yourHours")} <button type="button" className="bwc-link" onClick={onEditHours}>{t("bookingCal.edit")}</button></p>
+            <p className="bwc-what">{hours ? hoursText(rule, t) : t("bookingCal.notSet")}</p>
+            <p className="bwc-muted">{t("bookingCal.minPer", { n: rule.slot_minutes || 60 })}</p>
           </div>
         </div>
       </div>
