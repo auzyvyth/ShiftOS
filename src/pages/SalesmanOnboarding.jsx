@@ -17,6 +17,7 @@ import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
 import PhoneInput from '../components/ui/PhoneInput';
 import { toPlus60, isValidMyPhone } from '../lib/phone';
+import { useTranslation } from 'react-i18next';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -173,6 +174,7 @@ function StepDot({ state, num }) {
 }
 
 function LeftPanel({ step, tier, onChangePlan }) {
+  const { t } = useTranslation();
   const cfg = TIERS[tier] || TIERS.lite;
   return (
     <div className="eo-left">
@@ -181,7 +183,7 @@ function LeftPanel({ step, tier, onChangePlan }) {
         <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
       </div>
       <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
-      <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
+      <button type="button" className="eo-changeplan" onClick={onChangePlan}>{t("onboard.changePlan")}</button>
       <div className="eo-step-list">
         {STEPS.map((s, i) => {
           const state = i < step ? 'done' : i === step ? 'active' : 'pending';
@@ -205,13 +207,14 @@ function LeftPanel({ step, tier, onChangePlan }) {
         ))}
       </div>
       <div className="eo-trustline">
-        PDPA 2010 compliant<br />256-bit TLS encryption<br />Malaysia
+        {t("onboard.pdpa2010Compliant")}<br />{t("onboard.256BitTlsEncryption")}<br />{t("onboard.malaysia")}
       </div>
     </div>
   );
 }
 
 export default function SalesmanOnboarding() {
+  const { t } = useTranslation();
   // AUTH-6: signUp and resend both hit captcha-guarded auth endpoints.
   const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
@@ -311,10 +314,10 @@ export default function SalesmanOnboarding() {
   // Mirror Supabase's password policy (8+ chars + one of each class) so users
   // never hit an opaque server-side rejection on sign-up.
   const pwChecks = [
-    { label: 'At least 8 characters', ok: form.password.length >= 8 },
-    { label: 'A lowercase letter (a-z)', ok: /[a-z]/.test(form.password) },
-    { label: 'An uppercase letter (A-Z)', ok: /[A-Z]/.test(form.password) },
-    { label: 'A number (0-9)', ok: /[0-9]/.test(form.password) },
+    { label: t("onboard.atLeast8Characters"), ok: form.password.length >= 8 },
+    { label: t("onboard.aLowercaseLetterAZ"), ok: /[a-z]/.test(form.password) },
+    { label: t("onboard.anUppercaseLetterAZ"), ok: /[A-Z]/.test(form.password) },
+    { label: t("onboard.aNumber09"), ok: /[0-9]/.test(form.password) },
     { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
   ];
   const pwValid = pwChecks.every(c => c.ok);
@@ -658,22 +661,22 @@ export default function SalesmanOnboarding() {
             <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>
-            {resumeIsBuyer ? "YOU'RE ALREADY SIGNED IN" : 'INCOMPLETE SIGN-UP FOUND'}
+            {resumeIsBuyer ? t("onboard.youReAlreadySignedIn") : t("onboard.incompleteSignUpFound")}
           </p>
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL?' : 'WELCOME BACK'}
+            {resumeIsBuyer ? t("onboard.continueWithThisEmail") : t("onboard.welcomeBack")}
           </div>
           <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'Your Drevo account is signed in as' : 'You have an incomplete sign-up as'}
+            {resumeIsBuyer ? t("onboard.yourDrevoAccountIsSigned") : t("onboard.youHaveAnIncompleteSign")}
           </p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : (draftStep.current || 2)); }}>
-            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL' : 'CONTINUE SIGN-UP'}
+            {resumeIsBuyer ? t("onboard.continueWithThisEmail2") : t("onboard.continueSignUp")}
           </button>
-          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'USE ANOTHER EMAIL' : 'USE A DIFFERENT ACCOUNT'}</button>
+          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? t("onboard.useAnotherEmail") : t("onboard.useADifferentAccount")}</button>
           {!resumeIsBuyer && (
             <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
+              <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>{t("onboard.signInToExistingAccount")}</a>
             </p>
           )}
         </div>
@@ -690,17 +693,17 @@ export default function SalesmanOnboarding() {
             <div className="eo-logo-icon">X</div>
             <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
-          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>ONE MORE STEP</p>
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>CHECK YOUR EMAIL</div>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
+          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>{t("onboard.oneMoreStep")}</p>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>{t("onboard.checkYourEmail")}</div>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>{t("onboard.weSentAConfirmationLink")}</p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12, marginBottom: 24, textAlign: 'center', lineHeight: 1.6 }}>
-            Click the link to verify your account — it'll bring you straight back here to finish signing up.
+            {t("onboard.clickTheLinkToVerify")}
           </p>
-          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>RESEND EMAIL</button>
+          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>{t("onboard.resendEmail")}</button>
           {resendMsg && <div className="eo-hint" style={{ textAlign: 'center', marginTop: 10 }}>{resendMsg}</div>}
           <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-            <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
+            <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>{t("onboard.signInToExistingAccount")}</a>
           </p>
         </div>
       </div>
@@ -726,8 +729,8 @@ export default function SalesmanOnboarding() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <div className="eo-done-title">ACTIVATED</div>
-        <p className="eo-done-sub">Launching your salesman panel</p>
+        <div className="eo-done-title">{t("onboard.activated")}</div>
+        <p className="eo-done-sub">{t("onboard.launchingYourSalesmanPanel")}</p>
       </div>
     </>
   );
@@ -761,7 +764,7 @@ export default function SalesmanOnboarding() {
                 {/* The plan is named on every step: the desktop sidebar that
                     shows it is hidden on phones, which left "Change plan" with
                     no way to tell which plan was chosen. */}
-                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>{cfg.label} &middot; Change</button>
+                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>{cfg.label} {t("onboard.change")}</button>
               </div>
             </div>
 
@@ -783,9 +786,9 @@ export default function SalesmanOnboarding() {
 
             {step === 0 && (
               <>
-                <p className="eo-eyebrow">PDPA 2010 — REQUIRED</p>
-                <div className="eo-heading">Terms &amp; Conditions</div>
-                <p className="eo-sub">Review our Terms of Service, Privacy Policy and Data Processing Agreement, then confirm below.</p>
+                <p className="eo-eyebrow">{t("onboard.pdpa2010Required")}</p>
+                <div className="eo-heading">{t("onboard.termsConditions")}</div>
+                <p className="eo-sub">{t("onboard.reviewOurTermsOfService")}</p>
                 <div className="eo-legal-wrap">
                   <div className="eo-legal-scroll">
                     <LegalContent />
@@ -793,23 +796,23 @@ export default function SalesmanOnboarding() {
                 </div>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} />
-                  <span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and Data Processing Agreement.</span>
+                  <span>{t("onboard.iHaveReadAndAgree")} <a href="/terms" target="_blank" rel="noopener noreferrer">{t("onboard.termsOfService")}</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">{t("onboard.privacyPolicy")}</a> {t("onboard.andDataProcessingAgreement")}</span>
                 </label>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)} />
-                  <span>I consent to Drevo collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
+                  <span>{t("onboard.iConsentToDrevoCollecting")}</span>
                 </label>
                 <button className="eo-btn" onClick={agreeLegal} disabled={!agreeTerms || !agreePdpa}>
-                  I AGREE — CONTINUE
+                  {t("onboard.iAgreeContinue")}
                 </button>
               </>
             )}
 
             {step === 1 && (
               <>
-                <p className="eo-eyebrow">STEP 2 OF {STEPS.length}</p>
-                <div className="eo-heading">Create Account</div>
-                <p className="eo-sub">Sign up with your work email or continue with Google.</p>
+                <p className="eo-eyebrow">{t("onboard.step2Of")} {STEPS.length}</p>
+                <div className="eo-heading">{t("onboard.createAccount")}</div>
+                <p className="eo-sub">{t("onboard.signUpWithYourWork")}</p>
                 <button className="eo-ghost" style={{ marginTop: 0, borderColor: 'rgba(255,255,255,0.14)', height: 48 }} onClick={signInWithGoogle} disabled={loading}>
                   <svg width="17" height="17" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -817,19 +820,19 @@ export default function SalesmanOnboarding() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  CONTINUE WITH GOOGLE
+                  {t("onboard.continueWithGoogle")}
                 </button>
                 <div className="eo-divider">OR</div>
-                <label className="eo-label">EMAIL ADDRESS</label>
+                <label className="eo-label">{t("onboard.emailAddress")}</label>
                 <input className="eo-inp" type="email" placeholder="you@example.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
-                <label className="eo-label">PASSWORD</label>
+                <label className="eo-label">{t("onboard.password")}</label>
                 <div style={{ position: 'relative' }}>
-                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Create a strong password" value={form.password}
+                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t("onboard.createAStrongPassword")} value={form.password}
                     onChange={e => upd('password')(e.target.value)} autoComplete="new-password" style={{ paddingRight: 62 }} />
                   <button type="button" onClick={() => setShowPw(v => !v)} tabIndex={-1}
                     style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                    {showPw ? 'Hide' : 'Show'}
+                    {showPw ? t("onboard.hide") : t("onboard.show")}
                   </button>
                 </div>
                 {form.password.length > 0 && !pwValid && (
@@ -846,38 +849,37 @@ export default function SalesmanOnboarding() {
                     ))}
                   </div>
                 )}
-                <label className="eo-label">CONFIRM PASSWORD</label>
-                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Re-enter your password" value={form.confirmPassword}
+                <label className="eo-label">{t("onboard.confirmPassword")}</label>
+                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t("onboard.reEnterYourPassword")} value={form.confirmPassword}
                   onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
                 {form.confirmPassword.length > 0 && !pwMatch && (
-                  <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>Passwords don't match</div>
+                  <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>{t("onboard.passwordsDonTMatch")}</div>
                 )}
                 {guestNotice && (
                   <div className="eo-hint" style={{ marginTop: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)' }}>
-                    You were browsing as a guest. Selling needs a real account with
-                    an email and password, so you can sign back in later.
+                    {t("onboard.youWereBrowsingAsA")}
                   </div>
                 )}
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
-                  {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
+                  {loading ? t("onboard.creatingAccount") : t("onboard.createAccount2")}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                  Already have an account?{' '}
-                  <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in</a>
+                  {t("onboard.alreadyHaveAnAccount")}{' '}
+                  <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>{t("onboard.signIn")}</a>
                 </p>
               </>
             )}
 
             {step === 2 && (
               <>
-                <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
-                <div className="eo-heading">Your Details</div>
+                <p className="eo-eyebrow">{t("onboard.step3Of")} {STEPS.length}</p>
+                <div className="eo-heading">{t("onboard.yourDetails")}</div>
                 <p className="eo-sub">
-                  Your name is what buyers see. You can get verified later from your profile, in about 2 minutes.
+                  {t("onboard.yourNameIsWhatBuyers")}
                 </p>
 
-                <label className="eo-label">HOW DO YOU SELL CARS? PICK ONE OR TWO</label>
+                <label className="eo-label">{t("onboard.howDoYouSellCars")}</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   {SELLS_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}
@@ -894,7 +896,7 @@ export default function SalesmanOnboarding() {
                 </div>
                 {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
-                    <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
+                    <label className="eo-label" style={{ marginTop: 10 }}>{t("onboard.whichBrandDoYouSell")}</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {NEW_CAR_BRANDS.map((b) => {
                         const on = form.newCarBrand === b;
@@ -914,109 +916,109 @@ export default function SalesmanOnboarding() {
                     </div>
                     {starterModels?.length ? (
                       <p className="eo-hint" style={{ marginTop: 10 }}>
-                        Every {form.newCarBrand} model ({starterModels.length}) goes on your page with photos, ready to share. The official price for your area fills in by itself. Take off any you don't sell, or add your own photos, any time from Settings.
+                        {t("onboard.every")} {form.newCarBrand} {t("onboard.model")}{starterModels.length}{t("onboard.goesOnYourPageWith")}
                       </p>
                     ) : (
                       <p className="eo-hint" style={{ marginTop: 6 }}>
-                        You add the {form.newCarBrand || 'brand'} models you sell from Add car. The official price for your area fills in by itself.
+                        {t("onboard.youAddThe")} {form.newCarBrand || 'brand'} {t("onboard.modelsYouSellFromAdd")}
                       </p>
                     )}
                   </div>
                 ) : (
                 <p className="eo-hint" style={{ marginBottom: 18 }}>
-                  Already work at a dealership? Ask them to send you an invite instead — your dealership shows up on your page automatically, verified, no typing it in yourself.
+                  {t("onboard.alreadyWorkAtADealership")}
                 </p>
                 )}
 
-                <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
-                <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
+                <label className="eo-label">{t("onboard.fullLegalNameAsPer")}</label>
+                <input className="eo-inp" type="text" placeholder={t("onboard.ahmadBinAbdullah")} value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={skipIdentity}
                   disabled={loading || !form.fullName.trim()}>
-                  {loading ? 'SAVING…' : 'CONTINUE'}
+                  {loading ? t("onboard.saving") : t("onboard.continue")}
                 </button>
               </>
             )}
 
             {step === 3 && (
               <>
-                <p className="eo-eyebrow">STEP 4 OF {STEPS.length}</p>
-                <div className="eo-heading">Contact Number</div>
-                <p className="eo-sub">Your WhatsApp number is shown to buyers on your listings and used for account notifications.</p>
-                <label className="eo-label">WHATSAPP / MOBILE NUMBER</label>
+                <p className="eo-eyebrow">{t("onboard.step4Of")} {STEPS.length}</p>
+                <div className="eo-heading">{t("onboard.contactNumber")}</div>
+                <p className="eo-sub">{t("onboard.yourWhatsappNumberIsShown")}</p>
+                <label className="eo-label">{t("onboard.whatsappMobileNumber")}</label>
                 <PhoneInput mobileOnly className="eo-inp" value={form.phone} onChange={upd('phone')} />
-                <p className="eo-hint">Malaysian numbers only (+60). This appears on your public listing page.</p>
+                <p className="eo-hint">{t("onboard.malaysianNumbersOnly60This")}</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn"
                   onClick={() => { setErr(''); setStep(4); }}
                   disabled={!isValidMyPhone(form.phone, { mobileOnly: true })}>
-                  CONTINUE
+                  {t("onboard.continue")}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(2); }}>
-                  BACK
+                  {t("onboard.back")}
                 </button>
               </>
             )}
 
             {step === 4 && (
               <>
-                <p className="eo-eyebrow">STEP 5 OF {STEPS.length}</p>
-                <div className="eo-heading">Setup Your Profile</div>
-                <p className="eo-sub">This is what buyers will see on your public listing page.</p>
-                <label className="eo-label">DISPLAY NAME / BRAND</label>
-                <input className="eo-inp" type="text" placeholder="Ahmad Motors" value={form.brand}
+                <p className="eo-eyebrow">{t("onboard.step5Of")} {STEPS.length}</p>
+                <div className="eo-heading">{t("onboard.setupYourProfile")}</div>
+                <p className="eo-sub">{t("onboard.thisIsWhatBuyersWill")}</p>
+                <label className="eo-label">{t("onboard.displayNameBrand")}</label>
+                <input className="eo-inp" type="text" placeholder={t("onboard.ahmadMotors")} value={form.brand}
                   onChange={e => {
                     upd('brand')(e.target.value);
                     // Suggest the handle from the brand until the seller edits it
                     // (it used to fill only while empty, so it froze on the first letter).
                     if (!slugEdited) handleSlugChange(slugify(e.target.value), true);
                   }} />
-                <label className="eo-label">PROFILE URL HANDLE</label>
+                <label className="eo-label">{t("onboard.profileUrlHandle")}</label>
                 <div className="eo-slug-wrap">
                   <input className="eo-inp" type="text" placeholder="yourname" value={form.slug}
                     onChange={e => handleSlugChange(e.target.value)} style={{ paddingRight: 80 }} />
                   {form.slug.length >= 3 && (
                     <span className="eo-slug-status" style={{ color: slugTaken ? '#f87171' : slugChecking ? 'rgba(255,255,255,0.3)' : '#4ade80' }}>
-                      {slugChecking ? 'CHECKING' : slugTaken ? 'TAKEN' : 'AVAILABLE'}
+                      {slugChecking ? t("onboard.checking") : slugTaken ? t("onboard.taken") : t("onboard.available")}
                     </span>
                   )}
                 </div>
-                <p className="eo-hint">drevo.my/s/{form.slug || 'yourname'} &middot; Letters and numbers, 3–20 chars</p>
+                <p className="eo-hint">drevo.my/s/{form.slug || 'yourname'} {t("onboard.lettersAndNumbers320")}</p>
                 {/* Public: this is the page header, the Google title and the advisor
                     list. People typed their HOME here (owner, 2026-10-23), so it
                     asks for where buyers meet them. */}
-                <label className="eo-label">STATE WHERE YOU SELL</label>
+                <label className="eo-label">{t("onboard.stateWhereYouSell")}</label>
                 <select className="eo-select" value={form.state}
                   onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
-                  <option value="">Select state</option>
+                  <option value="">{t("onboard.selectState")}</option>
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
-                  AREA WHERE YOU SELL <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>— OPTIONAL</span>
+                  {t("onboard.areaWhereYouSell")} <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>{t("onboard.optional")}</span>
                 </label>
                 <select className="eo-select" value={form.city} disabled={!form.state}
                   onChange={e => upd('city')(e.target.value)}>
-                  <option value="">{form.state ? 'Select city / area' : 'Select a state first'}</option>
+                  <option value="">{form.state ? t("onboard.selectCityArea") : t("onboard.selectAStateFirst")}</option>
                   {cityOptionsFor(form.state, form.city).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <p className="eo-hint">Your showroom or office, where buyers meet you. Shown on your page and on Google, so never your home.</p>
+                <p className="eo-hint">{t("onboard.yourShowroomOrOfficeWhere")}</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" disabled={!canSlugContinue || loading}
                   onClick={() => { setErr(''); setStep(5); }}>
-                  CONTINUE
+                  {t("onboard.continue")}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(3); }}>
-                  BACK
+                  {t("onboard.back")}
                 </button>
               </>
             )}
 
             {step === 5 && (
               <>
-                <p className="eo-eyebrow">REVIEW YOUR DETAILS</p>
-                <div className="eo-heading">Almost There</div>
-                <p className="eo-sub">Confirm everything is accurate before activating your account.</p>
+                <p className="eo-eyebrow">{t("onboard.reviewYourDetails")}</p>
+                <div className="eo-heading">{t("onboard.almostThere")}</div>
+                <p className="eo-sub">{t("onboard.confirmEverythingIsAccurateBefore")}</p>
                 <div className="eo-review-wrap">
                   {[
                     ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
@@ -1034,13 +1036,13 @@ export default function SalesmanOnboarding() {
                 </div>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={activate} disabled={loading}>
-                  {loading ? 'ACTIVATING…' : 'ACTIVATE ACCOUNT'}
+                  {loading ? t("onboard.activating") : t("onboard.activateAccount")}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(4); }} disabled={loading}>
-                  BACK
+                  {t("onboard.back")}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'rgba(255,255,255,0.15)', lineHeight: 1.7 }}>
-                  By activating, you confirm all information is accurate and you have agreed to our Terms, Privacy Policy, and DPA.
+                  {t("onboard.byActivatingYouConfirmAll")}
                 </p>
               </>
             )}
