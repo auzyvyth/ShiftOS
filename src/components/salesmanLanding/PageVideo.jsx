@@ -6,8 +6,9 @@ import { ExternalLink } from "lucide-react";
 // desktop mode") of the example page locked to Perodua (/s/premiummotors?brand=perodua) scrolling
 // from the top to the footer, in a browser-window frame, right under the plan tour.
 // The ad landing page must stay fast, so the video does not download until the section is
-// near the screen (preload none + src set by an IntersectionObserver). Muted, looping, inline.
-// Reduced motion: no autoplay, the still frame shows and the visitor can press play.
+// near the screen (preload none + src set by an IntersectionObserver), then plays the moment it is on
+// screen and pauses when it leaves. Muted, looping, inline. Reduced motion: never autoplays, the still
+// frame shows and the visitor can press play.
 // Words come from `copy` (landingCopy(lang).pageVideo); this file holds only the files and layout.
 // Re-record (new -vN filename, the folder is cached for a year) when the Premium page changes.
 const VIDEO = "/for-salesmen/premium-page-scroll-v2.mp4";
@@ -15,9 +16,11 @@ const POSTER = "/for-salesmen/premium-page-scroll-v2.jpg";
 
 export default function PageVideo({ copy, examplePath, exampleLabel }) {
   const ref = useRef(null);
+  const vid = useRef(null);
   const [near, setNear] = useState(false);
   const [still] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
+  // Download when the section is 400px away, so it is ready by the time it shows.
   useEffect(() => {
     const el = ref.current;
     if (!el || near) return undefined;
@@ -26,6 +29,22 @@ export default function PageVideo({ copy, examplePath, exampleLabel }) {
     io.observe(el);
     return () => io.disconnect();
   }, [near]);
+
+  // Play the moment the video is on screen (owner, 2026-11-28), pause when it leaves. The first time it
+  // shows it starts from the top of the page, so nobody lands mid-scroll. Reduced motion: never autoplays.
+  useEffect(() => {
+    const v = vid.current;
+    if (!v || !near || still || typeof IntersectionObserver === "undefined") return undefined;
+    let seen = false;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        if (!seen) { seen = true; try { v.currentTime = 0; } catch { /* not loaded yet */ } }
+        const p = v.play(); if (p?.catch) p.catch(() => {});
+      } else v.pause();
+    }, { threshold: 0.25 });
+    io.observe(v);
+    return () => io.disconnect();
+  }, [near, still]);
 
   return (
     <section className="pv" ref={ref} aria-labelledby="pv-title">
@@ -43,13 +62,13 @@ export default function PageVideo({ copy, examplePath, exampleLabel }) {
           <div className="pv-win">
             <div className="pv-bar" aria-hidden="true"><i /><i /><i /><span>drevo.my/s/premiummotors</span></div>
             <video
+              ref={vid}
               src={near ? VIDEO : undefined}
               poster={POSTER}
               width="1280" height="800"
               muted loop playsInline
-              autoPlay={!still}
               controls={still}
-              preload="none"
+              preload={near ? "auto" : "none"}
               aria-label={copy.alt}
             />
           </div>
