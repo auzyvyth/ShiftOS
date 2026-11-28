@@ -8,6 +8,7 @@ import { orderedBrands, brandKey } from "../../utils/liveMaths";
 import { premiumDark as P } from "../../theme/tokens";
 import { ROOT_DOMAIN, SITE_URL } from "../../config/site";
 import ShareMenu from "../../components/ShareMenu";
+import { agentShareImage } from "../../utils/agentSeo";
 import { shareVisits } from "../../utils/detectChannel";
 import ThisWeek from "../../components/crm/ThisWeek";
 import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/StarterTasks";
@@ -208,6 +209,7 @@ export default function DashboardTab({
  <ShareMenu
  baseUrl={pageUrl}
  refSlug={profile.slug}
+ imageUrl={agentShareImage(profile, '')}
  waCaption={(url) => `Check out my car listings on Drevo:\n${url}`}
  dark
  label={t("salesmanPremium.dash.share")}

@@ -2942,6 +2942,10 @@
     "copyLink": "Copy link",
     "copiedIg": "Link copied — paste it in your Instagram bio or story",
     "copiedTt": "Link copied — paste it in your TikTok bio or caption",
+    "instagramImage": "Instagram — share image",
+    "tiktokImage": "TikTok — share image",
+    "imageSavedIg": "Image saved and caption copied — upload it in Instagram",
+    "imageSavedTt": "Image saved and caption copied — upload it in TikTok",
     "copied": "Link copied"
   },
   "carPopup": {

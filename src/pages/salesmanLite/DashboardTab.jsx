@@ -8,6 +8,7 @@ import { premiumDark as P } from "../../theme/tokens";
 import "./keys.css";
 import { ROOT_DOMAIN, SITE_URL } from "../../config/site";
 import ShareMenu from "../../components/ShareMenu";
+import { agentShareImage } from "../../utils/agentSeo";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import StarterTasks from "../../components/onboarding/StarterTasks";
 import SilentCarCard from "../../components/coach/SilentCarCard";
@@ -152,6 +153,7 @@ export default function DashboardTab({
         <ShareMenu
           baseUrl={pageUrl}
           refSlug={profile.slug}
+          imageUrl={agentShareImage(profile, '')}
           waCaption={(url) => `${t("salesmanLite.dash.shareMyListingsCaption")}:\n${url}`}
           dark
           label={t("salesmanLite.dash.share")}
