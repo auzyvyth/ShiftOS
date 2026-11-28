@@ -26,7 +26,8 @@
     "privacyNoticePre": "Dengan meneruskan, anda bersetuju dengan ",
     "privacyPolicy": "Dasar Privasi",
     "privacyNoticePost": " kami dan untuk dihubungi berkenaan pertanyaan anda.",
-    "closeUnsaved": "Tutup? Apa yang anda buat di sini akan hilang."
+    "closeUnsaved": "Tutup? Apa yang anda buat di sini akan hilang.",
+    "close": "Tutup"
   },
   "home": {
     "hero": {
@@ -307,7 +308,8 @@
       "settings": "Tetapan",
       "help": "Bantuan",
       "feedback": "Maklum Balas",
-      "feedbackMobile": "Ulasan"
+      "feedbackMobile": "Ulasan",
+      "brokers": "Pengedar"
     },
     "header": {
       "litePanel": "Panel Lite",
@@ -566,7 +568,9 @@
       "srcEnquiry": "Pertanyaan Drevo",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Rujukan",
-      "srcManual": "Manual"
+      "srcManual": "Manual",
+      "openChat": "Buka chat dalam app dengan pembeli ini",
+      "chat": "Chat"
     },
     "perf": {
       "closeRate": "Kadar Tutup",
@@ -827,7 +831,13 @@
         "submit": "Tambah",
         "attached": "Add-on ditambah",
         "attachFailed": "Gagal tambah add-on"
-      }
+      },
+      "contact": "Hubungi",
+      "inAppChat": "Chat dalam app",
+      "phoneLabel": "Nombor telefon pembeli",
+      "editPhone": "Edit nombor telefon",
+      "addPhoneWhenShared": "Tambah nombor mereka bila mereka kongsi",
+      "addPhone": "Tambah nombor telefon"
     },
     "addLead": {
       "title": "Tambah Lead",
@@ -849,12 +859,13 @@
       "answered": "Dijawab",
       "noAnswer": "Tak Dijawab",
       "callbackRequested": "Minta Callback",
-      "voicemail": "Tinggal Voicemail",
+      "voicemail": "Mel suara",
       "outcome": "Hasil",
       "noteOptional": "Nota (pilihan)",
       "notePlaceholder": "cth. Akan datang showroom Sabtu",
       "cancel": "Batal",
-      "saving": "Menyimpan…"
+      "saving": "Menyimpan…",
+      "outcomeCallback": "Panggil balik"
     },
     "batchWa": {
       "title": "Blast Follow-up",
@@ -976,7 +987,20 @@
       "messageLogFailed": "Gagal log mesej",
       "waSent": "WA dihantar!",
       "waSentDesc": "Anda call mereka juga?",
-      "waSentAction": "Log Call"
+      "waSentAction": "Log Call",
+      "phoneTooShort": "Nombor telefon ini nampak tak lengkap",
+      "phoneSaveFailed": "Gagal simpan nombor telefon",
+      "noImages": "Tiada gambar untuk listing ini",
+      "photoSaved": "Gambar disimpan",
+      "photoDownloadFailed": "Tak dapat muat turun gambar",
+      "zipping_one": "Memampatkan {{count}} gambar…",
+      "zipping_other": "Memampatkan {{count}} gambar…",
+      "imagesDownloadFailed": "Tak dapat muat turun gambar-gambar itu",
+      "zipSaved_one": "{{count}} gambar disimpan sebagai zip",
+      "zipSaved_other": "{{count}} gambar disimpan sebagai zip",
+      "zipFailed": "Tak dapat bina fail zip",
+      "copyThisLink": "Salin pautan ini",
+      "listingLiveTelegram": "Listing anda kini live di Drevo!"
     },
     "locked": {
       "leadsTitle": "Lead dikunci",
@@ -1006,6 +1030,125 @@
       "servicesTitle": "Jual add-on dengan setiap kereta",
       "servicesSub": "Premium simpan katalog anda sendiri untuk tint, coating, warranty dan pakej servis, dan tunjuk berapa setiap satu bawa untung.",
       "cta": "Lihat Premium"
+    },
+    "booked": {
+      "pendingBanner_one": "{{count}} tempahan menunggu pengesahan",
+      "pendingBanner_other": "{{count}} tempahan menunggu pengesahan"
+    },
+    "ui": {
+      "unknownBuyer": "Pembeli tidak diketahui",
+      "buyer": "Pembeli",
+      "goPremium": "Naik ke Premium",
+      "premium": "Premium",
+      "addOn": "Add-on",
+      "addOnTip": "Deal ini ada add-on berbayar",
+      "heatTip": "Tahap segera lead — berdasarkan peringkat pipeline dan bila lead ini last bergerak",
+      "call": "Telefon",
+      "callLead": "Telefon lead",
+      "callBuyer": "Telefon pembeli",
+      "openLead": "Buka butiran lead",
+      "clearSearch": "Kosongkan carian",
+      "empty": "Kosong",
+      "deleteLead": "Padam lead",
+      "carAlt": "Kereta",
+      "removeAddon": "Buang add-on",
+      "cancel": "Batal",
+      "close": "Tutup",
+      "newBadge": "BARU",
+      "confirmBookingTip": "Sahkan tempahan ini dan mesej pembeli di WhatsApp",
+      "markConfirmedTip": "Tandakan temujanji sebagai disahkan",
+      "sendReminderTip": "Hantar mesej peringatan WhatsApp kepada pembeli",
+      "bookingDetails": "Butiran tempahan",
+      "vin": "VIN",
+      "plate": "Plat",
+      "clearReminder": "Kosongkan peringatan",
+      "profileAlt": "Profil",
+      "litePanel": "Panel Lite",
+      "main": "Utama",
+      "salesman": "Salesman",
+      "logOut": "Log keluar",
+      "notifications": "Notifikasi",
+      "notificationsUnread": "Notifikasi ({{count}} belum dibaca)",
+      "showTour": "Tunjuk tour"
+    },
+    "td": {
+      "title": "Macam mana test drive tadi?",
+      "noCar": "tiada kereta dipautkan",
+      "viewCar": "Lihat kereta",
+      "interested": "Mereka berminat — teruskan",
+      "advanceTo": "Naik ke {{stage}}",
+      "notInterested": "Tak berminat",
+      "markLost": "Tandakan sebagai hilang"
+    },
+    "won": {
+      "title": "Sahkan Jualan Berjaya",
+      "markedPre": "Listing akan ditandakan sebagai ",
+      "sold": "Sold",
+      "markedPost": " dengan tarikh hari ini.",
+      "profitUpdate": "Dashboard keuntungan anda akan dikemas kini secara automatik.",
+      "noCar": "Tiada kereta dipautkan pada lead ini — hanya peringkat lead akan dikemas kini. Pautkan kereta dahulu untuk tandakan ia sebagai sold juga.",
+      "saving": "Menyimpan…",
+      "confirmSold": "Sahkan — Tandakan Listing sebagai Sold",
+      "confirmWon": "Sahkan Berjaya"
+    },
+    "card": {
+      "edit": "Edit",
+      "copyLink": "Salin Pautan",
+      "copiedTick": "✓ Disalin!",
+      "waCaption": "Kapsyen WA",
+      "editListing": "Edit Listing"
+    },
+    "brief": {
+      "title": "Ringkasan Pantas",
+      "copied": "Disalin!",
+      "copy": "Salin Ringkasan"
+    },
+    "tg": {
+      "title": "Sambung Telegram",
+      "required": "Diperlukan untuk jadualkan peringatan temujanji",
+      "s1Pre": "Buka Telegram dan cari ",
+      "s2Pre": "Hantar ",
+      "s2Post": " — bot akan balas dengan nombor ID anda",
+      "s3Pre": "Pergi ke ",
+      "s3Path": "Tetapan → Notifikasi Telegram",
+      "s3Post": " dan tampal ID itu",
+      "notNow": "Bukan sekarang",
+      "goSettings": "Pergi ke Tetapan →"
+    },
+    "lt": {
+      "emptyTitle": "Belum ada listing",
+      "emptyBody": "Tambah kereta pertama anda guna butang di atas.",
+      "add": "+ Tambah Listing",
+      "backDash": "← Kembali ke Dashboard",
+      "notApproved": "Tidak diluluskan",
+      "noReason": "Tiada sebab diberikan. Semak butiran dan gambar, kemudian hantar semula.",
+      "editResubmit": "Edit & Hantar Semula",
+      "changeStatus": "Tukar status listing",
+      "setTo": "Tukar listing ini kepada",
+      "hintAvailable": "Live untuk pembeli",
+      "hintReserved": "Deposit / ditahan",
+      "hintSold": "Deal selesai",
+      "myMargin": "Margin saya:",
+      "views": "tontonan",
+      "enquiries": "pertanyaan",
+      "view": "Lihat",
+      "edit": "Edit",
+      "copyLinkTip": "Salin pautan",
+      "copied": "Disalin",
+      "link": "Pautan",
+      "copyCaptionTip": "Salin kapsyen",
+      "caption": "Kapsyen",
+      "moreActions": "Lagi tindakan",
+      "brief": "Ringkasan",
+      "loanPoster": "Poster loan",
+      "movingPoster": "Poster bergerak",
+      "premium": "Premium",
+      "postSocials": "Siar ke media sosial",
+      "tiktokPost": "Post TikTok",
+      "downloadPhotos": "Muat turun gambar",
+      "deleting": "Memadam...",
+      "delete": "Padam",
+      "cancel": "Batal"
     }
   },
   "salesmanPremium": {
@@ -1020,7 +1163,8 @@
       "loans": "Pinjaman",
       "outreach": "Outreach",
       "settings": "Tetapan",
-      "feedback": "Maklum Balas"
+      "feedback": "Maklum Balas",
+      "brokers": "Stok pengedar"
     },
     "settings": {
       "navLanguage": "Bahasa",
@@ -1133,7 +1277,8 @@
           "areas": "Kawasan liputan tidak boleh ada nombor telefon.",
           "promise": "Janji anda tidak boleh ada nombor telefon."
         }
-      }
+      },
+      "telegramConnectedMsg": "Telegram disambung! Anda akan terima peringatan temujanji + tempahan di sini."
     },
     "sold": {
       "subtitle": "Setiap buyer selepas deal: handover, pembaharuan dan servis selepas jualan.",
@@ -1212,7 +1357,8 @@
       "delete": "Padam",
       "add": "Tambah",
       "thisBuyer": "buyer ni",
-      "deleting": "Memadam..."
+      "deleting": "Memadam...",
+      "remove": "Buang"
     },
     "addons": {
       "attachFailed": "Tak dapat lampirkan add-on tu",
@@ -2205,6 +2351,70 @@
       "show": "Tunjukkan",
       "later": "Nanti",
       "eyebrow": "Jualan pertama"
+    },
+    "pin": {
+      "max": "Anda boleh pin 4 kereta sahaja. Unpin satu dulu.",
+      "saveFailed": "Tak dapat simpan pin. Cuba lagi.",
+      "removedFromPage": "Dibuang dari page anda."
+    },
+    "linked": {
+      "onlyDealerEdit": "Hanya pengedar anda boleh edit kereta ini. Minta mereka kemas kini.",
+      "enterAgreedPrice": "Masukkan harga yang dipersetujui dengan pembeli",
+      "theDealer": "pengedar",
+      "sentToDealerWon": "Dihantar kepada {{dealer}} untuk kelulusan. Ia bertukar ke Won selepas mereka sahkan.",
+      "sentToDealerPrice": "Dihantar kepada pengedar anda untuk lulus harga. Anda akan dapat notifikasi bila mereka jawab.",
+      "sentToDealerCommission": "Dihantar kepada {{dealer}} untuk kelulusan. Komisen anda perlu dibayar selepas mereka sahkan.",
+      "onlyDealerStatus": "Hanya pengedar anda boleh tukar status kereta ini. Jual dengan tanda lead pembeli sebagai Won.",
+      "assignedToYou": "Pengedar anda tetapkan kereta ini kepada anda. Minta mereka batalkan penetapan itu.",
+      "removeFailed": "Tak dapat buang kereta ini dari listing anda",
+      "removed": "Dibuang dari listing anda",
+      "tabIncoming": "Masuk",
+      "tabInventory": "Kereta pengedar",
+      "tabTeam": "Pasukan"
+    },
+    "ds": {
+      "wonWaiting": "Won sedang menunggu pengedar mengesahkan jualan.",
+      "title": "Jualan pengedar",
+      "earn": "Anda dapat {{amount}} selepas pengedar luluskan jualan.",
+      "told": "Mereka telah dimaklumkan bila anda tandakan ia won.",
+      "markWon": "Tandakan lead ini won bila pembeli beli, dan ia akan dihantar kepada pengedar untuk lulus.",
+      "approvedPaid": "Jualan diluluskan. Komisen dibayar.",
+      "approvedOwed": "Jualan diluluskan. Komisen perlu dibayar: {{amount}}.",
+      "waitingApprove": "Menunggu {{dealer}} luluskan jualan ini.",
+      "notConfirmed": "{{dealer}} tidak mengesahkan jualan ini. Berbincang dengan mereka.",
+      "heldUntil": "Ditahan untuk anda sehingga {{date}}.",
+      "holdEnded": "Tempoh tahanan tamat {{date}}.",
+      "vin": "VIN",
+      "cityPh": "cth. Petaling Jaya",
+      "addressPh": "cth. 12, Jalan Ampang, 50450 Kuala Lumpur",
+      "planPremium": "Premium",
+      "planLite": "Lite",
+      "agreedPrice": "Harga dipersetujui (RM)",
+      "offAsking": "RM {{off}} di bawah harga minta RM {{ask}}. Melebihi had pengedar anda, ia akan dihantar kepada mereka untuk lulus dahulu.",
+      "askingPrice": "Harga minta RM {{ask}}."
+    },
+    "dealerCars": {
+      "header": "Kereta pengedar di page saya · {{count}}",
+      "carOf": "kereta {{dealer}}",
+      "earn": "dapat RM {{amount}}",
+      "unpin": "Nyahpin dari page saya",
+      "pin": "Pin ke atas page saya",
+      "share": "Kongsi dengan pautan saya",
+      "removeFromPage": "Buang dari page saya"
+    },
+    "bk": {
+      "waiting": "menunggu pengedar luluskan",
+      "received": "diterima {{date}}",
+      "notReceivedTold": "anda kata belum terima, pengedar telah dimaklumkan",
+      "dealerPaid": "pengedar kata dah bayar {{date}}",
+      "owed": "perlu dibayar oleh pengedar",
+      "header": "Komisen kereta pengedar",
+      "receivedAmt": "{{amount}} diterima",
+      "notYetAmt": "{{amount}} belum diterima",
+      "btnReceived": "Diterima",
+      "btnNotReceived": "Belum terima",
+      "settle": "Selesaikan dengan pengedar di WhatsApp",
+      "chaseMsg": "Hi, saya belum terima komisen untuk {{car}} lagi. Boleh kita selesaikan?"
     }
   },
   "availability": {

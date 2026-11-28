@@ -213,7 +213,7 @@ export default function ListingsTab({
  {dealerCars.length > 0 && (
  <div style={{ background: P.card, borderRadius: P.radius.card, marginBottom: 14, overflow: "hidden" }}>
  <p style={{ margin: 0, padding: "14px 16px 8px", fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: P.textMuted }}>
- Dealer cars on my page · {dealerCars.length}
+ {t("salesmanPremium.dealerCars.header", { count: dealerCars.length })}
  </p>
  {dealerCars.map((c) => {
  const pinned = pinnedIds.includes(c.id);
@@ -226,25 +226,25 @@ export default function ListingsTab({
  <div style={{ minWidth: 0, flex: 1 }}>
  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: P.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</p>
  <p style={{ margin: "2px 0 0", fontSize: 12, color: P.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : ""}{c.dealerName ? ` · ${c.dealerName}'s car` : ""}{Number(c.commission) > 0 ? ` · earn RM ${Number(c.commission).toLocaleString("en-MY")}` : ""}
+ {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : ""}{c.dealerName ? ` · ${t("salesmanPremium.dealerCars.carOf", { dealer: c.dealerName })}` : ""}{Number(c.commission) > 0 ? ` · ${t("salesmanPremium.dealerCars.earn", { amount: Number(c.commission).toLocaleString("en-MY") })}` : ""}
  </p>
  </div>
  {onTogglePin && (
- <button onClick={() => onTogglePin(c.id)} title={pinned ? "Unpin from my page" : "Pin to top of my page"} aria-label={pinned ? "Unpin from my page" : "Pin to top of my page"} aria-pressed={pinned}
+ <button onClick={() => onTogglePin(c.id)} title={pinned ? t("salesmanPremium.dealerCars.unpin") : t("salesmanPremium.dealerCars.pin")} aria-label={pinned ? t("salesmanPremium.dealerCars.unpin") : t("salesmanPremium.dealerCars.pin")} aria-pressed={pinned}
  style={{ width: 36, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", background: pinned ? P.hover : P.raised, color: pinned ? P.text : P.textMuted, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
  <Pin size={14} />
  </button>
  )}
  {handleListingShare && (
- <button onClick={() => handleListingShare(c)} title="Share with my link" aria-label="Share with my link"
+ <button onClick={() => handleListingShare(c)} title={t("salesmanPremium.dealerCars.share")} aria-label={t("salesmanPremium.dealerCars.share")}
  style={{ width: 36, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", background: P.raised, color: P.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
  <Share2 size={14} />
  </button>
  )}
  {onRemoveDealerCar && (
- <button onClick={() => onRemoveDealerCar(c)} title="Remove from my page" aria-label="Remove from my page"
+ <button onClick={() => onRemoveDealerCar(c)} title={t("salesmanPremium.dealerCars.removeFromPage")} aria-label={t("salesmanPremium.dealerCars.removeFromPage")}
  style={{ height: 36, padding: "0 12px", borderRadius: P.radius.row, border: "none", cursor: "pointer", background: P.raised, color: P.textSec, fontSize: 12, fontWeight: 600, fontFamily: "inherit", flexShrink: 0 }}>
- Remove
+ {t("salesmanPremium.common.remove")}
  </button>
  )}
  </div>
@@ -519,7 +519,7 @@ export default function ListingsTab({
  {!isSold && onTogglePin && (
  <>
  <button onClick={() => { onTogglePin(car.id); setActionMenuCarId(null); }} style={menuItem}>
- <Pin size={13} /> {pinnedIds.includes(car.id) ? "Unpin from my page" : "Pin to top of my page"}
+ <Pin size={13} /> {pinnedIds.includes(car.id) ? t("salesmanPremium.dealerCars.unpin") : t("salesmanPremium.dealerCars.pin")}
  </button>
  {menuRule}
  </>

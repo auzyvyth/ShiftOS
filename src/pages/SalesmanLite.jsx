@@ -491,7 +491,7 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend, o
             </div>
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || t("salesmanLite.ui.unknownBuyer")}</p>
             <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
             {carPrice && <p style={{ margin: "0 0 3px", fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
             <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -629,7 +629,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
             </div>
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{lead.buyer_name || "Unknown Buyer"}</p>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{lead.buyer_name || t("salesmanLite.ui.unknownBuyer")}</p>
             <p style={{ margin: "0 0 3px", fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carTitle}</p>
             {carPrice && <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
           </div>
@@ -686,11 +686,12 @@ const LITE_SETTINGS_NAV = [
 // Top-bar door to Premium. One red accent, small: it sits beside the bell, so
 // it must not shout over the panel's own primary action.
 function GoPremiumButton({ onClick, compact }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Go Premium"
+      title={t("salesmanLite.ui.goPremium")}
       style={{
         display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
         background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)",
@@ -701,7 +702,7 @@ function GoPremiumButton({ onClick, compact }) {
     >
       {/* Phone: text only. The bar already holds the logo + four icon
           buttons, and a 360px screen has ~60px left for this. */}
-      {!compact && <Sparkles size={13} />} {compact ? "Premium" : "Go Premium"}
+      {!compact && <Sparkles size={13} />} {compact ? t("salesmanLite.ui.premium") : t("salesmanLite.ui.goPremium")}
     </button>
   );
 }
@@ -1295,7 +1296,7 @@ export default function SalesmanLite() {
 
   const downloadListingImages = async (car) => {
     const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
-    if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+    if (imgs.length === 0) { toast.error(t("salesmanLite.toast.noImages")); return; }
     const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
     if (imgs.length === 1) {
       try {
@@ -1307,11 +1308,11 @@ export default function SalesmanLite() {
         a.href = url; a.download = `${base}.${ext}`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
-        toast.success("Saved photo");
-      } catch { toast.error("Couldn't download image"); }
+        toast.success(t("salesmanLite.toast.photoSaved"));
+      } catch { toast.error(t("salesmanLite.toast.photoDownloadFailed")); }
       return;
     }
-    const tId = toast.loading(`Zipping ${imgs.length} photos…`);
+    const tId = toast.loading(t("salesmanLite.toast.zipping", { count: imgs.length }));
     try {
       const JSZip = await loadJSZip();
       const zip = new JSZip();
@@ -1325,16 +1326,16 @@ export default function SalesmanLite() {
           ok++;
         } catch { /* skip a failed image */ }
       }));
-      if (ok === 0) { toast.error("Couldn't download images", { id: tId }); return; }
+      if (ok === 0) { toast.error(t("salesmanLite.toast.imagesDownloadFailed"), { id: tId }); return; }
       const out = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(out);
       const a = document.createElement("a");
       a.href = url; a.download = `${base}-photos.zip`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""} as zip`, { id: tId });
+      toast.success(t("salesmanLite.toast.zipSaved", { count: ok }), { id: tId });
     } catch {
-      toast.error("Couldn't build zip", { id: tId });
+      toast.error(t("salesmanLite.toast.zipFailed"), { id: tId });
     }
   };
 
@@ -3052,7 +3053,7 @@ export default function SalesmanLite() {
       try { await navigator.share({ title, url }); } catch { /* closed the sheet */ }
       return;
     }
-    try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { window.prompt("Copy this link", url); }
+    try { await navigator.clipboard.writeText(url); toast.success(t("salesmanLite.toast.linkCopied")); } catch { window.prompt(t("salesmanLite.toast.copyThisLink"), url); }
   };
   const onCoach = (action, car) => {
     if (action === "answer") setActiveTab("feedback");
@@ -3381,7 +3382,7 @@ export default function SalesmanLite() {
                       body: {
                         dealer_id: userId,
                         channel_id: profile.telegram_chat_id,
-                        message: `Your listing is now live on Drevo!\n\n${carName}${car.selling_price ? `\nRM ${Number(car.selling_price).toLocaleString("en-MY")}` : ""}`,
+                        message: `${t("salesmanLite.toast.listingLiveTelegram")}\n\n${carName}${car.selling_price ? `\nRM ${Number(car.selling_price).toLocaleString("en-MY")}` : ""}`,
                       },
                       headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
                     }).catch(() => {});
@@ -3510,12 +3511,12 @@ export default function SalesmanLite() {
                   {/* Heat + add-on share this slot in normal flow, so both never overlap. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                     {leadIdsWithAddons.has(lead.id) && (
-                      <span title="This deal has a paid add-on attached" style={{ ...tag, color: PD.textSec }}>
-                        <Package size={9} /> Add-on
+                      <span title={t("salesmanLite.ui.addOnTip")} style={{ ...tag, color: PD.textSec }}>
+                        <Package size={9} /> {t("salesmanLite.ui.addOn")}
                       </span>
                     )}
                     {!heat.terminal && (
-                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ ...tag, color: heatColor(heat.label) }}>
+                      <span title={t("salesmanLite.ui.heatTip")} style={{ ...tag, color: heatColor(heat.label) }}>
                         {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
                       </span>
                     )}
@@ -3534,7 +3535,7 @@ export default function SalesmanLite() {
                 )}
                 {lead.last_call_outcome && (() => {
                   // Outcomes are information, not alarms: mint only for the positive one.
-                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: PD.up }, no_answer: { icon: PhoneOff, label: "No Answer", color: PD.textSec }, callback_requested: { icon: RefreshCw, label: "Callback", color: PD.textSec }, voicemail: { icon: Voicemail, label: "Voicemail", color: PD.textSec } };
+                  const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanLite.logCall.answered"), color: PD.up }, no_answer: { icon: PhoneOff, label: t("salesmanLite.logCall.noAnswer"), color: PD.textSec }, callback_requested: { icon: RefreshCw, label: t("salesmanLite.logCall.outcomeCallback"), color: PD.textSec }, voicemail: { icon: Voicemail, label: t("salesmanLite.logCall.voicemail"), color: PD.textSec } };
                   const o = OUTCOME[lead.last_call_outcome];
                   if (!o) return null;
                   return (
@@ -3575,7 +3576,7 @@ export default function SalesmanLite() {
               </button>
             )}
             {lead.phone && (
-              <a href={`tel:${(lead.phone || "").replace(/\D/g, "")}`} title="Call" aria-label="Call lead"
+              <a href={`tel:${(lead.phone || "").replace(/\D/g, "")}`} title={t("salesmanLite.ui.call")} aria-label={t("salesmanLite.ui.callLead")}
                 style={{ ...leadBtn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec }}>
                 <Phone size={14} />
               </a>
@@ -3622,7 +3623,7 @@ export default function SalesmanLite() {
                 <Car size={12} /> {t("salesmanLite.leads.linkCar")}
               </button>
             ) : null}
-            <button onClick={() => setDrawerLeadId(lead.id)} title="Open lead details" aria-label="Open lead details"
+            <button onClick={() => setDrawerLeadId(lead.id)} title={t("salesmanLite.ui.openLead")} aria-label={t("salesmanLite.ui.openLead")}
               style={{ ...leadBtn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec, fontSize: 14, letterSpacing: "0.05em" }}>
               ···
             </button>
@@ -3673,7 +3674,7 @@ export default function SalesmanLite() {
             style={{ width: "100%", height: 42, background: PD.card, border: "none", borderRadius: PD.radius.pill, color: PD.text, fontSize: 14, padding: "0 38px 0 38px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark" }}
           />
           {leadSearch && (
-            <button onClick={() => setLeadSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 4, display: "flex" }}>
+            <button onClick={() => setLeadSearch("")} aria-label={t("salesmanLite.ui.clearSearch")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 4, display: "flex" }}>
               <X size={14} />
             </button>
           )}
@@ -3727,7 +3728,7 @@ export default function SalesmanLite() {
           if (stageLeads.length === 0) {
             return (
               <div style={{ height: 96, borderRadius: PD.radius.card, background: PD.card, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 13, color: PD.textMuted }}>Empty</span>
+                <span style={{ fontSize: 13, color: PD.textMuted }}>{t("salesmanLite.ui.empty")}</span>
               </div>
             );
           }
@@ -3742,7 +3743,7 @@ export default function SalesmanLite() {
           <div style={{ marginTop: 20 }}>
             <button onClick={() => setLostOpen((o) => !o)}
               style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", fontFamily: "inherit" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: PD.textSec }}>Lost ({lostLeads.length})</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: PD.textSec }}>{t("salesmanLite.stages.lost")} ({lostLeads.length})</span>
               <ChevronRight size={14} color={PD.textMuted} style={{ transform: lostOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
             </button>
             {lostOpen && (
@@ -3757,7 +3758,7 @@ export default function SalesmanLite() {
                         {lead.loss_reason && (
                           <span style={{ ...tag, textTransform: "none", letterSpacing: 0, color: PD.textSec }}>{lead.loss_reason}</span>
                         )}
-                        <button onClick={() => setDeleteConfirmId(lead.id)} title="Delete lead" aria-label="Delete lead"
+                        <button onClick={() => setDeleteConfirmId(lead.id)} title={t("salesmanLite.ui.deleteLead")} aria-label={t("salesmanLite.ui.deleteLead")}
                           style={{ background: "transparent", border: "none", color: PD.textMuted, cursor: "pointer", padding: 6, display: "flex", alignItems: "center" }}>
                           <Trash2 size={13} />
                         </button>
@@ -3817,7 +3818,7 @@ export default function SalesmanLite() {
                       <span style={{ ...tag, color: heatColor(plHeat.label) }}>{plHeat.label}</span>
                     )}
                     <span style={{ ...tag, color: PD.textSec, textTransform: "capitalize", letterSpacing: 0 }}>{stageLabel(pl.stage)}</span>
-                    <button onClick={close} aria-label="Close" style={{ background: PD.raised, border: "none", cursor: "pointer", color: PD.textSec, borderRadius: 99, padding: 8, display: "flex" }}>
+                    <button onClick={close} aria-label={t("salesmanLite.ui.close")} style={{ background: PD.raised, border: "none", cursor: "pointer", color: PD.textSec, borderRadius: 99, padding: 8, display: "flex" }}>
                       <X size={16} />
                     </button>
                   </div>
@@ -3829,7 +3830,7 @@ export default function SalesmanLite() {
                     {(() => {
                       const img = Array.isArray(plCar.images) ? plCar.images.find(Boolean) : null;
                       return img ? (
-                        <img src={cdnImg(img, 200)} alt={plCarName || "Car"}
+                        <img src={cdnImg(img, 200)} alt={plCarName || t("salesmanLite.ui.carAlt")}
                           onClick={() => plCar.slug && window.open(`/cars/${plCar.slug}`, "_blank")}
                           style={{ width: 88, height: 66, borderRadius: PD.radius.row, objectFit: "cover", flexShrink: 0, cursor: plCar.slug ? "pointer" : "default" }} />
                       ) : (
@@ -4023,7 +4024,7 @@ export default function SalesmanLite() {
                           <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", marginBottom: 4, background: PD.raised, borderRadius: PD.radius.row }}>
                             <span style={{ fontSize: 13, color: PD.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
                             <span style={{ fontSize: 12.5, fontWeight: 600, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
-                            <button onClick={() => handleRemoveAddon(a.id)} aria-label="Remove add-on" style={{ background: "none", border: "none", cursor: "pointer", color: PD.textMuted, display: "flex", padding: 4, flexShrink: 0 }}>
+                            <button onClick={() => handleRemoveAddon(a.id)} aria-label={t("salesmanLite.ui.removeAddon")} style={{ background: "none", border: "none", cursor: "pointer", color: PD.textMuted, display: "flex", padding: 4, flexShrink: 0 }}>
                               <X size={13} />
                             </button>
                           </div>
@@ -4083,7 +4084,7 @@ export default function SalesmanLite() {
                           {lostSavingId === pl.id ? "…" : t("salesmanLite.drawer.lostReasons." + r.toLowerCase())}
                         </button>
                       ))}
-                      <button onClick={() => setLostPromptId(null)} aria-label="Cancel" style={{ ...panelBtn, height: 32, background: "transparent", color: PD.textMuted }}>✕</button>
+                      <button onClick={() => setLostPromptId(null)} aria-label={t("salesmanLite.ui.cancel")} style={{ ...panelBtn, height: 32, background: "transparent", color: PD.textMuted }}>✕</button>
                     </div>
                   ) : plIsConfirmingDelete ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -4410,9 +4411,9 @@ export default function SalesmanLite() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || t("salesmanLite.ui.unknownBuyer")}</p>
                     {aptIsNew(apt.created_at) && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: PD.raised, color: PD.accentText, flexShrink: 0 }}>NEW</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: PD.raised, color: PD.accentText, flexShrink: 0 }}>{t("salesmanLite.ui.newBadge")}</span>
                     )}
                   </div>
                   {!hideTag && statusTag(apt.status)}
@@ -4442,13 +4443,13 @@ export default function SalesmanLite() {
           {/* Action row — primary + call + ··· details, like the lead card */}
           <div style={{ display: "flex", gap: 6, padding: "0 16px 16px" }}>
             {canConfirm && apt.buyer_phone && (
-              <button className="lk-red" onClick={() => openConfirmModal(apt)} title="Confirm this booking and message the buyer on WhatsApp"
+              <button className="lk-red" onClick={() => openConfirmModal(apt)} title={t("salesmanLite.ui.confirmBookingTip")}
                 style={{ ...btn, flex: 1, minWidth: 0, background: undefined, color: PD.onAccent }}>
                 <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
               </button>
             )}
             {canConfirm && !apt.buyer_phone && (
-              <button className="lk-red" onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title="Mark appointment as confirmed"
+              <button className="lk-red" onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title={t("salesmanLite.ui.markConfirmedTip")}
                 style={{ ...btn, flex: 1, minWidth: 0, background: undefined, color: PD.onAccent }}>
                 <Check size={14} /> {t("salesmanLite.inbox.confirmBooking")}
               </button>
@@ -4458,17 +4459,17 @@ export default function SalesmanLite() {
                   const p = apt.buyer_phone.replace(/\D/g, "");
                   const msg = buildReminderMessage(apt);
                   window.location.href = `https://wa.me/${p.startsWith("6") ? p : "6" + p}?text=${encodeURIComponent(msg)}`;
-                }} title="Send WhatsApp reminder message to buyer"
+                }} title={t("salesmanLite.ui.sendReminderTip")}
                 style={{ ...btn, flex: 1, minWidth: 0 }}>
                 <MessageCircle size={13} /> {t("salesmanLite.inbox.message")}
               </button>
             )}
             {phone && (
-              <a href={`tel:${phone}`} title="Call" aria-label="Call buyer" style={{ ...btn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec }}>
+              <a href={`tel:${phone}`} title={t("salesmanLite.ui.call")} aria-label={t("salesmanLite.ui.callBuyer")} style={{ ...btn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec }}>
                 <Phone size={14} />
               </a>
             )}
-            <button onClick={() => setBookingDetailId(apt.id)} title="Booking details" aria-label="Booking details"
+            <button onClick={() => setBookingDetailId(apt.id)} title={t("salesmanLite.ui.bookingDetails")} aria-label={t("salesmanLite.ui.bookingDetails")}
               style={{ ...btn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec, fontSize: 14, letterSpacing: "0.05em" }}>
               ···
             </button>
@@ -4506,7 +4507,7 @@ export default function SalesmanLite() {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: PD.card, color: PD.text, borderRadius: "22px 22px 0 0", padding: 20, boxSizing: "border-box" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
               {statusTag(apt.status)}
-              <button onClick={close} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 99, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={close} aria-label={t("salesmanLite.ui.close")} style={{ width: 34, height: 34, borderRadius: 99, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <X size={16} />
               </button>
             </div>
@@ -4527,13 +4528,13 @@ export default function SalesmanLite() {
                 <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(242,244,247,0.3)" }}>{carTitle}</p>
                 {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: PD.textSec }}>{carVariant}</p>}
                 {carPrice && <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
-                {carVin && <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, fontFamily: "ui-monospace, monospace" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
+                {carVin && <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, fontFamily: "ui-monospace, monospace" }}>{(car?.vin_number ? t("salesmanLite.ui.vin") : t("salesmanLite.ui.plate")) + " "}{carVin}</p>}
               </div>
             </div>
 
             {/* Buyer */}
             <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>{apt.buyer_name || "Unknown Buyer"}</p>
+              <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700 }}>{apt.buyer_name || t("salesmanLite.ui.unknownBuyer")}</p>
               {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: PD.textSec, display: "inline-flex", alignItems: "center", gap: 6, fontVariantNumeric: "tabular-nums" }}><Phone size={13} /> {apt.buyer_phone}</p>}
               {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 13, color: PD.textSec, fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
             </div>
@@ -4552,7 +4553,7 @@ export default function SalesmanLite() {
                 <span style={{ fontSize: 12, color: PD.text, flex: 1 }}>
                   {t("salesmanLite.inbox.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
                 </span>
-                <button onClick={() => clearReminder(apt)} aria-label="Clear reminder" style={{ background: "none", border: "none", color: PD.textMuted, fontSize: 12, cursor: "pointer", padding: 4 }}>✕</button>
+                <button onClick={() => clearReminder(apt)} aria-label={t("salesmanLite.ui.clearReminder")} style={{ background: "none", border: "none", color: PD.textMuted, fontSize: 12, cursor: "pointer", padding: 4 }}>✕</button>
               </div>
             ) : apt.remind_sent ? (
               <p style={{ fontSize: 12, color: PD.textMuted, margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={12} /> {t("salesmanLite.inbox.reminderSent")}</p>
@@ -5049,7 +5050,7 @@ export default function SalesmanLite() {
               style={{ position: "relative", flexShrink: 0, width: 72, height: 72, padding: 0, borderRadius: "50%", border: "none", background: PD.hover, overflow: "hidden", cursor: avatarUploading ? "default" : "pointer" }}
             >
               {avatarUrl
-                ? <img src={avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ? <img src={avatarUrl} alt={t("salesmanLite.ui.profileAlt")} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: 28, fontWeight: 700, color: PD.text }}>{initials}</span>}
               {avatarUploading && (
                 <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}>
@@ -6226,7 +6227,7 @@ export default function SalesmanLite() {
                   marginBottom: 0,
                 }}
               >
-                · Lite Panel
+                · {t("salesmanLite.ui.litePanel")}
               </p>
             </div>
           </div>
@@ -6243,7 +6244,7 @@ export default function SalesmanLite() {
               margin: 0,
             }}
           >
-            Main
+            {t("salesmanLite.ui.main")}
           </p>
           {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
             <button
@@ -6335,14 +6336,14 @@ export default function SalesmanLite() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {profile?.full_name || profile?.slug || "Salesman"}
+                {profile?.full_name || profile?.slug || t("salesmanLite.ui.salesman")}
               </p>
               <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>lite</p>
             </div>
             <button
               onClick={() => setLogoutConfirmOpen(true)}
-              title="Log out"
-              aria-label="Log out"
+              title={t("salesmanLite.ui.logOut")}
+              aria-label={t("salesmanLite.ui.logOut")}
               style={{
                 background: "transparent",
                 border: "none",
@@ -6390,8 +6391,8 @@ export default function SalesmanLite() {
               <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
-                title="Notifications"
-                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
+                title={t("salesmanLite.ui.notifications")}
+                aria-label={unreadCount > 0 ? t("salesmanLite.ui.notificationsUnread", { count: unreadCount }) : t("salesmanLite.ui.notifications")}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",
@@ -6423,8 +6424,8 @@ export default function SalesmanLite() {
               <ReportBugButton variant="inline" context="Salesman Lite" userLabel={profile?.full_name || profile?.email || ""} />
               <button
                 onClick={() => setTourStep(0)}
-                title="Show tour"
-                aria-label="Show tour"
+                title={t("salesmanLite.ui.showTour")}
+                aria-label={t("salesmanLite.ui.showTour")}
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -6441,8 +6442,8 @@ export default function SalesmanLite() {
               </button>
               <button
                 onClick={() => setLogoutConfirmOpen(true)}
-                title="Log out"
-                aria-label="Log out"
+                title={t("salesmanLite.ui.logOut")}
+                aria-label={t("salesmanLite.ui.logOut")}
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -6498,8 +6499,8 @@ export default function SalesmanLite() {
               <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
-                title="Notifications"
-                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
+                title={t("salesmanLite.ui.notifications")}
+                aria-label={unreadCount > 0 ? t("salesmanLite.ui.notificationsUnread", { count: unreadCount }) : t("salesmanLite.ui.notifications")}
                 style={{
                   position: "relative",
                   background: "rgba(255,255,255,0.04)",
@@ -6729,15 +6730,15 @@ export default function SalesmanLite() {
             <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
               {/* icon */}
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Car size={22} style={{ color: "#93c5fd" }} /></div>
-              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
+              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.td.title")}</p>
               <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span>{tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}</span>
+                <span>{tdLead.buyer_name || t("salesmanLite.ui.buyer")} · {carName || t("salesmanLite.td.noCar")}</span>
                 {fullCar && (
                   <button
                     onClick={viewCar}
                     style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}
                   >
-                    View car
+                    {t("salesmanLite.td.viewCar")}
                   </button>
                 )}
               </p>
@@ -6749,8 +6750,8 @@ export default function SalesmanLite() {
                 >
                   <ThumbsUp size={20} style={{ flexShrink: 0, color: "#f87171" }} />
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {tdNext.replace(/_/g, " ")}</p>
+                    <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.td.interested")}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{t("salesmanLite.td.advanceTo", { stage: tdNext.replace(/_/g, " ") })}</p>
                   </div>
                 </button>
                 <button
@@ -6759,12 +6760,12 @@ export default function SalesmanLite() {
                 >
                   <ThumbsDown size={20} style={{ flexShrink: 0, color: "#9ca3af" }} />
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
+                    <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>{t("salesmanLite.td.notInterested")}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>{t("salesmanLite.td.markLost")}</p>
                   </div>
                 </button>
                 <button onClick={dismiss} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                  Cancel
+                  {t("salesmanLite.ui.cancel")}
                 </button>
               </div>
             </div>
@@ -6793,9 +6794,9 @@ export default function SalesmanLite() {
           <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 env(safe-area-inset-bottom)" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#0d1117", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "24px 24px 36px", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Award size={22} style={{ color: "#4ade80" }} /></div>
-              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Confirm Won Sale</p>
+              <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.won.title")}</p>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
-                {wonLead.buyer_name || "Buyer"}{carName ? ` · ${carName}` : ""}
+                {wonLead.buyer_name || t("salesmanLite.ui.buyer")}{carName ? ` · ${carName}` : ""}
                 {carPrice ? ` · ${carPrice}` : ""}
               </p>
               {wonLead.car_listing_id && (
@@ -6809,17 +6810,17 @@ export default function SalesmanLite() {
               {car ? (
                 <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#4ade80", fontWeight: 600 }}>
-                    The listing will be marked as <strong>Sold</strong> with today's date.
+                    {t("salesmanLite.won.markedPre")}<strong>{t("salesmanLite.won.sold")}</strong>{t("salesmanLite.won.markedPost")}
                   </p>
                   <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
-                    Your profit dashboard will update automatically.
+                    {t("salesmanLite.won.profitUpdate")}
                   </p>
                 </div>
               ) : (
                 <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
                   <p style={{ margin: 0, fontSize: 12, color: "#fbbf24" }}>
-                    No car linked to this lead — only the lead stage will be updated.
-                    Link a car first to also mark it as sold.
+                    {t("salesmanLite.won.noCar")}
+                    
                   </p>
                 </div>
               )}
@@ -6829,10 +6830,10 @@ export default function SalesmanLite() {
                   disabled={wonSaving}
                   style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: wonSaving ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.35)", color: wonSaving ? "#4b5563" : "#22c55e", fontSize: 14, fontWeight: 700, cursor: wonSaving ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
                 >
-                  {wonSaving ? "Saving…" : car ? "Confirm — Mark Listing as Sold" : "Confirm Won"}
+                  {wonSaving ? t("salesmanLite.won.saving") : car ? t("salesmanLite.won.confirmSold") : t("salesmanLite.won.confirmWon")}
                 </button>
                 <button onClick={dismiss} disabled={wonSaving} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                  Cancel
+                  {t("salesmanLite.ui.cancel")}
                 </button>
               </div>
             </div>
@@ -6861,7 +6862,7 @@ export default function SalesmanLite() {
               // the popup and finding the card again. Popup closes first —
               // two overlays must never be open at once (overlay rule 3).
               key: "edit",
-              label: (<><Pencil size={13} style={{ flexShrink: 0 }} /> Edit</>),
+              label: (<><Pencil size={13} style={{ flexShrink: 0 }} /> {t("salesmanLite.card.edit")}</>),
               color: C.infoText,
               bg: "rgba(59,130,246,0.08)",
               border: "rgba(59,130,246,0.25)",
@@ -6869,7 +6870,7 @@ export default function SalesmanLite() {
             },
             {
               key: "link",
-              label: (<><Copy size={13} style={{ flexShrink: 0 }} /> Copy Link</>),
+              label: (<><Copy size={13} style={{ flexShrink: 0 }} /> {t("salesmanLite.card.copyLink")}</>),
               color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
               bg: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
               border: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
@@ -6877,7 +6878,7 @@ export default function SalesmanLite() {
             },
             {
               key: "wa",
-              label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} /> {listingCopied[selectedCar.id] === "wa" ? "✓ Copied!" : "WA Caption"}</>),
+              label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} /> {listingCopied[selectedCar.id] === "wa" ? t("salesmanLite.card.copiedTick") : t("salesmanLite.card.waCaption")}</>),
               color: listingCopied[selectedCar.id] === "wa" ? "#4ade80" : "#9ca3af",
               bg: listingCopied[selectedCar.id] === "wa" ? "rgba(34,197,94,0.08)" : "rgba(37,211,102,0.06)",
               border: listingCopied[selectedCar.id] === "wa" ? "rgba(34,197,94,0.3)" : "rgba(37,211,102,0.2)",
@@ -6907,17 +6908,17 @@ export default function SalesmanLite() {
                 <Send size={20} style={{ color: "#93c5fd" }} />
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Connect Telegram</p>
-                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>Required to schedule appointment reminders</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.tg.title")}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>{t("salesmanLite.tg.required")}</p>
               </div>
             </div>
 
             {/* Steps */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
               {[
-                { n: "1", text: <>Open Telegram and search <strong style={{ color: "#93c5fd" }}>@userinfobot</strong></> },
-                { n: "2", text: <>Send <strong style={{ color: "#e5e7eb" }}>/start</strong> — the bot replies with your ID number</> },
-                { n: "3", text: <>Go to <strong style={{ color: "#e5e7eb" }}>Settings → Telegram Notifications</strong> and paste the ID</> },
+                { n: "1", text: <>{t("salesmanLite.tg.s1Pre")}<strong style={{ color: "#93c5fd" }}>@userinfobot</strong></> },
+                { n: "2", text: <>{t("salesmanLite.tg.s2Pre")}<strong style={{ color: "#e5e7eb" }}>/start</strong>{t("salesmanLite.tg.s2Post")}</> },
+                { n: "3", text: <>{t("salesmanLite.tg.s3Pre")}<strong style={{ color: "#e5e7eb" }}>{t("salesmanLite.tg.s3Path")}</strong>{t("salesmanLite.tg.s3Post")}</> },
               ].map(({ n, text }) => (
                 <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <span style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{n}</span>
@@ -6932,13 +6933,13 @@ export default function SalesmanLite() {
                 onClick={() => setTelegramSetupModal(false)}
                 style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}
               >
-                Not now
+                {t("salesmanLite.tg.notNow")}
               </button>
               <button
                 onClick={() => { setTelegramSetupModal(false); setSettingsNav("alerts"); switchTab("settings"); }}
                 style={{ flex: 2, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", cursor: "pointer" }}
               >
-                Go to Settings →
+                {t("salesmanLite.tg.goSettings")}
               </button>
             </div>
           </div>
@@ -6947,7 +6948,7 @@ export default function SalesmanLite() {
 
       {editListing && (
         <CarFormModal
-          title="Edit Listing"
+          title={t("salesmanLite.card.editListing")}
           subtitle={[editListing.brand, editListing.model, editListing.variant || ""].filter(Boolean).join(" ")}
           onClose={() => setEditListing(null)}
         >
@@ -6995,7 +6996,7 @@ export default function SalesmanLite() {
           <div onClick={() => setQuickBriefCar(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>Quick Brief</p>
+                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.brief.title")}</p>
                 <button onClick={() => setQuickBriefCar(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
               </div>
               <textarea
@@ -7008,7 +7009,7 @@ export default function SalesmanLite() {
                 onClick={() => { navigator.clipboard.writeText(brief); setBriefCopied(true); setTimeout(() => setBriefCopied(false), 2000); }}
                 style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, background: briefCopied ? "rgba(34,197,94,0.15)" : "rgba(56,189,248,0.15)", border: `1px solid ${briefCopied ? "rgba(34,197,94,0.4)" : "rgba(56,189,248,0.4)"}`, color: briefCopied ? "#4ade80" : "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
               >
-                {briefCopied ? <><Check size={14}/> Copied!</> : <><Copy size={14}/> Copy Brief</>}
+                {briefCopied ? <><Check size={14}/> {t("salesmanLite.brief.copied")}</> : <><Copy size={14}/> {t("salesmanLite.brief.copy")}</>}
               </button>
             </div>
           </div>

@@ -143,11 +143,11 @@ export default function ListingsTab({
           <div style={{ width: 52, height: 52, borderRadius: "50%", background: P.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Car size={24} color={P.textMuted} />
           </div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>No listings yet</p>
-          <p style={{ margin: 0, fontSize: 13, color: P.textSec, maxWidth: 260, lineHeight: 1.55 }}>Add your first car using the button above.</p>
-          <button className="lk-red" onClick={onAddListing} style={{ ...redBtn, width: "auto", padding: "0 22px", height: 42, fontSize: 14 }}>+ Add Listing</button>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t("salesmanLite.lt.emptyTitle")}</p>
+          <p style={{ margin: 0, fontSize: 13, color: P.textSec, maxWidth: 260, lineHeight: 1.55 }}>{t("salesmanLite.lt.emptyBody")}</p>
+          <button className="lk-red" onClick={onAddListing} style={{ ...redBtn, width: "auto", padding: "0 22px", height: 42, fontSize: 14 }}>{t("salesmanLite.lt.add")}</button>
           <button onClick={onBackToDashboard} style={{ marginTop: 2, height: 36, padding: "0 16px", borderRadius: P.radius.pill, background: "none", border: "none", color: P.textMuted, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-            ← Back to Dashboard
+            {t("salesmanLite.lt.backDash")}
           </button>
         </div>
       ) : sorted.length === 0 ? (
@@ -191,11 +191,11 @@ export default function ListingsTab({
                 <div style={{ borderRadius: `${P.radius.card}px ${P.radius.card}px 0 0`, overflow: "hidden" }}>
                   {isRejected && (
                     <div style={{ padding: "14px 16px", background: P.hero }}>
-                      <p style={eyebrow(P.accentText)}>Not approved</p>
+                      <p style={eyebrow(P.accentText)}>{t("salesmanLite.lt.notApproved")}</p>
                       <p style={{ margin: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}>
-                        {car.rejection_reason || "No reason was given. Check the details and photos, then resubmit."}
+                        {car.rejection_reason || t("salesmanLite.lt.noReason")}
                       </p>
-                      <button className="lk-red" onClick={() => onEdit(car)} style={redBtn}><Pencil size={13} /> Edit & Resubmit</button>
+                      <button className="lk-red" onClick={() => onEdit(car)} style={redBtn}><Pencil size={13} /> {t("salesmanLite.lt.editResubmit")}</button>
                     </div>
                   )}
                   {/* Locked after Premium lapsed: the photo is blacked out below. */}
@@ -232,7 +232,7 @@ export default function ListingsTab({
                           const cur = normStatus(car.status || "available");
                           const menuOpen = statusMenuCarId === car.id;
                           return (
-                            <button onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(menuOpen ? null : car.id); }} title="Change listing status"
+                            <button onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(menuOpen ? null : car.id); }} title={t("salesmanLite.lt.changeStatus")}
                               style={{ display: "flex", alignItems: "center", gap: 6, height: 30, padding: "0 8px 0 11px", borderRadius: P.radius.pill, background: menuOpen ? P.hover : P.raised, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                               <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotOf(cur), flexShrink: 0 }} />
                               <span style={{ fontSize: 12, fontWeight: 600, color: P.text }}>{isLocked ? t("premiumLapse.lockedTitle") : statusLabel(cur)}</span>
@@ -242,11 +242,11 @@ export default function ListingsTab({
                         })()}
                         {statusMenuCarId === car.id && (
                           <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, minWidth: 170, top: "calc(100% + 6px)" }}>
-                            <p style={{ margin: 0, padding: "10px 14px 6px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: P.textMuted }}>Set this listing to</p>
+                            <p style={{ margin: 0, padding: "10px 14px 6px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: P.textMuted }}>{t("salesmanLite.lt.setTo")}</p>
                             {[
-                              { key: "available", label: "Available", hint: "Live for buyers" },
-                              { key: "reserved", label: "Reserved", hint: "Deposit / on hold" },
-                              { key: "sold", label: "Sold", hint: "Deal closed" },
+                              { key: "available", label: t("salesmanLite.listings.status.available"), hint: t("salesmanLite.lt.hintAvailable") },
+                              { key: "reserved", label: t("salesmanLite.listings.status.reserved"), hint: t("salesmanLite.lt.hintReserved") },
+                              { key: "sold", label: t("salesmanLite.listings.status.sold"), hint: t("salesmanLite.lt.hintSold") },
                               ...(isPrivate || privateCount(myListings) < PRIVATE_CAR_LIMIT
                                 ? [{ key: "private", label: t("privateCars.label"), hint: t("privateCars.hint", { n: PRIVATE_CAR_LIMIT }) }] : []),
                             ].map(({ key, label, hint }) => {
@@ -273,7 +273,7 @@ export default function ListingsTab({
                     <span style={{ fontSize: 18, fontWeight: 700, color: isSold ? P.textSec : P.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{price}</span>
                     {margin != null && (
                       <span style={{ fontSize: 12, color: P.textMuted }}>
-                        My margin: <span style={{ fontWeight: 600, color: margin >= 0 ? P.up : P.accentText, fontVariantNumeric: "tabular-nums" }}>RM {margin.toLocaleString()}</span>
+                        {t("salesmanLite.lt.myMargin")} <span style={{ fontWeight: 600, color: margin >= 0 ? P.up : P.accentText, fontVariantNumeric: "tabular-nums" }}>RM {margin.toLocaleString()}</span>
                       </span>
                     )}
                   </div>
@@ -290,7 +290,7 @@ export default function ListingsTab({
                   {/* Traffic as facts, then the ONE next step (COACH-1). */}
                   {!isSold && !isRejected && !isPending && !isLocked && (
                     <p style={{ margin: "0 0 10px", fontSize: 12.5, color: P.textSec, fontVariantNumeric: "tabular-nums" }}>
-                      <strong style={{ color: P.text, fontWeight: 600 }}>{views}</strong> views · <strong style={{ color: P.text, fontWeight: 600 }}>{enqs}</strong> enquiries
+                      <strong style={{ color: P.text, fontWeight: 600 }}>{views}</strong> {t("salesmanLite.lt.views")} · <strong style={{ color: P.text, fontWeight: 600 }}>{enqs}</strong> {t("salesmanLite.lt.enquiries")}
                     </p>
                   )}
                   {!isLocked && (
@@ -305,30 +305,30 @@ export default function ListingsTab({
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: "auto" }}>
                     {isSold || isRejected ? (
                       // Rejected: Edit & Resubmit is in the notice at the top.
-                      <button onClick={open} style={{ ...cardBtn, color: P.textSec }}>View</button>
+                      <button onClick={open} style={{ ...cardBtn, color: P.textSec }}>{t("salesmanLite.lt.view")}</button>
                     ) : isPending ? (
                       <>
-                        <button onClick={open} style={{ ...cardBtn, color: P.textSec }}>View</button>
-                        <button onClick={() => onEdit(car)} style={cardBtn}><Pencil size={12} /> Edit</button>
+                        <button onClick={open} style={{ ...cardBtn, color: P.textSec }}>{t("salesmanLite.lt.view")}</button>
+                        <button onClick={() => onEdit(car)} style={cardBtn}><Pencil size={12} /> {t("salesmanLite.lt.edit")}</button>
                       </>
                     ) : (
                       <>
                         {/* A private car has no public page to link to. data-share-car = the COACH-1 share tour's ring. */}
                         {!isPrivate && (
-                          <button data-share-car={car.id} onClick={() => handleListingCopy(car, "link")} title="Copy link" style={{ ...cardBtn, color: copied === "link" ? P.up : P.text }}>
-                            <LinkIcon size={12} /> {copied === "link" ? "Copied" : "Link"}
+                          <button data-share-car={car.id} onClick={() => handleListingCopy(car, "link")} title={t("salesmanLite.lt.copyLinkTip")} style={{ ...cardBtn, color: copied === "link" ? P.up : P.text }}>
+                            <LinkIcon size={12} /> {copied === "link" ? t("salesmanLite.lt.copied") : t("salesmanLite.lt.link")}
                           </button>
                         )}
-                        <button onClick={() => handleListingCopy(car, "wa")} title="Copy caption" style={{ ...cardBtn, color: copied === "wa" ? P.up : P.text }}>
-                          <ClipboardPen size={12} /> {copied === "wa" ? "Copied" : "Caption"}
+                        <button onClick={() => handleListingCopy(car, "wa")} title={t("salesmanLite.lt.copyCaptionTip")} style={{ ...cardBtn, color: copied === "wa" ? P.up : P.text }}>
+                          <ClipboardPen size={12} /> {copied === "wa" ? t("salesmanLite.lt.copied") : t("salesmanLite.lt.caption")}
                         </button>
-                        <button onClick={() => onEdit(car)} style={cardBtn}><Pencil size={12} /> Edit</button>
+                        <button onClick={() => onEdit(car)} style={cardBtn}><Pencil size={12} /> {t("salesmanLite.lt.edit")}</button>
                       </>
                     )}
 
                     <div style={{ position: "relative", flexShrink: 0 }}>
                       <button onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
-                        title="More actions" aria-label="More actions"
+                        title={t("salesmanLite.lt.moreActions")} aria-label={t("salesmanLite.lt.moreActions")}
                         style={{ width: 36, height: 36, borderRadius: P.radius.row, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, letterSpacing: 1 }}>
                         ···
                       </button>
@@ -336,31 +336,31 @@ export default function ListingsTab({
                         <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, bottom: "calc(100% + 6px)" }}>
                           {!isSold && (
                             <>
-                              <button onClick={() => { onBrief(car); setActionMenuCarId(null); }} style={menuItem}><FileText size={13} /> Brief</button>
+                              <button onClick={() => { onBrief(car); setActionMenuCarId(null); }} style={menuItem}><FileText size={13} /> {t("salesmanLite.lt.brief")}</button>
                               {/* Loan poster: free on Lite for 4 cars a month (claim_loan_poster). */}
-                              <button onClick={() => { onPoster(car); setActionMenuCarId(null); }} style={menuItem}><Calculator size={13} /> Loan poster</button>
+                              <button onClick={() => { onPoster(car); setActionMenuCarId(null); }} style={menuItem}><Calculator size={13} /> {t("salesmanLite.lt.loanPoster")}</button>
                               {/* Moving poster (IDEA-29) is Premium: shown locked, the tap goes to the one upgrade screen. */}
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Play size={13} />
-                                <span style={{ flex: 1 }}>Moving poster</span>
+                                <span style={{ flex: 1 }}>{t("salesmanLite.lt.movingPoster")}</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
-                                  <Lock size={9} strokeWidth={2.5} /> Premium
+                                  <Lock size={9} strokeWidth={2.5} /> {t("salesmanLite.lt.premium")}
                                 </span>
                               </button>
                               {/* Post to socials (ZERNIO-1) is Premium: shown locked here, the tap goes to the one upgrade screen. */}
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Send size={13} />
-                                <span style={{ flex: 1 }}>Post to socials</span>
+                                <span style={{ flex: 1 }}>{t("salesmanLite.lt.postSocials")}</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
-                                  <Lock size={9} strokeWidth={2.5} /> Premium
+                                  <Lock size={9} strokeWidth={2.5} /> {t("salesmanLite.lt.premium")}
                                 </span>
                               </button>
                               {/* Studio is Premium: shown locked, the tap goes to the one upgrade screen. */}
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Film size={13} />
-                                <span style={{ flex: 1 }}>TikTok post</span>
+                                <span style={{ flex: 1 }}>{t("salesmanLite.lt.tiktokPost")}</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
-                                  <Lock size={9} strokeWidth={2.5} /> Premium
+                                  <Lock size={9} strokeWidth={2.5} /> {t("salesmanLite.lt.premium")}
                                 </span>
                               </button>
                               {menuRule}
@@ -368,7 +368,7 @@ export default function ListingsTab({
                           )}
                           {Array.isArray(car.images) && car.images.length > 0 && (
                             <>
-                              <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={menuItem}><Download size={13} /> Download photos</button>
+                              <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={menuItem}><Download size={13} /> {t("salesmanLite.lt.downloadPhotos")}</button>
                               {menuRule}
                             </>
                           )}
@@ -376,12 +376,12 @@ export default function ListingsTab({
                             <div style={{ padding: "8px 10px", display: "flex", gap: 6 }}>
                               <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id}
                                 style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: 600, fontFamily: "inherit" }}>
-                                {deletingId === car.id ? "Deleting..." : "Delete"}
+                                {deletingId === car.id ? t("salesmanLite.lt.deleting") : t("salesmanLite.lt.delete")}
                               </button>
-                              <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                              <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.lt.cancel")}</button>
                             </div>
                           ) : (
-                            <button onClick={() => setConfirmDeleteId(car.id)} style={{ ...menuItem, color: P.accentText }}><Trash2 size={13} /> Delete</button>
+                            <button onClick={() => setConfirmDeleteId(car.id)} style={{ ...menuItem, color: P.accentText }}><Trash2 size={13} /> {t("salesmanLite.lt.delete")}</button>
                           )}
                         </div>
                       )}

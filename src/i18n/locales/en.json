@@ -26,7 +26,8 @@
     "privacyNoticePre": "By continuing, you agree to our ",
     "privacyPolicy": "Privacy Policy",
     "privacyNoticePost": " and to being contacted about your enquiry.",
-    "closeUnsaved": "Close this? What you have done here will be lost."
+    "closeUnsaved": "Close this? What you have done here will be lost.",
+    "close": "Close"
   },
   "home": {
     "hero": {
@@ -307,7 +308,8 @@
       "settings": "Settings",
       "help": "Help",
       "feedback": "Feedback",
-      "feedbackMobile": "Feedback"
+      "feedbackMobile": "Feedback",
+      "brokers": "Dealers"
     },
     "header": {
       "litePanel": "Lite Panel",
@@ -572,7 +574,9 @@
       "srcEnquiry": "Drevo Enquiry",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Referral",
-      "srcManual": "Manual"
+      "srcManual": "Manual",
+      "openChat": "Open the in-app chat with this buyer",
+      "chat": "Chat"
     },
     "perf": {
       "closeRate": "Close Rate",
@@ -837,7 +841,13 @@
         "submit": "Add",
         "attached": "Add-on attached",
         "attachFailed": "Failed to attach add-on"
-      }
+      },
+      "contact": "Contact",
+      "inAppChat": "In-app chat",
+      "phoneLabel": "Buyer phone number",
+      "editPhone": "Edit phone number",
+      "addPhoneWhenShared": "Add their number when they share it",
+      "addPhone": "Add phone number"
     },
     "addLead": {
       "title": "Add Lead",
@@ -859,12 +869,13 @@
       "answered": "Answered",
       "noAnswer": "No Answer",
       "callbackRequested": "Callback Requested",
-      "voicemail": "Left Voicemail",
+      "voicemail": "Voicemail",
       "outcome": "Outcome",
       "noteOptional": "Note (optional)",
       "notePlaceholder": "e.g. Will visit showroom Saturday",
       "cancel": "Cancel",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "outcomeCallback": "Callback"
     },
     "batchWa": {
       "title": "Follow-up Blast",
@@ -986,7 +997,20 @@
       "messageLogFailed": "Failed to log message",
       "waSent": "WA sent!",
       "waSentDesc": "Did you also call them?",
-      "waSentAction": "Log Call"
+      "waSentAction": "Log Call",
+      "phoneTooShort": "That does not look like a full phone number",
+      "phoneSaveFailed": "Failed to save phone number",
+      "noImages": "No images on this listing",
+      "photoSaved": "Saved photo",
+      "photoDownloadFailed": "Couldn't download image",
+      "zipping_one": "Zipping {{count}} photo…",
+      "zipping_other": "Zipping {{count}} photos…",
+      "imagesDownloadFailed": "Couldn't download images",
+      "zipSaved_one": "Saved {{count}} photo as zip",
+      "zipSaved_other": "Saved {{count}} photos as zip",
+      "zipFailed": "Couldn't build zip",
+      "copyThisLink": "Copy this link",
+      "listingLiveTelegram": "Your listing is now live on Drevo!"
     },
     "locked": {
       "leadsTitle": "Leads locked",
@@ -1017,6 +1041,125 @@
       "servicesTitle": "Sell add-ons with every car",
       "servicesSub": "Premium keeps your own catalogue of tint, coating, warranty and service packages, and shows what each one earns you.",
       "cta": "See Premium"
+    },
+    "booked": {
+      "pendingBanner_one": "{{count}} booking pending confirmation",
+      "pendingBanner_other": "{{count}} bookings pending confirmation"
+    },
+    "ui": {
+      "unknownBuyer": "Unknown Buyer",
+      "buyer": "Buyer",
+      "goPremium": "Go Premium",
+      "premium": "Premium",
+      "addOn": "Add-on",
+      "addOnTip": "This deal has a paid add-on attached",
+      "heatTip": "Lead urgency — based on pipeline stage and how recently this lead moved",
+      "call": "Call",
+      "callLead": "Call lead",
+      "callBuyer": "Call buyer",
+      "openLead": "Open lead details",
+      "clearSearch": "Clear search",
+      "empty": "Empty",
+      "deleteLead": "Delete lead",
+      "carAlt": "Car",
+      "removeAddon": "Remove add-on",
+      "cancel": "Cancel",
+      "close": "Close",
+      "newBadge": "NEW",
+      "confirmBookingTip": "Confirm this booking and message the buyer on WhatsApp",
+      "markConfirmedTip": "Mark appointment as confirmed",
+      "sendReminderTip": "Send WhatsApp reminder message to buyer",
+      "bookingDetails": "Booking details",
+      "vin": "VIN",
+      "plate": "Plate",
+      "clearReminder": "Clear reminder",
+      "profileAlt": "Profile",
+      "litePanel": "Lite Panel",
+      "main": "Main",
+      "salesman": "Salesman",
+      "logOut": "Log out",
+      "notifications": "Notifications",
+      "notificationsUnread": "Notifications ({{count}} unread)",
+      "showTour": "Show tour"
+    },
+    "td": {
+      "title": "How did the test drive go?",
+      "noCar": "no car linked",
+      "viewCar": "View car",
+      "interested": "They're interested — move forward",
+      "advanceTo": "Advance to {{stage}}",
+      "notInterested": "Not interested",
+      "markLost": "Mark as lost"
+    },
+    "won": {
+      "title": "Confirm Won Sale",
+      "markedPre": "The listing will be marked as ",
+      "sold": "Sold",
+      "markedPost": " with today's date.",
+      "profitUpdate": "Your profit dashboard will update automatically.",
+      "noCar": "No car linked to this lead — only the lead stage will be updated. Link a car first to also mark it as sold.",
+      "saving": "Saving…",
+      "confirmSold": "Confirm — Mark Listing as Sold",
+      "confirmWon": "Confirm Won"
+    },
+    "card": {
+      "edit": "Edit",
+      "copyLink": "Copy Link",
+      "copiedTick": "✓ Copied!",
+      "waCaption": "WA Caption",
+      "editListing": "Edit Listing"
+    },
+    "brief": {
+      "title": "Quick Brief",
+      "copied": "Copied!",
+      "copy": "Copy Brief"
+    },
+    "tg": {
+      "title": "Connect Telegram",
+      "required": "Required to schedule appointment reminders",
+      "s1Pre": "Open Telegram and search ",
+      "s2Pre": "Send ",
+      "s2Post": " — the bot replies with your ID number",
+      "s3Pre": "Go to ",
+      "s3Path": "Settings → Telegram Notifications",
+      "s3Post": " and paste the ID",
+      "notNow": "Not now",
+      "goSettings": "Go to Settings →"
+    },
+    "lt": {
+      "emptyTitle": "No listings yet",
+      "emptyBody": "Add your first car using the button above.",
+      "add": "+ Add Listing",
+      "backDash": "← Back to Dashboard",
+      "notApproved": "Not approved",
+      "noReason": "No reason was given. Check the details and photos, then resubmit.",
+      "editResubmit": "Edit & Resubmit",
+      "changeStatus": "Change listing status",
+      "setTo": "Set this listing to",
+      "hintAvailable": "Live for buyers",
+      "hintReserved": "Deposit / on hold",
+      "hintSold": "Deal closed",
+      "myMargin": "My margin:",
+      "views": "views",
+      "enquiries": "enquiries",
+      "view": "View",
+      "edit": "Edit",
+      "copyLinkTip": "Copy link",
+      "copied": "Copied",
+      "link": "Link",
+      "copyCaptionTip": "Copy caption",
+      "caption": "Caption",
+      "moreActions": "More actions",
+      "brief": "Brief",
+      "loanPoster": "Loan poster",
+      "movingPoster": "Moving poster",
+      "premium": "Premium",
+      "postSocials": "Post to socials",
+      "tiktokPost": "TikTok post",
+      "downloadPhotos": "Download photos",
+      "deleting": "Deleting...",
+      "delete": "Delete",
+      "cancel": "Cancel"
     }
   },
   "salesmanPremium": {
@@ -1031,7 +1174,8 @@
       "loans": "Loans",
       "outreach": "Outreach",
       "settings": "Settings",
-      "feedback": "Feedback"
+      "feedback": "Feedback",
+      "brokers": "Dealer stock"
     },
     "settings": {
       "navLanguage": "Language",
@@ -1144,7 +1288,8 @@
           "areas": "Areas you cover can't include a phone number.",
           "promise": "Your promise can't include a phone number."
         }
-      }
+      },
+      "telegramConnectedMsg": "Telegram connected! You'll get appointment + booking reminders here."
     },
     "sold": {
       "subtitle": "Every buyer after the win: handover, renewals and aftercare.",
@@ -1223,7 +1368,8 @@
       "delete": "Delete",
       "add": "Add",
       "thisBuyer": "this buyer",
-      "deleting": "Deleting..."
+      "deleting": "Deleting...",
+      "remove": "Remove"
     },
     "addons": {
       "attachFailed": "Couldn't attach that add-on",
@@ -2216,6 +2362,70 @@
       "show": "Show me",
       "later": "Later",
       "eyebrow": "First sale"
+    },
+    "pin": {
+      "max": "You can pin 4 cars. Unpin one first.",
+      "saveFailed": "Could not save the pin. Try again.",
+      "removedFromPage": "Removed from your page."
+    },
+    "linked": {
+      "onlyDealerEdit": "Only your dealer can edit this car. Ask them to update it.",
+      "enterAgreedPrice": "Enter the price agreed with the buyer",
+      "theDealer": "the dealer",
+      "sentToDealerWon": "Sent to {{dealer}} to approve. It moves to Won once they confirm.",
+      "sentToDealerPrice": "Sent to your dealer to approve the price. You'll get a notification when they answer.",
+      "sentToDealerCommission": "Sent to {{dealer}} to approve. Your commission is owed once they confirm.",
+      "onlyDealerStatus": "Only your dealer can change this car's status. Sell it by marking the buyer's lead Won.",
+      "assignedToYou": "Your dealer assigned this car to you. Ask them to unassign it.",
+      "removeFailed": "Could not remove this car from your listings",
+      "removed": "Removed from your listings",
+      "tabIncoming": "Incoming",
+      "tabInventory": "Dealer cars",
+      "tabTeam": "Team"
+    },
+    "ds": {
+      "wonWaiting": "Won is waiting for the dealer to confirm the sale.",
+      "title": "Dealer sale",
+      "earn": "You earn {{amount}} once the dealer approves the sale.",
+      "told": "They were told when you marked it won.",
+      "markWon": "Mark this lead won when the buyer buys, and it goes to the dealer to approve.",
+      "approvedPaid": "Sale approved. Commission paid.",
+      "approvedOwed": "Sale approved. Commission owed: {{amount}}.",
+      "waitingApprove": "Waiting for {{dealer}} to approve this sale.",
+      "notConfirmed": "{{dealer}} did not confirm this sale. Talk to them.",
+      "heldUntil": "Held for you until {{date}}.",
+      "holdEnded": "Hold ended {{date}}.",
+      "vin": "VIN",
+      "cityPh": "e.g. Petaling Jaya",
+      "addressPh": "e.g. 12, Jalan Ampang, 50450 Kuala Lumpur",
+      "planPremium": "Premium",
+      "planLite": "Lite",
+      "agreedPrice": "Agreed price (RM)",
+      "offAsking": "RM {{off}} off the asking price of RM {{ask}}. Over your dealer's limit, it goes to them to approve first.",
+      "askingPrice": "Asking price RM {{ask}}."
+    },
+    "dealerCars": {
+      "header": "Dealer cars on my page · {{count}}",
+      "carOf": "{{dealer}}'s car",
+      "earn": "earn RM {{amount}}",
+      "unpin": "Unpin from my page",
+      "pin": "Pin to top of my page",
+      "share": "Share with my link",
+      "removeFromPage": "Remove from my page"
+    },
+    "bk": {
+      "waiting": "waiting for the dealer to approve",
+      "received": "received {{date}}",
+      "notReceivedTold": "you said not received, the dealer was told",
+      "dealerPaid": "dealer says paid {{date}}",
+      "owed": "owed by the dealer",
+      "header": "Commission on dealer cars",
+      "receivedAmt": "{{amount}} received",
+      "notYetAmt": "{{amount}} not yet received",
+      "btnReceived": "Received",
+      "btnNotReceived": "Not received",
+      "settle": "Settle with the dealer on WhatsApp",
+      "chaseMsg": "Hi, I have not received the commission for {{car}} yet. Can we settle it?"
     }
   },
   "availability": {
