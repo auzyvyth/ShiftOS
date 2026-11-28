@@ -2,7 +2,7 @@
 // /for-salesmen "scroll through a real Premium page" video (PageVideo.jsx).
 // Usage:
 //   npm run build && npx vite preview --port 4173      (the local build reads the LIVE database)
-//   node tools/page-video/record.cjs <emptyDir> frames [speed px/s] [path]
+//   [HERO=card:perodua] node tools/page-video/record.cjs <emptyDir> frames [speed px/s] [path]
 //     default path: /s/premiummotors?brand=perodua  (probe = 5 stills instead of frames)
 //   ffmpeg -framerate 30 -i <dir>/f%05d.png -vf "scale=1280:-2,format=yuv420p" -c:v libx264 -crf 26 -movflags +faststart out.mp4
 // Save as public/for-salesmen/premium-page-scroll-vN.mp4 (+ .jpg still) with a NEW N and update PageVideo.jsx.
@@ -19,6 +19,18 @@ const PATH = process.argv[5] || '/s/premiummotors?brand=perodua';
   const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, ignoreHTTPSErrors: true });
   // No cookie banner, no analytics: this is a recording, not a visit.
   await ctx.addInitScript(() => { try { localStorage.setItem('xdrive_cookie_consent', JSON.stringify({ v: 1, analytics: false, preferences: false, ts: Date.now() })); } catch (e) {} });
+  // HERO=card[:brand] records the hero as the business card (Settings > Your photo), with that brand's
+  // cut-outs on the turning ring. It rewrites only this recording's copy of the seller's hero setting
+  // (`hl` / `hb` on the hero link from get_agent_hero); the live page is not touched.
+  const HERO = process.env.HERO || '';
+  if (HERO.startsWith('card')) {
+    const brand = HERO.split(':')[1] || '';
+    await ctx.route('**/rest/v1/rpc/get_agent_hero', async (route) => {
+      const res = await route.fetch(); let url = await res.json();
+      if (typeof url === 'string') { const u = new URL(url); u.searchParams.set('hl', 'card'); if (brand) u.searchParams.set('hb', brand); url = u.toString(); }
+      await route.fulfill({ response: res, body: JSON.stringify(url) });
+    });
+  }
   const p = await ctx.newPage();
   p.on('pageerror', (e) => console.log('PAGEERR', e.message));
   await p.goto('http://localhost:4173' + PATH, { waitUntil: 'networkidle', timeout: 90000 });
