@@ -225,6 +225,15 @@ const EN = {
     },
   },
 
+  pageVideo: {
+    kicker: "Your Premium page",
+    title: "Scroll through a real Premium page.",
+    line: "Your cars by brand, a loan calculator, a booking form and your story, all on one link you put in your bio.",
+    open: "Open the example page",
+    note: "Recorded from the example page, showing 5 of its cars.",
+    alt: "A Premium seller page scrolling from the top to the footer: profile, cars by brand, loan calculator, booking form, about me and reviews",
+  },
+
   // Free on Lite. Order matches FEATURE_ICONS in SalesmanLiteLanding.jsx.
   features: {
     kicker: "Free on Lite",
@@ -573,6 +582,15 @@ const MS = {
         line: "Mesej dah siap ditulis. Anda tekan hantar.",
       },
     },
+  },
+
+  pageVideo: {
+    kicker: "Page Premium anda",
+    title: "Tengok page Premium sebenar, dari atas sampai bawah.",
+    line: "Kereta anda ikut jenama, kalkulator loan, borang booking dan cerita anda, semua dalam satu link untuk bio anda.",
+    open: "Buka page contoh",
+    note: "Dirakam dari page contoh, menunjukkan 5 keretanya.",
+    alt: "Page seller Premium ditatal dari atas ke bawah: profil, kereta ikut jenama, kalkulator loan, borang booking, tentang saya dan ulasan",
   },
 
   features: {
