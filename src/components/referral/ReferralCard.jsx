@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Copy, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { inviteUrl, claimInviteCode } from "../../utils/invite";
 import { premiumDark as PD } from "../../theme/tokens";
@@ -29,6 +30,7 @@ const PREMIUM = {
 };
 
 export default function ReferralCard({ slug, style, theme }) {
+  const { t } = useTranslation();
   const prem = theme === "premium";
   const K = prem ? PREMIUM : LEGACY;
   const [stats, setStats] = useState(null);
@@ -65,9 +67,9 @@ export default function ReferralCard({ slug, style, theme }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("Invite link copied");
+      toast.success(t("referral.copied"));
     } catch {
-      toast.error("Couldn't copy. Press and hold the link to copy it.");
+      toast.error(t("referral.copyFailed"));
     }
   };
 
@@ -87,10 +89,9 @@ export default function ReferralCard({ slug, style, theme }) {
 
   return (
     <div style={{ ...K.card, ...style }}>
-      {!prem && <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: K.text }}>Refer a seller, get Premium free</p>}
+      {!prem && <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: K.text }}>{t("referral.title")}</p>}
       <p style={{ margin: 0, fontSize: 12.5, color: K.sec, lineHeight: 1.6 }}>
-        Send another car seller your link. Once they have paid for Premium twice, you get 30 days of Premium free.
-        Up to 12 free months a year.
+        {t("referral.intro")}
       </p>
 
       {link ? (
@@ -100,51 +101,51 @@ export default function ReferralCard({ slug, style, theme }) {
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button type="button" onClick={share} style={{ ...btn, background: "#dc2626", border: "none", color: "#fff" }}>
-              <Share2 size={13} /> Share link
+              <Share2 size={13} /> {t("referral.shareLink")}
             </button>
             <button type="button" onClick={copy} style={{ ...btn, ...K.ghost }}>
-              <Copy size={13} /> Copy
+              <Copy size={13} /> {t("referral.copy")}
             </button>
           </div>
         </>
       ) : (
         <p style={{ margin: "12px 0 0", fontSize: 12.5, color: K.warn }}>
-          Set your public page link in Public Profile first. Your invite link uses it.
+          {t("referral.needSlug")}
         </p>
       )}
 
       {stats && (
         <div style={{ display: "flex", gap: 24, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${K.line}`, flexWrap: "wrap" }}>
-          <Stat K={K} n={stats.joined} label="Signed up" />
-          <Stat K={K} n={stats.pending} label="Paid once" />
-          <Stat K={K} n={stats.earned} label={stats.earned === 1 ? "Month earned" : "Months earned"} />
+          <Stat K={K} n={stats.joined} label={t("referral.signedUp")} />
+          <Stat K={K} n={stats.pending} label={t("referral.paidOnce")} />
+          <Stat K={K} n={stats.earned} label={stats.earned === 1 ? t("referral.monthEarned") : t("referral.monthsEarned")} />
         </div>
       )}
       {stats?.pending > 0 && (
         <p style={{ margin: "8px 0 0", fontSize: 11.5, color: K.sec, lineHeight: 1.6 }}>
-          {stats.pending === 1 ? "1 seller is" : `${stats.pending} sellers are`} one payment away from earning you a free month.
+          {t("referral.oneAway", { count: stats.pending })}
         </p>
       )}
 
       {stats?.invited_by ? (
         <p style={{ margin: "14px 0 0", paddingTop: 12, borderTop: `1px solid ${K.line}`, fontSize: 12, color: K.sec }}>
-          You joined through <span style={{ color: K.strong, fontWeight: 600 }}>{stats.invited_by}</span>'s invite.
+          {t("referral.joinedPre")}<span style={{ color: K.strong, fontWeight: 600 }}>{stats.invited_by}</span>{t("referral.joinedPost")}
         </p>
       ) : stats?.can_claim ? (
         <form onSubmit={claim} style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${K.line}` }}>
           <label htmlFor="xd-invited-by" style={{ display: "block", fontSize: 12, color: K.label, fontWeight: 600 }}>
-            Did another seller invite you?
+            {t("referral.didInvite")}
           </label>
           <p style={{ margin: "4px 0 0", fontSize: 11, color: K.muted, lineHeight: 1.6 }}>
-            Paste their invite link or type their link name. You can only do this once, in your first 14 days.
+            {t("referral.pasteCode")}
           </p>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <input id="xd-invited-by" value={code} onChange={(e) => { setCode(e.target.value); setClaimMsg(null); }}
-              maxLength={200} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="e.g. ahmad-cars"
+              maxLength={200} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={t("referral.codePh")}
               style={{ flex: 1, minWidth: 0, padding: "9px 12px", borderRadius: 8, ...K.field, color: K.text, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
             <button type="submit" disabled={claiming || !code.trim()}
               style={{ ...btn, ...K.ghost, opacity: claiming || !code.trim() ? 0.5 : 1 }}>
-              {claiming ? "Saving..." : "Save"}
+              {claiming ? t("referral.saving") : t("referral.save")}
             </button>
           </div>
           {claimMsg && (
@@ -156,8 +157,7 @@ export default function ReferralCard({ slug, style, theme }) {
       ) : null}
 
       <p style={{ margin: "12px 0 0", fontSize: 11, color: K.muted, lineHeight: 1.6 }}>
-        Free to join. Only sellers who sign up with your link count, not the people they invite.
-        Rewards are Premium time, never cash.
+        {t("referral.fine")}
       </p>
     </div>
   );

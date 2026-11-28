@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, MessageCircle, Facebook, Instagram, Music2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 // Per-channel share dropdown. Each option opens/copies a link tagged with
 // ?src=<channel> so the analytics dashboard can attribute clicks by platform.
@@ -9,12 +10,14 @@ import { toast } from 'sonner';
 const CHANNELS = [
   { key: 'whatsapp',  label: 'WhatsApp',                 Icon: MessageCircle, color: '#25D366' },
   { key: 'facebook',  label: 'Facebook',                 Icon: Facebook,      color: '#1877F2' },
-  { key: 'instagram', label: 'Instagram — copy for bio', Icon: Instagram,     color: '#E4405F' },
-  { key: 'tiktok',    label: 'TikTok — copy for bio',    Icon: Music2,        color: '#111827' },
-  { key: 'copy',      label: 'Copy link',                Icon: Link2,         color: '#6b7280' },
+  { key: 'instagram', label: 'Instagram — copy for bio', tk: 'shareMenu.instagram', Icon: Instagram,     color: '#E4405F' },
+  { key: 'tiktok',    label: 'TikTok — copy for bio',    tk: 'shareMenu.tiktok', Icon: Music2,        color: '#111827' },
+  { key: 'copy',      label: 'Copy link',                tk: 'shareMenu.copyLink', Icon: Link2,         color: '#6b7280' },
 ];
 
-export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, label = 'Share', compact = false, style }) {
+export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, label, compact = false, style }) {
+  const { t } = useTranslation();
+  const shareLabel = label ?? t('shareMenu.share');
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
@@ -81,13 +84,13 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener,width=620,height=540');
     } else if (channel === 'instagram') {
       navigator.clipboard?.writeText(url);
-      toast.success('Link copied — paste it in your Instagram bio or story');
+      toast.success(t('shareMenu.copiedIg'));
     } else if (channel === 'tiktok') {
       navigator.clipboard?.writeText(url);
-      toast.success('Link copied — paste it in your TikTok bio or caption');
+      toast.success(t('shareMenu.copiedTt'));
     } else {
       navigator.clipboard?.writeText(url);
-      toast.success('Link copied');
+      toast.success(t('shareMenu.copied'));
     }
     setOpen(false);
   };
@@ -107,7 +110,7 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
         onClick={toggle}
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', padding: compact ? '7px 9px' : '7px 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap', ...trigger, ...style }}
       >
-        <Share2 size={13} style={{ flexShrink: 0 }} />{!compact && label}
+        <Share2 size={13} style={{ flexShrink: 0 }} />{!compact && shareLabel}
       </button>
 
       {open && pos && createPortal(
@@ -118,8 +121,8 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
             onClick={(e) => e.stopPropagation()}
             style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 4001, background: menuTheme.bg, border: menuTheme.border, borderRadius: 12, boxShadow: menuTheme.shadow, padding: 6, fontFamily: "'Outfit', sans-serif" }}
           >
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: dark ? '#6b7280' : '#9ca3af', padding: '6px 10px 4px', margin: 0 }}>Share via</p>
-            {CHANNELS.map(({ key, label: l, Icon, color }) => (
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: dark ? '#6b7280' : '#9ca3af', padding: '6px 10px 4px', margin: 0 }}>{t('shareMenu.via')}</p>
+            {CHANNELS.map(({ key, label: l, tk, Icon, color }) => (
               <button
                 key={key}
                 onClick={(e) => pick(e, key)}
@@ -130,7 +133,7 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
                 <span style={{ width: 28, height: 28, borderRadius: 8, background: `${color}1a`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Icon size={15} />
                 </span>
-                {l}
+                {tk ? t(tk) : l}
               </button>
             ))}
           </div>
