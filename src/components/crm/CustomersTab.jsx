@@ -9,6 +9,7 @@ import { premiumLight as PL } from "../../theme/tokens";
 import { StatusPills, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from "../inventory/InventoryUi";
 import { supabase } from "../../supabaseClient";
 import { usePersistentState } from "../../hooks/usePersistentState";
+import { useTranslation } from 'react-i18next';
 
 // IC numbers never go to disk; the edit form reads the live row.
 const redactCustomers = (rows) => (rows || []).map(({ ic_number, ...rest }) => rest);
@@ -22,6 +23,7 @@ const redactCustomers = (rows) => (rows || []).map(({ ic_number, ...rest }) => r
 // figure is read once, not fetched again here. Without it (linked salesman
 // panel) this tab still reads post_sale_tasks itself.
 export default function CustomersTab({ dealerId, salesmanId = null, handover = null }) {
+  const { t: tr } = useTranslation();
   const cacheKey = dealerId ? `customers:${salesmanId || 'all'}:${dealerId}` : null;
   const [customers, setCustomers, cached] = usePersistentState(cacheKey, [], { redact: redactCustomers });
   const [loading, setLoading] = useState(true);
@@ -118,10 +120,10 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
     }).eq("id", id).select("id");
     setSaving(false);
     // RLS refuses as "0 rows, no error": both mean nothing was saved.
-    if (error || !data?.length) { toast.error("Could not save this customer. Try again."); return; }
+    if (error || !data?.length) { toast.error(tr("customers.couldNotSaveThisCustomer")); return; }
     setCustomers(p => p.map(c => c.id === id ? { ...c, ...editing } : c));
     setEditing(null);
-    toast.success("Saved");
+    toast.success(tr("customers.saved"));
   };
 
   const isDue = (date) => { const d = daysTo(date); return d !== null && d <= 30; };
@@ -136,14 +138,14 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
   const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
   const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
 
-  if (loading && !cached) return <div style={{ padding: 32, fontSize: 14, color: PL.textMuted }}>Loading…</div>;
+  if (loading && !cached) return <div style={{ padding: 32, fontSize: 14, color: PL.textMuted }}>{tr("customers.loading")}</div>;
 
   // Renewals are the one thing this list is for between sales: one switch (it
   // used to be two tiles plus a pink banner). "Expired" is said in red on the row.
   const pills = [
-    { key: "all", label: "All", count: customers.length },
-    { key: "rt", label: "Road tax due", count: rtDue },
-    { key: "ins", label: "Insurance due", count: insDue },
+    { key: "all", label: tr("customers.all"), count: customers.length },
+    { key: "rt", label: tr("customers.roadTaxDue"), count: rtDue },
+    { key: "ins", label: tr("customers.insuranceDue"), count: insDue },
   ];
   const tone = (t) => (t === "bad" ? PL.accentText : t === "muted" ? PL.textMuted : PL.textSec);
   const btn = { ...INV_GHOST_BTN, padding: "7px 12px", fontSize: 12 };
@@ -156,7 +158,7 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
         </div>
         <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 360 }}>
           <Search style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: PL.textMuted, pointerEvents: "none" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone or plate"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr("customers.searchNamePhoneOrPlate")}
             style={{ ...INV_INPUT, paddingLeft: 32, background: PL.card, boxShadow: PL.shadow }} />
         </div>
       </div>
@@ -165,8 +167,8 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
         {filtered.length === 0 && (
           <p style={{ padding: "36px 16px", textAlign: "center", fontSize: 14, color: PL.textMuted, margin: 0 }}>
             {customers.length === 0
-              ? "No customers yet. A buyer lands here the moment their lead is marked Won."
-              : expiryFilter ? "Nothing due in the next 30 days." : "No customer matches that search."}
+              ? tr("customers.noCustomersYetABuyer")
+              : expiryFilter ? tr("customers.nothingDueInTheNext") : tr("customers.noCustomerMatchesThatSearch")}
           </p>
         )}
         {filtered.map((c, i) => {
@@ -184,9 +186,9 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
             <div key={c.id} style={{ borderTop: i ? `1px solid ${PL.line}` : "none" }}>
               <div className="cust-row" style={{ display: "grid", gap: "8px 16px", padding: "12px 10px", alignItems: "center" }}>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PL.text }}>{c.name || "Unnamed buyer"}</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PL.text }}>{c.name || tr("customers.unnamedBuyer")}</p>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: PL.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {car}{c.car_plate ? ` · ${c.car_plate}` : ""}{c.purchase_date ? ` · bought ${fmtDate(c.purchase_date)}` : ""}
+                    {car}{c.car_plate ? ` · ${c.car_plate}` : ""}{c.purchase_date ? tr("customers.bought", { date: fmtDate(c.purchase_date) }) : ""}
                   </p>
                 </div>
                 <div style={{ minWidth: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -194,7 +196,7 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
                   <div style={{ color: tone(ins.tone), fontWeight: ins.tone === "bad" ? 700 : 500 }}>{ins.text}</div>
                 </div>
                 <div style={{ fontSize: 12, color: progress === 100 ? PL.up : PL.textSec, fontWeight: 600, whiteSpace: "nowrap" }}>
-                  {progress === null ? "" : progress === 100 ? "Handover done" : `Handover ${progress}%`}
+                  {progress === null ? "" : progress === 100 ? tr("customers.handoverDone") : tr("customers.handoverPct", { n: progress })}
                 </div>
                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   {c.phone && (
@@ -204,15 +206,15 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
                     </a>
                   )}
                   <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} style={{ ...btn, background: isExpanded ? PL.hover : PL.raised }}>
-                    Aftercare{pkgs.length ? ` (${pkgs.length})` : ""}
+                    {tr("customers.aftercare")}{pkgs.length ? ` (${pkgs.length})` : ""}
                   </button>
-                  <button disabled={loading} title={loading ? "Loading latest details" : undefined} onClick={() => setEditing({ ...c })}
-                    style={{ ...btn, opacity: loading ? 0.5 : 1 }}>Edit</button>
+                  <button disabled={loading} title={loading ? tr("customers.loadingLatestDetails") : undefined} onClick={() => setEditing({ ...c })}
+                    style={{ ...btn, opacity: loading ? 0.5 : 1 }}>{tr("customers.edit")}</button>
                 </div>
               </div>
               {isExpanded && (
                 <div style={{ margin: "0 10px 12px", padding: "12px 14px", background: PL.raised, borderRadius: PL.radius.row }}>
-                  <p style={{ ...INV_MICRO, marginBottom: 6 }}>Aftercare plans</p>
+                  <p style={{ ...INV_MICRO, marginBottom: 6 }}>{tr("customers.aftercarePlans")}</p>
                   {/* Same component the Salesman Premium Customers tab renders */}
                   <ServicePackages
                     customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
@@ -237,14 +239,14 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: PL.text }}>{editing.name}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 12, color: PL.textMuted }}>{[editing.car_brand, editing.car_model, editing.car_plate].filter(Boolean).join(" · ")}</p>
               </div>
-              <button onClick={() => setEditing(null)} aria-label="Close" style={{ ...btn, padding: 8 }}><X style={{ width: 16, height: 16 }} /></button>
+              <button onClick={() => setEditing(null)} aria-label={tr("customers.close")} style={{ ...btn, padding: 8 }}><X style={{ width: 16, height: 16 }} /></button>
             </div>
             <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
               {[
-                { label: "Road tax expiry", key: "road_tax_expiry", type: "date" },
-                { label: "Insurance expiry", key: "insurance_expiry", type: "date" },
-                { label: "Email", key: "email", type: "email" },
-                { label: "IC number", key: "ic_number", type: "text" },
+                { label: tr("customers.roadTaxExpiry"), key: "road_tax_expiry", type: "date" },
+                { label: tr("customers.insuranceExpiry"), key: "insurance_expiry", type: "date" },
+                { label: tr("customers.email"), key: "email", type: "email" },
+                { label: tr("customers.icNumber"), key: "ic_number", type: "text" },
               ].map(({ label, key, type }) => (
                 <label key={key} style={{ display: "block" }}>
                   <span style={{ ...INV_MICRO, display: "block", marginBottom: 5 }}>{label}</span>
@@ -252,14 +254,14 @@ export default function CustomersTab({ dealerId, salesmanId = null, handover = n
                 </label>
               ))}
               <label style={{ display: "block" }}>
-                <span style={{ ...INV_MICRO, display: "block", marginBottom: 5 }}>Notes</span>
+                <span style={{ ...INV_MICRO, display: "block", marginBottom: 5 }}>{tr("customers.notes")}</span>
                 <textarea rows={3} value={editing.notes || ""} onChange={e => setEditing(p => ({ ...p, notes: e.target.value }))} style={{ ...INV_INPUT, resize: "none" }} />
               </label>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setEditing(null)} style={{ ...INV_GHOST_BTN, flex: 1, justifyContent: "center" }}>Cancel</button>
+              <button onClick={() => setEditing(null)} style={{ ...INV_GHOST_BTN, flex: 1, justifyContent: "center" }}>{tr("customers.cancel")}</button>
               <button onClick={handleSave} disabled={saving} style={{ ...INV_GHOST_BTN, flex: 1, justifyContent: "center", background: PL.accent, color: PL.onAccent, opacity: saving ? 0.6 : 1 }}>
-                {saving ? "Saving…" : "Save"}
+                {saving ? tr("customers.saving") : tr("customers.save")}
               </button>
             </div>
           </div>

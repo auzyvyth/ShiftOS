@@ -3,6 +3,7 @@ import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lu
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
 import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 const STEP_META = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s]));
 
@@ -42,6 +43,7 @@ function StatusIcon({ status }) {
 // initialTasks: the step rows the handover board already holds, so the list
 // paints at once instead of behind a fetch (see usePostSaleTasks).
 export default function PostSaleChecklist({ lead, compact = false, dark = false, theme = null, initialTasks = null, onTasksChange = null, onExpiryWritten = null }) {
+  const { t: tr } = useTranslation();
   const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead, { initialTasks });
   const [expanded, setExpanded] = useState(null);
 
@@ -78,7 +80,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
     : { rowBg: '#fff', rowDoneBg: '#f9fafb', border: '#e5e7eb', text: '#111827', sub: '#6b7280', muted: '#9ca3af', track: '#e5e7eb', chip: '#f3f4f6', inputBg: '#fff', inputBorder: '#d1d5db', totalBg: '#f9fafb' };
 
   if (loading && tasks.length === 0) {
-    return <p style={{ fontSize: 13, color: th.sub, padding: 12 }}>Loading handover steps…</p>;
+    return <p style={{ fontSize: 13, color: th.sub, padding: 12 }}>{tr("psCheck.loadingHandoverSteps")}</p>;
   }
 
   return (
@@ -91,7 +93,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
           <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? doneHue : '#dc2626', transition: 'width 0.3s' }} />
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? doneHue : th.sub, minWidth: 64, textAlign: 'right' }}>
-          {progress === 100 ? 'Completed' : `${progress}%`}
+          {progress === 100 ? tr("psCheck.completed") : `${progress}%`}
         </span>
       </div>
       )}
@@ -132,7 +134,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                     if (meta.expiryLabel) writeExpiry(t.id, patch);
                     else updateTask(t.id, patch);
                   }}
-                  title={isDone ? 'Tap to reopen this step' : 'Tap to mark done'}
+                  title={isDone ? tr("psCheck.tapToReopenThisStep") : tr("psCheck.tapToMarkDone")}
                   style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: sc.color, background: sc.bg, border: premium ? 'none' : `1.5px solid ${sc.color}66` }}
                 >
                   <StatusIcon status={t.status} />
@@ -180,10 +182,10 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                     type="date"
                     value={t.result_date || plusMonths(t.completed_at, 12)}
                     onChange={(e) => writeExpiry(t.id, { result_date: e.target.value || null })}
-                    title="Prefilled 12 months ahead. Correct it if the real policy differs. Your renewal reminder runs off this date."
+                    title={tr("psCheck.prefilled12MonthsAheadCorrect")}
                     style={{ fontSize: 11.5, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }}
                   />
-                  <span style={{ fontSize: 10, color: th.muted }}>we remind you before it ends</span>
+                  <span style={{ fontSize: 10, color: th.muted }}>{tr("psCheck.weRemindYouBeforeIt")}</span>
                 </div>
               )}
 
@@ -194,25 +196,25 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                     {/* Quick status overrides for the less-common states */}
                     <button onClick={() => updateTask(t.id, { status: 'in_progress' })}
                       style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'in_progress' ? (premium ? '#fff' : '#d97706') : th.sub, background: t.status === 'in_progress' ? (premium ? K.accent : 'rgba(217,119,6,0.1)') : th.chip, border: `1px solid ${th.border}` }}>
-                      In progress
+                      {tr("psCheck.inProgress")}
                     </button>
                     {meta.optional && (
                       <button onClick={() => updateTask(t.id, { status: t.status === 'na' ? 'pending' : 'na' })}
                         style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'na' ? (premium ? th.text : '#d97706') : th.sub, background: th.chip, border: `1px solid ${th.border}` }}>
-                        {t.status === 'na' ? 'Mark applicable' : 'Not applicable'}
+                        {t.status === 'na' ? tr("psCheck.markApplicable") : tr("psCheck.notApplicable")}
                       </button>
                     )}
-                    <label style={{ fontSize: 10, color: th.muted, display: 'inline-flex', alignItems: 'center' }}>Due
+                    <label style={{ fontSize: 10, color: th.muted, display: 'inline-flex', alignItems: 'center' }}>{tr("psCheck.due")}
                       <input type="date" value={t.due_date || ''} onChange={(e) => updateTask(t.id, { due_date: e.target.value || null })}
                         style={{ marginLeft: 6, fontSize: 11, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }} />
                     </label>
-                    <label style={{ fontSize: 10, color: th.muted, display: 'inline-flex', alignItems: 'center' }}>Cost RM
+                    <label style={{ fontSize: 10, color: th.muted, display: 'inline-flex', alignItems: 'center' }}>{tr("psCheck.costRm")}
                       <input type="number" value={t.cost ?? ''} onChange={(e) => updateTask(t.id, { cost: e.target.value === '' ? null : Number(e.target.value) })}
                         style={{ marginLeft: 6, width: 80, fontSize: 11, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }} />
                     </label>
                   </div>
                   {!compact && (
-                    <input type="text" placeholder="Notes…" defaultValue={t.notes || ''} onBlur={(e) => updateTask(t.id, { notes: e.target.value })}
+                    <input type="text" placeholder={tr("psCheck.notes")} defaultValue={t.notes || ''} onBlur={(e) => updateTask(t.id, { notes: e.target.value })}
                       style={{ fontSize: 11.5, padding: '7px 9px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }} />
                   )}
                 </div>
@@ -228,7 +230,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
         if (total <= 0) return null;
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: th.totalBg, border: `1px solid ${th.border}` }}>
-            <span style={{ fontSize: 11.5, color: th.sub }}>Processing cost</span>
+            <span style={{ fontSize: 11.5, color: th.sub }}>{tr("psCheck.processingCost")}</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: th.text }}>RM {total.toLocaleString()}</span>
           </div>
         );
