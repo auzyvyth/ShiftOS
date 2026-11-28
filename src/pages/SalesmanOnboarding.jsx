@@ -80,7 +80,7 @@ const CSS = `
 .eo-preview-av{width:48px;height:48px;border-radius:50%;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;}
 .eo-preview-name{font-size:17px;font-weight:700;color:#111827;word-break:break-all;}
 .eo-preview-sub{font-size:12.5px;color:#6b7280;margin-top:2px;}
-.eo-hello{display:inline-block;margin-bottom:14px;padding:7px 14px;border-radius:999px;background:#111827;color:#fff;font-size:13.5px;font-weight:600;animation:eo-pop 0.45s cubic-bezier(.34,1.56,.64,1) both;}
+.eo-hello{display:block;margin:-32px -28px 24px;padding:15px 28px;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#ef4444,#dc2626);color:#fff;font-size:16px;font-weight:700;letter-spacing:-0.005em;animation:eo-pop 0.45s cubic-bezier(.34,1.56,.64,1) both;}
 @keyframes eo-pop{0%{opacity:0;transform:translateY(8px) scale(.85)}100%{opacity:1;transform:none}}
 .eo-preview-av{position:relative;overflow:hidden;cursor:pointer;border:none;padding:0;font-family:inherit;}
 .eo-preview-av img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -95,6 +95,7 @@ const CSS = `
 @media(max-width:560px){
   .eo-top{padding:14px 16px;}
   .eo-form{padding:24px 18px;border-radius:18px;}
+  .eo-hello{margin:-24px -18px 20px;padding:14px 18px;border-radius:18px 18px 0 0;font-size:15px;}
 }
 `;
 
