@@ -3,6 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { NEW_CAR_BRANDS, rm, groupByModel, priceBasis } from "../../utils/newCars";
 import { premiumDark as PD } from "../../theme/tokens";
 import StarterModelPicker, { useStarterModels, addCardsSummary } from "./StarterModelPicker";
+import { useTranslation } from 'react-i18next';
 
 // NEWCAR-1: a new-car advisor's models. Rendered by BOTH
 // Salesman Lite and Premium settings (one implementation, like ReferralCard).
@@ -48,6 +49,7 @@ const pill = (K, on) => ({
 });
 
 export default function MyNewModels({ profile, onProfileChange, onCardsAdded, theme }) {
+  const { t } = useTranslation();
   const prem = theme === "premium";
   const K = prem ? PREMIUM : LEGACY;
   const [brand, setBrand] = useState(profile?.new_car_brand || "");
@@ -123,11 +125,11 @@ export default function MyNewModels({ profile, onProfileChange, onCardsAdded, th
 
   return (
     <div style={K.card}>
-      {!prem && <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: K.text }}>New cars you sell</p>}
+      {!prem && <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600, color: K.text }}>{t("myModels.newCarsYouSell")}</p>}
       <p style={{ margin: 0, fontSize: 12.5, color: K.sec, lineHeight: 1.6 }}>
         {profile?.new_car_brand
-          ? "Your page shows the models you add. Tick them below, or use Add car to list one with your own photos. Prices come from this list and stay up to date by themselves."
-          : "Sell new Proton, Perodua, Toyota, BYD or Honda? Pick your brand, then add the models you sell from Add car. You never type a price."}
+          ? t("myModels.yourPageShowsTheModels")
+          : t("myModels.sellNewProtonPeroduaToyota")}
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
@@ -140,12 +142,12 @@ export default function MyNewModels({ profile, onProfileChange, onCardsAdded, th
 
       {brand && listed && starterModels?.some((m) => !listed.has(m.model)) && (
         <div style={{ marginTop: 16 }}>
-          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: K.text }}>Put models on your page</p>
+          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: K.text }}>{t("myModels.putModelsOnYourPage")}</p>
           <StarterModelPicker brand={brand} models={starterModels} value={ticked} onChange={setTicked} exclude={listed} />
           <button type="button" disabled={!ticked.length || busy === "cards"} onClick={addCards}
             style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
               cursor: ticked.length ? "pointer" : "default", ...(ticked.length ? { background: "#dc2626", color: "#fff" } : K.idle) }}>
-            {busy === "cards" ? "Adding..." : ticked.length ? `Put ${ticked.length} on my page` : "Tick the models you sell"}
+            {busy === "cards" ? t("myModels.adding") : ticked.length ? t("myModels.putN", { count: ticked.length }) : t("myModels.tickTheModelsYouSell")}
           </button>
         </div>
       )}
@@ -153,15 +155,15 @@ export default function MyNewModels({ profile, onProfileChange, onCardsAdded, th
 
       {brand && (
         loading ? (
-          <p style={{ margin: "14px 0 0", fontSize: 12.5, color: K.muted }}>Loading {brand} prices...</p>
+          <p style={{ margin: "14px 0 0", fontSize: 12.5, color: K.muted }}>{t("myModels.loadingPrices", { brand })}</p>
         ) : rows.length === 0 ? (
           <p style={{ margin: "14px 0 0", fontSize: 12.5, color: K.sec, lineHeight: 1.6 }}>
-            We're adding the {brand} price list. Your models appear here as soon as it's in.
+            {t("myModels.addingPriceList", { brand })}
           </p>
         ) : (
           <>
             <p style={{ margin: "14px 0 8px", fontSize: 11.5, color: K.muted }}>
-              Official price list. {priceBasis(zone)}
+              {t("myModels.officialPriceList")} {priceBasis(zone)}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {groups.map((g) => {
@@ -174,7 +176,7 @@ export default function MyNewModels({ profile, onProfileChange, onCardsAdded, th
                       <div key={v.model_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: `1px solid ${K.line}` }}>
                         <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: K.row }}>{v.variant}</span>
                         <span style={{ fontSize: 12.5, color: v.price == null ? K.muted : K.row, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                          {rm(v.price) || "Not set for your area"}
+                          {rm(v.price) || t("myModels.notSetForYourArea")}
                         </span>
                       </div>
                     ))}

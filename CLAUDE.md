@@ -1963,13 +1963,14 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   "glow up Premium", Lite unchanged).** `.ap--pro` on `/s/:slug` when `!page_basic`: taller
   banner (210px phone / 300px desktop) with a soft fade, the banner painted in the seller's
   colour until a cover is uploaded, a ring round the photo, the colour on the WhatsApp buttons.
-  Colour = a GRADIENT, `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
-  in Premium Settings (`PageGradientPicker`, `savePageColor`). Tasteful = curated (owner, 2026-11-01):
-  8 named pairs (`PAGE_GRADIENTS`) or Custom = ONE colour whose partner is worked out (`partnerColor`),
-  never two free picks (they clash). Stored as ONE hex in `profiles.brand_color` (the first colour; a
-  preset is found again by it), because the TikTok Studio reads and writes that column as a plain hex.
-  The gradient is for the BANNER and photo ring only; buttons and ticks are ONE colour (owner: two-colour
-  buttons "look cheap"). **The page wash is GONE (owner, 2026-11-25: "60% white, 30% dark, 10% red, remove the upper lines"):** `src/components/agent/site/PageLook.jsx` (Premium only, every rule under `.ap--pro`) = a light ground in the seller's OWN two colours + fade direction (owner, 2026-11-25: curated list "looks cheap, make it customizable"; `page_site.ground = {from, to, angle 180|135|90}`, `groundPaint` in `src/utils/pageSite.js`: each colour is mixed with white until relative luminance >= 0.75 so dark text stays readable, and the card colour is worked out from the ground; presets are only quick starts) + light tiles (no card shadows), ink `#0f1115` on the big objects (hero, promo strip, Pick your model, calculator; selected = WHITE on dark, INK on light), the seller's accent ONLY on main buttons, the slider fill and an "ends soon" word. No accent bars / dashes / rules above blocks; one heading system (Bebas H2 + one muted line); radius cards 16 / buttons 12 / chips 8, no pills on text. `brand_color` has a DB DEFAULT
+  **Colour = ONE hex the seller picks freely (PAGE-COLOR, owner 2026-11-28; replaces the curated gradient):**
+  `pagePalette(hex)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`) works out hover/press/deep shades,
+  the words ON it (white if white reads at 3:1, else near-black), the colour as text on the page (4.5:1) and
+  the inverse tile; `paletteVars` puts them on the `.ap` root and PageLook's `--ink` / `--on-ink` / `--on-rgb` /
+  `--ink-inv` read them. Main buttons, picked chips, the calculator band and the booking pass wear it. Never
+  write `#fff` on `--ink`. Picked in Premium Settings (`PageColorPicker`: quick swatches, colour dial, hex box;
+  `savePageColor` cleans the hex). Stored in `profiles.brand_color`, which TikTok Studio ALSO writes (open owner
+  call, 2026-11-28: Studio's "Save brand kit" changes the page colour). **The page wash is GONE (owner, 2026-11-25: "60% white, 30% dark, 10% red, remove the upper lines"):** `src/components/agent/site/PageLook.jsx` (Premium only, every rule under `.ap--pro`) = a light ground in the seller's OWN two colours + fade direction (owner, 2026-11-25: curated list "looks cheap, make it customizable"; `page_site.ground = {from, to, angle 180|135|90}`, `groundPaint` in `src/utils/pageSite.js`: each colour is mixed with white until relative luminance >= 0.75 so dark text stays readable, and the card colour is worked out from the ground; presets are only quick starts) + light tiles (no card shadows), ink `#0f1115` on the big objects (hero, promo strip, Pick your model, calculator; selected = WHITE on dark, INK on light), the seller's accent ONLY on main buttons, the slider fill and an "ends soon" word. No accent bars / dashes / rules above blocks; one heading system (Bebas H2 + one muted line); radius cards 16 / buttons 12 / chips 8, no pills on text. `brand_color` has a DB DEFAULT
   of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
   **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
   with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then

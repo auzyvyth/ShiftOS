@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { premiumDark as P } from '../../theme/tokens';
 import { createPortal } from 'react-dom';
 import { MessageSquare, ArrowLeft, UserCircle2, BadgeCheck, ChevronDown, GitBranch } from 'lucide-react';
@@ -63,6 +64,7 @@ export default function SellerInbox({
   // rather than detected: only the page knows its own chrome.
   bottomInset = 0,
 }) {
+  const { t: tr } = useTranslation();
   const { threads, loading, totalUnread } = useChatThreads({ salesmanId, dealerId });
   const [openId, setOpenId] = useState(null);
   useModalHistory(!!openId, () => setOpenId(null));
@@ -126,20 +128,20 @@ export default function SellerInbox({
 
   const open = threads.find(x => x.id === openId) || null;
   const carOf = (x) => x.listing ? [x.listing.year, x.listing.brand, x.listing.model].filter(Boolean).join(' ')
-    : x.find_me_post_id ? (x.post ? `Find me: ${postTitle(x.post)}` : 'Find me post')
-    : 'Car enquiry';
+    : x.find_me_post_id ? (x.post ? tr('sellerInbox.findMe', { title: postTitle(x.post) }) : tr('sellerInbox.findMePost'))
+    : tr('sellerInbox.carEnquiry');
 
   if (loading) {
-    return <p style={{ fontSize:13, color:t.sub, padding:'32px 0', textAlign:'center' }}>Loading messages…</p>;
+    return <p style={{ fontSize:13, color:t.sub, padding:'32px 0', textAlign:'center' }}>{tr('sellerInbox.loading')}</p>;
   }
 
   if (!threads.length) {
     return (
       <div style={{ textAlign:'center', padding:'48px 20px', color:t.sub }}>
         <MessageSquare size={30} style={{ color:t.sub, opacity:0.5, marginBottom:10 }} />
-        <p style={{ fontSize:14, fontWeight:600, color:t.text, margin:'0 0 4px' }}>No conversations yet</p>
+        <p style={{ fontSize:14, fontWeight:600, color:t.text, margin:'0 0 4px' }}>{tr('sellerInbox.emptyTitle')}</p>
         <p style={{ fontSize:12.5, margin:0, lineHeight:1.6 }}>
-          When a buyer starts a chat from one of your listings, it lands here.
+          {tr('sellerInbox.emptyBody')}
         </p>
       </div>
     );
@@ -149,7 +151,7 @@ export default function SellerInbox({
     <div style={{ background: prem ? t.panel : t.bg, border: prem ? 'none' : `1px solid ${t.border}`, borderRadius: prem ? P.radius.card : 14, overflow:'hidden', display:'flex', flexDirection:'column', height: fullHeight ? '100%' : undefined, minHeight:0, fontFamily:t.font }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, padding: prem ? '16px 18px' : '12px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
         <MessageSquare size={15} style={{ color: prem ? t.sub : '#dc2626' }} />
-        <p style={{ margin:0, fontSize: prem ? 15 : 13, fontWeight:700, color:t.text, flex:1 }}>Messages</p>
+        <p style={{ margin:0, fontSize: prem ? 15 : 13, fontWeight:700, color:t.text, flex:1 }}>{tr('sellerInbox.messages')}</p>
         {totalUnread > 0 && (
           <span style={{ fontSize:11, fontWeight:700, color:'#fff', background:'#dc2626', borderRadius:20, padding:'1px 8px' }}>{totalUnread}</span>
         )}
@@ -213,13 +215,13 @@ export default function SellerInbox({
   const stagePill = open && (
     <button onClick={() => setShowStage(v => !v)}
       aria-expanded={showStage}
-      aria-label={stage ? `Pipeline stage: ${stageCfg?.label || stage}`
-        : leadHidden ? 'In the pipeline, not assigned to you' : 'Not in the pipeline yet'}
+      aria-label={stage ? tr('sellerInbox.stageAria', { stage: tr(`salesmanLite.stages.${stage}`, { defaultValue: stageCfg?.label || stage }) })
+        : leadHidden ? tr('sellerInbox.notAssignedAria') : tr('sellerInbox.notInPipelineAria')}
       style={{ display:'flex', alignItems:'center', gap:5, background: showStage ? rowActive : 'none',
                border: prem ? 'none' : `1px solid ${t.border}`, borderRadius: prem ? P.radius.pill : 8, padding: prem ? '6px 11px' : '5px 9px', fontSize:11.5, ...(prem && !showStage ? { background:P.raised } : null),
                color:t.text, cursor:'pointer', fontFamily:t.font, whiteSpace:'nowrap' }}>
       <GitBranch size={12} style={{ color:t.sub, flexShrink:0 }} />
-      {stageCfg?.label || (leadHidden ? 'In pipeline' : 'No lead')}
+      {stage ? tr(`salesmanLite.stages.${stage}`, { defaultValue: stageCfg?.label }) : (leadHidden ? tr('sellerInbox.inPipeline') : tr('sellerInbox.noLead'))}
       <ChevronDown size={11} style={{ color:t.sub, flexShrink:0, transform: showStage ? 'rotate(180deg)' : 'none', transition:'transform .15s' }} />
     </button>
   );
@@ -232,12 +234,12 @@ export default function SellerInbox({
       {!stage ? (
         <p style={{ margin:0, fontSize:11.5, color:t.sub, lineHeight:1.5 }}>
           {leadHidden
-            ? 'This buyer is in the pipeline but the lead is not assigned to you, so the stage is hidden.'
-            : 'Not in the pipeline yet — a lead is created the first time this buyer messages you.'}
+            ? tr('sellerInbox.hiddenStage')
+            : tr('sellerInbox.notYet')}
         </p>
       ) : stage === 'lost' ? (
         <p style={{ margin:0, fontSize:11.5, color:t.sub, lineHeight:1.5 }}>
-          This deal is marked lost. Replying here does not reopen it — move it in the pipeline first.
+          {tr('sellerInbox.lostNote')}
         </p>
       ) : (
         <div style={{ display:'flex', alignItems:'center', gap:4, overflowX:'auto', paddingBottom:2 }}>
@@ -292,7 +294,7 @@ export default function SellerInbox({
         headerBelow={stageStrip}
         headerRight={stagePill}
         headerLeft={
-          <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
+          <button onClick={() => setOpenId(null)} aria-label={tr('sellerInbox.back')}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius: prem ? P.radius.pill : 9, background: prem ? P.raised : 'none', border: prem ? 'none' : `1px solid ${t.border}`, color:t.sub, cursor:'pointer', flexShrink:0 }}>
             <ArrowLeft size={16} />
           </button>

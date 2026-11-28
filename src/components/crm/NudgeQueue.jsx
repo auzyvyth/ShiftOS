@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BellRing, Clock, MessageCircle, MoreVertical, Sparkles, X } from 'lucide-react';
 import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 // RAPTOR-1 — the review queue for follow-up nudges that have come due.
 //
@@ -57,6 +58,7 @@ const fmtDate = (iso) => new Date(iso).toLocaleString('en-MY', {
 });
 
 export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss, theme = 'light' }) {
+  const { t } = useTranslation();
   const P = PALETTES[theme] || PALETTES.light;
   const prem = theme === 'premium';
   const plight = theme === 'plight';
@@ -76,7 +78,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
       <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', padding:'13px 16px', borderBottom: due.length ? `1px solid ${slim ? K.line : P.border}` : 'none' }}>
         <BellRing size={15} style={{ color:P.accent, flexShrink:0 }} />
         <p style={{ fontSize:13, fontWeight:700, color:P.text, margin:0, flex:1 }}>
-          Follow-ups due
+          {t("nudgeQ.followUpsDue")}
         </p>
         {due.length > 0 && (
           <span style={{ fontSize:11, fontWeight:700, color:P.accent, background:P.accentSoft, borderRadius:20, padding:'2px 10px' }}>
@@ -92,7 +94,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
 
       {due.length === 0 ? (
         <p style={{ fontSize:12, color:P.textMuted, margin:0, padding:'12px 16px' }}>
-          Nothing due right now. Next: {fmtDate(scheduled[0].scheduled_for)} · {scheduled[0].lead?.buyer_name || 'lead'}
+          {t("nudgeQ.nothingDueRightNowNext")} {fmtDate(scheduled[0].scheduled_for)} · {scheduled[0].lead?.buyer_name || 'lead'}
         </p>
       ) : due.map((n, i) => {
         const lead = n.lead || {};
@@ -108,28 +110,28 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
             <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
-                  <span style={{ fontSize:13.5, fontWeight:600, color:P.text }}>{lead.buyer_name || 'Unknown'}</span>
+                  <span style={{ fontSize:13.5, fontWeight:600, color:P.text }}>{lead.buyer_name || t("nudgeQ.unknown")}</span>
                   <span style={{ fontSize:10, fontWeight:700, color:P.warnText, background: slim ? K.raised : 'rgba(217,119,6,0.1)', borderRadius:5, padding:'1px 6px' }}>
                     {fmtWhen(n.scheduled_for)}
                   </span>
                   {n.ai_drafted && (
                     <span style={{ fontSize:10, fontWeight:700, color:P.violetText, background: slim ? K.raised : 'rgba(124,58,237,0.09)', borderRadius:5, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3 }}>
-                      <Sparkles size={9} /> AI draft
+                      <Sparkles size={9} /> {t("nudgeQ.aiDraft")}
                     </span>
                   )}
                 </div>
                 <p style={{ fontSize:11.5, color:P.textMuted, margin:0 }}>
-                  {car ? `${car.brand} ${car.model}` : 'Car enquiry'}{n.reason ? ` · ${n.reason}` : ''}
+                  {car ? `${car.brand} ${car.model}` : t("nudgeQ.carEnquiry")}{n.reason ? ` · ${n.reason}` : ''}
                 </p>
                 {contactedSince && (
                   <p style={{ fontSize:11, color:P.warnText, margin:'4px 0 0', fontWeight:600 }}>
-                    You've contacted them since this was queued — check the draft still makes sense.
+                    {t("nudgeQ.youVeContactedThemSince")}
                   </p>
                 )}
               </div>
 
               <div style={{ position:'relative', flexShrink:0 }}>
-                <button onClick={() => setMenuId(menuId === n.id ? null : n.id)} aria-label="More actions"
+                <button onClick={() => setMenuId(menuId === n.id ? null : n.id)} aria-label={t("nudgeQ.moreActions")}
                   style={{ background:'none', border:'none', padding:4, cursor:'pointer', color:P.textDim, display:'flex' }}>
                   <MoreVertical size={16} />
                 </button>
@@ -139,8 +141,8 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
                     <div onClick={() => setMenuId(null)} style={{ position:'fixed', inset:0, zIndex:20 }} />
                     <div style={{ position:'absolute', right:0, top:26, zIndex:21, background: slim ? K.hover : P.surface, border:`1px solid ${P.border}`, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden', minWidth:150 }}>
                       {[
-                        { label: 'Snooze 1 day',  days: 1 },
-                        { label: 'Snooze 3 days', days: 3 },
+                        { label: t("nudgeQ.snooze1Day"),  days: 1 },
+                        { label: t("nudgeQ.snooze3Days"), days: 3 },
                       ].map(opt => (
                         <button key={opt.label} onClick={() => {
                             const d = new Date(); d.setDate(d.getDate() + opt.days); d.setHours(9, 0, 0, 0);
@@ -152,7 +154,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
                       ))}
                       <button onClick={() => { setMenuId(null); onDismiss(n.id); }}
                         style={{ display:'flex', alignItems:'center', gap:7, width:'100%', padding:'9px 12px', background:'none', border:'none', borderTop:`1px solid ${P.fill}`, cursor:'pointer', fontSize:12, color:P.accent, textAlign:'left', fontFamily:FONT }}>
-                        <X size={12} /> Dismiss
+                        <X size={12} /> {t("nudgeQ.dismiss")}
                       </button>
                     </div>
                   </>
@@ -173,12 +175,12 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:9, flexWrap:'wrap' }}>
               <button onClick={() => onSend(n, draftOf(n))}
                 style={{ flex:'1 1 200px', padding:'10px 14px', borderRadius: slim ? 999 : 10, background: slim ? K.accent : 'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', color: slim ? K.onAccent : P.surface, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                <MessageCircle size={14} /> Review &amp; send in WhatsApp
+                <MessageCircle size={14} /> {t("nudgeQ.reviewSendInWhatsapp")}
               </button>
               {expanded && (
                 <button onClick={() => setOpenId(null)}
                   style={{ padding:'10px 14px', borderRadius:10, background:P.surface, border:`1px solid ${P.border}`, color:P.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>
-                  Collapse
+                  {t("nudgeQ.collapse")}
                 </button>
               )}
             </div>

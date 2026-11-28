@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { Bug, X } from "lucide-react";
 import { useModalHistory } from '../hooks/useModalHistory';
@@ -9,6 +10,7 @@ const SUPPORT_WHATSAPP = "601111521742";
 //          "inline"   = small header icon button (sits next to the nav, no overlap)
 // tapSize: inline only. A minimum hit area in px (the icon stays 16px). The dealer bar passes 40.
 export default function ReportBugButton({ context = "", userLabel = "", variant = "floating", tapSize = null }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   useModalHistory(open, () => setOpen(false), { isDirty: () => !!text.trim() });
@@ -33,8 +35,8 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
       {variant === "inline" ? (
         <button
           onClick={() => setOpen(true)}
-          title="Report a bug"
-          aria-label="Report a bug"
+          title={t("bugReport.title")}
+          aria-label={t("bugReport.title")}
           style={{
             background: "none",
             border: "none",
@@ -53,7 +55,7 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
       ) : (
         <button
           onClick={() => setOpen(true)}
-          title="Report a bug"
+          title={t("bugReport.title")}
           className="fixed z-50 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105"
           style={{
             bottom: 24,
@@ -82,21 +84,21 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold" style={{ color: "#f3f4f6" }}>
-                Report a bug
+                {t("bugReport.title")}
               </h3>
               <button onClick={() => setOpen(false)} style={{ color: "#6b7280" }}>
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs mb-3" style={{ color: "#9ca3af" }}>
-              Describe what went wrong — this opens WhatsApp with your message pre-filled so we can look into it fast.
+              {t("bugReport.hint")}
             </p>
             <textarea
               autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={4}
-              placeholder="e.g. The Add Listing form doesn't save photos on step 3..."
+              placeholder={t("bugReport.placeholder")}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
               style={{
                 background: "rgba(255,255,255,0.04)",
@@ -116,7 +118,7 @@ export default function ReportBugButton({ context = "", userLabel = "", variant 
                 cursor: text.trim() ? "pointer" : "not-allowed",
               }}
             >
-              Send via WhatsApp
+              {t("bugReport.send")}
             </button>
           </div>
         </div>,

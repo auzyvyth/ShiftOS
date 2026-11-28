@@ -64,6 +64,7 @@ import { CAR_DOCS_BUCKET, openDoc, removeDocFile } from "../utils/carDocs";
 import { minPhotosFor, photosMissingLabel } from "../utils/listingRules";
 import { askSocialConsent } from "./social/askSocialConsent";
 import { isChassisDupError, chassisDupMessage } from "../utils/chassisDup";
+import { useTranslation } from 'react-i18next';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -156,6 +157,7 @@ const STEPS = [
 const DRAFT_STEP_V1_TO_V2 = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6 };
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
   const style = {
@@ -180,17 +182,17 @@ function SortableSection({ id, section, complete, collapsed, onToggle, children 
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          aria-label="Drag to reorder"
+          aria-label={t("carForm.dragToReorder")}
         >
           <GripVertical className="w-4 h-4" />
         </button>
         <Icon className="w-4 h-4 text-blue-500 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">{section.label}</span>
+            <span className="text-sm font-semibold text-gray-900">{t(`carForm.stepName.${section.id}`, { defaultValue: section.label })}</span>
             {complete && <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />}
           </div>
-          <p className="text-xs text-gray-500">{section.desc}</p>
+          <p className="text-xs text-gray-500">{t(`carForm.stepDesc.${section.id}`, { defaultValue: section.desc })}</p>
         </div>
         {collapsed
           ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -266,6 +268,7 @@ function PillSelect({ options, value, onChange, disabled = false }) {
 // behavior of accepting a value not in the list (Brand/Model/City aren't
 // exhaustive lists).
 function PickerField({ label, value, onChange, options, placeholder = "Select…", disabled, allowCustom = false }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   useModalHistory(open, () => setOpen(false));
   const [query, setQuery] = useState("");
@@ -327,7 +330,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
                       autoFocus
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search…"
+                      placeholder={t("carForm.search")}
                       className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -340,7 +343,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
                     onClick={() => pick(query)}
                     className="w-full flex items-center gap-2 px-5 py-3 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-b border-gray-100"
                   >
-                    Use "{query}"
+                    {t("carForm.use")}{query}"
                   </button>
                 )}
                 {filtered.map((o) => (
@@ -360,7 +363,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
                   </button>
                 ))}
                 {filtered.length === 0 && !(allowCustom && query) && (
-                  <p className="px-5 py-6 text-center text-sm text-gray-400">No matches</p>
+                  <p className="px-5 py-6 text-center text-sm text-gray-400">{t("carForm.noMatches")}</p>
                 )}
               </div>
             </div>
@@ -382,6 +385,7 @@ function PickerField({ label, value, onChange, options, placeholder = "Select…
 //  - Quick-insert chips drop common emoji markers at the cursor.
 const QUICK_MARKS = ["✅", "•", "🔥", "⭐", "📌", "🛠️", "🚗", "💯"];
 function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
+  const { t } = useTranslation();
   const ref = useRef(null);
 
   const applyEdit = (next, caret) => {
@@ -466,7 +470,7 @@ function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
           onClick={() => insertMark("1.")}
           className="px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
         >
-          1. list
+          {t("carForm.1List")}
         </button>
       </div>
       <textarea
@@ -479,7 +483,7 @@ function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
         className={textareaCls}
       />
       <p className="text-xs text-gray-400 mt-1.5">
-        Enter continues a numbered or bullet line · double-space ends a sentence with "."
+        {t("carForm.enterContinuesANumberedOr")}
       </p>
     </div>
   );
@@ -488,6 +492,7 @@ function SmartTextarea({ value, onValueChange, placeholder, rows = 6 }) {
 // Review-step building blocks: a titled card with an Edit jump, and a
 // label/value cell that renders nothing when the value is empty.
 function ReviewSection({ title, onEdit, children }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-2xl border border-gray-200 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
@@ -498,7 +503,7 @@ function ReviewSection({ title, onEdit, children }) {
             onClick={onEdit}
             className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
           >
-            Edit
+            {t("carForm.edit")}
           </button>
         )}
       </div>
@@ -573,11 +578,12 @@ const textareaCls =
   "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-none text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors resize-none";
 
 function VideoPreview({ url }) {
+  const { t } = useTranslation();
   const embedUrl = getEmbedUrl(url);
   if (!embedUrl)
     return (
       <p className="text-xs text-yellow-600 mt-1">
-        ⚠ Could not parse video URL. Paste a YouTube, TikTok, or Instagram link.
+        {t("carForm.couldNotParseVideoUrl")}
       </p>
     );
   return (
@@ -586,7 +592,7 @@ function VideoPreview({ url }) {
         src={embedUrl}
         className="w-full h-full"
         allowFullScreen
-        title="Car video preview"
+        title={t("carForm.carVideoPreview")}
       />
     </div>
   );
@@ -626,11 +632,12 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 // wait for useProfile. Rendering the used form while it loaded is what made a
 // new-car advisor see the wrong form flash up and then swap.
 export default function CarForm(props) {
+  const { t } = useTranslation();
   const { profile: fetched, loading } = useProfile();
   const profile = props.sellerProfile || fetched;
   const [usedForm, setUsedForm] = useState(false);
   const { listing } = props;
-  if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>Loading form...</p>;
+  if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>{t("carForm.loadingForm")}</p>;
   // A salesman adding a car picks Used / Recon / New first. Edits skip it: the
   // car already is one of those.
   if (profile?.role === "salesman" && !listing) {
@@ -652,6 +659,7 @@ export default function CarForm(props) {
 }
 
 function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade, dark }) {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
   // VIN decode is a Premium-salesman convenience only. It's gated off for
@@ -819,7 +827,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     const file = e.target.files?.[0];
     if (!file) return;
     if (!ALLOWED_DOC_TYPES.includes(file.type)) {
-      toast.error("Only PDF, JPG, PNG or WEBP files are allowed");
+      toast.error(t("carForm.onlyPdfJpgPngOr"));
       e.target.value = "";
       return;
     }
@@ -1463,7 +1471,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     if (!files.length) return;
     const slots = 30 - form.images.length;
     if (slots <= 0) {
-      toast.error("You've reached the 30-image limit for this listing.");
+      toast.error(t("carForm.youVeReachedThe30"));
       e.target.value = "";
       return;
     }
@@ -1472,7 +1480,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     const accepted = files.slice(0, slots);
     if (accepted.length < files.length)
       toast.message(
-        `Added the first ${accepted.length} — 30 images is the max per listing.`,
+        t("carForm.addedFirst", { n: accepted.length }),
       );
     set("images", [...form.images, ...accepted]);
     setPreviews((p) => [...p, ...accepted.map((f) => URL.createObjectURL(f))]);
@@ -1597,7 +1605,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     const failed = results.filter((r) => r && r.status === "rejected").length;
     if (failed > 0)
       toast.error(
-        `${failed} image${failed === 1 ? "" : "s"} failed to upload — tap Add to retry ${failed === 1 ? "it" : "them"}.`,
+        t("carForm.uploadFailed", { count: failed }),
       );
   };
 
@@ -1837,7 +1845,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // Advance a step, or explain (via toast) exactly what's missing.
   const goNext = () => {
     const miss = missingFields();
-    if (miss.length) { toast.error(`Please fill in: ${miss.join(", ")}`); return; }
+    if (miss.length) { toast.error(t("carForm.fillIn", { list: miss.join(", ") })); return; }
     setStep((s) => Math.min(STEPS.length, s + 1));
   };
 
@@ -1862,7 +1870,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         // whole debugging cycle after the seller's approval status while the
         // real fault was the upload.
         const e = new Error(
-          `Photo "${file.name || "image"}" failed to upload: ${error.message || "unknown error"}`,
+          t("carForm.photoUploadFailed", { name: file.name || t("carForm.imageWord"), err: error.message || t("carForm.unknownError") }),
         );
         e.__imageUpload = true;
         throw e;
@@ -1906,13 +1914,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       ? editBlockers()
       : firstIncompleteStep();
     if (incomplete) {
-      const label = STEPS.find((x) => x.id === incomplete.step)?.label || `Step ${incomplete.step}`;
+      const label = t(`carForm.stepName.${incomplete.step}`, { defaultValue: t("carForm.stepFallback", { n: incomplete.step }) });
       setStep(incomplete.step);
-      toast.error(`Required field${incomplete.fields.length > 1 ? "s" : ""} not filled: ${incomplete.fields.join(", ")}. Complete "${label}" before publishing.`);
+      toast.error(t("carForm.requiredNotFilled", { count: incomplete.fields.length, list: incomplete.fields.join(", "), label }));
       return;
     }
     if (!photosOk) {
-      toast.error(`Please add at least ${minPhotos} photos`);
+      toast.error(t("carForm.addAtLeast", { n: minPhotos }));
       return;
     }
     const mileage = parseInt(form.mileage);
@@ -1922,19 +1930,19 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     const engineCc = form.engineCc ? parseInt(form.engineCc) : null;
 
     if (isNaN(mileage) || mileage < 0) {
-      toast.error("Invalid mileage");
+      toast.error(t("carForm.invalidMileage"));
       return;
     }
     if (isNaN(basePrice) || basePrice < 0) {
-      toast.error("Invalid base price");
+      toast.error(t("carForm.invalidBasePrice"));
       return;
     }
     if (isNaN(sellingPrice) || sellingPrice < 0) {
-      toast.error("Invalid selling price");
+      toast.error(t("carForm.invalidSellingPrice"));
       return;
     }
     if (isNaN(year) || year < 1900) {
-      toast.error("Invalid year");
+      toast.error(t("carForm.invalidYear"));
       return;
     }
 
@@ -2089,7 +2097,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       } else {
         // Create mode — insert new record
         if (!dealerId) {
-          alert("Profile not loaded yet — please wait a moment and try again.");
+          alert(t("carForm.profileNotLoadedYetPlease"));
           setUploading(false);
           return;
         }
@@ -2168,20 +2176,20 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       // Checked FIRST: an image-upload failure must never be reported as an
       // account/permission problem (see uploadImages).
       if (err?.__imageUpload) {
-        toast.error(`${msg}. Remove that photo and add it again, then publish.`);
+        toast.error(t("carForm.removePhotoRetry", { msg }));
       } else if (isChassisDupError(err)) {
         toast.error(chassisDupMessage(err));
       } else if (isPrivateLimitError(err)) {
-        toast.error(`You already have ${PRIVATE_CAR_LIMIT} private cars. Publish or delete one, or untick "Keep it private".`);
+        toast.error(t("carForm.privateLimit", { n: PRIVATE_CAR_LIMIT, label: t("carForm.keepItPrivate") }));
       } else if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
         setCapError(true);
       } else if (msg.includes('subscription_inactive')) {
-        toast.error("Your trial or subscription has ended. Activate your plan to publish new listings.");
+        toast.error(t("carForm.yourTrialOrSubscriptionHas"));
       } else if (err?.code === '42501' || msg.toLowerCase().includes('row-level security')) {
         // A seller awaiting approval reaches this no more (20260912b lifted that
         // gate). The only accounts RLS still refuses here are suspended, declined
         // or deleted — none of which a refresh fixes, so it no longer says so.
-        toast.error("Publishing was blocked — your account is suspended or was declined. Check the notice on your dashboard, or contact support.");
+        toast.error(t("carForm.publishingWasBlockedYourAccount"));
       } else if (err?.code === '23502') {
         // not-null violation slipped past pre-flight — name the column
         const col = msg.match(/column "?([a-z_]+)"?/i)?.[1];
@@ -2238,7 +2246,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         </span>
         {i === 0 ? (
           <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-blue-600 text-white text-[9px] sm:text-[10px] font-semibold">
-            Primary
+            {t("carForm.primary")}
           </span>
         ) : (
           <button
@@ -2246,7 +2254,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             onClick={() => moveToFirst(i)}
             className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/70 hover:bg-black text-white text-[9px] sm:text-[10px] font-medium transition-colors"
           >
-            Set #1
+            {t("carForm.set1")}
           </button>
         )}
         <button
@@ -2287,23 +2295,23 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               the Photos step where they used to be. */}
           {!intakeDone && (
           <>
-          <Field label="Plate Number" hint="Optional — vehicle registration plate">
+          <Field label={t("carForm.plateNumber")} hint={t("carForm.optionalVehicleRegistrationPlate")}>
             <input
               name="plate_number"
               value={form.plate_number}
               onChange={handleChange}
               onBlur={e => checkDuplicate('plate', e.target.value)}
-              placeholder="e.g. WXY 1234"
+              placeholder={t("carForm.eGWxy1234")}
               className={inputCls}
             />
             {dupWarning.plate && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+              <p className="text-xs text-amber-600 mt-1">{t("carForm.duplicateDetected")} {dupWarning.plate}</p>
             )}
             {conflictWarning.plate && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+              <p className="text-xs text-red-600 mt-1 font-semibold">{t("carForm.thisPlateIsAlreadyLive")}</p>
             )}
           </Field>
-          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
+          <Field label={t("carForm.vinChassisNumber")} hint={isPremiumPlan ? t("carForm.17CharVinOrThe") : t("carForm.vinOrTheJapaneseChassis")}>
             <div className="flex gap-2">
               <input
                 name="vin_number"
@@ -2321,15 +2329,15 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   disabled={decodingVin || !canDecodeVin}
                   className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
                 >
-                  {decodingVin ? "Decoding…" : "Decode"}
+                  {decodingVin ? t("carForm.decoding") : t("carForm.decode")}
                 </button>
               )}
             </div>
             {dupWarning.vin && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+              <p className="text-xs text-amber-600 mt-1">{t("carForm.duplicateDetected")} {dupWarning.vin}</p>
             )}
             {conflictWarning.vin && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+              <p className="text-xs text-red-600 mt-1 font-semibold">{t("carForm.thisVinIsAlreadyLive")}</p>
             )}
             {vinDecodeMsg && (
               <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
@@ -2350,8 +2358,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               (only the clean "Alphard" resolves) and dropped the car out of the
               buyer's model filter. Give them the headline, keep `model` clean. */}
           <Field
-            label="Listing Title"
-            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
+            label={t("carForm.listingTitle")}
+            hint={t("carForm.howBuyersSeeThisCar")}
           >
             <div className="space-y-2">
               <input
@@ -2359,15 +2367,15 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 value={form.listing_title}
                 onChange={handleChange}
                 maxLength={120}
-                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
+                placeholder={t("carForm.eGBmwM4G82")}
                 enterKeyHint="next"
                 className={inputCls}
               />
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-gray-500 min-w-0 truncate">
                   {form.listing_title?.trim()
-                    ? "This is the headline buyers read."
-                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
+                    ? t("carForm.thisIsTheHeadlineBuyers")
+                    : t("carForm.leaveBlank", { name: [form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || t("carForm.yearBrandModel") })}
                 </p>
                 <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
                   {form.listing_title?.length || 0}/120
@@ -2379,7 +2387,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   );
   const renderCarMore = () => (
           <MoreDetails>
-             <Field label="Registration Date">
+             <Field label={t("carForm.registrationDate")}>
               <input
                 type="date"
                 name="registrationDate"
@@ -2388,7 +2396,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className={inputCls}
               />
             </Field>
-            <Field label="Previous Owners">
+            <Field label={t("carForm.previousOwners")}>
               <input
                 type="number"
                 name="previous_owners"
@@ -2400,7 +2408,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className={inputCls}
               />
             </Field>
-            <Field label="Road Tax Expiry">
+            <Field label={t("carForm.roadTaxExpiry")}>
               <input
                 type="date"
                 name="road_tax_expiry"
@@ -2422,8 +2430,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               clean car from a skipped walkaround unless the dealer says which it
               is, so the map is paired with an explicit declaration. */}
           <Field
-            label="Condition Report"
-            hint="Mark every dent, scratch, rust spot and replaced panel — buyers see this on the listing"
+            label={t("carForm.conditionReport")}
+            hint={t("carForm.markEveryDentScratchRust")}
           >
             <div className="space-y-3">
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
@@ -2449,12 +2457,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-gray-900">
-                    I walked around this car and marked every visible defect
+                    {t("carForm.iWalkedAroundThisCar")}
                   </span>
                   <span className="block text-xs text-gray-500 mt-0.5">
                     {form.damageMap.length > 0
-                      ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked — the listing will show them.`
-                      : "Nothing marked — the listing will state you found no visible damage."}
+                      ? t("carForm.areasMarked", { count: form.damageMap.length })
+                      : t("carForm.nothingMarkedTheListingWill")}
                   </span>
                 </span>
               </button>
@@ -2466,18 +2474,18 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const renderReconTyped = () => {
     return (
       <>
-              <Field label="Auction House" hint="e.g. USS, TAA, JAA">
+              <Field label={t("carForm.auctionHouse")} hint={t("carForm.eGUssTaaJaa")}>
                 <input
                   name="auctionHouse"
                   value={form.auctionHouse}
                   onChange={handleChange}
-                  placeholder="e.g. USS Tokyo"
+                  placeholder={t("carForm.eGUssTokyo")}
                   className={inputCls}
                 />
               </Field>
               <Field
-                label="Local Reg Date"
-                hint="When first registered in MY"
+                label={t("carForm.localRegDate")}
+                hint={t("carForm.whenFirstRegisteredInMy")}
               >
                 <input
                   type="date"
@@ -2493,7 +2501,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const renderAdvancedSpecs = () => {
     return (
       <>
-            <Field label="Power (bhp)">
+            <Field label={t("carForm.powerBhp")}>
               <div className="relative">
                 <input
                   type="number"
@@ -2507,7 +2515,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">bhp</span>
               </div>
             </Field>
-            <Field label="Cylinders">
+            <Field label={t("carForm.cylinders")}>
               <input
                 type="number"
                 name="cylinders"
@@ -2519,7 +2527,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className={inputCls}
               />
             </Field>
-            <Field label="Fuel Economy">
+            <Field label={t("carForm.fuelEconomy")}>
               <div className="relative">
                 <input
                   type="number"
@@ -2534,7 +2542,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-medium pointer-events-none">km/L</span>
               </div>
             </Field>
-            <Field label="Doors">
+            <Field label={t("carForm.doors")}>
               <input
                 type="number"
                 name="doors"
@@ -2546,7 +2554,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className={inputCls}
               />
             </Field>
-            <Field label="Seats">
+            <Field label={t("carForm.seats")}>
               <input
                 type="number"
                 name="seats"
@@ -2565,8 +2573,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return (
       <>
           <Field
-            label="Salesman Commission (RM)"
-            hint="Paid to the salesman who closes this deal. Filled from your commission rule in Settings."
+            label={t("carForm.salesmanCommissionRm")}
+            hint={t("carForm.paidToTheSalesmanWho")}
           >
             <>
               <div className="relative">
@@ -2588,8 +2596,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               {suggestedCommission != null && (
                 <p className="text-xs text-gray-500 mt-1.5">
                   {form.commissionAmount === String(suggestedCommission)
-                    ? `Filled from your rule (${describeCommissionRule(commissionConfig)}). Edit if this deal pays differently.`
-                    : `Your rule gives RM ${suggestedCommission.toLocaleString()} (${describeCommissionRule(commissionConfig)}).`}
+                    ? t("carForm.commissionFilled", { rule: describeCommissionRule(commissionConfig) })
+                    : t("carForm.commissionRule", { amt: suggestedCommission.toLocaleString(), rule: describeCommissionRule(commissionConfig) })}
                   {form.commissionAmount !== String(suggestedCommission) && (
                     <button
                       type="button"
@@ -2599,7 +2607,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                       }}
                       className="ml-2 text-red-400 underline underline-offset-2"
                     >
-                      Use RM {suggestedCommission.toLocaleString()}
+                      {t("carForm.useRm")} {suggestedCommission.toLocaleString()}
                     </button>
                   )}
                 </p>
@@ -2613,8 +2621,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return (
       <>
             <Field
-              label="Deposit to Reserve (RM)"
-              hint="Amount needed to hold this unit"
+              label={t("carForm.depositToReserveRm")}
+              hint={t("carForm.amountNeededToHoldThis")}
             >
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
@@ -2647,7 +2655,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               <div className="flex items-center gap-2.5">
                 <Tag className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-semibold text-gray-900">
-                  Included Services &amp; Add-ons
+                  {t("carForm.includedServicesAddOns")}
                 </span>
                 {form.included_services.length > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold">
@@ -2701,7 +2709,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     {/* Cost summary */}
                     <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15">
                       <span className="text-xs text-gray-400 font-medium">
-                        Total value included
+                        {t("carForm.totalValueIncluded")}
                       </span>
                       <span className="text-sm font-semibold text-blue-400">
                         RM{" "}
@@ -2721,7 +2729,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-300 hover:border-blue-400 text-gray-500 hover:text-blue-600 text-sm transition-colors"
                   >
                     <Tag className="w-4 h-4" />
-                    Add a service from catalogue
+                    {t("carForm.addAServiceFromCatalogue")}
                   </button>
                 ) : (
                   <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -2732,7 +2740,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                         type="text"
                         value={serviceSearch}
                         onChange={(e) => setServiceSearch(e.target.value)}
-                        placeholder="Search catalogue…"
+                        placeholder={t("carForm.searchCatalogue")}
                         className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
                         autoFocus
                       />
@@ -2752,8 +2760,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                       {serviceCatalogue.length === 0 && (
                         <p className="text-center text-gray-600 text-sm py-6">
                           {catalogueLoaded
-                            ? "No products in catalogue yet"
-                            : "Loading…"}
+                            ? t("carForm.noProductsInCatalogueYet")
+                            : t("carForm.loading")}
                         </p>
                       )}
                       {serviceCatalogue
@@ -2803,7 +2811,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                               </span>
                               {alreadyAdded && (
                                 <span className="text-xs text-gray-500">
-                                  Added
+                                  {t("carForm.added")}
                                 </span>
                               )}
                             </button>
@@ -2822,13 +2830,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return (
       <>
             <Field
-              label="About this car"
-              hint={'Condition, history, why it stands out — shown as the "About this car" section on the listing.'}
+              label={t("carForm.aboutThisCar")}
+              hint={t("carForm.conditionHistoryWhyItStands")}
             >
               <SmartTextarea
                 value={form.specs}
                 onValueChange={(v) => set("specs", v)}
-                placeholder={"e.g.\nFull service record\nOne owner, accident-free\nInterior 9/10, tyres 80%"}
+                placeholder={t("carForm.eGFullServiceRecord")}
                 rows={7}
               />
               {/* Prompts for what only the seller knows. This text is the one
@@ -2853,7 +2861,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               </div>
               {String(form.specs || "").trim().split(/\s+/).filter(Boolean).length < 15 && (
                 <p className="text-xs text-gray-500 mt-2">
-                  A few lines in your own words help this car show up on Google and get more enquiries.
+                  {t("carForm.aFewLinesInYour")}
                 </p>
               )}
             </Field>
@@ -2872,7 +2880,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center gap-2.5">
                   <BadgeCheck className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm font-semibold text-gray-900">Car Documents</span>
+                  <span className="text-sm font-semibold text-gray-900">{t("carForm.carDocuments")}</span>
                   <span
                     className={`ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                       trustTier.level === 3
@@ -2895,8 +2903,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
                   {trustTier.nextMissing
-                    ? `${trustTier.count} of ${trustTier.total} attached — add ${trustTier.nextMissing.short.toLowerCase()} next.`
-                    : "All four attached. Buyers can open every one of them on the listing."}
+                    ? t("carForm.trustAttached", { count: trustTier.count, total: trustTier.total, next: trustTier.nextMissing.short.toLowerCase() })
+                    : t("carForm.allFourAttachedBuyersCan")}
                 </p>
               </div>
 
@@ -2939,14 +2947,14 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                                 onClick={() => openDoc(supabase, doc)}
                                 className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
                               >
-                                View
+                                {t("carForm.view")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removeDocument(idx)}
                                 className="text-xs text-gray-400 hover:text-red-500 flex-shrink-0"
                               >
-                                Remove
+                                {t("carForm.remove")}
                               </button>
                             </div>
                           ) : (
@@ -2965,11 +2973,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                           {uploadingSlot === t.key ? (
                             <>
                               <div className="w-3 h-3 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
-                              Uploading
+                              {t("carForm.uploading")}
                             </>
                           ) : (
                             <>
-                              <Upload className="w-3 h-3" /> {doc ? "Replace" : "Upload"}
+                              <Upload className="w-3 h-3" /> {doc ? t("carForm.replace") : t("carForm.upload")}
                             </>
                           )}
                           <input
@@ -2985,7 +2993,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                       {isGeran && !doc && !isNewCar && (
                         <div className="mt-3 sm:ml-8 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
                           <p className="text-xs font-medium text-gray-700">
-                            Can&apos;t attach it? Pick the reason — buyers see this on the listing.
+                            {t("carForm.canTAttachItPick")}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {GERAN_REASONS.map((r) => (
@@ -3015,7 +3023,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               {/* Everything else — insurance, warranty, AP permits, plus any
                   extra copies of the four named documents above. */}
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-3">
-                <p className="text-xs font-semibold text-gray-700">Other documents</p>
+                <p className="text-xs font-semibold text-gray-700">{t("carForm.otherDocuments")}</p>
                 {otherDocuments.length > 0 && (
                   <div className="space-y-2">
                     {otherDocuments.map(({ doc, idx }) => {
@@ -3037,7 +3045,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                             onClick={() => openDoc(supabase, doc)}
                             className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
                           >
-                            View
+                            {t("carForm.view")}
                           </button>
                           <button
                             type="button"
@@ -3054,7 +3062,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <PickerField
-                      label="Document Type"
+                      label={t("carForm.documentType")}
                       value={docTypeInput}
                       onChange={(v) => setDocTypeInput(v)}
                       options={OTHER_DOC_TYPES.map((d) => ({
@@ -3062,7 +3070,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                         label: d.label,
                         color: d.color,
                       }))}
-                      placeholder="Select type"
+                      placeholder={t("carForm.selectType")}
                     />
                   </div>
                   <label
@@ -3075,11 +3083,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     {docUploading ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-gray-400/40 border-t-gray-500 rounded-full animate-spin" />
-                        Uploading…
+                        {t("carForm.uploading2")}
                       </>
                     ) : (
                       <>
-                        <Upload className="w-3.5 h-3.5" /> Upload
+                        <Upload className="w-3.5 h-3.5" /> {t("carForm.upload")}
                       </>
                     )}
                     <input
@@ -3092,8 +3100,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   </label>
                 </div>
                 <p className="text-xs text-gray-500">
-                  PDF, JPG or PNG. Buyers can open every document you attach. Our team
-                  reviews them before the Verified badge appears on the listing.
+                  {t("carForm.pdfJpgOrPngBuyers")}
                 </p>
               </div>
             </div>
@@ -3118,8 +3125,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     return (
       <>
             <Field
-              label="Features & options"
-              hint="What buyers search for on Google — tap to add, or type your own. The more you list, the more searches this car shows up in."
+              label={t("carForm.featuresOptions")}
+              hint={t("carForm.whatBuyersSearchForOn")}
             >
               {/* Chips: max 4 rows tall, flowing into columns that scroll/drag
                   horizontally so the free-text box below stays reachable (mobile-first). */}
@@ -3150,7 +3157,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               </div>
               {sheetTags.length > 0 && (
                 <div className="mb-2.5">
-                  <p className="text-xs text-gray-500 mb-1.5">From your stock sheet - tap the ones this car has</p>
+                  <p className="text-xs text-gray-500 mb-1.5">{t("carForm.fromYourStockSheetTap")}</p>
                   <div className="flex flex-wrap gap-2">
                     {sheetTags.map((f) => {
                       const on = isSel(f);
@@ -3175,7 +3182,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 name="features"
                 value={form.features}
                 onChange={handleChange}
-                placeholder="Anything else — e.g. bucket seats, carbon pack, tinted windows. Separate with commas."
+                placeholder={t("carForm.anythingElseEGBucket")}
                 className={textareaCls}
                 rows={2}
               />
@@ -3186,10 +3193,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
 
   const renderQuickExtras = () => (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">All optional — tap Done to skip.</p>
+      <p className="text-sm text-gray-500">{t("carForm.allOptionalTapDoneTo")}</p>
       {renderPlateVin()}
       {renderListingTitle()}
-      <Field label="Loan Eligible">
+      <Field label={t("carForm.loanEligible")}>
         <PillSelect
           options={["Yes", "No"]}
           value={form.loan_eligible ? "Yes" : "No"}
@@ -3238,131 +3245,131 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const renderQuickTechnical = () => quickStage(3, [
     // A spec the Car stage should have filled but did not (an old draft):
     // asked here so Technical can never be unfinishable.
-    { key: "body_fix", title: "Body type?", skip: !!form.bodyType, required: true, answered: !!form.bodyType,
+    { key: "body_fix", title: t("carForm.bodyType"), skip: !!form.bodyType, required: true, answered: !!form.bodyType,
       render: ({ pick }) => tiles(BODY_TYPES, form.bodyType, (v) => pick({ bodyType: v })) },
-    { key: "fuel_fix", title: "Fuel type?", skip: !!form.fuelType, required: true, answered: !!form.fuelType,
+    { key: "fuel_fix", title: t("carForm.fuelType"), skip: !!form.fuelType, required: true, answered: !!form.fuelType,
       render: ({ pick }) => tiles(FUEL_TYPES, form.fuelType, (v) => pick({ fuelType: v })) },
-    { key: "damage", title: "Any dents, scratches or rust?", skip: isNewCar, filled: form.conditionDeclared || form.damageMap.length > 0, hideContext: false,
+    { key: "damage", title: t("carForm.anyDentsScratchesOrRust"), skip: isNewCar, filled: form.conditionDeclared || form.damageMap.length > 0, hideContext: false,
       render: ({ pick }) => (
         <div className="space-y-3">
           {tiles([
-            { value: "clean", label: "No visible damage", hint: "The listing states you found none" },
-            { value: "marked", label: "Yes, I'll mark it", hint: "Tap the panels on a car diagram" },
+            { value: "clean", label: t("carForm.noVisibleDamage"), hint: t("carForm.theListingStatesYouFound") },
+            { value: "marked", label: t("carForm.yesILlMarkIt"), hint: t("carForm.tapThePanelsOnA") },
           ], isClean ? "clean" : (damageYes || form.damageMap.length > 0) ? "marked" : "", (v) => {
             setDamageYes(v === "marked");
             pick(v === "clean" ? { damageMap: [], conditionDeclared: true } : { conditionDeclared: false });
           }, "grid-cols-1")}
         </div>
       ) },
-    { key: "damage_map", title: "Mark every defect", skip: isNewCar || !(damageYes || form.damageMap.length > 0),
+    { key: "damage_map", title: t("carForm.markEveryDefect"), skip: isNewCar || !(damageYes || form.damageMap.length > 0),
       filled: form.conditionDeclared, primaryLabel: "Continue", render: renderDamage },
-    { key: "grade", title: "Auction grade?", skip: !form.isRecon, filled: !!form.auctionGrade,
+    { key: "grade", title: t("carForm.auctionGrade"), skip: !form.isRecon, filled: !!form.auctionGrade,
       render: ({ pick }) => (
         <div className="space-y-3">
           {tiles(["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({ value: g, label: g === suggestedGrade ? `${g} ★` : g })),
             form.auctionGrade, (v) => pick({ auctionGrade: v }), "grid-cols-5")}
-          <p className="text-xs text-gray-500">Suggested from mileage and year: {suggestedGrade}</p>
+          <p className="text-xs text-gray-500">{t("carForm.suggestedFromMileageAndYear")} {suggestedGrade}</p>
         </div>
       ) },
-    { key: "interior", title: "Interior grade?", skip: !form.isRecon, filled: !!form.interiorGrade,
+    { key: "interior", title: t("carForm.interiorGrade"), skip: !form.isRecon, filled: !!form.interiorGrade,
       render: ({ pick }) => tiles(["A", "B", "C", "D"], form.interiorGrade, (v) => pick({ interiorGrade: v }), "grid-cols-4") },
-    { key: "country", title: "Imported from?", skip: !form.isRecon, filled: !!form.importCountry,
+    { key: "country", title: t("carForm.importedFrom"), skip: !form.isRecon, filled: !!form.importCountry,
       render: ({ pick }) => tiles(["Japan", "UK", "Australia", "Other"], form.importCountry, (v) => pick({ importCountry: v })) },
-    { key: "chassis", title: "Chassis status?", skip: !form.isRecon, filled: !!form.chassisStatus,
+    { key: "chassis", title: t("carForm.chassisStatus"), skip: !form.isRecon, filled: !!form.chassisStatus,
       render: ({ pick }) => tiles([
-        { value: "clean", label: "Clean" }, { value: "repaired", label: "Repaired" }, { value: "written_off", label: "Written off" },
+        { value: "clean", label: t("carForm.clean") }, { value: "repaired", label: t("carForm.repaired") }, { value: "written_off", label: t("carForm.writtenOff") },
       ], form.chassisStatus, (v) => pick({ chassisStatus: v }), "grid-cols-1") },
-    { key: "recon_more", title: "Auction details (optional)", skip: !form.isRecon, enter: "pass",
+    { key: "recon_more", title: t("carForm.auctionDetailsOptional"), skip: !form.isRecon, enter: "pass",
       filled: !!(form.auctionHouse || form.localRegDate), render: () => <div className="space-y-4">{renderReconTyped()}</div> },
-    { key: "adv", title: "More specs (optional)", skip: specsLocked, enter: "pass",
+    { key: "adv", title: t("carForm.moreSpecsOptional"), skip: specsLocked, enter: "pass",
       filled: !!(form.horsepower || form.cylinders || form.fuelEconomyKpl || form.doors || form.seats),
       render: () => <div className="space-y-4">{renderAdvancedSpecs()}</div> },
   ], [
-    { key: "damage", label: "Condition", value: form.damageMap.length ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked` : isClean ? "No visible damage" : "" },
-    { key: "grade", label: "Auction grade", value: form.auctionGrade },
-    { key: "interior", label: "Interior grade", value: form.interiorGrade },
-    { key: "country", label: "Imported from", value: form.importCountry },
-    { key: "chassis", label: "Chassis", value: { clean: "Clean", repaired: "Repaired", written_off: "Written off" }[form.chassisStatus] || "" },
-    { key: "adv", label: "More specs", value: [form.horsepower && `${form.horsepower} bhp`, form.seats && `${form.seats} seats`].filter(Boolean).join(" · ") },
+    { key: "damage", label: t("carForm.condition"), value: form.damageMap.length ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked` : isClean ? "No visible damage" : "" },
+    { key: "grade", label: t("carForm.auctionGrade2"), value: form.auctionGrade },
+    { key: "interior", label: t("carForm.interiorGrade2"), value: form.interiorGrade },
+    { key: "country", label: t("carForm.importedFrom2"), value: form.importCountry },
+    { key: "chassis", label: t("carForm.chassis"), value: { clean: "Clean", repaired: "Repaired", written_off: "Written off" }[form.chassisStatus] || "" },
+    { key: "adv", label: t("carForm.moreSpecs"), value: [form.horsepower && `${form.horsepower} bhp`, form.seats && `${form.seats} seats`].filter(Boolean).join(" · ") },
   ]);
 
   const margin = form.basePrice && form.sellingPrice ? Number(form.sellingPrice) - Number(form.basePrice) : null;
   const svcEmpty = catalogueLoaded && !serviceCatalogue.some((p) => p.is_active !== false);
   const renderQuickPricing = () => quickStage(4, [
-    { key: "price", title: "Asking price?", skip: !!intakeDone, required: true, answered: !!form.sellingPrice, focus: "always",
+    { key: "price", title: t("carForm.askingPrice"), skip: !!intakeDone, required: true, answered: !!form.sellingPrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.sellingPrice} onChange={(v) => set("sellingPrice", v)} prefix="RM" placeholder="e.g. 45,000" />
-          <p className="text-xs text-gray-500">What buyers see on the listing.</p>
+          <p className="text-xs text-gray-500">{t("carForm.whatBuyersSeeOnThe")}</p>
         </div>
       ) },
-    { key: "cost", title: "What did it cost you?", skip: !!intakeDone || costHidden, required: !isNewCar && !costOptional, answered: !!form.basePrice, focus: "always",
+    { key: "cost", title: t("carForm.whatDidItCostYou"), skip: !!intakeDone || costHidden, required: !isNewCar && !costOptional, answered: !!form.basePrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
           {margin != null && (
             <p className={`text-sm font-medium ${margin >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-              {margin >= 0 ? `Margin: RM ${fmtNum(margin)}` : `RM ${fmtNum(-margin)} below your cost — you'd sell at a loss`}
+              {margin >= 0 ? t("carForm.marginOk", { n: fmtNum(margin) }) : t("carForm.marginLoss", { n: fmtNum(-margin) })}
             </p>
           )}
-          <p className="text-xs text-gray-500">Your purchase price. Used to work out your margin.</p>
+          <p className="text-xs text-gray-500">{t("carForm.yourPurchasePriceUsedTo")}</p>
         </div>
       ) },
-    { key: "payment", title: "Cash or loan?", required: true, answered: true,
-      render: ({ pick }) => tiles([{ value: "loan", label: "Loan" }, { value: "cash", label: "Cash" }], form.payment_type || "loan", (v) => pick({ payment_type: v })) },
-    { key: "encumbrance", title: "Is there still a loan on the car?", skip: isNewCar, filled: true,
+    { key: "payment", title: t("carForm.cashOrLoan"), required: true, answered: true,
+      render: ({ pick }) => tiles([{ value: "loan", label: t("carForm.loan") }, { value: "cash", label: t("carForm.cash") }], form.payment_type || "loan", (v) => pick({ payment_type: v })) },
+    { key: "encumbrance", title: t("carForm.isThereStillALoan"), skip: isNewCar, filled: true,
       render: ({ pick }) => tiles([
-        { value: "clear", label: "No, it's clear" },
-        { value: "under_hp", label: "Yes, under hire-purchase" },
-        { value: "unknown", label: "Not sure" },
+        { value: "clear", label: t("carForm.noItSClear") },
+        { value: "under_hp", label: t("carForm.yesUnderHirePurchase") },
+        { value: "unknown", label: t("carForm.notSure") },
       ], form.encumbranceStatus || "unknown", (v) => pick({ encumbranceStatus: v }), "grid-cols-1") },
-    { key: "commission", title: "Salesman commission?", skip: hideCommission || !!intakeDone, filled: !!form.commissionAmount,
+    { key: "commission", title: t("carForm.salesmanCommission"), skip: hideCommission || !!intakeDone, filled: !!form.commissionAmount,
       render: () => <div className="space-y-4">{renderCommission()}</div> },
-    { key: "warranty", title: "Any warranty?", skip: !!intakeDone, filled: form.warranty_months !== "" && form.warranty_months != null,
+    { key: "warranty", title: t("carForm.anyWarranty"), skip: !!intakeDone, filled: form.warranty_months !== "" && form.warranty_months != null,
       render: ({ pick, otherOpen, setOtherOpen }) => (
         <div className="space-y-4">
           {tiles([
-            { value: "0", label: "None" }, { value: "3", label: "3 months" }, { value: "6", label: "6 months" },
-            { value: "12", label: "1 year" }, { value: "24", label: "2 years" }, { value: "36", label: "3 years" },
+            { value: "0", label: t("carForm.none") }, { value: "3", label: t("carForm.3Months") }, { value: "6", label: t("carForm.6Months") },
+            { value: "12", label: t("carForm.1Year") }, { value: "24", label: t("carForm.2Years") }, { value: "36", label: t("carForm.3Years") },
           ], form.warranty_months, (v) => pick({ warranty_months: v }))}
           {otherOpen ? (
-            <input autoFocus inputMode="numeric" placeholder="Months, e.g. 18" value={form.warranty_months}
+            <input autoFocus inputMode="numeric" placeholder={t("carForm.monthsEG18")} value={form.warranty_months}
               onChange={(e) => set("warranty_months", e.target.value.replace(/\D/g, "").slice(0, 3))}
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500" />
           ) : (
-            <button type="button" onClick={() => setOtherOpen(true)} className="text-sm font-medium text-gray-500 underline underline-offset-2">Other length</button>
+            <button type="button" onClick={() => setOtherOpen(true)} className="text-sm font-medium text-gray-500 underline underline-offset-2">{t("carForm.otherLength")}</button>
           )}
         </div>
       ) },
-    { key: "services", title: "Anything included with the car?", skip: svcEmpty || !!intakeDone, filled: form.included_services.length > 0,
+    { key: "services", title: t("carForm.anythingIncludedWithTheCar"), skip: svcEmpty || !!intakeDone, filled: form.included_services.length > 0,
       render: () => renderServices() },
     // Required like publish requires it: a profile with no state/city otherwise
     // reaches Review and gets bounced back here by the pre-flight check.
-    { key: "pricing_more", title: "Location & deposit", enter: "pass", primaryLabel: "Done",
+    { key: "pricing_more", title: t("carForm.locationDeposit"), enter: "pass", primaryLabel: "Done",
       required: true, answered: !!form.state && !!form.city,
       render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
   ], [
-    { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
-    ...(costHidden ? [] : [{ key: "cost", label: "Your cost", value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" }]),
-    { key: "payment", label: "Payment", value: form.payment_type === "cash" ? "Cash" : "Loan" },
-    { key: "encumbrance", label: "Loan on car", value: { clear: "Clear", under_hp: "Under hire-purchase", unknown: "Not sure" }[form.encumbranceStatus] || "" },
-    { key: "commission", label: "Commission", value: form.commissionAmount ? `RM ${fmtNum(form.commissionAmount)}` : "" },
-    { key: "warranty", label: "Warranty", value: form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : form.warranty_months === "0" ? "None" : "" },
-    { key: "services", label: "Included", value: form.included_services.length ? `${form.included_services.length} item${form.included_services.length > 1 ? "s" : ""}` : "" },
-    { key: "pricing_more", label: "Location", value: [form.city, form.state].filter(Boolean).join(", ") },
+    { key: "price", label: t("carForm.askingPrice2"), value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
+    ...(costHidden ? [] : [{ key: "cost", label: t("carForm.yourCost"), value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" }]),
+    { key: "payment", label: t("carForm.payment"), value: form.payment_type === "cash" ? "Cash" : "Loan" },
+    { key: "encumbrance", label: t("carForm.loanOnCar"), value: { clear: "Clear", under_hp: "Under hire-purchase", unknown: "Not sure" }[form.encumbranceStatus] || "" },
+    { key: "commission", label: t("carForm.commission"), value: form.commissionAmount ? `RM ${fmtNum(form.commissionAmount)}` : "" },
+    { key: "warranty", label: t("carForm.warranty"), value: form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : form.warranty_months === "0" ? "None" : "" },
+    { key: "services", label: t("carForm.included"), value: form.included_services.length ? `${form.included_services.length} item${form.included_services.length > 1 ? "s" : ""}` : "" },
+    { key: "pricing_more", label: t("carForm.location"), value: [form.city, form.state].filter(Boolean).join(", ") },
   ]);
 
   const renderQuickDetails = () => quickStage(5, [
-    { key: "about", title: "Tell buyers about it", filled: !!String(form.specs || "").trim(),
+    { key: "about", title: t("carForm.tellBuyersAboutIt"), filled: !!String(form.specs || "").trim(),
       render: () => renderAbout() },
-    { key: "features", title: "What does it have?", filled: !!String(form.features || "").trim(), enter: "pass",
+    { key: "features", title: t("carForm.whatDoesItHave"), filled: !!String(form.features || "").trim(), enter: "pass",
       render: () => renderFeatures() },
-    { key: "documents", title: "Documents", required: !listing, answered: geranSatisfied, filled: (form.car_documents || []).length > 0,
+    { key: "documents", title: t("carForm.documents"), required: !listing, answered: geranSatisfied, filled: (form.car_documents || []).length > 0,
       render: () => renderDocuments() },
   ], [
-    { key: "about", label: "About", value: String(form.specs || "").trim().split("\n")[0] },
-    { key: "features", label: "Features", value: parseTags(form.features).length ? `${parseTags(form.features).length} listed` : "" },
-    { key: "documents", label: "Documents", value: geranSatisfied ? `${(form.car_documents || []).length} attached${form.geranReason && !docInSlot("registration_card") ? " · geran reason given" : ""}` : "" },
+    { key: "about", label: t("carForm.about"), value: String(form.specs || "").trim().split("\n")[0] },
+    { key: "features", label: t("carForm.features"), value: parseTags(form.features).length ? `${parseTags(form.features).length} listed` : "" },
+    { key: "documents", label: t("carForm.documents"), value: geranSatisfied ? `${(form.car_documents || []).length} attached${form.geranReason && !docInSlot("registration_card") ? " · geran reason given" : ""}` : "" },
   ]);
 
   function renderLocationRow() {
@@ -3371,7 +3378,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
           <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-gray-500">Car location</p>
+            <p className="text-[11px] text-gray-500">{t("carForm.carLocation")}</p>
             <p className="text-sm font-medium text-gray-900 truncate">{form.city}, {form.state}</p>
           </div>
           <button
@@ -3379,29 +3386,29 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             onClick={() => setLocOpen(true)}
             className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
           >
-            Change
+            {t("carForm.change")}
           </button>
         </div>
       );
     }
     return (
       <div className="space-y-5">
-        <Field label="State" required hint="Where buyers can view this car">
+        <Field label={t("carForm.state")} required hint={t("carForm.whereBuyersCanViewThis")}>
           <PickerField
-            label="Select State"
+            label={t("carForm.selectState")}
             value={form.state}
             onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
             options={Object.keys(STATE_CITIES)}
-            placeholder="Select state"
+            placeholder={t("carForm.selectState2")}
           />
         </Field>
-        <Field label="City" required>
+        <Field label={t("carForm.city")} required>
           <PickerField
-            label="Select City"
+            label={t("carForm.selectCity")}
             value={form.city}
             onChange={(v) => set("city", v)}
             options={cityOptions}
-            placeholder={form.state ? "Select city" : "Select state first"}
+            placeholder={form.state ? t("carForm.selectCity2") : t("carForm.selectStateFirst")}
             disabled={!form.state}
             allowCustom
           />
@@ -3428,8 +3435,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               className="block border-2 border-dashed border-gray-300 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
             >
               <Camera className="w-10 h-10 text-gray-400 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
-              <p className="text-gray-900 font-medium mb-1">Choose Photos</p>
-              <p className="text-gray-500 text-sm">At least {minPhotos}, up to 30 images — JPG, PNG, WEBP</p>
+              <p className="text-gray-900 font-medium mb-1">{t("carForm.choosePhotos")}</p>
+              <p className="text-gray-500 text-sm">{t("carForm.atLeast")} {minPhotos}{t("carForm.upTo30ImagesJpg")}</p>
               <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
             </label>
           ) : (
@@ -3440,7 +3447,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors"
               >
                 <Camera className="w-3.5 h-3.5" />
-                Add more · {form.images.length}/30{!photosOk ? ` · need ${minPhotos - form.images.length} more` : ""}
+                {t("carForm.addMore")} {form.images.length}/30{!photosOk ? t("carForm.needMore", { n: minPhotos - form.images.length }) : ""}
               </button>
             </div>
           )}
@@ -3457,7 +3464,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   <span className={p.status === 'error'
                     ? 'text-red-400 ml-auto flex-shrink-0'
                     : 'text-gray-500 ml-auto flex-shrink-0'}>
-                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
+                    {p.status === 'error' ? t("carForm.failed") : t("carForm.uploading2")}
                   </span>
                 </div>
               ))}
@@ -3467,7 +3474,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             <>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-gray-500">
-                  Image #1 is the main thumbnail · use arrows to reorder
+                  {t("carForm.image1IsTheMain")}
                 </p>
                 <button
                   type="button"
@@ -3475,7 +3482,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex-shrink-0"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
-                  Manage all
+                  {t("carForm.manageAll")}
                 </button>
               </div>
               {/* Compact single-row strip — scrolls horizontally, mobile-friendly */}
@@ -3499,7 +3506,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-2 text-white min-w-0">
-                  <span className="font-semibold text-sm flex-shrink-0">Manage Photos</span>
+                  <span className="font-semibold text-sm flex-shrink-0">{t("carForm.managePhotos")}</span>
                   <span className="text-white/50 text-xs truncate">
                     {previews.length}/30 · drag or use arrows to reorder
                   </span>
@@ -3510,7 +3517,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     onClick={() => photosInputRef.current?.click()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
                   >
-                    <Camera className="w-3.5 h-3.5" /> Add more
+                    <Camera className="w-3.5 h-3.5" /> {t("carForm.addMore2")}
                   </button>
                   <button
                     type="button"
@@ -3532,12 +3539,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {/* Walkthrough Video */}
           <div className="space-y-1">
             <label className="text-sm text-gray-600">
-              Walkthrough Video{" "}
+              {t("carForm.walkthroughVideo")}{" "}
               <span className="text-gray-400">(optional)</span>
             </label>
             <input
               type="url"
-              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
+              placeholder={t("carForm.pasteYoutubeTiktokOrInstagram")}
               value={form.video_url || ""}
               onChange={(e) => set("video_url", e.target.value)}
               className={inputCls}
@@ -3565,19 +3572,19 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
-              {form.year} {form.brand} {form.model} — identity carried over from Core Details
+              {form.year} {form.brand} {form.model} {t("carForm.identityCarriedOverFromCore")}
             </div>
           )}
           {/* Core inputs — one per row */}
           {!intakeDone && (
           <>
-          <Field label="Brand" required>
+          <Field label={t("carForm.brand")} required>
             <PickerField
-              label="Select Brand"
+              label={t("carForm.selectBrand")}
               value={form.brand}
               onChange={(v) => setForm((f) => ({ ...f, brand: v, model: "" }))}
               options={ALL_BRANDS}
-              placeholder="Select brand"
+              placeholder={t("carForm.selectBrand2")}
               allowCustom
             />
           </Field>
@@ -3585,18 +3592,17 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span>
-                "{form.brand}" is not a brand we recognise yet. The listing will still publish —
-                we're just noting the gap so it can be added properly.
+                "{form.brand}{t("carForm.isNotABrandWe")}
               </span>
             </div>
           )}
-         <Field label="Model" required>
+         <Field label={t("carForm.model")} required>
             <PickerField
-              label="Select Model"
+              label={t("carForm.selectModel")}
               value={form.model}
               onChange={(v) => set("model", v)}
               options={modelOptions}
-              placeholder={form.brand ? "Select model" : "Pick brand first"}
+              placeholder={form.brand ? t("carForm.selectModel2") : t("carForm.pickBrandFirst")}
               disabled={!form.brand}
               allowCustom
             />
@@ -3605,13 +3611,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span>
-                "{form.model}" is not a model we recognise for {form.brand}. Specs will not
-                fill in, and buyers filtering by model will not see this car. Pick the plain
-                model name and put the rest in the Listing Title or Variant.
+                "{form.model}{t("carForm.isNotAModelWe")} {form.brand}{t("carForm.specsWillNotFillIn")}
               </span>
             </div>
           )}
-          <Field label="Variant">
+          <Field label={t("carForm.variant")}>
             <input
               name="variant"
               value={form.variant}
@@ -3621,7 +3625,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               className={inputCls}
             />
           </Field>
-          <Field label="Year" required>
+          <Field label={t("carForm.year")} required>
             <input
               type="number"
               name="year"
@@ -3634,7 +3638,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               className={inputCls}
             />
           </Field>
-          <Field label="Mileage (km)" required>
+          <Field label={t("carForm.mileageKm")} required>
             <input
               type="number"
               name="mileage"
@@ -3646,12 +3650,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               className={inputCls}
             />
           </Field>
-          <Field label="Colour" required>
+          <Field label={t("carForm.colour")} required>
             <input
               name="colour"
               value={form.colour}
               onChange={handleChange}
-              placeholder="e.g. Pearl White"
+              placeholder={t("carForm.eGPearlWhite")}
               enterKeyHint="next"
               className={inputCls}
             />
@@ -3661,13 +3665,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {autoFilled && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
               <Check size={12} />
-              Specs auto-filled — review Technical section and adjust if needed
+              {t("carForm.specsAutoFilledReviewTechnical")}
             </div>
           )}
 
           {/* Condition is required — it sits with the other required fields,
               never below the optional extras. */}
-          <Field label="Condition" required>
+          <Field label={t("carForm.condition")} required>
             <PillSelect
               options={CONDITIONS}
               value={form.condition}
@@ -3677,7 +3681,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               }}
             />
           </Field>
-          <Field label="Loan Eligible">
+          <Field label={t("carForm.loanEligible")}>
             <PillSelect
               options={["Yes", "No"]}
               value={form.loan_eligible ? "Yes" : "No"}
@@ -3708,7 +3712,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                     <Check size={13} className="text-emerald-600 flex-shrink-0" />
-                    Specs from our catalogue
+                    {t("carForm.specsFromOurCatalogue")}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5 truncate">
                     {specLock.make} {specLock.model} · {specLock.yearFrom}
@@ -3720,7 +3724,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   onClick={unlockSpecs}
                   className="flex-shrink-0 text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-gray-900"
                 >
-                  Not my car?
+                  {t("carForm.notMyCar")}
                 </button>
               </div>
               <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
@@ -3747,22 +3751,21 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span>
-                You are overriding our catalogue figures for the {specLock.make} {specLock.model}.
-                Buyers see these as seller-stated, and we will review the catalogue entry.
+                {t("carForm.youAreOverridingOurCatalogue")} {specLock.make} {specLock.model}{t("carForm.buyersSeeTheseAsSeller")}
               </span>
             </div>
           )}
           {intakeDone && !specsLocked && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
-              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
+              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} {t("carForm.carriedOverFromCoreDetails")}
             </div>
           )}
           {/* Core input */}
           {!intakeDone && !specsLocked && (
           <Field
-            label="Engine Displacement (CC)"
-            hint="Used for road tax & insurance calc"
+            label={t("carForm.engineDisplacementCc")}
+            hint={t("carForm.usedForRoadTaxInsurance")}
           >
             <div className="space-y-3">
               <div className="relative">
@@ -3803,10 +3806,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
             <div>
               <p className="text-gray-900 font-semibold text-sm">
-                Recon / Grey Import Vehicle
+                {t("carForm.reconGreyImportVehicle")}
               </p>
               <p className="text-gray-500 text-xs mt-0.5">
-                Enable if this car was imported from overseas
+                {t("carForm.enableIfThisCarWas")}
               </p>
             </div>
             <button
@@ -3823,18 +3826,18 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {form.isRecon && (
             <div className="space-y-4">
               <Field
-                label="Auction Grade"
-                hint={`Suggested: ${suggestedGrade}`}
+                label={t("carForm.auctionGrade3")}
+                hint={t("carForm.suggestedGrade", { grade: suggestedGrade })}
               >
                 <PickerField
-                  label="Auction Grade"
+                  label={t("carForm.auctionGrade3")}
                   value={form.auctionGrade}
                   onChange={(v) => set("auctionGrade", v)}
                   options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
                     value: g,
-                    label: g === suggestedGrade ? `${g}  ★ suggested` : g,
+                    label: g === suggestedGrade ? `${g}  ★ ${t("carForm.suggestedWord")}` : g,
                   }))}
-                  placeholder="Select grade"
+                  placeholder={t("carForm.selectGrade")}
                 />
                 {!form.auctionGrade && (
                   <button
@@ -3842,40 +3845,40 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     onClick={() => set("auctionGrade", suggestedGrade)}
                     className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
                   >
-                    Use suggested: {suggestedGrade}
+                    {t("carForm.useSuggested")} {suggestedGrade}
                   </button>
                 )}
               </Field>
-              <Field label="Interior Grade">
+              <Field label={t("carForm.interiorGrade3")}>
                 <PickerField
-                  label="Interior Grade"
+                  label={t("carForm.interiorGrade3")}
                   value={form.interiorGrade}
                   onChange={(v) => set("interiorGrade", v)}
                   options={["A", "B", "C", "D"]}
-                  placeholder="Select"
+                  placeholder={t("carForm.select")}
                 />
               </Field>
-              <Field label="Import Country">
+              <Field label={t("carForm.importCountry")}>
                 <PickerField
-                  label="Import Country"
+                  label={t("carForm.importCountry")}
                   value={form.importCountry}
                   onChange={(v) => set("importCountry", v)}
                   options={["Japan", "UK", "Australia", "Other"]}
-                  placeholder="Select"
+                  placeholder={t("carForm.select")}
                 />
               </Field>
               {renderReconTyped()}
-              <Field label="Chassis Status">
+              <Field label={t("carForm.chassisStatus2")}>
                 <PickerField
-                  label="Chassis Status"
+                  label={t("carForm.chassisStatus2")}
                   value={form.chassisStatus}
                   onChange={(v) => set("chassisStatus", v)}
                   options={[
-                    { value: "clean", label: "Clean" },
-                    { value: "repaired", label: "Repaired" },
-                    { value: "written_off", label: "Written Off" },
+                    { value: "clean", label: t("carForm.clean") },
+                    { value: "repaired", label: t("carForm.repaired") },
+                    { value: "written_off", label: t("carForm.writtenOff2") },
                   ]}
-                  placeholder="Select"
+                  placeholder={t("carForm.select")}
                 />
               </Field>
             </div>
@@ -3886,7 +3889,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               Hidden under the catalogue lock: every field in here is already
               shown, and correct, in the block above. */}
           {!specsLocked && (
-          <MoreDetails collapsible label="Advanced specs (optional)">
+          <MoreDetails collapsible label={t("carForm.advancedSpecsOptional")}>
             {renderAdvancedSpecs()}
           </MoreDetails>
           )}
@@ -3894,21 +3897,21 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {/* Pills — below everything */}
           {!intakeDone && !specsLocked && (
           <>
-          <Field label="Body Type" required>
+          <Field label={t("carForm.bodyType2")} required>
             <PillSelect
               options={BODY_TYPES}
               value={form.bodyType}
               onChange={(v) => set("bodyType", v)}
             />
           </Field>
-          <Field label="Fuel Type" required>
+          <Field label={t("carForm.fuelType2")} required>
             <PillSelect
               options={FUEL_TYPES}
               value={form.fuelType}
               onChange={(v) => set("fuelType", v)}
             />
           </Field>
-          <Field label="Transmission">
+          <Field label={t("carForm.transmission")}>
             <PillSelect
               options={["Auto", "Manual"]}
               value={form.transmission}
@@ -3925,10 +3928,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
-              Asking RM {Number(form.sellingPrice || 0).toLocaleString()} — pricing carried over from Core Details
+              {t("carForm.askingRm")} {Number(form.sellingPrice || 0).toLocaleString()} {t("carForm.pricingCarriedOverFromCore")}
             </div>
           )}
-          <Field label="Payment Type" required>
+          <Field label={t("carForm.paymentType")} required>
             <PillSelect
               options={["Loan", "Cash"]}
               value={
@@ -3941,8 +3944,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           </Field>
 
           <Field
-            label="Encumbrance Status"
-            hint="Is there still an outstanding loan on this car?"
+            label={t("carForm.encumbranceStatus")}
+            hint={t("carForm.isThereStillAnOutstanding")}
           >
             <PillSelect
               options={["Clear", "Under Hire-Purchase", "Unknown"]}
@@ -3962,9 +3965,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           {!intakeDone && (
           <>
           {!costHidden && <Field
-            label="Base Price (RM)"
+            label={t("carForm.basePriceRm")}
             required={!isNewCar}
-            hint={isNewCar ? "Optional for a new car. Leave blank if you don't buy the car yourself." : "Your cost / purchase price"}
+            hint={isNewCar ? t("carForm.optionalForANewCar") : t("carForm.yourCostPurchasePrice")}
           >
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
@@ -3984,9 +3987,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             </div>
           </Field>}
           <Field
-            label="Selling Price (RM)"
+            label={t("carForm.sellingPriceRm")}
             required
-            hint="What you're selling it for"
+            hint={t("carForm.whatYouReSellingIt")}
           >
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
@@ -4018,14 +4021,14 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
             >
               {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
-                ? `Profit margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()} above your cost`
-                : `⚠ Selling price is RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()} below your cost (base price) — you'd sell this at a loss`}
+                ? t("carForm.profitOk", { n: (parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString() })
+                : t("carForm.profitLoss", { n: (parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString() })}
             </div>
           )}
           {!hideCommission && renderCommission()}
           <Field
-            label="Warranty (months)"
-            hint="Warranty offered with this car — shown to buyers"
+            label={t("carForm.warrantyMonths")}
+            hint={t("carForm.warrantyOfferedWithThisCar")}
           >
             <input
               type="number"
@@ -4067,9 +4070,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         return (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Last check — confirm everything below, then hit {listing ? "Save Changes" : "Publish Listing"}. Tap Edit to fix a section.
+              {t("carForm.lastCheckConfirmEverythingBelow")} {listing ? t("carForm.saveChanges") : t("carForm.publishListing")}{t("carForm.tapEditToFixA")}
             </p>
-            <ReviewSection title={`Photos · ${previews.length}`} onEdit={() => setStep(1)}>
+            <ReviewSection title={t("carForm.photosCount", { n: previews.length })} onEdit={() => setStep(1)}>
               {previews.length > 0 ? (
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {previews.slice(0, 8).map((src, i) => (
@@ -4082,7 +4085,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-red-500">No photos yet — at least 1 required</p>
+                <p className="text-sm text-red-500">{t("carForm.noPhotosYetAtLeast")}</p>
               )}
               {(form.video_url || form.car_documents.length > 0) && (
                 <p className="text-xs text-gray-500 mt-2">
@@ -4093,52 +4096,52 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 </p>
               )}
             </ReviewSection>
-            <ReviewSection title="Car" onEdit={() => setStep(2)}>
+            <ReviewSection title={t("carForm.car")} onEdit={() => setStep(2)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Vehicle" value={[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ")} />
-                <ReviewItem label="Condition" value={{ used: "Used", recon: "Recon", new: "New" }[form.condition] || form.condition} />
-                <ReviewItem label="Mileage" value={form.mileage ? `${Number(form.mileage).toLocaleString()} km` : null} />
-                <ReviewItem label="Colour" value={form.colour} />
-                <ReviewItem label="Plate" value={form.plate_number} />
-                <ReviewItem label="VIN" value={form.vin_number} />
-                <ReviewItem label="Registered" value={form.registrationDate} />
-                <ReviewItem label="Previous owners" value={form.previous_owners} />
-                <ReviewItem label="Road tax expiry" value={form.road_tax_expiry} />
-                <ReviewItem label="Loan eligible" value={form.loan_eligible ? "Yes" : "No"} />
+                <ReviewItem label={t("carForm.vehicle")} value={[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ")} />
+                <ReviewItem label={t("carForm.condition")} value={{ used: "Used", recon: "Recon", new: "New" }[form.condition] || form.condition} />
+                <ReviewItem label={t("carForm.mileage")} value={form.mileage ? `${Number(form.mileage).toLocaleString()} km` : null} />
+                <ReviewItem label={t("carForm.colour")} value={form.colour} />
+                <ReviewItem label={t("carForm.plate")} value={form.plate_number} />
+                <ReviewItem label={t("carForm.vin")} value={form.vin_number} />
+                <ReviewItem label={t("carForm.registered")} value={form.registrationDate} />
+                <ReviewItem label={t("carForm.previousOwners2")} value={form.previous_owners} />
+                <ReviewItem label={t("carForm.roadTaxExpiry2")} value={form.road_tax_expiry} />
+                <ReviewItem label={t("carForm.loanEligible2")} value={form.loan_eligible ? "Yes" : "No"} />
               </div>
             </ReviewSection>
-            <ReviewSection title="Technical" onEdit={() => setStep(3)}>
+            <ReviewSection title={t("carForm.technical")} onEdit={() => setStep(3)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Body type" value={form.bodyType} />
-                <ReviewItem label="Fuel" value={form.fuelType} />
-                <ReviewItem label="Transmission" value={form.transmission} />
-                <ReviewItem label="Engine" value={form.engineCc ? `${form.engineCc}cc` : null} />
-                <ReviewItem label="Power" value={form.horsepower ? `${form.horsepower} bhp` : null} />
-                <ReviewItem label="Doors / Seats" value={[form.doors, form.seats].filter(Boolean).join(" / ") || null} />
+                <ReviewItem label={t("carForm.bodyType3")} value={form.bodyType} />
+                <ReviewItem label={t("carForm.fuel")} value={form.fuelType} />
+                <ReviewItem label={t("carForm.transmission")} value={form.transmission} />
+                <ReviewItem label={t("carForm.engine")} value={form.engineCc ? `${form.engineCc}cc` : null} />
+                <ReviewItem label={t("carForm.power")} value={form.horsepower ? `${form.horsepower} bhp` : null} />
+                <ReviewItem label={t("carForm.doorsSeats")} value={[form.doors, form.seats].filter(Boolean).join(" / ") || null} />
                 {form.isRecon && (
-                  <ReviewItem label="Recon" value={[form.auctionGrade && `Grade ${form.auctionGrade}`, form.importCountry].filter(Boolean).join(" · ") || "Yes"} />
+                  <ReviewItem label={t("carForm.recon")} value={[form.auctionGrade && `Grade ${form.auctionGrade}`, form.importCountry].filter(Boolean).join(" · ") || "Yes"} />
                 )}
               </div>
             </ReviewSection>
-            <ReviewSection title="Location" onEdit={() => { setLocOpen(true); setStep(4); }}>
+            <ReviewSection title={t("carForm.location")} onEdit={() => { setLocOpen(true); setStep(4); }}>
               {form.state || form.city ? (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                  <ReviewItem label="State" value={form.state} />
-                  <ReviewItem label="City" value={form.city} />
+                  <ReviewItem label={t("carForm.state")} value={form.state} />
+                  <ReviewItem label={t("carForm.city")} value={form.city} />
                 </div>
               ) : (
-                <p className="text-sm text-red-500">Not set — state & city are required</p>
+                <p className="text-sm text-red-500">{t("carForm.notSetStateCityAre")}</p>
               )}
             </ReviewSection>
-            <ReviewSection title="Pricing" onEdit={() => setStep(4)}>
+            <ReviewSection title={t("carForm.pricing")} onEdit={() => setStep(4)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Payment" value={(form.payment_type || "loan").charAt(0).toUpperCase() + (form.payment_type || "loan").slice(1)} />
-                <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
-                <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
-                {!costHidden && <ReviewItem label="Base / cost" value={rm(form.basePrice)} />}
+                <ReviewItem label={t("carForm.payment")} value={(form.payment_type || "loan").charAt(0).toUpperCase() + (form.payment_type || "loan").slice(1)} />
+                <ReviewItem label={t("carForm.encumbrance")} value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
+                <ReviewItem label={t("carForm.sellingPrice")} value={rm(form.sellingPrice)} />
+                {!costHidden && <ReviewItem label={t("carForm.baseCost")} value={rm(form.basePrice)} />}
                 {hideCommission ? (
                   <ReviewItem
-                    label="Your margin"
+                    label={t("carForm.yourMargin")}
                     value={(() => {
                       const base = parseFloat(form.basePrice);
                       const sell = parseFloat(form.sellingPrice);
@@ -4146,19 +4149,19 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                     })()}
                   />
                 ) : (
-                  <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                  <ReviewItem label={t("carForm.commission")} value={rm(form.commissionAmount)} />
                 )}
-                <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
-                <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
-                <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
+                <ReviewItem label={t("carForm.depositToReserve")} value={rm(form.deposit_amount)} />
+                <ReviewItem label={t("carForm.warranty")} value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
+                <ReviewItem label={t("carForm.includedServices")} value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
               </div>
             </ReviewSection>
             {(form.specs || form.options || form.features) && (
-              <ReviewSection title="Description" onEdit={() => setStep(5)}>
+              <ReviewSection title={t("carForm.description")} onEdit={() => setStep(5)}>
                 <div className="space-y-2.5">
-                  <ReviewItem label="About" value={form.specs} />
-                  <ReviewItem label="Options" value={form.options} />
-                  <ReviewItem label="Features" value={form.features} />
+                  <ReviewItem label={t("carForm.about")} value={form.specs} />
+                  <ReviewItem label={t("carForm.options")} value={form.options} />
+                  <ReviewItem label={t("carForm.features")} value={form.features} />
                 </div>
               </ReviewSection>
             )}
@@ -4185,7 +4188,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       {/* Draft resume banner */}
       {draftBanner && !listing && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "system-ui,sans-serif" }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>You have a saved draft from a previous session.</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", flex: 1 }}>{t("carForm.youHaveASavedDraft")}</p>
           <button onClick={() => {
             const d = cfLoadDraft(profile?.id);
             if (d) {
@@ -4203,15 +4206,15 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               }
             }
             setDraftBanner(false);
-          }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>Resume</button>
-          <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+          }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "#2563eb", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{t("carForm.resume")}</button>
+          <button onClick={() => { cfClearDraft(profile?.id); setDraftBanner(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("carForm.discard")}</button>
         </div>
       )}
       {/* Draft auto-save indicator */}
       {!draftBanner && !listing && draftSavedAt && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: "system-ui,sans-serif" }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: "#6b7280" }}>Draft saved</span>
+          <span style={{ fontSize: 11, color: "#6b7280" }}>{t("carForm.draftSaved")}</span>
         </div>
       )}
 
@@ -4219,7 +4222,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 20 }}>
         {onBack && (
           <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: sd.faint, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginBottom: 11 }}>
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" /> {t("carForm.back")}
           </button>
         )}
         <div style={{ flex: 1, display: "flex", alignItems: "flex-end", overflowX: "auto", minWidth: 0 }}>
@@ -4239,7 +4242,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   }}>
                     {complete && !isCurrent ? <Check className="w-3 h-3" style={{ color: "#fff" }} /> : <span style={{ fontSize: 9, fontWeight: 800, color: isCurrent ? "#fff" : sd.faint }}>{s.id}</span>}
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap", color: isCurrent ? sd.current : complete ? sd.done : sd.faint }}>{s.label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap", color: isCurrent ? sd.current : complete ? sd.done : sd.faint }}>{t(`carForm.stepName.${s.id}`)}</span>
                 </button>
                 {!isLast && <div style={{ flex: 1, height: 2, background: complete ? "#dc2626" : sd.track, margin: "0 3px 11px", minWidth: 6 }} />}
               </React.Fragment>
@@ -4258,8 +4261,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
               <>
                 {Icon && <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0"><Icon className="w-4.5 h-4.5 text-red-600" /></div>}
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">Step {step} of {STEPS.length} · {sec?.label}</p>
-                  <p className="text-xs text-gray-500">{sec?.desc}</p>
+                  <p className="text-sm font-semibold text-gray-900">{t("carForm.stepOf", { step, total: STEPS.length })} · {t(`carForm.stepName.${sec?.id}`)}</p>
+                  <p className="text-xs text-gray-500">{t(`carForm.stepDesc.${sec?.id}`)}</p>
                 </div>
                 {listing && (
                   <div className="ml-auto flex items-center gap-2 flex-shrink-0">
@@ -4270,17 +4273,17 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                         onClick={handleCopy}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${copied ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300"}`}
                       >
-                        {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />Copied</> : <><Clipboard className="w-3.5 h-3.5" />Copy</>}
+                        {copied ? <><ClipboardCheck className="w-3.5 h-3.5" />{t("carForm.copied")}</> : <><Clipboard className="w-3.5 h-3.5" />{t("carForm.copy")}</>}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => handleSubmit()}
                       disabled={uploading}
-                      title="Save changes (any step)"
+                      title={t("carForm.saveChangesAnyStep")}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {uploading ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : <><Check className="w-3.5 h-3.5" />Save</>}
+                      {uploading ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t("carForm.saving")}</> : <><Check className="w-3.5 h-3.5" />{t("carForm.save")}</>}
                     </button>
                   </div>
                 )}
@@ -4302,9 +4305,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0"
           />
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-gray-900">Keep it private</span>
+            <span className="block text-sm font-semibold text-gray-900">{t("carForm.keepItPrivate")}</span>
             <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">
-              Only you see it: not on the marketplace or your page. Good for working out cost and margin first. Up to {PRIVATE_CAR_LIMIT} private cars; publish it any time from its status menu.
+              {t("carForm.onlyYouSeeItNot")} {PRIVATE_CAR_LIMIT} {t("carForm.privateCarsPublishItAny")}
             </span>
           </span>
         </label>
@@ -4313,19 +4316,19 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       {/* Listing cap warning */}
       {capError && !keepPrivate && step === STEPS.length && (
         <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginTop: 16 }}>
-          <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
+          <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t("carForm.listingCapReached")}</p>
           <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
-            Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
+            {t("carForm.yourCurrentPlanAllowsA")}
           </p>
           {/* A host that has an in-app upgrade (Salesman Lite -> its Premium
               section) passes onUpgrade; everyone else keeps the email link. */}
           {onUpgrade ? (
             <button type="button" onClick={onUpgrade} style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-              See Premium (30 listings)
+              {t("carForm.seePremium30Listings")}
             </button>
           ) : (
             <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-              Upgrade Plan
+              {t("carForm.upgradePlan")}
             </a>
           )}
         </div>
@@ -4349,7 +4352,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             onClick={() => setStep((s) => Math.max(1, s - 1))}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all hover:border-gray-300"
           >
-            <ChevronLeft className="w-4 h-4" />Back
+            <ChevronLeft className="w-4 h-4" />{t("carForm.back")}
           </button>
         )}
 
@@ -4359,7 +4362,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             onClick={goNext}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all"
           >
-            Continue
+            {t("carForm.continue")}
             {stepMissing.length > 0 && (
               <span className="font-normal text-white/75 whitespace-nowrap">· {stepMissing.length} left</span>
             )}
@@ -4373,9 +4376,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t("carForm.uploading2")}</>
             ) : (
-              <><Check className="w-4 h-4" />{listing ? "Save Changes" : keepPrivate ? "Save privately" : "Publish Listing"}</>
+              <><Check className="w-4 h-4" />{listing ? t("carForm.saveChanges") : keepPrivate ? t("carForm.savePrivately") : t("carForm.publishListing")}</>
             )}
           </button>
         )}
@@ -4391,8 +4394,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <AlertTriangle className="w-4.5 h-4.5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Make sure your listing is well informed to post</p>
-                <p className="text-xs text-gray-500 mt-1">Buyers won't see this listing's {gapConfirm.join(", ")}. Complete listings sell faster and build more trust.</p>
+                <p className="text-sm font-semibold text-gray-900">{t("carForm.makeSureYourListingIs")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("carForm.buyersWonTSeeThis")} {gapConfirm.join(", ")}{t("carForm.completeListingsSellFasterAnd")}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5">
@@ -4401,14 +4404,14 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 onClick={() => setGapConfirm(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
               >
-                Go Back &amp; Fix
+                {t("carForm.goBackFix")}
               </button>
               <button
                 type="button"
                 onClick={() => { setGapConfirm(null); handleSubmit(true); }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
               >
-                Post Anyway
+                {t("carForm.postAnyway")}
               </button>
             </div>
           </div>

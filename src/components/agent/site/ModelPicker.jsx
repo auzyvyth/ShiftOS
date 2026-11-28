@@ -313,9 +313,9 @@ function ConfigStyle() {
       .cfg-brands button + button { border-left: 1px solid var(--c-line); }
       .cfg-brands img { height: 26px; width: auto; max-width: 90px; object-fit: contain; filter: brightness(0); opacity: .5; transition: opacity .2s; }
       .cfg-brands span { font-family: var(--c-bold); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-      .cfg-brands button[aria-pressed="true"] { color: #fff; background: var(--c-ink); }
+      .cfg-brands button[aria-pressed="true"] { color: var(--on-ink, #fff); background: var(--c-ink); }
       .cfg-brands button[aria-pressed="true"] img { filter: brightness(0) invert(1); }
-      .cfg-brands button[aria-pressed="true"] small { color: rgba(255,255,255,.86); }
+      .cfg-brands button[aria-pressed="true"] small { color: rgba(var(--on-rgb, 255,255,255), .86); }
       .cfg-brands button[aria-pressed="true"] img, .cfg-brands button:hover img { opacity: 1; }
       .cfg-brands button:not([aria-pressed="true"]):hover { color: var(--c-t1); background: rgba(10,10,11,.03); }
 
@@ -337,8 +337,8 @@ function ConfigStyle() {
       .cfg-rail button { scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px 14px; min-width: 0;
         border: none; background: none; cursor: pointer; text-align: left; color: var(--c-t1); font-family: inherit; box-shadow: inset 0 -2px 0 transparent; transition: background .2s, box-shadow .2s; }
       .cfg-rail button + button { border-left: 1px solid var(--c-line); }
-      .cfg-rail button[aria-pressed="true"] { background: var(--c-ink); color: #fff; }
-      .cfg-rail button[aria-pressed="true"] span:not(.cfg-rail-ph) { color: rgba(255,255,255,.86); }
+      .cfg-rail button[aria-pressed="true"] { background: var(--c-ink); color: var(--on-ink, #fff); }
+      .cfg-rail button[aria-pressed="true"] span:not(.cfg-rail-ph) { color: rgba(var(--on-rgb, 255,255,255), .86); }
       .cfg-rail button[aria-pressed="true"] .cfg-rail-ph { background: var(--ink-2, #b91c1c); border-radius: calc(var(--c-rs) - 2px); }
       .cfg-rail button:not([aria-pressed="true"]):hover { background: rgba(10,10,11,.03); }
       .cfg-rail-ph { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 6px; }
@@ -394,8 +394,8 @@ function ConfigStyle() {
         box-shadow: inset 2px 0 0 transparent; transition: background .2s, color .2s, box-shadow .2s; }
       .cfg-v:not([aria-checked="true"]):hover { background: rgba(10,10,11,.03); color: var(--c-t1); }
       /* The picked variant: the whole row turns ink (owner, 2026-11-26: an outline "looks cheap") */
-      .cfg-v[aria-checked="true"] { background: var(--c-ink); color: #fff; border-radius: var(--c-rs); border-bottom-color: transparent; }
-      .cfg-v[aria-checked="true"] .cfg-v-n small { color: rgba(255,255,255,.88); }
+      .cfg-v[aria-checked="true"] { background: var(--c-ink); color: var(--on-ink, #fff); border-radius: var(--c-rs); border-bottom-color: transparent; }
+      .cfg-v[aria-checked="true"] .cfg-v-n small { color: rgba(var(--on-rgb, 255,255,255), .88); }
       .cfg-v-n { min-width: 0; font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; }
       .cfg-v-n small { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--c-t3); }
       .cfg-v-p { flex-shrink: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }

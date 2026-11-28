@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 // The seller notification panel, shared by Salesman Lite and Salesman Premium.
 // Both pages carried a near-identical copy of this markup; they are one thing
@@ -150,6 +151,7 @@ export default function NotificationPanel({
   onOpen,          // (notif) -> void, page-owned navigation
   onClose,
 }) {
+  const { t } = useTranslation();
   // Batch the "seen" ids into one write per burst rather than one per row —
   // scrolling a full panel would otherwise fire a request per notification.
   const pending = useRef(new Set());
@@ -193,7 +195,7 @@ export default function NotificationPanel({
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
-            Notifications{" "}
+            {t("notifPanel.notifications")}{" "}
             {unreadCount > 0 && (
               <span style={{ marginLeft: 6, fontSize: 10, background: "#ef4444", color: "#fff", borderRadius: 99, padding: "1px 6px" }}>
                 {unreadCount}
@@ -202,14 +204,14 @@ export default function NotificationPanel({
           </p>
           {unreadCount > 0 && (
             <button onClick={onMarkAllRead} style={{ background: "none", border: "none", fontSize: 10, color: "#60a5fa", cursor: "pointer", padding: 0 }}>
-              Mark all read
+              {t("notifPanel.markAllRead")}
             </button>
           )}
         </div>
         <div style={{ overflowY: "auto", flex: 1 }}>
           {notifications.length === 0 && (
             <p style={{ margin: 0, padding: "24px 16px", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
-              No notifications yet.
+              {t("notifPanel.noNotificationsYet")}
             </p>
           )}
           {notifications.map((n) => (

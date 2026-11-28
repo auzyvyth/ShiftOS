@@ -43,6 +43,7 @@ import { LITE_POSTERS_PER_MONTH } from './loanPoster.js';
 // feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
   { group: 'live', en: 'Full Live presentation: Budget + Viewer, Docs, totals, salary guide', ms: 'Live presentation penuh: Bajet + Penonton, Dokumen, jumlah bayaran, panduan gaji' },
+  { group: 'dash', en: 'Assistant: bookings to confirm, buyers waiting and quiet cars in one feed', ms: 'Pembantu: booking nak disahkan, pembeli menunggu dan kereta senyap dalam satu feed' },
   { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
@@ -135,29 +136,37 @@ const LITE = PLAN_CONFIG.salesman_lite;
 const CARD_WORDS = {
   en: {
     per: '/month', free: 'Free', foundingBadge: 'Founding price', self: 'Or sign up yourself',
-    lite: { name: 'Salesman Lite', desc: 'Get found and get the lead. Free, no card.', cta: 'Start free on WhatsApp',
+    lite: { name: 'Salesman Lite', desc: 'Your cars on one page of your own, and every enquiry on your phone.', cta: 'Start free on WhatsApp',
       wa: "Hi, I'm a car salesman and want to start on Drevo Lite (free). Can you set it up for me?",
-      features: ['Live loan calculator: rebate + insurance', `Up to ${LITE.listingCap} cars on your page`, 'Buyers reach you by WhatsApp, chat, booking', 'Alerts and a simple lead list', `${LITE_POSTERS_PER_MONTH} loan posters a month`] },
-    premium: { name: 'Salesman Premium', desc: 'Work every lead until the deal closes.', cta: `Try ${PF.trialDays} days free on WhatsApp`,
+      features: [`Up to ${LITE.listingCap} cars on your page and the Drevo marketplace`, 'Buyers reach you by WhatsApp, chat or booking', 'A phone alert the moment someone enquires', 'Views and WhatsApp taps on every car', `Live loan calculator, plus ${LITE_POSTERS_PER_MONTH} loan posters a month`] },
+    premium: { name: 'Salesman Premium', desc: 'Know who to call today, what to send them, and what a viewer pays each month.', cta: `Try ${PF.trialDays} days free on WhatsApp`,
       wa: `Hi, I'm a car salesman and want to try Drevo Premium free for ${PF.trialDays} days. Can you set it up for me?`,
       notes: [`Or RM${PF.yearlyPrice} a year, paid once (about 2 months free).`, `Founding price for the first ${PF.foundingSpots} sellers, yours while you stay. Then RM${PF.listPrice}.`],
-      features: ['Everything in Lite', 'Full Live presentation: Budget, Viewer, Docs', '"This week" call list + drafted follow-ups', 'Loan desk + unlimited loan posters', `Up to ${PF.listingCap} cars`] },
-    dfy: { name: 'Done for you', desc: 'Premium, set up for you by our team.', cta: 'WhatsApp us',
+      features: [`Everything in Lite, up to ${PF.listingCap} cars`, 'A "This week" call list with follow-ups already written. You read them and press send', 'An Assistant: bookings to confirm, buyers waiting and cars gone quiet, with a button for each', 'Full Live presentation for TikTok: Budget, Viewer and Docs screens', 'Loan check before the bank sees the file, and unlimited loan posters'] },
+    dfy: { name: 'Done for you', desc: 'Premium, built for you. Send us your photos and get a working page.', cta: 'WhatsApp us',
       wa: `Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`,
-      features: ['Everything in Premium', 'Your page set up for you', `Your first ${PF.doneForYouCars} cars uploaded from your photos`, 'Loan posters made for those cars', 'WhatsApp help when you get stuck'] },
+      features: ['Everything in Premium', 'We set up your page', `Your first ${PF.doneForYouCars} cars listed from your photos`, 'A loan poster made for each one', 'WhatsApp help when you get stuck'] },
+    pro: { name: 'Seller Pro', badge: 'Coming soon', desc: 'List a car once on Drevo and it goes to your Facebook, Instagram and TikTok. For used and recon sellers.', cta: 'Register interest on WhatsApp',
+      wa: `Hi, I'm interested in Drevo Seller Pro (auto-post to Facebook, Instagram and TikTok, about RM${PF.proPrice}/month). Please tell me more.`,
+      notes: ['Not open yet. Tell us you are interested and we will message you first.'],
+      features: ['Everything in Premium', 'New cars posted to your Facebook and Instagram', 'TikTok posts prepared for you. You approve each one with a tap, as TikTok requires', 'A car that has gone quiet gets reposted', 'We connect your pages with you on WhatsApp'] },
   },
   ms: {
     per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas', self: 'Atau daftar sendiri',
-    lite: { name: 'Salesman Lite', desc: 'Senang dijumpai, dapat lead. Percuma, tak perlu kad.', cta: 'Mula percuma di WhatsApp',
+    lite: { name: 'Salesman Lite', desc: 'Kereta anda dalam satu page sendiri, dan setiap pertanyaan terus ke telefon anda.', cta: 'Mula percuma di WhatsApp',
       wa: 'Hi, saya salesman kereta dan nak mula guna Drevo Lite (percuma). Boleh tolong setupkan?',
-      features: ['Kalkulator loan live: rebat + insurans', `Sampai ${LITE.listingCap} kereta di page anda`, 'Pembeli hubungi melalui WhatsApp, chat, booking', 'Alert dan senarai lead ringkas', `${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
-    premium: { name: 'Salesman Premium', desc: 'Follow up setiap lead sampai deal tutup.', cta: `Cuba ${PF.trialDays} hari percuma di WhatsApp`,
+      features: [`Sampai ${LITE.listingCap} kereta di page anda dan marketplace Drevo`, 'Pembeli hubungi melalui WhatsApp, chat atau booking', 'Alert di telefon sebaik sahaja ada pertanyaan', 'Jumlah view dan tap WhatsApp untuk setiap kereta', `Kalkulator loan live, dan ${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
+    premium: { name: 'Salesman Premium', desc: 'Tahu siapa nak call hari ini, apa nak hantar, dan berapa ansuran bulanan pembeli.', cta: `Cuba ${PF.trialDays} hari percuma di WhatsApp`,
       wa: `Hi, saya salesman kereta dan nak cuba Drevo Premium percuma ${PF.trialDays} hari. Boleh tolong setupkan?`,
       notes: [`Atau RM${PF.yearlyPrice} setahun, bayar sekali (lebih kurang 2 bulan percuma).`, `Harga pengasas untuk ${PF.foundingSpots} seller pertama, kekal selagi melanggan. Lepas tu RM${PF.listPrice}.`],
-      features: ['Semua dalam Lite', 'Live presentation penuh: Bajet, Penonton, Dokumen', 'Senarai call "Minggu ini" + mesej follow up', 'Loan desk + poster loan tanpa had', `Sampai ${PF.listingCap} kereta`] },
-    dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disetkan oleh team kami.', cta: 'WhatsApp kami',
+      features: [`Semua dalam Lite, sampai ${PF.listingCap} kereta`, 'Senarai call "Minggu ini" dengan mesej follow up sudah ditulis. Anda baca dan tekan hantar', 'Pembantu: booking nak disahkan, pembeli menunggu dan kereta senyap, dengan butang untuk setiap satu', 'Live presentation penuh untuk TikTok: skrin Bajet, Penonton dan Dokumen', 'Semakan loan sebelum fail sampai bank, dan poster loan tanpa had'] },
+    dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disiapkan untuk anda. Hantar gambar, dapat page yang siap.', cta: 'WhatsApp kami',
       wa: `Hi, saya nak Drevo Kami setkan untuk anda (RM${PF.doneForYouPrice}/bulan).`,
-      features: ['Semua dalam Premium', 'Page anda disetkan untuk anda', `${PF.doneForYouCars} kereta pertama dimuat naik dari gambar anda`, 'Poster loan untuk kereta itu', 'Bantuan WhatsApp bila tersekat'] },
+      features: ['Semua dalam Premium', 'Kami setkan page anda', `${PF.doneForYouCars} kereta pertama disenaraikan dari gambar anda`, 'Poster loan dibuat untuk setiap kereta', 'Bantuan WhatsApp bila anda tersekat'] },
+    pro: { name: 'Seller Pro', badge: 'Akan datang', desc: 'Senaraikan kereta sekali di Drevo, terus ke Facebook, Instagram dan TikTok anda. Untuk seller kereta terpakai dan recon.', cta: 'Daftar minat di WhatsApp',
+      wa: `Hi, saya berminat dengan Drevo Seller Pro (auto-post ke Facebook, Instagram dan TikTok, lebih kurang RM${PF.proPrice}/bulan). Boleh terangkan lanjut?`,
+      notes: ['Belum dibuka. Beritahu kami anda berminat dan kami hubungi anda dahulu.'],
+      features: ['Semua dalam Premium', 'Kereta baru dipost ke Facebook dan Instagram anda', 'Post TikTok disediakan. Anda lulus setiap satu dengan satu tap, seperti yang TikTok minta', 'Kereta yang senyap dipost semula', 'Kami sambungkan page anda bersama anda di WhatsApp'] },
   },
 };
 
@@ -168,12 +177,15 @@ export const PRICING_FEATURES_LABEL = { en: 'Features', ms: 'Ciri-ciri' };
 // still one tap away as the small "sign up yourself" link (`selfTo`).
 export const waLink = (text) => `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(text)}`;
 
-export function salesmanPricingCards(lang = 'en') {
+// `withPro` adds the Seller Pro interest card (only /plans passes it; the /for-salesmen ad page does not).
+export function salesmanPricingCards(lang = 'en', { withPro = false } = {}) {
   const w = CARD_WORDS[lang] || CARD_WORDS.en;
-  return [
+  const cards = [
     { key: 'lite', ...w.lite, price: w.free, per: '', href: waLink(w.lite.wa), selfTo: PRESENTATION.salesman_lite.route, selfLabel: w.self },
     { key: 'premium', ...w.premium, price: `RM${PF.price}`, per: w.per, featured: true, badge: w.foundingBadge, href: waLink(w.premium.wa), selfTo: PRESENTATION.salesman_full.route, selfLabel: w.self },
     { key: 'dfy', ...w.dfy, price: `RM${PF.doneForYouPrice}`, per: w.per,
       href: waLink(w.dfy.wa) },
   ];
+  if (withPro) cards.push({ key: 'pro', ...w.pro, price: `RM${PF.proPrice}`, per: w.per, href: waLink(w.pro.wa) });
+  return cards;
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldCheck, Clock, X } from "lucide-react";
 import { isVerifySnoozed, snoozeVerify } from "../../utils/verifySnooze";
 import { premiumDark } from "../../theme/tokens";
@@ -20,6 +21,7 @@ import { premiumDark } from "../../theme/tokens";
 // Closeable; comes back after a week (src/utils/verifySnooze.js), shared with
 // SellerIdCard so closing one closes both.
 export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) {
+  const { t } = useTranslation();
   const [closed, setClosed] = useState(() => isVerifySnoozed(profile?.id));
   if (!profile || profile.is_verified || closed) return null;
   const close = () => { snoozeVerify(profile.id); setClosed(true); };
@@ -46,13 +48,13 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
       <p style={{ margin: 0, fontSize: 12.5, color: c.text, flex: 1, minWidth: 0, lineHeight: 1.45 }}>
         {inReview ? (
           <>
-            <strong style={{ color: c.strong, fontWeight: 600 }}>We're checking your ID.</strong>{" "}
-            Your Verified badge shows as soon as it's approved.
+            <strong style={{ color: c.strong, fontWeight: 600 }}>{t("verifyPrompt.checking")}</strong>{" "}
+            {t("verifyPrompt.checkingBody")}
           </>
         ) : (
           <>
-            <strong style={{ color: c.strong, fontWeight: 600 }}>Get the Verified badge.</strong>{" "}
-            Buyers trust sellers whose ID has been checked.
+            <strong style={{ color: c.strong, fontWeight: 600 }}>{t("verifyPrompt.get")}</strong>{" "}
+            {t("verifyPrompt.getBody")}
           </>
         )}
       </p>
@@ -65,10 +67,10 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
             whiteSpace: "nowrap", fontFamily: "inherit", flexShrink: 0,
           }}
         >
-          Verify ID
+          {t("verifyPrompt.verifyId")}
         </button>
       )}
-      <button type="button" aria-label="Close" onClick={close}
+      <button type="button" aria-label={t("verifyPrompt.close")} onClick={close}
         style={{ background: "none", border: "none", color: c.icon, cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
         <X size={15} />
       </button>

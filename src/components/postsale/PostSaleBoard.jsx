@@ -5,6 +5,7 @@ import useHandover from '../../hooks/useHandover';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import PostSaleChecklist from './PostSaleChecklist';
 import { premiumDark as PD, premiumLight as PL } from '../../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 // Target handover turnaround in Malaysia (settle loan -> JPJ -> road tax ->
 // handover) is roughly 2-3 weeks. Past 21 days a deal is overdue.
@@ -34,6 +35,7 @@ export default function PostSaleBoard({
   onViewCustomer = null,
   onExpiryWritten = null,
 }) {
+  const { t: tr } = useTranslation();
   // Hooks can't be conditional: always call it, but starve it of a dealerId
   // when the page already handed us a controller so it never double-fetches.
   const ownController = useHandover(controller ? null : dealerId, salesmanId);
@@ -89,7 +91,7 @@ export default function PostSaleBoard({
     : { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
   const EMPTY = premium ? { background: K.card, borderRadius: K.radius.card, padding: '28px 16px', boxShadow: light ? K.shadow : 'none' } : null;
 
-  if (loading && deals.length === 0) return <div style={{ ...PANEL, ...EMPTY }}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
+  if (loading && deals.length === 0) return <div style={{ ...PANEL, ...EMPTY }}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>{tr("psBoard.loadingSoldDeals")}</p></div>;
 
   // A failed read used to render as "No sold deals yet" — the one empty state
   // that makes a salesman think their win vanished. Say what happened instead.
@@ -97,9 +99,9 @@ export default function PostSaleBoard({
     return (
       <div style={{ ...PANEL, ...EMPTY, textAlign: 'center' }}>
         <AlertTriangle size={24} color="#dc2626" style={{ marginBottom: 8 }} />
-        <p style={{ fontSize: 13, color: t.text, margin: '0 0 10px' }}>Could not load your sold deals.</p>
+        <p style={{ fontSize: 13, color: t.text, margin: '0 0 10px' }}>{tr("psBoard.couldNotLoadYourSold")}</p>
         <button onClick={refresh} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}>
-          <RefreshCw size={13} /> Try again
+          <RefreshCw size={13} /> {tr("psBoard.tryAgain")}
         </button>
       </div>
     );
@@ -124,7 +126,7 @@ export default function PostSaleBoard({
     return (
       <div style={{ ...PANEL, ...EMPTY, textAlign: 'center', color: t.sub }}>
         <Car size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
-        <p style={{ fontSize: 13, margin: 0 }}>No sold deals yet. Won deals show up here for handover processing.</p>
+        <p style={{ fontSize: 13, margin: 0 }}>{tr("psBoard.noSoldDealsYetWon")}</p>
       </div>
     );
   }
@@ -138,7 +140,7 @@ export default function PostSaleBoard({
           {/* Premium's Handover pill already carries this count as its badge. */}
           {theme !== 'premium' && (
             <p style={{ fontSize: 12, color: t.sub, margin: 0 }}>
-              {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
+              {deals.filter((d) => progressMap[d.id] !== 100).length} {tr("psBoard.inProcessing")}
             </p>
           )}
           {overdueCount > 0 && (
@@ -157,10 +159,10 @@ export default function PostSaleBoard({
         </div>
         {doneCount > 0 ? (
           <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: t.sub, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: premium ? 999 : 8, padding: premium ? '6px 12px' : '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {hideDone ? `Show completed (${doneCount})` : 'Hide completed'}
+            {hideDone ? tr("psBoard.showCompleted", { n: doneCount }) : tr("psBoard.hideCompleted")}
           </button>
         ) : !premium && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: t.sub, opacity: 0.7 }}>No completed yet</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: t.sub, opacity: 0.7 }}>{tr("psBoard.noCompletedYet")}</span>
         )}
       </div>
       )}
@@ -184,7 +186,7 @@ export default function PostSaleBoard({
             >
               {isOpen && !premiumSheet ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: t.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: t.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || tr("psBoard.buyer")}</p>
                 <p style={{ fontSize: 11.5, color: t.sub, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {carLabel}{d.salesman_profile?.full_name ? ` · ${d.salesman_profile.full_name.split(' ')[0]}` : ''}
                 </p>
@@ -192,19 +194,19 @@ export default function PostSaleBoard({
                   {age !== null && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, fontWeight: 600, color: slaColor }}>
                       <Clock size={10} />
-                      {done ? 'Completed' : age > SLA_BREACH_DAYS ? `Overdue · ${age}d` : age === 0 ? 'Won today' : `${age}d in handover`}
+                      {done ? tr("psBoard.completed") : age > SLA_BREACH_DAYS ? tr("psBoard.overdue", { n: age }) : age === 0 ? tr("psBoard.wonToday") : tr("psBoard.inHandover", { n: age })}
                     </span>
                   )}
                   {blocker && (
                     <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 600, color: t.chipText, background: t.chip, border: `1px solid ${t.chipBorder}`, borderRadius: premium ? 999 : 6, padding: premium ? '2px 9px' : '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      Next: {blocker.label}<span style={{ color: t.sub }}> · {blocker.owner}</span>
+                      {tr("psBoard.next")} {blocker.label}<span style={{ color: t.sub }}> · {blocker.owner}</span>
                     </span>
                   )}
                 </div>
               </div>
               {done ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: doneHue, flexShrink: 0 }}>
-                  <CheckCircle2 size={14} /> Done
+                  <CheckCircle2 size={14} /> {tr("psBoard.done")}
                 </span>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, width: 90 }}>
@@ -225,7 +227,7 @@ export default function PostSaleBoard({
                     onClick={() => onViewCustomer(d)}
                     style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: premium ? 999 : 8, padding: premium ? '8px 14px' : '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
-                    <UserRound size={13} /> View customer record
+                    <UserRound size={13} /> {tr("psBoard.viewCustomerRecord")}
                   </button>
                 )}
               </div>
@@ -257,6 +259,7 @@ export default function PostSaleBoard({
 // on a phone, a centred box on desktop. The header carries the deal's live
 // progress, so the checklist inside drops its own bar.
 function HandoverSheet({ K = PD, theme = 'premium', deal, narrow, progress, initialTasks, onClose, onTasksChange, onExpiryWritten, onViewCustomer }) {
+  const { t: tr } = useTranslation();
   const car = deal.car_listings;
   const carLabel = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : 'No car linked';
   const done = progress === 100;
@@ -268,17 +271,17 @@ function HandoverSheet({ K = PD, theme = 'premium', deal, narrow, progress, init
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Handover: ${deal.buyer_name || 'Buyer'}`}
+        aria-label={tr("psBoard.handoverAria", { name: deal.buyer_name || tr("psBoard.buyer") })}
         onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: narrow ? '100%' : 560, maxHeight: narrow ? '90vh' : '86vh', display: 'flex', flexDirection: 'column', background: K.card, color: K.text, borderRadius: narrow ? `${K.radius.card}px ${K.radius.card}px 0 0` : K.radius.card, overflow: 'hidden', fontFamily: 'var(--xd-font-body)' }}
       >
         <div style={{ padding: '16px 16px 14px', borderBottom: `1px solid ${K.line}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{deal.buyer_name || 'Buyer'}</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{deal.buyer_name || tr("psBoard.buyer")}</p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: K.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{carLabel}</p>
             </div>
-            <button onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: K.raised, border: 'none', color: K.textSec, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={onClose} aria-label={tr("psBoard.close")} style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: K.raised, border: 'none', color: K.textSec, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={16} />
             </button>
           </div>
@@ -287,7 +290,7 @@ function HandoverSheet({ K = PD, theme = 'premium', deal, narrow, progress, init
               <div style={{ width: `${progress > 0 ? progress : 0}%`, height: '100%', background: done ? K.up : K.accent, transition: 'width 0.3s' }} />
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: done ? K.up : K.textSec, minWidth: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              {done ? 'Completed' : progress < 0 ? '–' : `${progress}%`}
+              {done ? tr("psBoard.completed") : progress < 0 ? '–' : `${progress}%`}
             </span>
           </div>
         </div>
@@ -300,7 +303,7 @@ function HandoverSheet({ K = PD, theme = 'premium', deal, narrow, progress, init
               onClick={onViewCustomer}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: K.text, background: K.raised, border: 'none', borderRadius: 999, padding: '9px 15px', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              <UserRound size={13} /> View customer record
+              <UserRound size={13} /> {tr("psBoard.viewCustomerRecord")}
             </button>
           </div>
         )}

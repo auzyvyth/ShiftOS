@@ -3,6 +3,7 @@ import { Bell, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { usePushNotifications, isIOS, isStandalone } from '../../hooks/usePushNotifications';
 import { panel } from '../../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 // Palette for the dashboard mounts (Lite + Premium), defined once here rather
 // than copied into each panel. The chat mounts keep passing their own THEMES
@@ -122,6 +123,7 @@ export default function PushPromptStrip({
   // broken page.
   required = false,
 }) {
+  const { t: tr } = useTranslation();
   const [userId, setUserId] = useState(userIdProp);
   const [dismissed, setDismissed] = useState(false);
   const [justEnabled, setJustEnabled] = useState(false);
@@ -214,7 +216,7 @@ export default function PushPromptStrip({
     {(!note || required) && (
       <button type="button" onClick={handleEnable} disabled={busy}
         style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: t.font || 'system-ui,sans-serif' }}>
-        {busy ? 'Turning on…' : note ? 'Try again' : 'Turn on'}
+        {busy ? tr("pushPrompt.turningOn") : note ? tr("pushPrompt.tryAgain") : tr("pushPrompt.turnOn")}
       </button>
     )}
     {!required && <DismissBtn t={t} onClick={() => setDismissed(true)} />}
@@ -222,8 +224,9 @@ export default function PushPromptStrip({
 }
 
 function DismissBtn({ t, onClick }) {
+  const { t: tr } = useTranslation();
   return (
-    <button type="button" onClick={onClick} aria-label="Not now"
+    <button type="button" onClick={onClick} aria-label={tr("pushPrompt.notNow")}
       style={{ flexShrink: 0, background: 'none', border: 'none', color: t.sub, cursor: 'pointer', padding: 2, display: 'flex' }}>
       <X size={13} />
     </button>

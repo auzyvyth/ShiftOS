@@ -51,6 +51,7 @@ const COPY = {
 };
 
 export default function MotionPosterNews({ userId, profile, isPremium, blocked, onShowMe }) {
+  const { t } = useTranslation();
   const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('news') === 'poster';
   const seenKey = isPremium ? 'news_motion_poster_premium' : 'news_motion_poster_lite';
   const seen = !!profile?.starter_tasks?.[seenKey];
@@ -104,7 +105,7 @@ export default function MotionPosterNews({ userId, profile, isPremium, blocked, 
     setBusy(true);
     const { data, error } = await supabase.rpc('start_premium_trial');
     setBusy(false);
-    if (error) { toast.error("Couldn't start your free trial. Try again."); return; }
+    if (error) { toast.error(t("motionNews.couldnTStartYourFree")); return; }
     if (data === 'ok' || data === 'already_premium') { window.location.href = '/salesman-premium'; return; }
     setOffer((o) => ({ ...o, trial_available: false, trial_used: data === 'used' || o?.trial_used }));
     toast.error(data === 'used' ? 'Your free trial has already been used.' : "This account can't start a free trial.");
@@ -167,7 +168,7 @@ export default function MotionPosterNews({ userId, profile, isPremium, blocked, 
               {title(c.payTitle)}
               <p style={text}>{c.payBody}</p>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 14 }}>
-                <img src="/payment-qr.png" alt="DuitNow payment QR" width="220" height="340"
+                <img src="/payment-qr.png" alt={t("motionNews.duitnowPaymentQr")} width="220" height="340"
                   style={{ display: 'block', width: 220, height: 'auto', borderRadius: 8, background: '#fff' }} />
                 <SaveQrButton />
               </div>

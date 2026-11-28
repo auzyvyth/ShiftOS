@@ -168,6 +168,12 @@ const EN = {
         title: "Open the app. Know who needs you today.",
         line: "Follow-ups that are due and today's bookings, right at the top.",
       },
+      assistant: {
+        tab: "Assistant",
+        alt: "Assistant feed: a booking to confirm, a buyer who asked about a car, a car with no views in 3 days with share and poster buttons, and a morning brief",
+        title: "One feed for what needs you today.",
+        line: "Bookings to confirm, buyers waiting and cars gone quiet, with a button for each.",
+      },
       listings: {
         tab: "My Listings",
         alt: "Listings tab: a car card with photo, price, status, views and enquiries, and Caption and Edit buttons",
@@ -217,6 +223,15 @@ const EN = {
         line: "The message is written for you. You press send.",
       },
     },
+  },
+
+  pageVideo: {
+    kicker: "Your Premium page",
+    title: "Scroll through a real Premium page.",
+    line: "Pick a model and variant, a loan calculator, a booking form and your story, all on one link you put in your bio.",
+    open: "Open the example page",
+    note: "Recorded on a computer from the example page, showing its Perodua models. Parts stamped EXAMPLE show sample content.",
+    alt: "A Premium seller page on a computer, scrolling from the top to the footer: profile, model picker, cars, loan calculator, booking form, about me and reviews",
   },
 
   // Free on Lite. Order matches FEATURE_ICONS in SalesmanLiteLanding.jsx.
@@ -376,7 +391,7 @@ const EN = {
       { q: "Can I still use Mudah and Carlist?",
         a: "Yes. Drevo works alongside them. The difference is this page is yours, it lives on the Drevo marketplace, and it doesn't charge you per listing." },
       { q: `What happens when I have more than ${LITE_CAP} cars?`,
-        a: `Salesman Premium (RM35/month, first 7 days free) raises your cap to ${PREMIUM_CAP} listings and adds a sorted "This week" call list with follow-up messages already drafted, follow-up reminders and call logging, WhatsApp to all your quiet leads in one go, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, commission tracking, Telegram booking reminders, a services and add-ons catalogue, a page you can customise with your bio and social links, and a Performance view that shows your close rate and where your deals are lost. Your Lite page and cars carry straight over: upgrade any time from your panel.` },
+        a: `Salesman Premium (RM35/month, first 7 days free) raises your cap to ${PREMIUM_CAP} listings and adds an Assistant that gathers the bookings to confirm, the buyers waiting and the cars gone quiet in one feed, a sorted "This week" call list with follow-up messages already drafted, follow-up reminders and call logging, WhatsApp to all your quiet leads in one go, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, commission tracking, Telegram booking reminders, a services and add-ons catalogue, a page you can customise with your bio and social links, and a Performance view that shows your close rate and where your deals are lost. Your Lite page and cars carry straight over: upgrade any time from your panel.` },
       { q: "Is there an example page I can see?",
         a: "Yes. drevo.my/s/premiummotors is Drevo's example Salesman Premium page: stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
       { q: "How long does setup take?",
@@ -512,6 +527,12 @@ const MS = {
         title: "Buka app. Terus tahu siapa perlukan anda hari ni.",
         line: "Follow up yang dah sampai masa dan booking hari ini, paling atas.",
       },
+      assistant: {
+        tab: "Pembantu",
+        alt: "Feed Pembantu: satu booking nak disahkan, pembeli yang tanya pasal kereta, kereta tiada view 3 hari dengan butang kongsi dan poster, dan ringkasan pagi",
+        title: "Satu feed untuk apa yang perlukan anda hari ini.",
+        line: "Booking nak disahkan, pembeli menunggu dan kereta senyap, dengan butang untuk setiap satu.",
+      },
       listings: {
         tab: "Listing Saya",
         alt: "Tab listing: kad kereta dengan gambar, harga, status, views dan pertanyaan, serta butang Caption dan Edit",
@@ -561,6 +582,15 @@ const MS = {
         line: "Mesej dah siap ditulis. Anda tekan hantar.",
       },
     },
+  },
+
+  pageVideo: {
+    kicker: "Page Premium anda",
+    title: "Tengok page Premium sebenar, dari atas sampai bawah.",
+    line: "Pilih model dan varian, kalkulator loan, borang booking dan cerita anda, semua dalam satu link untuk bio anda.",
+    open: "Buka page contoh",
+    note: "Dirakam di komputer dari page contoh, menunjukkan model Perodua. Bahagian bertanda EXAMPLE ialah kandungan contoh.",
+    alt: "Page seller Premium di komputer, ditatal dari atas ke bawah: profil, pilihan model, kereta, kalkulator loan, borang booking, tentang saya dan ulasan",
   },
 
   features: {
@@ -707,7 +737,7 @@ const MS = {
       { q: "Masih boleh guna Mudah dan Carlist?",
         a: "Boleh. Drevo boleh guna sekali dengan platform tu. Bezanya, page ni milik anda, ia ada di marketplace Drevo, dan tiada caj untuk setiap listing." },
       { q: `Kalau saya ada lebih dari ${LITE_CAP} kereta?`,
-        a: `Salesman Premium (RM35 sebulan, 7 hari pertama percuma) naikkan had anda ke ${PREMIUM_CAP} listing dan tambah senarai call "Minggu ini" yang tersusun dengan mesej follow up siap ditulis, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap sekali gus, loan desk yang semak kemampuan dan banding bank, senarai semak handover dan senarai customer, jejak komisen, reminder booking di Telegram, katalog servis dan add-on, page yang boleh diubah suai dengan bio dan link media sosial, serta Performance yang tunjuk close rate dan di mana deal anda terlepas. Page dan kereta Lite anda terus dibawa: upgrade bila-bila masa dari panel anda.` },
+        a: `Salesman Premium (RM35 sebulan, 7 hari pertama percuma) naikkan had anda ke ${PREMIUM_CAP} listing dan tambah Pembantu yang kumpulkan booking nak disahkan, pembeli yang menunggu dan kereta senyap dalam satu feed, senarai call "Minggu ini" yang tersusun dengan mesej follow up siap ditulis, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap sekali gus, loan desk yang semak kemampuan dan banding bank, senarai semak handover dan senarai customer, jejak komisen, reminder booking di Telegram, katalog servis dan add-on, page yang boleh diubah suai dengan bio dan link media sosial, serta Performance yang tunjuk close rate dan di mana deal anda terlepas. Page dan kereta Lite anda terus dibawa: upgrade bila-bila masa dari panel anda.` },
       { q: "Ada contoh page yang saya boleh tengok?",
         a: "Ada. drevo.my/s/premiummotors ialah contoh page Salesman Premium dari Drevo: stok, harga dan butang contact di setiap kereta, sama macam yang pembeli nampak bila anda share link anda." },
       { q: "Berapa lama nak setup?",

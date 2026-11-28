@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { PLAN_CONFIG, OPS_WHATSAPP } from "../../utils/planConfig";
+import { useTranslation } from 'react-i18next';
 
 // How to pay for Premium: DuitNow QR + "I've paid" WhatsApp. Payment is still
 // confirmed by hand; the owner logs it in the console (record_subscription_payment)
@@ -20,6 +21,7 @@ const QR_FILE = "premium-payment-qr.png";
 // The file is fetched on mount so the tap itself shares straight away (a fetch
 // inside the tap can lose the "user tapped" permission the share sheet needs).
 export function SaveQrButton() {
+  const { t } = useTranslation();
   const blob = useRef(null);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
@@ -32,7 +34,7 @@ export function SaveQrButton() {
     const file = b ? new File([b], QR_FILE, { type: b.type || "image/png" }) : null;
     try {
       if (file && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "Premium payment QR" });
+        await navigator.share({ files: [file], title: t("payBox.premiumPaymentQr") });
         setSaved(true);
         return;
       }
@@ -50,30 +52,31 @@ export function SaveQrButton() {
     <>
       <button type="button" onClick={save}
         style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, height: 36, padding: "0 14px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "none", color: "#e5e7eb", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-        <Download size={13} /> {saved ? "Saved. Save again" : "Save QR to phone"}
+        <Download size={13} /> {saved ? t("payBox.savedSaveAgain") : t("payBox.saveQrToPhone")}
       </button>
       <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "#9ca3af", lineHeight: 1.5, maxWidth: 320 }}>
-        Paying on this phone? Save the QR, then in your bank or e-wallet app tap Scan and pick it from your gallery.
+        {t("payBox.payingOnThisPhoneSave")}
       </p>
     </>
   );
 }
 
 export default function PremiumPayBox({ profile, lead = "" }) {
+  const { t } = useTranslation();
   const ref = profile?.slug || profile?.full_name || profile?.email || "";
   const waText = `Hi, I've paid RM${PREMIUM_PRICE} for Drevo Premium. My page: ${ref}`;
   return (
     <div>
       <p style={{ margin: 0, fontSize: 12.5, color: "#e5e7eb", lineHeight: 1.6 }}>
         {lead}
-        Scan to pay RM{PREMIUM_PRICE}, then send us a WhatsApp. We switch you to Premium as soon as we see it.
+        {t("payBox.scanToPayRm")}{PREMIUM_PRICE}{t("payBox.thenSendUsAWhatsapp")}
       </p>
-      <img src="/payment-qr.png" alt="DuitNow payment QR" width="220" height="340"
+      <img src="/payment-qr.png" alt={t("payBox.duitnowPaymentQr")} width="220" height="340"
         style={{ display: "block", width: 220, height: "auto", marginTop: 12, borderRadius: 8, background: "#fff" }} />
       <SaveQrButton />
       <a href={`https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"
         style={{ display: "inline-block", marginTop: 14, padding: "10px 16px", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-        I've paid, tell Drevo
+        {t("payBox.iVePaidTellDrevo")}
       </a>
     </div>
   );

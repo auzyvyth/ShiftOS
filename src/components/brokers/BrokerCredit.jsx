@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // BROKER-1: how the dealer's lead screens show an outside broker's claim. One look everywhere:
 // teal for "a broker's lead" (no other lead colour is teal; the team's salesmen are violet), red
@@ -47,17 +48,18 @@ export function BrokerChip({ credit, compact = false, style }) {
 
 // The block at the top of a lead's drawer: who owns it and why, in plain words.
 export function BrokerCreditPanel({ credit }) {
+  const { t } = useTranslation();
   if (!credit) return null;
   const c = credit.conflict ? RED : TEAL;
   return (
     <div style={{ background: c.bg, border: `1px solid ${c.line}`, borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: c.fg, marginBottom: 4 }}>
         <Users style={{ width: 13, height: 13 }} />
-        {credit.conflict ? 'Two brokers claim this buyer' : `Broker lead${credit.owner.name ? ` · ${credit.owner.name}` : ''}`}
+        {credit.conflict ? t("brokerCredit.twoBrokersClaimThisBuyer") : `${t("brokerCredit.brokerLead")}${credit.owner.name ? ` · ${credit.owner.name}` : ''}`}
       </div>
       <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>{brokerCreditSummary(credit)}</div>
       <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6, lineHeight: 1.4 }}>
-        Giving this lead to a team member does not remove the broker's claim. Settle it with them first.
+        {t("brokerCredit.givingThisLeadToA")}
       </div>
     </div>
   );

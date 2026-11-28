@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import ChatThread, { THEMES } from './ChatThread';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { useTranslation } from 'react-i18next';
 
 // One in-app conversation, opened over whatever surface you are already on.
 //
@@ -31,6 +32,7 @@ export default function ChatSheet({
   footer = null,
   onClose,
 }) {
+  const { t: tr } = useTranslation();
   useModalHistory(true, onClose);
   // Size to the area the keyboard leaves behind, not to `vh` — see
   // useVisualViewport. Without this the composer sits under the keyboard and
@@ -85,7 +87,7 @@ export default function ChatSheet({
   }, [onClose]);
 
   const closeBtn = (
-    <button onClick={onClose} aria-label="Close conversation"
+    <button onClick={onClose} aria-label={tr("chatSheet.closeConversation")}
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: prem ? 32 : 30, height: prem ? 32 : 30, borderRadius: prem ? 999 : 8, background: prem ? t.inputBg : 'transparent', border: prem ? 'none' : `1px solid ${t.border}`, color: t.sub, cursor: 'pointer' }}>
       <X size={14} />
     </button>

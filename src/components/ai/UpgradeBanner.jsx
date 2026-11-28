@@ -1,7 +1,9 @@
 import React from "react";
 import { Sparkles, Lock } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 export default function UpgradeBanner({ feature = "This feature" }) {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -17,14 +19,14 @@ export default function UpgradeBanner({ feature = "This feature" }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Lock size={14} color="#f87171" />
         <span style={{ fontSize: 13, fontWeight: 700, color: "#fca5a5" }}>
-          Premium feature · RM35/mo
+          {t("aiUpgrade.premiumFeatureRm35Mo")}
         </span>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
-        {feature} is locked. Upgrade to unlock AI-powered tools.
+        {feature} {t("aiUpgrade.isLockedUpgradeToUnlock")}
         <br />
         <span style={{ color: "#4b5563" }}>
-          Or get it free — ask your dealer to subscribe to DrevoOS.
+          {t("aiUpgrade.orGetItFreeAsk")}
         </span>
       </p>
       <a
@@ -46,7 +48,7 @@ export default function UpgradeBanner({ feature = "This feature" }) {
         }}
       >
         <Sparkles size={12} />
-        Upgrade to Premium →
+        {t("aiUpgrade.upgradeToPremium")}
       </a>
     </div>
   );

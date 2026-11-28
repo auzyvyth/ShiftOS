@@ -78,7 +78,7 @@ export default function SellerIdCard({ profile, t, onUploadId, inviteInChecklist
           {tr("cta", "Get verified")}
         </button>
       )}
-      <button type="button" aria-label="Close" onClick={close}
+      <button type="button" aria-label={tr("close", "Close")} onClick={close}
         style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
         <X size={15} />
       </button>

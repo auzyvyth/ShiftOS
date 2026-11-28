@@ -3,6 +3,7 @@ import { ShieldCheck, Upload, Check, Clock, X, AlertCircle } from "lucide-react"
 import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { premiumDark as PD } from "../../theme/tokens";
+import { useTranslation } from 'react-i18next';
 
 /**
  * Seller-facing e-KYC submission.
@@ -29,9 +30,9 @@ import { premiumDark as PD } from "../../theme/tokens";
  */
 
 const SLOTS = [
-  { key: "front", label: "MyKad front", hint: "The side with your photo and IC number" },
-  { key: "back", label: "MyKad back", hint: "The reverse side" },
-  { key: "selfie", label: "Selfie holding your MyKad", hint: "Your face and the card both readable" },
+  { key: "front" },
+  { key: "back" },
+  { key: "selfie" },
 ];
 
 // Shrink before upload: phone photos routinely exceed the bucket's 8MB cap.
@@ -106,6 +107,7 @@ const PALETTE = {
 // slots are never the first thing shown. `onIcSaved` lets the panel update
 // its profile copy once set_my_ic has hashed the number.
 export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved, theme = "dark" }) {
+  const { t } = useTranslation();
   const P = PALETTE[theme] || PALETTE.dark;
   const [stage, setStage] = useState("intro"); // intro | ic | photos
   const [icVal, setIcVal] = useState("");
@@ -124,7 +126,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
     e.target.value = "";
     if (!file) return;
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-      toast.error("Use a JPG, PNG or WebP photo.");
+      toast.error(t("verifyId.useAJpgPngOr"));
       return;
     }
     setFiles((f) => ({ ...f, [key]: file }));
@@ -137,7 +139,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
   const submit = async () => {
     if (!userId) return;
     if (!files.front || !files.back) {
-      toast.error("Both sides of your MyKad are required.");
+      toast.error(t("verifyId.bothSidesOfYourMykad"));
       return;
     }
     setBusy(true);
@@ -170,7 +172,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
       });
       if (rpcErr) throw rpcErr;
 
-      toast.success("ID submitted — we'll review it shortly.");
+      toast.success(t("verifyId.idSubmittedWeLlReview"));
       Object.values(previews).forEach((u) => URL.revokeObjectURL(u));
       setFiles({});
       setPreviews({});
@@ -212,10 +214,10 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           <ShieldCheck size={18} style={{ color: P.okIcon, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
-              Identity verified
+              {t("verifyId.identityVerified")}
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              Your cars are live on Drevo and carry the Verified badge.
+              {t("verifyId.yourCarsAreLiveOn")}
             </p>
           </div>
         </div>
@@ -230,10 +232,10 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           <Clock size={18} style={{ color: P.waitIcon, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
-              ID under review
+              {t("verifyId.idUnderReview")}
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              Your Verified badge shows as soon as it's approved. Your cars are already live.
+              {t("verifyId.yourVerifiedBadgeShowsAs")}
             </p>
           </div>
         </div>
@@ -252,19 +254,19 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
       onClick={() => setStage(to)}
       style={{ background: "none", border: "none", padding: 0, marginBottom: 10, color: P.faint, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
     >
-      Back
+      {t("verifyId.back")}
     </button>
   );
   const stepLabel = (n) => (
     <p style={{ margin: "0 0 4px", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: P.faint }}>
-      Step {n} of 2
+      {t("verifyId.stepOf", { n })}
     </p>
   );
   const rejected = profile?.rejection_reason && (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 14, padding: "9px 11px", borderRadius: 8, background: P.errBg, border: `1px solid ${P.errBorder}` }}>
       <AlertCircle size={14} style={{ color: P.errIcon, flexShrink: 0, marginTop: 1 }} />
       <p style={{ margin: 0, fontSize: 12, color: P.errText, lineHeight: 1.5 }}>
-        Last submission wasn't accepted: {profile.rejection_reason}
+        {t("verifyId.lastSubmissionWasnTAccepted")} {profile.rejection_reason}
       </p>
     </div>
   );
@@ -274,15 +276,14 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
       <div style={card}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <ShieldCheck size={18} style={{ color: P.askIcon, flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>Get verified</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>{t("verifyId.getVerified")}</p>
         </div>
         <p style={{ margin: 0, fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-          A Verified badge on your page and cars tells buyers a person checked your ID. Two quick steps:
-          your IC number, then photos of your MyKad. About 2 minutes.
+          {t("verifyId.aVerifiedBadgeOnYour")}
         </p>
         {rejected && <div style={{ marginTop: 12 }}>{rejected}</div>}
         <button onClick={() => setStage(profile?.ic_hash ? "photos" : "ic")} style={primaryBtn(false)}>
-          Get verified
+          {t("verifyId.getVerified")}
         </button>
       </div>
     );
@@ -293,7 +294,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
       <div style={card}>
         {backBtn("intro")}
         {stepLabel(1)}
-        <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: P.text }}>Your IC number</p>
+        <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: P.text }}>{t("verifyId.yourIcNumber")}</p>
         <input
           autoFocus
           value={icVal}
@@ -309,10 +310,10 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           }}
         />
         <p style={{ margin: "7px 0 0", fontSize: 11, color: P.faint, lineHeight: 1.5 }}>
-          12 digits. Stored scrambled (hashed), never shown to buyers.
+          {t("verifyId.12DigitsStoredScrambledHashed")}
         </p>
         <button onClick={saveIc} disabled={icSaving || icDigits.length !== 12} style={primaryBtn(icSaving || icDigits.length !== 12)}>
-          {icSaving ? "Saving…" : "Next"}
+          {icSaving ? t("verifyId.saving") : t("verifyId.next")}
         </button>
       </div>
     );
@@ -322,13 +323,13 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
     <div style={card}>
       {backBtn(profile?.ic_hash ? "intro" : "ic")}
       {stepLabel(2)}
-      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: P.text }}>Photos of your MyKad</p>
+      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: P.text }}>{t("verifyId.photosOfYourMykad")}</p>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-        A person checks them. Your Verified badge shows once it's approved.
+        {t("verifyId.aPersonChecksThemYour")}
       </p>
 
       <div style={{ display: "grid", gap: 8 }}>
-        {SLOTS.map(({ key, label, hint }) => (
+        {SLOTS.map(({ key }) => (
           <div key={key}>
             <input
               ref={(el) => { inputs.current[key] = el; }}
@@ -361,13 +362,13 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: P.slotText }}>
-                  {label}
+                  {t(`verifyId.slot.${key}.label`)}
                   {key === "selfie" && profile?.plan !== "salesman_full" && (
-                    <span style={{ color: P.faint, fontWeight: 500 }}> · optional</span>
+                    <span style={{ color: P.faint, fontWeight: 500 }}> {t("verifyId.optional")}</span>
                   )}
                 </p>
                 <p style={{ margin: "2px 0 0", fontSize: 11, color: P.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {hint}
+                  {t(`verifyId.slot.${key}.hint`)}
                 </p>
               </div>
               {files[key] && <Check size={15} style={{ color: P.okIcon, flexShrink: 0 }} />}
@@ -386,10 +387,10 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           opacity: busy || !files.front || !files.back ? 0.5 : 1, fontFamily: "inherit",
         }}
       >
-        {busy ? "Submitting…" : "Submit for verification"}
+        {busy ? t("verifyId.submitting") : t("verifyId.submitForVerification")}
       </button>
       <p style={{ margin: "9px 0 0", fontSize: 11, color: P.faint, lineHeight: 1.5 }}>
-        Stored privately and deleted the moment your review is decided. Never shown to buyers.
+        {t("verifyId.storedPrivatelyAndDeletedThe")}
       </p>
     </div>
   );

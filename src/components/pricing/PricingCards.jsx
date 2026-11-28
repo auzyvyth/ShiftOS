@@ -50,6 +50,7 @@ export default function PricingCards({ cards, featuresLabel = "Features" }) {
 const CSS = `
 .pc-grid { display: grid; gap: 14px; align-items: stretch; max-width: 1040px; margin: 0 auto; }
 .pc-n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pc-n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1180px; }
 .pc-n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 700px; }
 .pc-card { position: relative; display: flex; flex-direction: column; min-width: 0; background: #fff; border: 1px solid #e7e7ea; border-radius: 18px; padding: 22px 22px 20px; box-shadow: 0 1px 2px rgba(16,24,40,0.04), inset 0 1px 0 #fff; font-family: var(--xd-font-body, 'Outfit', system-ui, sans-serif); }
 .pc-feat { border-color: rgba(220,38,38,0.28); background: radial-gradient(ellipse 70% 150px at 50% 0, rgba(220,38,38,0.09), rgba(220,38,38,0) 70%), #fff; box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 24px 48px -24px rgba(220,38,38,0.28); }
@@ -76,8 +77,11 @@ const CSS = `
 .pc-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.4; color: #374151; }
 .pc-tick { flex-shrink: 0; width: 18px; height: 18px; margin-top: 0.5px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #f4f4f5; border: 1px solid #e4e4e7; color: #52525b; }
 .pc-feat .pc-tick { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+@media (max-width: 1100px) and (min-width: 861px) {
+  .pc-n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 760px; }
+}
 @media (max-width: 860px) {
-  .pc-n3, .pc-n2 { grid-template-columns: 1fr; max-width: 440px; }
+  .pc-n4, .pc-n3, .pc-n2 { grid-template-columns: 1fr; max-width: 440px; }
   .pc-feat { order: -1; }
   .pc-desc { min-height: 0; }
 }

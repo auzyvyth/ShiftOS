@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // HERO-PREVIEW (owner, 2026-11-26: "make sure the preview in dashboard gets the same result it
 // would on the page, desktop & mobile"). The seller's REAL page (/s/<slug>?heroPreview=1) in a
@@ -13,6 +14,7 @@ const VIEWS = {
 };
 
 export default function PagePreviewFrame({ slug, view = 'phone', url, cut, frame }) {
+  const { t } = useTranslation();
   const v = VIEWS[view] || VIEWS.phone;
   const boxRef = useRef(null);
   const frameRef = useRef(null);
@@ -47,16 +49,16 @@ export default function PagePreviewFrame({ slug, view = 'phone', url, cut, frame
   const scale = w / v.w;
   return (
     <div ref={boxRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-      <div aria-label={view === 'phone' ? 'Phone preview of your page' : 'Desktop preview of your page'}
+      <div aria-label={view === 'phone' ? t("pageFrame.phonePreviewOfYourPage") : t("pageFrame.desktopPreviewOfYourPage")}
         style={{ position: 'relative', width: w, height: v.h * scale, overflow: 'hidden', borderRadius: view === 'phone' ? 22 : 12,
           background: '#fff', boxShadow: '0 0 0 1px rgba(255,255,255,.12)' }}>
         {slug && boxW > 0 && (
-          <iframe key={`${view}-${slug}`} ref={frameRef} title="Your page" src={`/s/${encodeURIComponent(slug)}?heroPreview=1`} tabIndex={-1}
+          <iframe key={`${view}-${slug}`} ref={frameRef} title={t("pageFrame.yourPage")} src={`/s/${encodeURIComponent(slug)}?heroPreview=1`} tabIndex={-1}
             style={{ width: v.w, height: v.h, border: 0, transform: `scale(${scale})`, transformOrigin: '0 0', pointerEvents: 'none', display: 'block' }} />
         )}
         {(!ready || !slug) && (
           <span role="status" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0c0d10', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600 }}>
-            Loading your page...
+            {t("pageFrame.loadingYourPage")}
           </span>
         )}
       </div>

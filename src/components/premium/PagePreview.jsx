@@ -2,6 +2,7 @@ import React from "react";
 import { cdnImg } from "../../utils/img";
 import { coverObjectPosition } from "../../utils/coverFocus";
 import { chosenPageColor, PAGE_COLOR_DEFAULT, gradientTheme } from "../../utils/pageAccent";
+import { useTranslation } from 'react-i18next';
 
 // Lite vs Premium, drawn as the seller's OWN page side by side (owner,
 // 2026-10-22: "both feel the same"). Every Premium tool works on leads, and a
@@ -27,6 +28,7 @@ function Slot({ label, h = 22 }) {
 }
 
 function CarTile({ car }) {
+  const { t } = useTranslation();
   const img = Array.isArray(car?.images) ? car.images.find(Boolean) : null;
   const title = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "";
   const price = car?.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "";
@@ -35,13 +37,14 @@ function CarTile({ car }) {
       <div style={{ aspectRatio: "4 / 3", borderRadius: 4, background: "#f3f4f6", overflow: "hidden" }}>
         {img && <img src={cdnImg(img, 200)} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
       </div>
-      <p style={{ margin: "3px 0 0", fontSize: 8.5, color: INK, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title || "Your car"}</p>
+      <p style={{ margin: "3px 0 0", fontSize: 8.5, color: INK, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title || t("pagePreview.yourCar")}</p>
       {price && <p style={{ margin: 0, fontSize: 8.5, color: MUTED }}>{price}</p>}
     </div>
   );
 }
 
 function MiniPage({ profile, cars, full }) {
+  const { t } = useTranslation();
   const name = profile?.full_name || "Your name";
   const initials = name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   // Premium wears the seller's gradient (pageAccent.js); the DB default gold is
@@ -56,7 +59,7 @@ function MiniPage({ profile, cars, full }) {
       {full ? (
         profile?.cover_url
           ? <img src={cdnImg(profile.cover_url, 400)} alt="" style={{ width: "100%", height: 44, objectFit: "cover", objectPosition: coverObjectPosition(profile.cover_url), display: "block" }} />
-          : <div style={{ height: 44, background: banner, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, color: "rgb(255 255 255 / .85)" }}>Your banner</div>
+          : <div style={{ height: 44, background: banner, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, color: "rgb(255 255 255 / .85)" }}>{t("pagePreview.yourBanner")}</div>
       ) : (
         <div style={{ height: 14 }} />
       )}
@@ -71,15 +74,15 @@ function MiniPage({ profile, cars, full }) {
           <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
             {profile?.job_title
               ? <p style={{ margin: 0, fontSize: 8.5, color: MUTED }}>{profile.job_title}</p>
-              : <Slot label="Your job title" h={14} />}
+              : <Slot label={t("pagePreview.yourJobTitle")} h={14} />}
             {profile?.bio
               ? <p style={{ margin: 0, fontSize: 8.5, color: MUTED, lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{profile.bio}</p>
-              : <Slot label="Your bio: why buy from you" h={24} />}
+              : <Slot label={t("pagePreview.yourBioWhyBuyFrom")} h={24} />}
             <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
               {(socials.length ? socials : ["instagram", "tiktok", "facebook"]).map((k) => (
                 <span key={k} style={{ width: 12, height: 12, borderRadius: "50%", background: socials.length ? INK : "transparent", border: socials.length ? "none" : `1px dashed ${LINE}` }} />
               ))}
-              <span style={{ fontSize: 8, color: "#9ca3af", marginLeft: 2 }}>Social links</span>
+              <span style={{ fontSize: 8, color: "#9ca3af", marginLeft: 2 }}>{t("pagePreview.socialLinks")}</span>
             </div>
           </div>
         )}
@@ -91,7 +94,7 @@ function MiniPage({ profile, cars, full }) {
         {/* The basic page's footer advertises a free page of their own to every buyer. */}
         {!full && (
           <p style={{ margin: "8px 0 0", paddingTop: 6, borderTop: `1px solid ${LINE}`, fontSize: 8, color: MUTED, lineHeight: 1.35 }}>
-            Selling cars? <span style={{ textDecoration: "underline" }}>Get your own page free</span>
+            {t("pagePreview.sellingCars")} <span style={{ textDecoration: "underline" }}>{t("pagePreview.getYourOwnPageFree")}</span>
           </p>
         )}
       </div>
@@ -100,20 +103,21 @@ function MiniPage({ profile, cars, full }) {
 }
 
 export default function PagePreview({ profile, cars = [] }) {
+  const { t } = useTranslation();
   const live = cars.filter((c) => c && (c.status === "available" || c.status === "reserved"));
   const label = { margin: "0 0 6px", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" };
   return (
     <div>
       <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
-        What buyers see on your page:
+        {t("pagePreview.whatBuyersSeeOnYour")}
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <p style={{ ...label, color: "#6b7280" }}>Lite, now</p>
+          <p style={{ ...label, color: "#6b7280" }}>{t("pagePreview.liteNow")}</p>
           <MiniPage profile={profile} cars={live} full={false} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <p style={{ ...label, color: "#f87171" }}>Premium</p>
+          <p style={{ ...label, color: "#f87171" }}>{t("pagePreview.premium")}</p>
           <MiniPage profile={profile} cars={live} full />
         </div>
       </div>

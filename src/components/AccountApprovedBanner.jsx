@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 const ENTER_DELAY_MS = 1600;
 
@@ -24,6 +25,7 @@ const ENTER_DELAY_MS = 1600;
  * instead of popping in static and immediate.
  */
 export default function AccountApprovedBanner({ notification, onDismiss }) {
+  const { t } = useTranslation();
   const [entered, setEntered] = useState(false);
   const notificationId = notification?.id;
   const isRead = notification?.is_read;
@@ -69,16 +71,16 @@ export default function AccountApprovedBanner({ notification, onDismiss }) {
         <CheckCircle2 size={16} style={{ color: "#4ade80", flexShrink: 0, marginTop: 1 }} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "#f1f5f9" }}>
-            {notification.title || "Your account has been approved"}
+            {notification.title || t("approved.yourAccountHasBeenApproved")}
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
-            {notification.body || "Your account has been approved. Your listings will be reviewed individually before they go live."}
+            {notification.body || t("approved.yourAccountHasBeenApproved2")}
           </p>
         </div>
         <button
           type="button"
           onClick={() => onDismiss(notification.id)}
-          aria-label="Dismiss"
+          aria-label={t("approved.dismiss")}
           style={{
             background: "none",
             border: "none",

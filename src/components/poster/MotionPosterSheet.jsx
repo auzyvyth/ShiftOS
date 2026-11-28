@@ -18,6 +18,7 @@ import { fetchDataUrl, loadImg } from '../../utils/posterImage';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { premiumDark as P } from '../../theme/tokens';
 import { drawMotionFrame, MOTION_H, MOTION_W, TEMPLATE_LEN } from './motionPoster';
+import { useTranslation } from 'react-i18next';
 
 // The five designs. `tpl` is the renderer's key.
 export const MOTION_DESIGNS = [
@@ -53,6 +54,7 @@ async function fixMp4Duration(blob) {
 }
 
 export default function MotionPosterSheet({ car, seller, onClose }) {
+  const { t: tr } = useTranslation();
   useModalHistory(true, onClose);
   const [design, setDesign] = useState(null); // picked once the photos load
   const [lang, setLang] = useState(readLang);
@@ -220,13 +222,13 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
       <div onClick={(e) => e.stopPropagation()} className="xd-motion-sheet"
         style={{ width: '100%', maxWidth: 880, maxHeight: '94dvh', overflowY: 'auto', background: P.card, color: P.text,
           borderRadius: `${P.radius.card}px ${P.radius.card}px 0 0`, fontFamily: 'var(--xd-font-body)' }}>
-        <style>{'.xd-motion-sheet button, .xd-motion-sheet input { font-family: inherit; }'}</style>
+        <style>{`.xd-motion-sheet button, .xd-motion-sheet input { font-family: inherit; }`}</style>
         <div style={{ position: 'sticky', top: 0, zIndex: 1, background: P.card, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${P.line}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Moving poster</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{tr("motionPoster.movingPoster")}</p>
             <p style={{ margin: 0, fontSize: 12, color: P.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{posterTitle(car)}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: P.raised, color: P.textSec, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} aria-label={tr("motionPoster.close")} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: P.raised, color: P.textSec, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={16} />
           </button>
         </div>
@@ -236,24 +238,24 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
             <div style={{ position: 'relative', width: '100%', maxWidth: 'min(320px, 70vw)', aspectRatio: `${MOTION_W} / ${MOTION_H}`, borderRadius: 12, overflow: 'hidden', background: '#000', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
               <canvas ref={canvasRef} width={MOTION_W} height={MOTION_H} style={{ width: '100%', height: '100%', display: 'block' }} />
               {(!imgs || !design) && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: P.textSec, fontSize: 13 }}>Loading photos...</div>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: P.textSec, fontSize: 13 }}>{tr("motionPoster.loadingPhotos")}</div>
               )}
               {imgs && imgs.length === 0 && (
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, background: 'rgba(0,0,0,0.7)', color: P.textSec, fontSize: 12, textAlign: 'center' }}>This car has no photos yet. Add some in Edit.</div>
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, background: 'rgba(0,0,0,0.7)', color: P.textSec, fontSize: 12, textAlign: 'center' }}>{tr("motionPoster.thisCarHasNoPhotos")}</div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 'min(320px, 70vw)' }}>
-              <button onClick={() => setStartAt(performance.now())} disabled={!!rec} style={{ ...pill(false), flex: 1, opacity: rec ? 0.5 : 1 }}>Play again</button>
+              <button onClick={() => setStartAt(performance.now())} disabled={!!rec} style={{ ...pill(false), flex: 1, opacity: rec ? 0.5 : 1 }}>{tr("motionPoster.playAgain")}</button>
               <button data-tour-id="motion-download" onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
                 style={{ ...pill(false), flex: 1.4, background: P.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: (!imgs || !design || !numbers.ok) ? 0.5 : 1 }}>
-                <Download size={14} /> {rec ? `Recording ${rec.left}s` : 'Download video'}
+                <Download size={14} /> {rec ? tr("motionPoster.recording", { s: rec.left }) : tr("motionPoster.downloadVideo")}
               </button>
             </div>
-            {rec && <p style={{ margin: 0, fontSize: 12, color: P.textMuted, textAlign: 'center', maxWidth: 320 }}>Keep this screen open until it finishes.</p>}
+            {rec && <p style={{ margin: 0, fontSize: 12, color: P.textMuted, textAlign: 'center', maxWidth: 320 }}>{tr("motionPoster.keepThisScreenOpenUntil")}</p>}
             {saved && !saved.error && (
               <p style={{ margin: 0, fontSize: 12, color: saved.ext === 'mp4' ? P.textSec : P.accentText, textAlign: 'center', maxWidth: 320, lineHeight: 1.45 }}>
-                Saved as {saved.ext.toUpperCase()}, {saved.mb} MB, {saved.secs}s.
-                {saved.ext !== 'mp4' && ' This browser only makes WebM, which iPhone WhatsApp will not play. Use Chrome or Safari for MP4.'}
+                {tr("motionPoster.savedAs")} {saved.ext.toUpperCase()}, {saved.mb} MB, {saved.secs}s.
+                {saved.ext !== 'mp4' && tr("motionPoster.thisBrowserOnlyMakesWebm")}
               </p>
             )}
             {saved?.error && <p style={{ margin: 0, fontSize: 12, color: P.accentText, textAlign: 'center', maxWidth: 320 }}>{saved.error}</p>}
@@ -261,7 +263,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
 
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: P.textSec, marginBottom: 6 }}>Design</span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: P.textSec, marginBottom: 6 }}>{tr("motionPoster.design")}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {MOTION_DESIGNS.map((d, i) => (
                   <button key={d.key} onClick={() => pick(d.key)} disabled={!!rec} style={pill(design === d.key)}>{i + 1} · {d.label}</button>
@@ -276,7 +278,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
             </div>
             {!numbers.ok && <p style={{ margin: 0, fontSize: 12.5, color: P.accentText }}>{POSTER_ERRORS[numbers.error]}</p>}
             {field('Headline', headline, setHeadline, { maxLength: 40 })}
-            {field('Offer (leave empty to hide)', offer, setOffer, { maxLength: 40, placeholder: 'e.g. Free tinted + 1 year warranty' })}
+            {field('Offer (leave empty to hide)', offer, setOffer, { maxLength: 40, placeholder: tr("motionPoster.eGFreeTinted1") })}
             {field('Your name', name, setName, { maxLength: 40 })}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ flex: 1 }} />

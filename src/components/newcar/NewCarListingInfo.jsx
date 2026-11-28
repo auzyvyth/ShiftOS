@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { BadgeCheck } from "lucide-react";
 import { publicClient } from "../../supabaseClient";
 import { priceBasis, payWarning, rm } from "../../utils/newCars";
+import { useTranslation } from 'react-i18next';
 
 // NEWCAR-1: what the car page shows under a new-car advisor's CARD
 // (car_listings.new_car_model_id). One read, get_new_car_listing_info, which
@@ -196,9 +197,10 @@ export function pickNewCarVariant(listingId, modelId) {
 // with no variant name and nothing to tap. One picker only; this panel's specs
 // follow it through the shared store above.
 export function VariantChips({ variants, current, onPick, th }) {
+  const { t: tr } = useTranslation();
   if (!variants || variants.length < 2) return null;
   return (
-    <div role="radiogroup" aria-label="Variant" style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0 4px" }}>
+    <div role="radiogroup" aria-label={tr("newCarInfo.variant")} style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0 4px" }}>
       {variants.map((v) => {
         const on = v.model_id === current?.model_id;
         return (
@@ -216,6 +218,7 @@ export function VariantChips({ variants, current, onPick, th }) {
 }
 
 export default function NewCarListingInfo({ listingId, sellerName, th }) {
+  const { t: tr } = useTranslation();
   const raw = useNewCarInfo(listingId);
   const { current } = useNewCarVariant(listingId, raw);
   if (!raw) return null;
@@ -237,18 +240,18 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
 
   return (
     <div style={{ marginTop: 32, paddingTop: 28, borderTop: `1px solid ${th.border}` }}>
-      <p style={label}>New {info.brand}</p>
+      <p style={label}>{tr("newCarInfo.newBrand", { brand: info.brand })}</p>
       <div style={{ ...box, padding: "16px 18px" }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: th.text, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          {sellerName || "This seller"} is a {info.brand} sales advisor
+          {tr("newCarInfo.isAdvisor", { name: sellerName || tr("newCarInfo.thisSeller"), brand: info.brand })}
           {info.advisor_verified && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "#15803d" }}>
-              <BadgeCheck size={14} /> Verified by Drevo
+              <BadgeCheck size={14} /> {tr("newCarInfo.verifiedByDrevo")}
             </span>
           )}
         </p>
         <p style={{ margin: "8px 0 0", fontSize: 13, color: th.textSec, lineHeight: 1.6 }}>
-          Brand new, 0 km. The price is {info.brand}'s own price list, not set by {first}, and Drevo updates it when {info.brand} changes it.
+          {tr("newCarInfo.priceNote", { brand: info.brand, first })}
           {" "}{priceBasis(info.price_zone, info.effective_from)}
         </p>
       </div>
@@ -279,17 +282,17 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
       ))}
       {colours.length > 0 && (
         <p style={{ margin: "16px 0 0", fontSize: 13, color: th.textSec, lineHeight: 1.6 }}>
-          <strong style={{ color: th.text, fontWeight: 600 }}>Colours for this variant:</strong> {colours.join(", ")}
+          <strong style={{ color: th.text, fontWeight: 600 }}>{tr("newCarInfo.coloursForThisVariant")}</strong> {colours.join(", ")}
         </p>
       )}
       {(specs.length > 0 || safety.length > 0) && (
         <p style={{ margin: "10px 0 0", fontSize: 12, color: th.textMuted, lineHeight: 1.6 }}>
-          {`Specs as published for this variant${srcHost ? ` (source: ${srcHost}${checked ? `, checked ${checked}` : ""})` : ""}.`}
-          {" "}{info.brand} can change equipment, so confirm with {first} before you book.
+          {tr("newCarInfo.specsAsPublished", { source: srcHost ? tr("newCarInfo.specsSource", { host: srcHost, checked: checked ? tr("newCarInfo.specsChecked", { date: checked }) : "" }) : "" })}
+          {" "}{tr("newCarInfo.equipNote", { brand: info.brand, first })}
         </p>
       )}
 
-      <p style={{ ...label, marginTop: 24 }}>How buying new works</p>
+      <p style={{ ...label, marginTop: 24 }}>{tr("newCarInfo.howBuyingNewWorks")}</p>
       <ol style={{ ...box, margin: 0, padding: "6px 18px", listStyle: "none" }}>
         {STEPS.map(([h, d], i) => (
           <li key={h} style={{ display: "flex", gap: 12, padding: "10px 0", borderTop: i ? `1px solid ${th.borderSec}` : "none" }}>
@@ -305,7 +308,7 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
 
       {others.length > 0 && (
         <>
-          <p style={{ ...label, marginTop: 24 }}>More from {first}</p>
+          <p style={{ ...label, marginTop: 24 }}>{tr("newCarInfo.moreFrom", { first })}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {others.map((o) => (
               <Link key={o.id} to={`/showroom/${o.slug || o.id}`}

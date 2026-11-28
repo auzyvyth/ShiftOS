@@ -4,6 +4,7 @@ import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { useStarterModels } from '../components/newcar/StarterModelPicker';
 import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
@@ -146,6 +147,7 @@ const TIERS = {
 
 export default function SalesmanOnboarding() {
   // AUTH-6: signUp and resend both hit captcha-guarded auth endpoints.
+  const { t } = useTranslation();
   const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
@@ -248,11 +250,11 @@ export default function SalesmanOnboarding() {
   // Mirror Supabase's password policy (8+ chars + one of each class) so users
   // never hit an opaque server-side rejection on sign-up.
   const pwChecks = [
-    { label: 'At least 8 characters', ok: form.password.length >= 8 },
-    { label: 'A lowercase letter (a-z)', ok: /[a-z]/.test(form.password) },
-    { label: 'An uppercase letter (A-Z)', ok: /[A-Z]/.test(form.password) },
-    { label: 'A number (0-9)', ok: /[0-9]/.test(form.password) },
-    { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
+    { label: t('onboard.atLeast8Characters'), ok: form.password.length >= 8 },
+    { label: t('onboard.aLowercaseLetterAZ'), ok: /[a-z]/.test(form.password) },
+    { label: t('onboard.anUppercaseLetterAZ'), ok: /[A-Z]/.test(form.password) },
+    { label: t('onboard.aNumber09'), ok: /[0-9]/.test(form.password) },
+    { label: t('signup.aSymbol'), ok: /[^a-zA-Z0-9]/.test(form.password) },
   ];
   const pwValid = pwChecks.every(c => c.ok);
   const pwMatch = form.password.length > 0 && form.password === form.confirmPassword;
@@ -374,8 +376,8 @@ export default function SalesmanOnboarding() {
 
   const signUp = async () => {
     setErr('');
-    if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
-    if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
+    if (!pwValid) { setErr(t('signup.errPwPolicy')); return; }
+    if (form.password !== form.confirmPassword) { setErr(t('signup.errPwMismatch')); return; }
     setLoading(true);
     try {
       // Persist onboarding context so the post-confirmation callback (which runs
@@ -405,7 +407,7 @@ export default function SalesmanOnboarding() {
       // when the email is already registered — anti-enumeration. Detect it so we
       // don't silently advance into a broken signup.
       if (data?.user && (data.user.identities?.length ?? 0) === 0) {
-        setErr('An account with this email already exists. Please log in instead.');
+        setErr(t('signup.errExists'));
         return;
       }
       // Email confirmation is required — Supabase returns a user but no session,
@@ -454,8 +456,8 @@ export default function SalesmanOnboarding() {
   // saved here (it's their display identity, low-sensitivity).
   const skipIdentity = async () => {
     setErr('');
-    if (!form.fullName.trim()) { setErr('Full name is required'); return; }
-    if (form.sells.includes('new_car') && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
+    if (!form.fullName.trim()) { setErr(t('signup.errName')); return; }
+    if (form.sells.includes('new_car') && !form.newCarBrand) { setErr(t('signup.errBrand')); return; }
     setLoading(true);
     try {
       if (userId) {
@@ -480,13 +482,13 @@ export default function SalesmanOnboarding() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setErr('Please pick a photo (JPG or PNG).'); return; }
+    if (!file.type.startsWith('image/')) { setErr(t('signup.errPhotoType')); return; }
     setErr('');
     try {
       const blob = await compressImageFile(file, { maxDim: 800 });
       setAvatarBlob(blob);
       setAvatarPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
-    } catch { setErr('That photo could not be read. Try another one.'); }
+    } catch { setErr(t('signup.errPhotoRead')); }
   };
 
   const checkSlug = async (slug) => {
@@ -516,7 +518,7 @@ export default function SalesmanOnboarding() {
     setErr('');
     // If an IC was provided (here or at the identity step), enforce 18+ from it.
     if (form.icNumber && isAdultFromIC(form.icNumber) === false) {
-      setErr('You must be at least 18 years old to sell on Drevo.');
+      setErr(t('signup.errAge'));
       return;
     }
     setLoading(true);
@@ -593,7 +595,7 @@ export default function SalesmanOnboarding() {
       // handle step with a plain message, never the raw constraint name.
       if (/profiles_slug_unique/.test(e.message || '')) {
         setSlugTaken(true); setSlugCheckedFor(form.slug); setStep(4);
-        setErr('That page link was just taken. Pick another one.');
+        setErr(t('signup.errTaken'));
       } else setErr(e.message);
     } finally {
       setLoading(false);
@@ -620,19 +622,19 @@ export default function SalesmanOnboarding() {
             <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
           <div className="eo-heading" style={{ textAlign: 'center' }}>
-            {resumeIsBuyer ? 'Continue with this email?' : 'Welcome back'}
+            {resumeIsBuyer ? t('signup.continueEmailQ') : t('signup.welcomeBack')}
           </div>
           <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 4, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'Your Drevo account is signed in as' : 'You have an unfinished sign-up as'}
+            {resumeIsBuyer ? t('onboard.yourDrevoAccountIsSigned') : t('signup.unfinished')}
           </p>
           <p style={{ color: '#111827', fontWeight: 600, fontSize: 15, marginBottom: 28, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : (draftStep.current || 2)); }}>
-            {resumeIsBuyer ? 'Continue with this email' : 'Continue sign-up'}
+            {resumeIsBuyer ? t('signup.continueEmail') : t('signup.continueSignup')}
           </button>
-          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'Use another email' : 'Use a different account'}</button>
+          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? t('signup.useOtherEmail') : t('signup.useOtherAccount')}</button>
           {!resumeIsBuyer && (
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13 }}>
-              <a href="/login" className="eo-link">Sign in to an existing account</a>
+              <a href="/login" className="eo-link">{t('signup.signInExisting')}</a>
             </p>
           )}
         </div>
@@ -648,16 +650,16 @@ export default function SalesmanOnboarding() {
           <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 24 }}>
             <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
-          <div className="eo-heading" style={{ textAlign: 'center' }}>Check your email</div>
-          <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
+          <div className="eo-heading" style={{ textAlign: 'center' }}>{t('signup.checkEmail')}</div>
+          <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 4, textAlign: 'center' }}>{t('onboard.weSentAConfirmationLink')}</p>
           <p style={{ color: '#111827', fontWeight: 600, fontSize: 15, marginBottom: 20, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 20, textAlign: 'center', lineHeight: 1.6 }}>
-            Click the link to verify your account — it'll bring you straight back here to finish signing up.
+            {t('onboard.clickTheLinkToVerify')}
           </p>
-          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>Resend email</button>
+          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>{t('signup.resend')}</button>
           {resendMsg && <div className="eo-hint" style={{ textAlign: 'center', marginTop: 10 }}>{resendMsg}</div>}
           <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13 }}>
-            <a href="/login" className="eo-link">Sign in to an existing account</a>
+            <a href="/login" className="eo-link">{t('signup.signInExisting')}</a>
           </p>
         </div>
       </div>
@@ -685,8 +687,8 @@ export default function SalesmanOnboarding() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>}
-        <div className="eo-done-title">Tahniah, page anda dah siap!</div>
-        <p className="eo-done-sub">Opening your dashboard...</p>
+        <div className="eo-done-title">{t('signup.doneTitle')}</div>
+        <p className="eo-done-sub">{t('signup.doneSub')}</p>
       </div>
     </>
   );
@@ -697,11 +699,11 @@ export default function SalesmanOnboarding() {
   // A short, friendly line per step (Malay, the way sellers talk). It names where they are,
   // so the form feels like a conversation and not a form.
   const HELLO = [
-    'Hai, selamat datang ke Drevo!',
-    'Jom, buat akaun dulu.',
-    'Hampir siap!! Ceritalah sikit pasal diri anda.',
-    'Satu lagi je, nombor WhatsApp anda.',
-    'Last sekali! Pilih nama page anda.',
+    t('signup.hello0'),
+    t('signup.hello1'),
+    t('signup.hello2'),
+    t('signup.hello3'),
+    t('signup.hello4'),
   ][step] || '';
 
   return (
@@ -715,22 +717,22 @@ export default function SalesmanOnboarding() {
           </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="eo-plan-badge">{tier === 'premium' ? 'Premium' : 'Lite'}</span>
-            <button type="button" className="eo-changeplan" onClick={() => setShowPlans(true)}>Change plan</button>
+            <button type="button" className="eo-changeplan" onClick={() => setShowPlans(true)}>{t('onboard.changePlan')}</button>
           </div>
         </div>
         <div className="eo-main">
           <div className="eo-progress-track">
             <div className="eo-progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
-          <p className="eo-stepline">Step {step + 1} of {STEPS.length}</p>
+          <p className="eo-stepline">{t('signup.stepOf', { n: step + 1, total: STEPS.length })}</p>
           <div className="eo-form" key={step} onKeyDown={advanceOnEnter}>
             {HELLO && <div className="eo-hello" role="status">{HELLO}</div>}
 
             {step === 0 && (
               <>
-                <p className="eo-eyebrow">Required by PDPA 2010</p>
-                <div className="eo-heading">Before we start</div>
-                <p className="eo-sub">{cfg.price === 'FREE' ? 'Free to start. No card needed.' : 'No card needed to start.'} Read the terms below and tick to continue.</p>
+                <p className="eo-eyebrow">{t('signup.pdpa')}</p>
+                <div className="eo-heading">{t('signup.beforeStart')}</div>
+                <p className="eo-sub">{cfg.price === 'FREE' ? t('signup.freeStart') : t('signup.noCardStart')} {t('signup.readTerms')}</p>
                 <div className="eo-features">
                   {cfg.features.slice(0, 4).map((f, i) => <span key={i} className="eo-feature-pill">{f}</span>)}
                 </div>
@@ -741,22 +743,22 @@ export default function SalesmanOnboarding() {
                 </div>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} />
-                  <span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and Data Processing Agreement.</span>
+                  <span>{t("onboard.iHaveReadAndAgree")} <a href="/terms" target="_blank" rel="noopener noreferrer">{t("onboard.termsOfService")}</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">{t("onboard.privacyPolicy")}</a> {t("onboard.andDataProcessingAgreement")}</span>
                 </label>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)} />
-                  <span>I consent to Drevo collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
+                  <span>{t("onboard.iConsentToDrevoCollecting")}</span>
                 </label>
                 <button className="eo-btn" onClick={agreeLegal} disabled={!agreeTerms || !agreePdpa}>
-                  I agree, continue
+                  {t('signup.agree')}
                 </button>
               </>
             )}
 
             {step === 1 && (
               <>
-                <div className="eo-heading">Create your account</div>
-                <p className="eo-sub">Use Google, or your email and a password.</p>
+                <div className="eo-heading">{t('signup.createYourAccount')}</div>
+                <p className="eo-sub">{t('signup.useGoogleOrEmail')}</p>
                 <button className="eo-ghost" style={{ marginTop: 0 }} onClick={signInWithGoogle} disabled={loading}>
                   <svg width="17" height="17" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -764,19 +766,19 @@ export default function SalesmanOnboarding() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  Continue with Google
+                  {t('signup.google')}
                 </button>
-                <div className="eo-divider">or</div>
-                <label className="eo-label">Email</label>
+                <div className="eo-divider">{t('signup.or')}</div>
+                <label className="eo-label">{t('signup.email')}</label>
                 <input className="eo-inp" type="email" placeholder="you@example.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
-                <label className="eo-label">Password</label>
+                <label className="eo-label">{t('signup.password')}</label>
                 <div style={{ position: 'relative' }}>
-                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Create a strong password" value={form.password}
+                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t('onboard.createAStrongPassword')} value={form.password}
                     onChange={e => upd('password')(e.target.value)} autoComplete="new-password" style={{ paddingRight: 62 }} />
                   <button type="button" onClick={() => setShowPw(v => !v)} tabIndex={-1}
                     style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {showPw ? 'Hide' : 'Show'}
+                    {showPw ? t('onboard.hide') : t('onboard.show')}
                   </button>
                 </div>
                 {form.password.length > 0 && !pwValid && (
@@ -793,37 +795,36 @@ export default function SalesmanOnboarding() {
                     ))}
                   </div>
                 )}
-                <label className="eo-label">Confirm password</label>
-                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Re-enter your password" value={form.confirmPassword}
+                <label className="eo-label">{t('signup.confirmPw')}</label>
+                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t('onboard.reEnterYourPassword')} value={form.confirmPassword}
                   onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
                 {form.confirmPassword.length > 0 && !pwMatch && (
-                  <div className="eo-hint" style={{ color: '#b91c1c', marginTop: 6 }}>Passwords don't match</div>
+                  <div className="eo-hint" style={{ color: '#b91c1c', marginTop: 6 }}>{t('onboard.passwordsDonTMatch')}</div>
                 )}
                 {guestNotice && (
                   <div className="eo-hint" style={{ marginTop: 12 }}>
-                    You were browsing as a guest. Selling needs a real account with
-                    an email and password, so you can sign back in later.
+                    {t('onboard.youWereBrowsingAsA')}
                   </div>
                 )}
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
-                  {loading ? 'Creating account...' : 'Create account'}
+                  {loading ? t('signup.creating') : t('signup.createAccount')}
                 </button>
                 <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: '#6b7280' }}>
-                  Already have an account?{' '}
-                  <a href="/login" className="eo-link">Sign in</a>
+                  {t('onboard.alreadyHaveAnAccount')}{' '}
+                  <a href="/login" className="eo-link">{t('onboard.signIn')}</a>
                 </p>
               </>
             )}
 
             {step === 2 && (
               <>
-                <div className="eo-heading">About you</div>
+                <div className="eo-heading">{t('signup.aboutYou')}</div>
                 <p className="eo-sub">
-                  Your full name stays private. Buyers see the page name you pick on the last step.
+                  {t('signup.aboutSub')}
                 </p>
 
-                <label className="eo-label" style={{ marginTop: 0 }}>How do you sell cars? Pick one or two</label>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.howSell')}</label>
                 <div className="eo-chips">
                   {SELLS_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}
@@ -835,7 +836,7 @@ export default function SalesmanOnboarding() {
                 </div>
                 {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
-                    <label className="eo-label" style={{ marginTop: 10 }}>Which brand do you sell?</label>
+                    <label className="eo-label" style={{ marginTop: 10 }}>{t('signup.whichBrand')}</label>
                     <div className="eo-chips">
                       {NEW_CAR_BRANDS.map((b) => {
                         const on = form.newCarBrand === b;
@@ -849,74 +850,74 @@ export default function SalesmanOnboarding() {
                     </div>
                     {starterModels?.length ? (
                       <p className="eo-hint" style={{ marginTop: 10 }}>
-                        Every {form.newCarBrand} model ({starterModels.length}) goes on your page with photos, ready to share. The official price for your area fills in by itself. Take off any you don't sell, or add your own photos, any time from Settings.
+                        {t('signup.brandAuto', { brand: form.newCarBrand, count: starterModels.length })}
                       </p>
                     ) : (
                       <p className="eo-hint" style={{ marginTop: 6 }}>
-                        You add the {form.newCarBrand || 'brand'} models you sell from Add car. The official price for your area fills in by itself.
+                        {t('signup.brandManual', { brand: form.newCarBrand || '' })}
                       </p>
                     )}
                   </div>
                 ) : (
                 <p className="eo-hint" style={{ marginBottom: 18 }}>
-                  Already work at a dealership? Ask them to send you an invite instead. Your dealership then shows on your page, verified.
+                  {t('signup.dealerNote')}
                 </p>
                 )}
 
-                <label className="eo-label">Full name (as per IC), kept private</label>
-                <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
+                <label className="eo-label">{t('signup.fullName')}</label>
+                <input className="eo-inp" type="text" placeholder={t('onboard.ahmadBinAbdullah')} value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={skipIdentity}
                   disabled={loading || !form.fullName.trim()}>
-                  {loading ? 'Saving...' : 'Continue'}
+                  {loading ? t('signup.saving') : t('signup.continue')}
                 </button>
               </>
             )}
 
             {step === 3 && (
               <>
-                <div className="eo-heading">Your WhatsApp number</div>
-                <p className="eo-sub">Buyers tap a WhatsApp button to reach you. Your number is not printed on the page.</p>
-                <label className="eo-label" style={{ marginTop: 0 }}>WhatsApp / mobile number</label>
+                <div className="eo-heading">{t('signup.waHeading')}</div>
+                <p className="eo-sub">{t('signup.waSub')}</p>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.waLabel')}</label>
                 <PhoneInput mobileOnly className="eo-inp" value={form.phone} onChange={upd('phone')} />
-                <p className="eo-hint">Malaysian numbers only (+60). We also use it for account alerts.</p>
+                <p className="eo-hint">{t('signup.waHint')}</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn"
                   onClick={() => { setErr(''); setStep(4); }}
                   disabled={!isValidMyPhone(form.phone, { mobileOnly: true })}>
-                  Continue
+                  {t('signup.continue')}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(2); }}>
-                  Back
+                  {t('signup.back')}
                 </button>
               </>
             )}
 
             {step === 4 && (
               <>
-                <div className="eo-heading">Pick your page name</div>
-                <p className="eo-sub">This is the name buyers see, and your page link. Your full name is not shown.</p>
-                <label className="eo-label" style={{ marginTop: 0 }}>Page name</label>
+                <div className="eo-heading">{t('signup.pageHeading')}</div>
+                <p className="eo-sub">{t('signup.pageSub')}</p>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.pageLabel')}</label>
                 <div className="eo-slug-wrap">
                   <input className="eo-inp" type="text" placeholder="e.g. sirhonda" value={form.slug}
                     onChange={e => handleSlugChange(e.target.value)} style={{ paddingRight: 96 }} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
                   {form.slug.length >= 3 && (
                     <span className="eo-slug-status" style={{ color: slugTaken ? '#b91c1c' : slugChecking ? '#9ca3af' : '#15803d' }}>
-                      {slugChecking ? 'Checking' : slugTaken ? 'Taken' : 'Available'}
+                      {slugChecking ? t('signup.checking') : slugTaken ? t('signup.taken') : t('signup.available')}
                     </span>
                   )}
                 </div>
-                <p className="eo-hint">Letters and numbers only, 3 to 20. You can't change it later, so pick one buyers will remember.</p>
+                <p className="eo-hint">{t('signup.pageHint')}</p>
                 <div className="eo-preview">
-                  <button type="button" className="eo-preview-av" onClick={() => avatarInput.current?.click()} aria-label="Add a profile photo">
+                  <button type="button" className="eo-preview-av" onClick={() => avatarInput.current?.click()} aria-label={t('signup.addPhotoAria')}>
                     {avatarPreview ? <img src={avatarPreview} alt="" /> : (form.slug[0] || 'D').toUpperCase()}
                   </button>
                   <div style={{ minWidth: 0 }}>
                     <div className="eo-preview-name">{form.slug || 'yourname'}</div>
                     <div className="eo-preview-sub">drevo.my/s/{form.slug || 'yourname'}</div>
                     <button type="button" className="eo-preview-add" onClick={() => avatarInput.current?.click()}>
-                      {avatarPreview ? 'Change photo' : 'Add a photo (optional)'}
+                      {avatarPreview ? t('signup.changePhoto') : t('signup.addPhoto')}
                     </button>
                   </div>
                   <input ref={avatarInput} type="file" accept="image/*" onChange={pickAvatar} style={{ display: 'none' }} />
@@ -924,33 +925,33 @@ export default function SalesmanOnboarding() {
                 {/* Public: this is the page header, the Google title and the advisor
                     list. People typed their HOME here (owner, 2026-10-23), so it
                     asks for where buyers meet them. */}
-                <label className="eo-label">State where you sell</label>
+                <label className="eo-label">{t('signup.stateLabel')}</label>
                 <select className="eo-select" value={form.state}
                   onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
-                  <option value="">Select state</option>
+                  <option value="">{t('onboard.selectState')}</option>
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
-                  Area where you sell <span style={{ color: '#9ca3af', fontWeight: 500 }}>(optional)</span>
+                  {t('signup.areaLabel')} <span style={{ color: '#9ca3af', fontWeight: 500 }}>{t('signup.optional')}</span>
                 </label>
                 <select className="eo-select" value={form.city} disabled={!form.state}
                   onChange={e => upd('city')(e.target.value)}>
-                  <option value="">{form.state ? 'Select city / area' : 'Select a state first'}</option>
+                  <option value="">{form.state ? t('onboard.selectCityArea') : t('onboard.selectAStateFirst')}</option>
                   {cityOptionsFor(form.state, form.city).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <p className="eo-hint">Your showroom or office, where buyers meet you. Shown on your page and on Google, so never your home.</p>
+                <p className="eo-hint">{t('onboard.yourShowroomOrOfficeWhere')}</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" disabled={!canSlugContinue || loading} onClick={activate}>
-                  {loading ? 'Creating your page...' : 'Create my page'}
+                  {loading ? t('signup.creatingPage') : t('signup.createPage')}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(3); }} disabled={loading}>
-                  Back
+                  {t('signup.back')}
                 </button>
                 <p className="eo-hint" style={{ textAlign: 'center', marginTop: 16 }}>
                   {tier === 'premium'
-                    ? 'Premium is free for 7 days, no card. After that you stay on free Lite unless you choose to pay.'
-                    : 'Free, no card.'}{' '}
-                  By continuing you agree to our Terms, Privacy Policy and DPA.
+                    ? t('signup.trialLine')
+                    : t('signup.freeLine')}{' '}
+                  {t('signup.agreeLine')}
                 </p>
               </>
             )}

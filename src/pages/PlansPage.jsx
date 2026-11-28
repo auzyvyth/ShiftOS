@@ -104,7 +104,7 @@ export default function PlansPage() {
         {section(
           'For individual salesmen and agents',
           'You sell cars yourself, under your own name. Your cars go live on the marketplace and buyers come straight to you.',
-          salesmanPricingCards('en'),
+          salesmanPricingCards('en', { withPro: true }),
         )}
 
         {section(

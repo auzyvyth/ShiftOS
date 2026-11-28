@@ -1,11 +1,13 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // One plan card, shared by the onboarding PlanPickerModal and the standalone
 // /plans page. It was inlined in the modal; the page needs the exact same card,
 // and two copies of a pricing card is how a price ends up different in two
 // places. Dark-surface styling only — every surface that shows plans is dark.
 export default function PlanCard({ plan, current, onSelect }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       position: 'relative', display: 'flex', flexDirection: 'column',
@@ -15,10 +17,10 @@ export default function PlanCard({ plan, current, onSelect }) {
       opacity: plan.soon ? 0.62 : 1,
     }}>
       {plan.popular && !current && (
-        <span style={{ position: 'absolute', top: -9, left: 18, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Most popular</span>
+        <span style={{ position: 'absolute', top: -9, left: 18, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>{t("planCard.mostPopular")}</span>
       )}
       {plan.soon && (
-        <span style={{ position: 'absolute', top: -9, left: 18, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Coming soon</span>
+        <span style={{ position: 'absolute', top: -9, left: 18, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>{t("planCard.comingSoon")}</span>
       )}
       <p style={{ fontSize: 13, fontWeight: 600, color: '#E8EDF5', letterSpacing: '0.04em' }}>{plan.label}</p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, margin: '8px 0 2px' }}>
@@ -49,7 +51,7 @@ export default function PlanCard({ plan, current, onSelect }) {
           cursor: (current || plan.soon) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
-        {plan.soon ? 'Coming soon' : current ? 'Current plan' : 'Select plan'}
+        {plan.soon ? t("planCard.comingSoon") : current ? t("planCard.currentPlan") : t("planCard.selectPlan")}
       </button>
     </div>
   );

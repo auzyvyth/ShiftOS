@@ -66,11 +66,11 @@ export default function AnalyticsTab({
   const brokerPaid = brokerSold.filter((r) => r.received_at).reduce((s, r) => s + Number(r.commission_amount), 0);
   const brokerOwed = brokerSold.filter((r) => !r.received_at).reduce((s, r) => s + Number(r.commission_amount), 0);
   const brokerState = (r) => {
-    if (r.status === "registered") return { text: "waiting for the dealer to approve", ask: false };
-    if (r.received_at) return { text: `received ${new Date(r.received_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`, ask: false };
-    if (r.not_received_at) return { text: "you said not received, the dealer was told", ask: false, chase: true };
-    if (r.paid_at) return { text: `dealer says paid ${new Date(r.paid_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`, ask: true };
-    return { text: "owed by the dealer", ask: false };
+    if (r.status === "registered") return { text: t("salesmanPremium.bk.waiting"), ask: false };
+    if (r.received_at) return { text: t("salesmanPremium.bk.received", { date: new Date(r.received_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) }), ask: false };
+    if (r.not_received_at) return { text: t("salesmanPremium.bk.notReceivedTold"), ask: false, chase: true };
+    if (r.paid_at) return { text: t("salesmanPremium.bk.dealerPaid", { date: new Date(r.paid_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) }), ask: true };
+    return { text: t("salesmanPremium.bk.owed"), ask: false };
   };
   const [brokerBusy, setBrokerBusy] = useState(null);
   const answerReceived = async (r, received) => {
@@ -670,16 +670,16 @@ export default function AnalyticsTab({
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 18px", background: "transparent", border: "none", borderTop: `1px solid ${PD.line}`, cursor: "pointer", fontFamily: "inherit", color: PD.textSec, fontSize: T.size.base, fontWeight: T.weight.semibold }}
             >
               <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                <span>Commission on dealer cars <b style={{ color: PD.text }}>{money(brokerPaid + brokerOwed)}</b></span>
+                <span>{t("salesmanPremium.bk.header")} <b style={{ color: PD.text }}>{money(brokerPaid + brokerOwed)}</b></span>
                 <span style={{ fontSize: T.size.sm, fontWeight: T.weight.medium, color: PD.textMuted }}>
-                  {brokerPaid > 0 ? `${money(brokerPaid)} received` : ""}{brokerPaid > 0 && brokerOwed > 0 ? " · " : ""}{brokerOwed > 0 ? `${money(brokerOwed)} not yet received` : ""}{brokerSold.length === 0 ? "waiting for the dealer to approve" : ""}
+                  {brokerPaid > 0 ? t("salesmanPremium.bk.receivedAmt", { amount: money(brokerPaid) }) : ""}{brokerPaid > 0 && brokerOwed > 0 ? " · " : ""}{brokerOwed > 0 ? t("salesmanPremium.bk.notYetAmt", { amount: money(brokerOwed) }) : ""}{brokerSold.length === 0 ? t("salesmanPremium.bk.waiting") : ""}
                 </span>
               </span>
               {showBroker ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
             {showBroker && brokerRows.map((r) => {
               const st = brokerState(r);
-              const wa = st.chase && r.dealer_phone ? `https://wa.me/${r.dealer_phone}?text=${encodeURIComponent(`Hi, I have not received the commission for ${r.car_label} yet. Can we settle it?`)}` : null;
+              const wa = st.chase && r.dealer_phone ? `https://wa.me/${r.dealer_phone}?text=${encodeURIComponent(t("salesmanPremium.bk.chaseMsg", { car: r.car_label }))}` : null;
               return (
               <div key={r.id} style={{ padding: "11px 18px", borderTop: `1px solid ${PD.line}`, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -694,14 +694,14 @@ export default function AnalyticsTab({
                 {st.ask && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button type="button" disabled={brokerBusy === r.id} onClick={() => answerReceived(r, true)}
-                      className="lk-red" style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", color: "#fff", fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>Received</button>
+                      className="lk-red" style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", color: "#fff", fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>{t("salesmanPremium.bk.btnReceived")}</button>
                     <button type="button" disabled={brokerBusy === r.id} onClick={() => answerReceived(r, false)}
-                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>Not received</button>
+                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: "none", background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>{t("salesmanPremium.bk.btnNotReceived")}</button>
                   </div>
                 )}
                 {wa && (
                   <a href={wa} target="_blank" rel="noopener noreferrer"
-                    style={{ minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, textDecoration: "none" }}>Settle with the dealer on WhatsApp</a>
+                    style={{ minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: PD.raised, color: PD.text, fontWeight: T.weight.semibold, textDecoration: "none" }}>{t("salesmanPremium.bk.settle")}</a>
                 )}
               </div>
               );

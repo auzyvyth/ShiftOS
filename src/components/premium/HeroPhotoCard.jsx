@@ -10,6 +10,7 @@ import { heroFrame, heroFrameFor, withHeroFrame, heroImageUrl, HERO_SIZE, HERO_S
 import DragSlider from '../studio/DragSlider';
 import PagePreviewFrame from './PagePreviewFrame';
 import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
+import { useTranslation } from 'react-i18next';
 
 // Premium Settings > Hero photo (PAGE-HERO, 2026-11-25). The big photo at the top
 // of the seller's page. The background is removed ON THE PHONE (CUTOUT-1, no
@@ -22,7 +23,8 @@ import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
 
 const MB = Math.round(CUTOUT_MODEL_BYTES / 1e6);
 
-export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
+export default function HeroPhotoCard({ userId, accent = '#DC2626', onAccent = '#fff' }) {
+  const { t } = useTranslation();
   const [saved, setSaved] = useState(undefined);      // undefined = loading, null = none
   const [notReady, setNotReady] = useState(false);    // column/function not live yet
   const [modelSaved, setModelSaved] = useState(true);
@@ -180,17 +182,17 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
-  const main = { ...btn, background: accent, color: '#fff' };
+  const main = { ...btn, background: accent, color: onAccent };
 
   return (
     <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 18 }}>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PD.text }}>Your photo on your page</p>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PD.text }}>{t("heroPhoto.yourPhotoOnYourPage")}</p>
       <p style={{ margin: '4px 0 14px', fontSize: 12.5, lineHeight: 1.5, color: PD.textMuted }}>
-        The big photo of you at the top of your page, the first thing buyers see. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.
+        {t("heroPhoto.theBigPhotoOfYou")}
       </p>
 
-      <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Layout</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }} role="radiogroup" aria-label="Layout">
+      <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>{t("heroPhoto.layout")}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }} role="radiogroup" aria-label={t("heroPhoto.layout")}>
         {[['stage', 'Big photo', 'You on the dark band, a car in front'], ['card', 'Business card', 'Your cars spin on top, round photo']].map(([k, t, d]) => {
           const on = frame.layout === k;
           return (
@@ -205,19 +207,19 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
         })}
       </div>
       {!saved && !preview && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Save a photo first; the layout is saved with it.</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.saveAPhotoFirstThe")}</p>
       )}
       {frame.layout === 'card' && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>The card uses your round profile photo{avatar ? '' : ' (you have none yet, so this photo is used)'}. On top, one brand's cars turn on a ring, three on show at a time. Only cars with a cut-out photo (no background) can go on it: Remove BG in Drevo Studio makes one. With none, the band shows your cover photo{cover ? '' : ' (none yet, so a dark band in your page colour is used)'}.</p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.layoutHint", { avatarNote: avatar ? '' : t("heroPhoto.avatarNote"), coverNote: cover ? '' : t("heroPhoto.coverNote") })}</p>
       )}
       {frame.layout === 'card' && (() => {
-        if (ringAll === null) return <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>Checking your car photos...</p>;
+        if (ringAll === null) return <p style={{ margin: '0 0 10px', fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.checkingYourCarPhotos")}</p>;
         if (!brands.length) return null;
         const pickedKey = ringPick[0] ? String(ringPick[0].brand).trim().toLowerCase() : '';
         return (
           <div style={{ marginBottom: 10 }}>
-            <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: PD.text }}>Brand on the ring</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="radiogroup" aria-label="Brand on the ring">
+            <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: PD.text }}>{t("heroPhoto.brandOnTheRing")}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="radiogroup" aria-label={t("heroPhoto.brandOnTheRing")}>
               {brands.map((b) => {
                 const on = b.key === pickedKey;
                 return (
@@ -232,7 +234,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
           </div>
         );
       })()}
-      <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label="Preview">
+      <div style={{ display: 'flex', gap: 6, margin: '10px 0' }} role="group" aria-label={t("heroPhoto.preview")}>
         {[['phone', Smartphone, 'Phone'], ['desktop', Monitor, 'Desktop']].map(([k, Icon, label]) => (
           <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)}
             style={{ ...btn, minHeight: 36, padding: '0 12px', fontSize: 12.5, background: view === k ? PD.text : PD.hover, color: view === k ? PD.canvas || '#0b0c0f' : PD.text }}>
@@ -247,7 +249,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
           <div style={{ height: 220, borderRadius: 16, background: '#0c0d10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy || saved === undefined}
               style={{ ...soft, background: 'rgba(255,255,255,.1)', color: '#fff' }}>
-              <ImagePlus size={16} /> Choose a photo
+              <ImagePlus size={16} /> {t("heroPhoto.chooseAPhoto")}
             </button>
           </div>
         )}
@@ -259,9 +261,9 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       {shown && frame.layout !== 'card' && (
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
           <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>
-            {!onDesk ? 'The preview above is your real page. These are your PHONE settings; Desktop has its own.'
-              : frame.desk ? 'These are your DESKTOP settings, separate from phone.'
-                : 'Desktop uses your phone settings until you move a slider here.'}
+            {!onDesk ? t("heroPhoto.thePreviewAboveIsYour")
+              : frame.desk ? t("heroPhoto.theseAreYourDesktopSettings")
+                : t("heroPhoto.desktopUsesYourPhoneSettings")}
           </p>
           {[['Size', 'size', HERO_SIZE, '%'], ['Left / right', 'x', HERO_SHIFT, ''], ['Up / down', 'y', HERO_SHIFT, '']].map(([label, key, r, unit]) => (
             <div key={key}>
@@ -274,12 +276,12 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {(cur.size !== HERO_SIZE.def || cur.x || cur.y) ? (
               <button type="button" onClick={resetPos} style={{ ...soft, minHeight: 36 }}>
-                <RotateCcw size={14} /> Reset size and position
+                <RotateCcw size={14} /> {t("heroPhoto.resetSizeAndPosition")}
               </button>
             ) : null}
             {onDesk && frame.desk ? (
               <button type="button" onClick={() => setFrame((f) => ({ ...f, desk: null }))} style={{ ...soft, minHeight: 36 }}>
-                <Smartphone size={14} /> Same as phone
+                <Smartphone size={14} /> {t("heroPhoto.sameAsPhone")}
               </button>
             ) : null}
           </div>
@@ -288,15 +290,15 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
       {shown?.cut && frame.layout !== 'card' && (
         <div style={{ marginTop: 16 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>Car in front of you</p>
+          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: PD.text }}>{t("heroPhoto.carInFrontOfYou")}</p>
           {cars === null ? (
-            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>Looking for your cut-out car photos...</p>
+            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.lookingForYourCutOut")}</p>
           ) : carList.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>None of your cars has a cut-out photo (no background) as its first photo, so no car shows.</p>
+            <p style={{ margin: 0, fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.noneOfYourCarsHas")}</p>
           ) : (
             <>
             <div className="keep-alpha" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-              {[{ id: 'auto', label: 'Newest' }, { id: 'none', label: 'No car' }, ...carList.map((c) => ({ id: c.id, label: [c.brand, c.model].filter(Boolean).join(' '), img: c.images[0] }))].map((o) => {
+              {[{ id: 'auto', label: t("heroPhoto.newest") }, { id: 'none', label: t("heroPhoto.noCar") }, ...carList.map((c) => ({ id: c.id, label: [c.brand, c.model].filter(Boolean).join(' '), img: c.images[0] }))].map((o) => {
                 const on = frame.car === o.id || (o.id === 'auto' && frame.car !== 'none' && !carList.some((c) => c.id === frame.car));
                 return (
                   <button key={o.id} type="button" aria-pressed={on} onClick={() => setFrame((f) => ({ ...f, car: o.id }))}
@@ -313,7 +315,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
             {frame.car !== 'none' && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: PD.text }}>
-                  <span>Car size{onDesk ? ' (desktop)' : ' (phone)'}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{cur.carSize}%</span>
+                  <span>{t("heroPhoto.carSize")}{onDesk ? ' (desktop)' : ' (phone)'}</span><span style={{ color: PD.textMuted, fontVariantNumeric: 'tabular-nums' }}>{cur.carSize}%</span>
                 </div>
                 <DragSlider value={cur.carSize} min={HERO_CAR_SIZE.min} max={HERO_CAR_SIZE.max} step={1} accent={accent} onChange={(v) => setNum('carSize', v)} />
               </div>
@@ -325,30 +327,30 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick} />
 
       {!modelSaved && !preview && !saved && (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>First time only: your phone downloads the cut-out tool ({MB} MB). Use Wi-Fi.</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.downloadHint", { mb: MB })}</p>
       )}
       {notReady && !error && (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>Saving your photo is not available yet. Try again later.</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: PD.textMuted }}>{t("heroPhoto.savingYourPhotoIsNot")}</p>
       )}
       {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 12.5, color: PD.danger || '#f87171' }}>{error}</p>}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         {preview ? (
           <>
-            <button type="button" className="lk-red" onClick={save} disabled={!!busy} style={{ ...main, background: undefined }}>Use this</button>
+            <button type="button" className="lk-red" onClick={save} disabled={!!busy} style={{ ...main, background: undefined }}>{t("heroPhoto.useThis")}</button>
             {preview.kind === 'cut'
-              ? <button type="button" onClick={usePlain} disabled={!!busy} style={soft}>Use photo as it is</button>
-              : original && <button type="button" onClick={() => cut(original)} disabled={!!busy} style={soft}>Remove the background</button>}
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy} style={soft}><RotateCcw size={14} /> Another photo</button>
+              ? <button type="button" onClick={usePlain} disabled={!!busy} style={soft}>{t("heroPhoto.usePhotoAsItIs")}</button>
+              : original && <button type="button" onClick={() => cut(original)} disabled={!!busy} style={soft}>{t("heroPhoto.removeTheBackground")}</button>}
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy} style={soft}><RotateCcw size={14} /> {t("heroPhoto.anotherPhoto")}</button>
           </>
         ) : saved ? (
           <>
-            {frameDirty && <button type="button" className="lk-red" onClick={saveFrame} disabled={!!busy} style={{ ...main, background: undefined }}>Save changes</button>}
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy} style={soft}><ImagePlus size={14} /> Change</button>
-            <button type="button" onClick={remove} disabled={!!busy} style={soft}><Trash2 size={14} /> Remove</button>
+            {frameDirty && <button type="button" className="lk-red" onClick={saveFrame} disabled={!!busy} style={{ ...main, background: undefined }}>{t("heroPhoto.saveChanges")}</button>}
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={!!busy} style={soft}><ImagePlus size={14} /> {t("heroPhoto.change")}</button>
+            <button type="button" onClick={remove} disabled={!!busy} style={soft}><Trash2 size={14} /> {t("heroPhoto.remove")}</button>
           </>
         ) : error && original ? (
-          <button type="button" onClick={usePlain} disabled={!!busy} style={soft}>Use photo as it is</button>
+          <button type="button" onClick={usePlain} disabled={!!busy} style={soft}>{t("heroPhoto.usePhotoAsItIs")}</button>
         ) : null}
       </div>
     </div>

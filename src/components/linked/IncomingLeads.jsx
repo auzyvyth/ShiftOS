@@ -8,6 +8,7 @@ import { Inbox, MessageSquare } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { liveChannel } from "../../lib/liveChannel";
 import { premiumDark as PD } from "../../theme/tokens";
+import { useTranslation } from 'react-i18next';
 
 const SOURCE = { whatsapp: "WhatsApp", enquiry: "Enquiry", chat: "Chat", manual: "Added by dealer", find_me: "Find me", drevo_enquiry: "Enquiry" };
 
@@ -20,6 +21,7 @@ function ago(ts) {
 }
 
 export default function IncomingLeads({ dealerId, onClaimed, onOpenChat, onCount }) {
+  const { t: tr } = useTranslation();
   const [rows, setRows] = useState(null);
   const [threads, setThreads] = useState({});
   const [claimingId, setClaimingId] = useState(null);
@@ -58,10 +60,10 @@ export default function IncomingLeads({ dealerId, onClaimed, onOpenChat, onCount
     setClaimingId(lead.id);
     const { data, error: e } = await supabase.rpc("claim_lead", { p_lead_id: lead.id });
     setClaimingId(null);
-    if (e) { toast.error("Could not claim the lead. Check your connection and try again."); return; }
+    if (e) { toast.error(tr("linkedIn.couldNotClaimTheLead")); return; }
     setRows((p) => (p || []).filter((l) => l.id !== lead.id));
-    if (data !== true) { toast.error("Too late. Another salesman already claimed this lead."); return; }
-    toast.success("Lead claimed. It's in your pipeline.");
+    if (data !== true) { toast.error(tr("linkedIn.tooLateAnotherSalesmanAlready")); return; }
+    toast.success(tr("linkedIn.leadClaimedItSIn"));
     onClaimed?.(lead);
   };
 
@@ -69,16 +71,16 @@ export default function IncomingLeads({ dealerId, onClaimed, onOpenChat, onCount
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>Incoming leads</p>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textMuted }}>Buyers nobody owns yet. Read the chat, then claim. First to claim gets the lead.</p>
+      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>{tr("linkedIn.incomingLeads")}</p>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textMuted }}>{tr("linkedIn.buyersNobodyOwnsYetRead")}</p>
       {rows === null ? (
-        <div style={{ ...card, color: PD.textMuted, fontSize: 13 }}>Loading...</div>
+        <div style={{ ...card, color: PD.textMuted, fontSize: 13 }}>{tr("linkedIn.loading")}</div>
       ) : error && rows.length === 0 ? (
-        <div style={{ ...card, color: PD.accentText, fontSize: 13 }}>Could not load incoming leads. Try again in a moment.</div>
+        <div style={{ ...card, color: PD.accentText, fontSize: 13 }}>{tr("linkedIn.couldNotLoadIncomingLeads")}</div>
       ) : rows.length === 0 ? (
         <div style={{ ...card, textAlign: "center", color: PD.textMuted, fontSize: 14, padding: "40px 16px" }}>
           <Inbox size={28} style={{ margin: "0 auto 10px", display: "block" }} />
-          No unclaimed leads right now. New buyers show up here instantly.
+          {tr("linkedIn.noUnclaimedLeadsRightNow")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -90,8 +92,8 @@ export default function IncomingLeads({ dealerId, onClaimed, onOpenChat, onCount
               <div key={l.id} style={card}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "Unknown buyer"}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: PD.textMuted }}>{SOURCE[l.lead_source] || "Lead"} · {ago(l.created_at)}{l.buyer_state ? ` · ${l.buyer_state}` : ""}</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || tr("linkedIn.unknownBuyer")}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: PD.textMuted }}>{SOURCE[l.lead_source] || tr("linkedIn.lead")} · {ago(l.created_at)}{l.buyer_state ? ` · ${l.buyer_state}` : ""}</p>
                   </div>
                   {th?.seller_unread > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: PD.accentText, background: PD.raised, borderRadius: PD.radius.pill, padding: "3px 9px" }}>{th.seller_unread} unread</span>}
                 </div>
@@ -105,12 +107,12 @@ export default function IncomingLeads({ dealerId, onClaimed, onOpenChat, onCount
                   {th && (
                     <button type="button" onClick={() => onOpenChat?.({ threadId: th.id, buyerName: l.buyer_name || "Buyer", carLabel: car, previewLead: l })}
                       style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: PD.raised, color: PD.text, border: "none", borderRadius: PD.radius.row, padding: "11px 12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                      <MessageSquare size={14} /> Read chat
+                      <MessageSquare size={14} /> {tr("linkedIn.readChat")}
                     </button>
                   )}
                   <button type="button" onClick={() => claim(l)} disabled={claimingId === l.id}
                     style={{ flex: 1, background: PD.accent, color: PD.onAccent, border: "none", borderRadius: PD.radius.row, padding: "11px 12px", fontSize: 13.5, fontWeight: 700, cursor: claimingId === l.id ? "default" : "pointer", opacity: claimingId === l.id ? 0.6 : 1, fontFamily: "inherit" }}>
-                    {claimingId === l.id ? "Claiming..." : "Claim lead"}
+                    {claimingId === l.id ? tr("linkedIn.claiming") : tr("linkedIn.claimLead")}
                   </button>
                 </div>
               </div>

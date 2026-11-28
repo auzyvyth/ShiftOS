@@ -8,6 +8,7 @@ import PhoneInput from '../ui/PhoneInput';
 import { isValidMyPhone, MY_PHONE_ERROR } from '../../lib/phone';
 import { useProfile, getDealerIdFromProfile } from '../../hooks/useProfile';
 import { INCOME_OPTIONS, EMPLOYMENT_OPTIONS, SOURCE_CONFIG, LEAD_SOURCE_DB_VALUES, STAGE_ORDER, STAGE_CONFIG } from '../../lib/leadsHelpers';
+import { useTranslation } from 'react-i18next';
 
 const inp = "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 transition-all";
 const sel = inp + " appearance-none";
@@ -29,6 +30,7 @@ const EMPTY = {
 };
 
 export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const [form, setForm]       = useState(EMPTY);
   const [cars, setCars]       = useState([]);
@@ -128,8 +130,8 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               <UserPlus className="w-4 h-4 text-red-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">Add Lead</h3>
-              <p className="text-xs text-gray-500">New buyer enquiry</p>
+              <h3 className="font-semibold text-gray-900 text-sm">{t("addLead.addLead")}</h3>
+              <p className="text-xs text-gray-500">{t("addLead.newBuyerEnquiry")}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors rounded-lg hover:bg-gray-100">
@@ -142,19 +144,19 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Buyer name */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Buyer Name <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.buyerName")} <span className="text-red-500">*</span></label>
             <input
               value={form.buyer_name}
               onChange={e => set('buyer_name', e.target.value)}
               className={`${inp} ${errors.buyer_name ? 'border-red-400 bg-gray-100' : ''}`}
-              placeholder="e.g. Ahmad Faiz"
+              placeholder={t("addLead.eGAhmadFaiz")}
             />
             {errors.buyer_name && <p className="text-xs text-red-500 mt-1">{errors.buyer_name}</p>}
           </div>
 
           {/* Phone */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Phone Number <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.phoneNumber")} <span className="text-red-500">*</span></label>
             <PhoneInput
               value={form.phone}
               onChange={v => set('phone', v)}
@@ -168,7 +170,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* IC + Email — for HP / loan applications */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">IC Number</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.icNumber")}</label>
               <input
                 value={form.buyer_ic}
                 onChange={e => set('buyer_ic', e.target.value)}
@@ -177,7 +179,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Email</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.email")}</label>
               <input
                 value={form.buyer_email}
                 onChange={e => set('buyer_email', e.target.value)}
@@ -190,25 +192,25 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Address */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Address</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.address")}</label>
             <input
               value={form.buyer_address}
               onChange={e => set('buyer_address', e.target.value)}
               className={inp}
-              placeholder="Mailing / residential address"
+              placeholder={t("addLead.mailingResidentialAddress")}
             />
           </div>
 
           {/* Source + Stage */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Lead Source <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.leadSource")} <span className="text-red-500">*</span></label>
               <select
                 value={form.lead_source}
                 onChange={e => set('lead_source', e.target.value)}
                 className={`${sel} ${errors.lead_source ? 'border-red-400 bg-gray-100' : ''}`}
               >
-                <option value="" disabled>Select…</option>
+                <option value="" disabled>{t("addLead.select")}</option>
                 {LEAD_SOURCE_DB_VALUES.map(k => (
                   <option key={k} value={k}>{SOURCE_CONFIG[k]?.label || k}</option>
                 ))}
@@ -216,7 +218,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               {errors.lead_source && <p className="text-xs text-red-500 mt-1">{errors.lead_source}</p>}
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Initial Stage</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.initialStage")}</label>
               <select value={form.stage} onChange={e => set('stage', e.target.value)} className={sel}>
                 {STAGE_ORDER.map(s => (
                   <option key={s} value={s}>{STAGE_CONFIG[s]?.label || s}</option>
@@ -227,14 +229,14 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Car of interest */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Car of Interest</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.carOfInterest")}</label>
             <div className="relative mb-1.5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               <input
                 value={carSearch}
                 onChange={e => setCarSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm text-gray-900 placeholder-gray-400 rounded-lg bg-white border border-gray-200 focus:outline-none focus:border-red-400"
-                placeholder="Search brand, model…"
+                placeholder={t("addLead.searchBrandModel")}
               />
             </div>
             <select
@@ -243,7 +245,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
               className={sel}
               size={filtered.length > 0 ? Math.min(filtered.length + 1, 5) : 2}
             >
-              <option value="">— No specific car —</option>
+              <option value="">{t("addLead.noSpecificCar")}</option>
               {filtered.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.year} {c.brand} {c.model}{c.variant ? ` ${c.variant}` : ''}{c.selling_price ? ` · RM ${c.selling_price.toLocaleString()}` : ''}
@@ -254,7 +256,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Follow-up date */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Follow-up Date (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.followUpDateOptional")}</label>
             <input
               type="datetime-local"
               value={form.follow_up_at}
@@ -266,14 +268,14 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* Employment + Income */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Employment</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.employment")}</label>
               <select value={form.employment_type} onChange={e => set('employment_type', e.target.value)} className={sel}>
                 <option value="">—</option>
                 {EMPLOYMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Monthly Income</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.monthlyIncome")}</label>
               <select value={form.income_bracket} onChange={e => set('income_bracket', e.target.value)} className={sel}>
                 <option value="">—</option>
                 {INCOME_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -284,9 +286,9 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* Assign to */}
           {teamMembers.length > 0 && (
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Assign To</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.assignTo")}</label>
               <select value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)} className={sel}>
-                <option value="">— Unassigned —</option>
+                <option value="">{t("addLead.unassigned")}</option>
                 {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
               </select>
             </div>
@@ -294,12 +296,12 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
 
           {/* Notes */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Notes (optional)</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">{t("addLead.notesOptional")}</label>
             <textarea
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
               rows={3}
-              placeholder="Any additional context…"
+              placeholder={t("addLead.anyAdditionalContext")}
               className={inp + " resize-none"}
             />
           </div>
@@ -312,7 +314,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
             onClick={onClose}
             className="flex-1 px-4 py-2.5 rounded-lg text-sm text-gray-600 hover:text-gray-900 transition-all border border-gray-200 hover:bg-gray-50"
           >
-            Cancel
+            {t("addLead.cancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -320,7 +322,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
             className="flex-1 px-4 py-2.5 rounded-lg text-sm text-white font-semibold disabled:opacity-50 transition-all"
             style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 10px rgba(220,38,38,0.28)' }}
           >
-            {saving ? 'Adding…' : 'Add Lead'}
+            {saving ? t("addLead.adding") : t("addLead.addLead")}
           </button>
         </div>
       </div>

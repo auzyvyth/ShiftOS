@@ -28,6 +28,7 @@ import {
 } from '../../utils/posterStyles';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { premiumDark as P } from '../../theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 const LANG_KEY = 'xd_poster_lang';
 const readLang = () => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ms'; } catch { return 'ms'; } };
@@ -61,6 +62,7 @@ const fileName = (car, style) => `${style === 'kiraan' ? 'loan' : style}-${poste
 // so a control at the very bottom can rise above a bar pinned over the screen
 // (the intro's button bar covered half of Download, 2026-10-18).
 export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded, bottomInset = 0, theme }) {
+  const { t } = useTranslation();
   useModalHistory(true, onClose);
   const S = theme === 'premium' ? PREMIUM : BASE;
   const [price, setPrice] = useState(() => String(car?.selling_price || car?.price || ''));
@@ -139,7 +141,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
   const makeFile = async () => {
     const { data, error } = await supabase.rpc('claim_loan_poster', { p_listing: car.id });
-    if (error || !data) { toast.error('Could not make the poster. Check your connection and try again.'); return null; }
+    if (error || !data) { toast.error(t("loanPoster.couldNotMakeThePoster")); return null; }
     if (!data.ok) {
       if (data.error === 'limit') { setLimitHit(true); return null; }
       toast.error(data.error === 'not_your_car' ? 'This car is not on your listings.' : 'Could not make the poster.');
@@ -169,11 +171,11 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
       a.href = url; a.download = file.name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast.success('Poster saved');
+      toast.success(t("loanPoster.posterSaved"));
       onDownloaded?.();
     } catch (e) {
       console.error('loan poster', e);
-      toast.error('Could not make the poster.');
+      toast.error(t("loanPoster.couldNotMakeThePoster2"));
     } finally {
       setBusy(false);
     }
@@ -226,13 +228,13 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
       <div onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 880, maxHeight: '94dvh', overflowY: 'auto', background: S.bg, color: S.text,
           borderRadius: `${S.sheetRadius}px ${S.sheetRadius}px 0 0`, border: `1px solid ${S.border}`, borderBottom: 'none', fontFamily: 'var(--xd-font-body)' }} className="xd-poster-sheet">
-        <style>{'.xd-poster-sheet button, .xd-poster-sheet input { font-family: inherit; }'}</style>
+        <style>{`.xd-poster-sheet button, .xd-poster-sheet input { font-family: inherit; }`}</style>
         <div style={{ position: 'sticky', top: 0, zIndex: 1, background: S.bg, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${theme === 'premium' ? P.line : S.border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{activeStyle === 'kiraan' ? 'Loan poster' : 'Car poster'}</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{activeStyle === 'kiraan' ? t("loanPoster.loanPoster") : t("loanPoster.carPoster")}</p>
             <p style={{ margin: 0, fontSize: 12, color: S.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{posterTitle(car)}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, borderRadius: '50%', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} aria-label={t("loanPoster.close")} style={{ width: 34, height: 34, borderRadius: '50%', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={16} />
           </button>
         </div>
@@ -250,14 +252,14 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Style</span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.style")}</span>
               <div data-tour-id="poster-style" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {POSTER_STYLES.map((x) => {
                   const ok = styleAvailable(x.id, nPhotos);
                   const lock = styleLocked(x.id, unlimited);
                   return (
                     <button key={x.id} type="button" disabled={!ok} onClick={() => { setStyle(x.id); setLimitHit(false); }}
-                      title={ok ? '' : `Needs ${x.minPhotos} photos`}
+                      title={ok ? '' : t("loanPoster.needsPhotos", { n: x.minPhotos })}
                       style={{ flex: '1 1 70px', padding: '7px 0', fontSize: 12, fontWeight: 700, borderRadius: theme === 'premium' ? 999 : 8, cursor: ok ? 'pointer' : 'default', opacity: ok ? 1 : 0.4,
                         border: `1px solid ${activeStyle === x.id ? S.onBorder : S.border}`,
                         background: activeStyle === x.id ? S.onBg : (theme === 'premium' ? S.panel : 'transparent'), color: activeStyle === x.id ? S.onText : S.sub }}>
@@ -266,12 +268,12 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
                   );
                 })}
               </div>
-              {nPhotos < 3 && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>Story needs 3 photos on the car.</span>}
+              {nPhotos < 3 && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>{t("loanPoster.storyNeeds3PhotosOn")}</span>}
             </div>
             {activeStyle === 'showroom' && (
               <>
                 <div>
-                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Colour</span>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.colour")}</span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {PALETTES.map((p) => (
                       <button key={p.id} type="button" aria-label={p.name} onClick={() => { setPalette(p.id); setLimitHit(false); }}
@@ -285,13 +287,13 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
                 </div>
                 {ribbons.length > 1 && (
                   <div>
-                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Ribbon</span>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.ribbon")}</span>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {ribbons.map((r) => (
                         <button key={r} type="button" onClick={() => setRibbon(r)}
                           style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
                             border: `1px solid ${ribbon === r ? S.onBorder : S.border}`, background: ribbon === r ? S.onBg : 'transparent', color: ribbon === r ? S.onText : S.sub }}>
-                          {r === 'none' ? 'None' : RIBBON_TEXT[lang][r]}
+                          {r === 'none' ? t("loanPoster.none") : RIBBON_TEXT[lang][r]}
                         </button>
                       ))}
                     </div>
@@ -301,13 +303,13 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             )}
             {activeStyle === 'story' && ribbons.length > 1 && (
               <div>
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Label</span>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.label")}</span>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {ribbons.map((r) => (
                     <button key={r} type="button" onClick={() => setRibbon(r)}
                       style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 999, cursor: 'pointer',
                         border: `1px solid ${ribbon === r ? S.onBorder : S.border}`, background: ribbon === r ? S.onBg : 'transparent', color: ribbon === r ? S.onText : S.sub }}>
-                      {r === 'none' ? 'For sale' : RIBBON_TEXT[lang][r]}
+                      {r === 'none' ? t("loanPoster.forSale") : RIBBON_TEXT[lang][r]}
                     </button>
                   ))}
                 </div>
@@ -315,7 +317,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             )}
             {canCut && (
               <div>
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Car photo</span>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.carPhoto")}</span>
                 {cutBusy ? (
                   <p style={{ margin: 0, fontSize: 12, color: S.sub }}>{cutBusy}</p>
                 ) : cut ? (
@@ -326,10 +328,10 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
                 ) : (
                   <button type="button" onClick={removeBackground}
                     style={{ width: '100%', padding: '9px 0', fontSize: 12, fontWeight: 700, borderRadius: theme === 'premium' ? 999 : 8, cursor: 'pointer', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.text }}>
-                    {unlimited === false && <Lock size={11} style={{ marginRight: 5, verticalAlign: -1 }} />}Remove the background
+                    {unlimited === false && <Lock size={11} style={{ marginRight: 5, verticalAlign: -1 }} />}{t("loanPoster.removeTheBackground")}
                   </button>
                 )}
-                {!cut && !cutBusy && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>Done on your phone, the photo is not uploaded. Takes up to a minute{`; the first time downloads a ${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB tool once.`}</span>}
+                {!cut && !cutBusy && <span style={{ display: 'block', fontSize: 11, color: S.faint, marginTop: 5 }}>{t("loanPoster.doneOnYourPhoneThe")}{t("loanPoster.firstTimeDownload", { mb: Math.round(CUTOUT_MODEL_BYTES / 1e6) })}</span>}
                 {cutErr && <span style={{ display: 'block', fontSize: 11, color: S.accent, marginTop: 5 }}>{cutErr}</span>}
               </div>
             )}
@@ -350,7 +352,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             </div>
             </div>
             <div>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Poster language</span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{t("loanPoster.posterLanguage")}</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 {pill(lang === 'ms', 'Bahasa Melayu', () => setLang('ms'))}
                 {pill(lang === 'en', 'English', () => setLang('en'))}
@@ -359,11 +361,11 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
             {limitHit ? (
               <div style={{ border: `1px solid ${S.border}`, borderRadius: S.radius, padding: 14, background: S.panel }}>
-                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={14} /> {limitHit === 'style' ? 'This style is Premium' : `${LITE_POSTERS_PER_MONTH} free posters used this month`}</p>
-                <p style={{ margin: '0 0 12px', fontSize: 12, color: S.sub }}>{limitHit === 'style' ? 'Free posters use Kiraan or Showroom in Carbon. Premium has every style and colour.' : 'Cars you already made a poster for stay free. Premium makes posters for every car.'}</p>
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={14} /> {limitHit === 'style' ? t("loanPoster.thisStyleIsPremium") : t("loanPoster.freeUsed", { n: LITE_POSTERS_PER_MONTH })}</p>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: S.sub }}>{limitHit === 'style' ? t("loanPoster.freePostersUseKiraanOr") : t("loanPoster.carsYouAlreadyMadeA")}</p>
                 {onUpgrade && (
                   <button onClick={() => { onClose(); onUpgrade(); }} style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', background: S.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                    See Premium
+                    {t("loanPoster.seePremium")}
                   </button>
                 )}
               </div>
@@ -372,10 +374,10 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
                 <button data-tour-id="poster-download" onClick={() => run('download')} disabled={!numbers.ok || busy}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: theme === 'premium' ? 999 : 10, border: 'none',
                     background: numbers.ok ? S.accent : 'rgba(220,38,38,0.3)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
-                  <Download size={15} /> {busy ? 'Making...' : 'Download poster'}
+                  <Download size={15} /> {busy ? t("loanPoster.making") : t("loanPoster.downloadPoster")}
                 </button>
                 {canShare && (
-                  <button onClick={() => run('share')} disabled={!numbers.ok || busy} aria-label="Share poster"
+                  <button onClick={() => run('share')} disabled={!numbers.ok || busy} aria-label={t("loanPoster.sharePoster")}
                     style={{ width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: theme === 'premium' ? 999 : 10, border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.text, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
                     <Share2 size={16} />
                   </button>
@@ -385,11 +387,11 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
             {left !== null && !limitHit && (
               <p style={{ margin: 0, fontSize: 11, color: S.faint }}>
-                {left} of {quota.limit || LITE_POSTERS_PER_MONTH} free posters left this month. The same car again is free.
+                {left} of {quota.limit || LITE_POSTERS_PER_MONTH} {t("loanPoster.freePostersLeftThisMonth")}
               </p>
             )}
             <p style={{ margin: 0, fontSize: 11, color: S.faint }}>
-              The poster prints your name, photo and WhatsApp number from your profile{pageUrl ? ', and your page link' : ''}.
+              {t("loanPoster.thePosterPrintsYourName")}{pageUrl ? t("loanPoster.andYourPageLink") : ''}.
             </p>
           </div>
         </div>
