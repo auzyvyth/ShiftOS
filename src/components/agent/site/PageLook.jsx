@@ -93,6 +93,11 @@ export default function PageLook() {
       /* ---------- Buttons ---------- */
       .ap--pro .ap-btn, .ap--pro .ps-wa { border-radius: var(--r-btn) !important; background: var(--ink) !important; color: var(--on-ink) !important; box-shadow: none !important;
         font-family: var(--bold); font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .1em; text-transform: uppercase; }
+      /* Long seller / town names: the label wraps inside the button instead of running past it. */
+      .ap--pro .pc-out .ap-btn, .ap--pro .ps-wa { box-sizing: border-box; max-width: 100%; height: auto !important; min-height: 48px; padding: 12px 16px; white-space: normal !important; overflow: visible !important; text-align: center; line-height: 1.3 !important; letter-spacing: .06em; overflow-wrap: anywhere; }
+      .ap--pro .pc-out .ap-btn span { white-space: normal; overflow: visible; text-overflow: clip; }
+      .ap--pro .ps-del > * { min-width: 0; }
+      .ap--pro .ps-del > div > .ps-wa { display: flex; width: 100%; }
       .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: var(--ink-2) !important; }
       
       .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; background: var(--ink-3) !important; }

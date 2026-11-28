@@ -154,7 +154,7 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
         .pc-rows div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
         .pc-rows dt { margin: 0; color: rgba(255,255,255,.7); }
         .pc-rows dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-        .pc-out .ap-btn { margin-top: 16px; width: 100%; }
+        .pc-out .ap-btn { margin-top: 16px; width: 100%; height: auto; min-height: 48px; padding: 12px 16px; white-space: normal; overflow: visible; text-align: center; line-height: 1.3; }
         .pc-link { display: flex; align-items: center; justify-content: center; margin-top: 16px; height: 48px; border-radius: 24px; background: #fff; color: #0f1115; font-weight: 600; font-size: 14px; text-decoration: none; }
         .pc-fine { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #4b5563; }
         .pc-none { margin: 0; padding: 20px 4px; font-size: 14px; color: rgba(255,255,255,.8); }
@@ -185,7 +185,8 @@ export default function PageCalculator({ listings, firstName, hasWa, waUrlFor, o
           .pc-rows { grid-template-columns: 1fr 1fr; gap: 8px 16px; padding-top: 10px; }
           .pc-rows div { flex-direction: column; gap: 1px; font-size: 13px; }
           .pc-rows dt { font-size: 11px; }
-          .pc-out .ap-btn, .pc-link { margin-top: 12px; height: 44px; font-size: 14px; }
+          .pc-out .ap-btn, .pc-link { margin-top: 12px; min-height: 44px; font-size: 14px; }
+          .pc-link { height: 44px; }
           .pc-fine { margin-top: 10px; font-size: 11px; }
         }
         @container (min-width: 640px) {

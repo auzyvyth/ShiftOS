@@ -23,6 +23,8 @@ export default function SiteStyle() {
       .ps-card { background: var(--ap-surf, #fff); border-radius: 18px; box-shadow: 0 1px 2px rgba(15,23,42,.08), 0 8px 24px rgba(15,23,42,.05); }
       .ps-fine { font-size: 12px; color: var(--ps-mute); line-height: 1.5; margin-top: 10px; }
       .ps-wa { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 12px; border: none; background: var(--ps-a); color: var(--ap-on, #fff) !important; font: 600 14px/1 var(--xd-font-body); text-decoration: none; cursor: pointer; white-space: nowrap; }
+      .ps-del > * { min-width: 0; }
+      .ps-del .ps-wa { box-sizing: border-box; max-width: 100%; height: auto; min-height: 44px; padding: 10px 18px; white-space: normal; text-align: center; line-height: 1.3; overflow-wrap: anywhere; }
       .ps-wa svg { width: 16px; height: 16px; }
       .ps-wa:active { translate: 0 1px; }
       .ps-ghost { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid rgba(15,17,21,.16); background: transparent; color: var(--ps-ink); font: 600 14px/1 var(--xd-font-body); text-decoration: none; cursor: pointer; }
