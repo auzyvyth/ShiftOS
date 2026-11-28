@@ -3,13 +3,14 @@ import React, { useEffect } from 'react';
 // The Premium page's look (owner, 2026-11-26: "I wanted it like this", a black advisor site he sent).
 // We take its ORGANISATION and colouring, never its words or photos. Rules:
 //  - WHITE page, ink words, 1px hairlines (owner, 2026-11-26, after a day in black). The hero stays a dark photo
-//    band. Whatever is picked (a car, a variant, a tab, a chip) fills solid INK with white words, never an outline. Outlined boxes have Apple's squircle corners (owner,
+//    band. Whatever is picked (a car, a variant, a tab, a chip) fills solid INK (the seller's colour) with words that read on it, never an outline. Outlined boxes have Apple's squircle corners (owner,
 //    2026-11-26): `corner-shape: squircle` where the browser draws it, plain rounding elsewhere (--r-*).
 //  - Type by contrast: labels are tiny, thin, spaced capitals in Inter (owner, 2026-11-26: Archivo expanded read unprofessional). The BOLD type
 //    is the marketplace's (owner, 2026-11-26): headings in Bebas Neue, numbers and buttons in Outfit bold.
 //    A heading is a bold part then a light grey part ("PICK YOUR <light>MODEL</light>").
-//  - Main buttons and everything PICKED are Drevo RED (#dc2626) with white words (owner, 2026-11-26: "the black colour, change it to our red"). The seller's colour is only a small accent: the
-//    slider, the picked tab's underline, the promo dots. Never a big coloured block or a glow.
+//  - Main buttons and everything PICKED wear the SELLER'S colour (PAGE-COLOR, owner 2026-11-28; it was fixed Drevo
+//    red). --ink and friends come from pagePalette (src/utils/pageAccent.js): the words on it are white or near-black,
+//    whichever reads, so never write #fff on --ink here: use --on-ink / --on-rgb, and --ink-inv on an --on-ink tile.
 //  - Things that float over the page (top buttons, section menu, bottom bar) are frosted glass.
 // Premium only: rendered beside SiteStyle, every rule is under `.ap--pro`. The label face (Inter)
 // loads only here, so Lite pages and the rest of Drevo never download it.
@@ -32,7 +33,7 @@ export default function PageLook() {
   return (
     <style>{`
       .ap.ap--pro { --k0: #e9ebef; --k1: #f6f7f9; --k2: #dcdfe5; --line: rgba(10,10,11,.1); --line2: rgba(10,10,11,.2);
-        --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: #dc2626; --ink-2: #b91c1c; --on-ink: #ffffff;
+        --t1: #0a0a0b; --t2: rgba(10,10,11,.66); --t3: rgba(10,10,11,.48); --ink: var(--ap-a, #dc2626); --ink-2: var(--ap-b2, #b91c1c); --ink-3: var(--ap-b3, #991b1b); --on-ink: var(--ap-on, #ffffff); --on-rgb: var(--ap-on-rgb, 255,255,255); --ink-inv: var(--ap-inv, #dc2626);
         --wide: 'Inter', var(--xd-font-body); --head: 'Bebas Neue', var(--xd-font-body); --bold: var(--xd-font-body);
         --r-card: 16px; --r-btn: 12px; --r-chip: 9px; --ap-bg: var(--k0); --ap-surf: var(--k1);
         background: var(--k0); color: var(--t1); }
@@ -94,7 +95,7 @@ export default function PageLook() {
         font-family: var(--bold); font-weight: 700 !important; font-size: 12.5px !important; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .ap-btn:hover, .ap--pro .ps-wa:hover { background: var(--ink-2) !important; }
       
-      .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; }
+      .ap--pro .ap-btn:active, .ap--pro .ps-wa:active { translate: 0 1px; background: var(--ink-3) !important; }
       .ap--pro .ps-ghost { border-radius: var(--r-btn); background: transparent; color: var(--t1); border-color: var(--line2);
         font-family: var(--bold); font-weight: 700; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .ps-ask { color: var(--t1); }
@@ -129,7 +130,7 @@ export default function PageLook() {
         border-bottom: 1px solid var(--line); gap: 0; padding: 0; margin: 0 0 4px; }
       .ap--pro .pn a { height: 46px; padding: 0 16px; border-radius: var(--r-btn); background: transparent; box-shadow: none; color: var(--t2);
         font-family: var(--bold); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-      .ap--pro .pn a:hover { background: transparent; color: var(--t1); box-shadow: inset 0 -2px 0 var(--ap-a); }
+      .ap--pro .pn a:hover { background: transparent; color: var(--t1); box-shadow: inset 0 -2px 0 var(--ap-t, var(--ap-a)); }
       .ap--pro .ap-sticky { background: rgba(255,255,255,.84) !important; -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
         border-top: 1px solid var(--line); box-shadow: none; }
       .ap--pro .ap-sticky .ap-mini { border-radius: var(--r-card); background: var(--ink); color: var(--on-ink); }
@@ -162,7 +163,7 @@ export default function PageLook() {
       .ap--pro .ps-mtabs { border-bottom-color: var(--line); }
       .ap--pro .ps-mtabs button { color: var(--t3); }
       .ap--pro .ps-mtabs button b { font-family: var(--bold); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-      .ap--pro .ps-mtabs button[aria-pressed="true"] { color: var(--t1); border-bottom-color: var(--ap-a); }
+      .ap--pro .ps-mtabs button[aria-pressed="true"] { color: var(--t1); border-bottom-color: var(--ap-t, var(--ap-a)); }
       .ap--pro .ps-dark .ps-card, .ap--pro .ps-model { background: transparent; border: 1px solid var(--line); }
       .ap--pro .ps-media, .ap--pro .ps-dark .ps-media, .ap--pro .ps-dark .ps-shots, .ap--pro .ps-shots { background: var(--k0); border-radius: var(--r-card); }
       .ap--pro .ps-stage, .ap--pro .ps-dark .ps-stage { background: radial-gradient(ellipse 70% 55% at 50% 38%, #ffffff 0%, #f1f1f3 55%, #e6e6e9 100%); }
@@ -203,7 +204,7 @@ export default function PageLook() {
       .ap--pro .pc-car[aria-pressed="true"] { background: transparent; border-color: transparent; color: var(--on-ink); box-shadow: none; }
       /* No coloured ring round the photo (owner, 2026-11-26: "remove top outline"): only the name + price part fills */
       .ap--pro .pc-car[aria-pressed="true"] .pc-ct { background: var(--ink); }
-      .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: #fff; color: var(--ink-2); }
+      .ap--pro .pc-car[aria-pressed="true"] .pc-n { background: var(--on-ink); color: var(--ink-inv); }
       .ap--pro .pc-ph { background: var(--k1); }
       .ap--pro .pc-n { border-radius: var(--r-chip); }
       .ap--pro .pc-field { background: transparent; border-radius: 0; border-bottom: 1px solid var(--line); }
@@ -216,11 +217,14 @@ export default function PageLook() {
       .ap--pro .pc-seg button[aria-checked="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
       /* The answer is the black band */
       .ap--pro .pc-out { background: var(--ink); color: var(--on-ink); border-radius: var(--r-card); }
-      .ap--pro .pc-out .pc-k { color: rgba(255,255,255,.92) !important; text-shadow: 0 1px 2px rgba(0,0,0,.35), 0 0 14px rgba(0,0,0,.28); }
+      .ap--pro .pc-out .pc-k { color: rgba(var(--on-rgb), .92) !important; text-shadow: var(--ap-shadow, none); }
       .ap--pro .pc-big { font-family: var(--bold); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(255,255,255,.86); }
-      .ap--pro .pc-rows { border-top: 1px solid rgba(255,255,255,.3); padding-top: 10px; }
-      .ap--pro .pc-link { background: #fff; color: var(--ink-2); border-radius: var(--r-btn); font-family: var(--wide); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+      .ap--pro .pc-sum, .ap--pro .pc-rows dt, .ap--pro .pc-big small { color: rgba(var(--on-rgb), .86); }
+      .ap--pro .pc-rows { border-top: 1px solid rgba(var(--on-rgb), .3); padding-top: 10px; }
+      /* A main button INSIDE the coloured answer band inverts (it was colour on colour, invisible). */
+      .ap--pro .pc-out .ap-btn { background: var(--on-ink) !important; color: var(--ink-inv) !important; }
+      .ap--pro .pc-out .ap-btn:hover { background: var(--on-ink) !important; opacity: .9; }
+      .ap--pro .pc-link { background: var(--on-ink); color: var(--ink-inv); border-radius: var(--r-btn); font-family: var(--wide); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
       .ap--pro .pc-fine, .ap--pro .pc-fine[style] { color: var(--t3); }
       .ap--pro .pc-none { color: var(--t1); }
       /* Apple's continuous corners where the browser can draw them (corner-shape), round corners elsewhere.

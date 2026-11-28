@@ -19,7 +19,7 @@ import HandoverPhotosCard from './HandoverPhotosCard';
 
 const addDays = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
-export default function PageSiteCard({ userId, accent = '#DC2626' }) {
+export default function PageSiteCard({ userId, accent = '#DC2626', onAccent = '#fff' }) {
   const [saved, setSaved] = useState(undefined);        // undefined = loading
   const [draft, setDraft] = useState(null);
   const [notReady, setNotReady] = useState(false);
@@ -134,7 +134,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
                 <button type="button" aria-label={`Move ${SECTION_LABEL[id]} up`} disabled={i === 0} onClick={() => move(i, -1)} style={{ ...icon, opacity: i === 0 ? 0.35 : 1 }}><ArrowUp size={16} /></button>
                 <button type="button" aria-label={`Move ${SECTION_LABEL[id]} down`} disabled={i === draft.order.length - 1} onClick={() => move(i, 1)} style={{ ...icon, opacity: i === draft.order.length - 1 ? 0.35 : 1 }}><ArrowDown size={16} /></button>
                 <button type="button" role="switch" aria-checked={on} aria-label={`${SECTION_LABEL[id]} on or off`} onClick={() => toggle(id)}
-                  style={{ ...btn, minHeight: 44, width: 64, background: on ? accent : PD.hover, color: on ? '#fff' : PD.textSec }}>{on ? 'On' : 'Off'}</button>
+                  style={{ ...btn, minHeight: 44, width: 64, background: on ? accent : PD.hover, color: on ? onAccent : PD.textSec }}>{on ? 'On' : 'Off'}</button>
               </div>
             );
           })}
@@ -257,7 +257,7 @@ export default function PageSiteCard({ userId, accent = '#DC2626' }) {
               )}
             </div>
           </div>
-          {L.key === 'handover' && <div style={{ marginTop: 14 }}><HandoverPhotosCard userId={userId} accent={accent} /></div>}
+          {L.key === 'handover' && <div style={{ marginTop: 14 }}><HandoverPhotosCard userId={userId} accent={accent} onAccent={onAccent} /></div>}
         </div>
       ))}
 

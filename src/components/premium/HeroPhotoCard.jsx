@@ -22,7 +22,7 @@ import { useRingCars, ringBrands, ringCarsFor } from '../agent/site/CarRing';
 
 const MB = Math.round(CUTOUT_MODEL_BYTES / 1e6);
 
-export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
+export default function HeroPhotoCard({ userId, accent = '#DC2626', onAccent = '#fff' }) {
   const [saved, setSaved] = useState(undefined);      // undefined = loading, null = none
   const [notReady, setNotReady] = useState(false);    // column/function not live yet
   const [modelSaved, setModelSaved] = useState(true);
@@ -180,7 +180,7 @@ export default function HeroPhotoCard({ userId, accent = '#DC2626' }) {
 
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
   const soft = { ...btn, background: PD.hover, color: PD.text };
-  const main = { ...btn, background: accent, color: '#fff' };
+  const main = { ...btn, background: accent, color: onAccent };
 
   return (
     <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 18 }}>
