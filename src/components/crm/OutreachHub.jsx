@@ -13,6 +13,7 @@ import { callClaude } from '../../lib/callClaude';
 import { useNudges, NUDGE_PRESETS } from '../../hooks/useNudges';
 import NudgeQueue from './NudgeQueue';
 import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
+import { useTranslation } from 'react-i18next';
 
 // Unified Outreach — reads the SAME `leads` record the Pipeline and Bookings
 // tabs use (single source of truth), so contacting / editing here reflects
@@ -75,6 +76,7 @@ const PALETTES = {
 // salesmanId (optional): when set, the hub is scoped to that salesman's own
 // leads only — secure + attributable. Omit it for the dealer-wide view.
 export default function OutreachHub({ dealerId, salesmanId = null, theme = 'light' }) {
+  const { t } = useTranslation();
   const P = PALETTES[theme] || PALETTES.light;
   // Premium also drops what this screen repeated (the four count tiles, the
   // time-since-contact "score" ring, the footer count) and its extra hues.
@@ -148,10 +150,10 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   }), [leadsData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const SEGS = {
-    hot:  { label: 'Hot',  color: slim ? K.text : '#ef4444', Icon: Flame,      filter: e => e.ageDays < 1 },
-    warm: { label: 'Warm', color: slim ? K.text : '#f97316', Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
-    cold: { label: 'Cold', color: slim ? K.text : '#60a5fa', Icon: Snowflake,  filter: e => e.ageDays >= 7 },
-    all:  { label: 'All',  color: slim ? K.text : '#94a3b8', Icon: Clipboard,  filter: () => true },
+    hot:  { label: t("outreach.hot"),  color: slim ? K.text : '#ef4444', Icon: Flame,      filter: e => e.ageDays < 1 },
+    warm: { label: t("outreach.warm"), color: slim ? K.text : '#f97316', Icon: TrendingUp, filter: e => e.ageDays >= 1 && e.ageDays < 7 },
+    cold: { label: t("outreach.cold"), color: slim ? K.text : '#60a5fa', Icon: Snowflake,  filter: e => e.ageDays >= 7 },
+    all:  { label: t("outreach.all"),  color: slim ? K.text : '#94a3b8', Icon: Clipboard,  filter: () => true },
   };
 
   const visibleLeads = useMemo(() =>
@@ -161,13 +163,13 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   const selected = scored.find(e => e.id === selectedId) || null;
 
   const TEMPLATES = {
-    followup: { label: 'Follow-Up',
+    followup: { label: t("outreach.followUp"),
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! 👋\n\nJust following up on your interest in the ${e.car_listing?.year || ''} ${e.car_listing?.brand || ''} ${e.car_listing?.model || ''}${e.car_listing?.selling_price ? ` (RM ${e.car_listing.selling_price.toLocaleString()})` : ''}.\n\nAre you still looking? I'd love to help you arrange a viewing 🚗\n\nReply anytime!` },
-    viewing: { label: 'Book Viewing',
+    viewing: { label: t("outreach.bookViewing"),
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! 📅\n\nThe ${e.car_listing?.brand || ''} ${e.car_listing?.model || ''} is available for a test drive this week.\n\nWhich day works for you? Morning or afternoon 🔑` },
-    price_drop: { label: 'Price Alert',
+    price_drop: { label: t("outreach.priceAlert"),
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! 🎉\n\nGreat news — the ${e.car_listing?.brand || ''} ${e.car_listing?.model || ''} you were interested in has just been repriced!\n\n💰 Current Price: RM ${e.car_listing?.selling_price?.toLocaleString() || '—'}\n\nShall I reserve it for you? Reply YES ✅` },
-    last_chance: { label: 'Last Chance',
+    last_chance: { label: t("outreach.lastChance"),
       gen: e => `Hi ${(e.buyer_name || 'there').split(' ')[0]}! ⏰\n\nQuick heads-up: the ${e.car_listing?.brand || ''} ${e.car_listing?.model || ''} is getting a lot of interest.\n\nStill considering it? I can hold it 24h with a small deposit 🚗` },
   };
 
@@ -218,11 +220,11 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
 
   const openWA = (lead, msg) => {
     const raw = (lead.phone || '').replace(/\D/g, '');
-    if (!raw) { toast.error('No phone number'); return null; }
+    if (!raw) { toast.error(t("outreach.noPhoneNumber")); return null; }
     const phone = raw.startsWith('6') ? raw : '6' + raw;
     const win = window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     markContacted(lead);
-    toast.success(`WhatsApp opened for ${lead.buyer_name || 'lead'}`, { duration: 1800 });
+    toast.success(t("outreach.waOpenedFor", { name: lead.buyer_name || t("outreach.leadFallback") }), { duration: 1800 });
     return win;
   };
 
@@ -239,7 +241,7 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
     try {
       const { data: quotaOk } = await supabase.rpc('salesman_ai_quota_ok', { p_feature: 'wa_reply' });
       if (quotaOk === false) {
-        toast.error('AI drafting is a Premium feature, or you have used today\'s allowance');
+        toast.error(t("outreach.aiDraftingIsAPremium"));
         return;
       }
       const car = selected.car_listing;
@@ -262,7 +264,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
       await supabase.rpc('increment_ai_usage', { p_feature: 'wa_reply' }).then(null, () => {});
     } catch (err) {
       console.error('aiDraft:', err);
-      toast.error('Could not draft a message');
+      toast.error(t("outreach.couldNotDraftAMessage"));
     } finally {
       setAiLoading(false);
     }
@@ -271,7 +273,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
   // Queue the message currently in the composer as a reminder for later.
   const scheduleNudge = async (when) => {
     if (!selected || !when || Number.isNaN(when.getTime())) return;
-    if (when.getTime() <= Date.now()) { toast.error('Pick a time in the future'); return; }
+    if (when.getTime() <= Date.now()) { toast.error(t("outreach.pickATimeInThe")); return; }
     const body = draft || TEMPLATES[template].gen(selected);
     const res = await createNudge({
       leadId: selected.id,
@@ -280,18 +282,18 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
       reason: `${Math.round(selected.ageDays)}d since last touch`,
       aiDrafted: aiIsDraft,
     });
-    if (res.duplicate) { toast.error('This lead already has a follow-up queued'); return; }
-    if (!res.ok) { toast.error('Could not schedule the follow-up'); return; }
+    if (res.duplicate) { toast.error(t("outreach.thisLeadAlreadyHasA")); return; }
+    if (!res.ok) { toast.error(t("outreach.couldNotScheduleTheFollow")); return; }
     setScheduleOpen(false);
     setCustomWhen('');
-    toast.success(`Follow-up queued for ${when.toLocaleString('en-MY', { weekday:'short', hour:'numeric', minute:'2-digit', hour12:true })}`);
+    toast.success(t("outreach.followUpQueued", { when: when.toLocaleString('en-MY', { weekday:'short', hour:'numeric', minute:'2-digit', hour12:true }) }));
   };
 
   // A due nudge: open the chat with the (possibly edited) draft, then retire it.
   const sendNudge = (nudge, message) => {
     const lead = scored.find(l => l.id === nudge.lead_id)
       || { id: nudge.lead_id, phone: nudge.lead?.phone, buyer_name: nudge.lead?.buyer_name, stage: nudge.lead?.stage };
-    if (!lead.phone) { toast.error('No phone number on this lead'); return; }
+    if (!lead.phone) { toast.error(t("outreach.noPhoneNumberOnThis")); return; }
     openWA(lead, message);
     closeNudge(nudge.id, 'sent');
   };
@@ -301,7 +303,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
   // and open ONE chat per click (a real user gesture → never blocked). The dealer
   // sends in WhatsApp, comes back, clicks the next — counter ticks down.
   const launchCampaign = () => {
-    if (!visibleLeads.length) { toast.error('No leads in this segment'); return; }
+    if (!visibleLeads.length) { toast.error(t("outreach.noLeadsInThisSegment")); return; }
     setCampaignIds(visibleLeads.map(l => l.id));
     setCampaignIdx(0);
   };
@@ -319,9 +321,9 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
     if (!lead || pushing) return;
     setPushing(true);
     const { error } = await supabase.from('leads').update({ stage: 'new' }).eq('id', lead.id);
-    if (error) { toast.error('Could not add to pipeline'); setPushing(false); return; }
+    if (error) { toast.error(t("outreach.couldNotAddToPipeline")); setPushing(false); return; }
     setLeadsData(prev => prev.map(l => l.id === lead.id ? { ...l, stage: 'new' } : l));
-    toast.success('Added to pipeline');
+    toast.success(t("outreach.addedToPipeline"));
     setPushing(false);
   };
 
@@ -333,16 +335,16 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
 
   if (loading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, color:P.textSec, fontSize:13, gap:10 }}>
-      <RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }} /> Loading contacts…
+      <RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }} /> {t("outreach.loadingContacts")}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
   const STATS = [
-    { label:'Active Contacts', val: scored.length, sub:'In play now',     color:'#60a5fa', Icon: Users,        pulse:false },
-    { label:'Hot Right Now',   val: hotCount,      sub:'Touched < 24h',   color:'#ef4444', Icon: Flame,        pulse: critCount > 0 },
-    { label:'Gone Cold',       val: staleCount,    sub:'Silent 7+ days',  color:'#a78bfa', Icon: Snowflake,    pulse:false },
-    { label:'Contacted Today', val: sentToday,     sub:'Persisted',       color:'#34d399', Icon: CheckCircle2, pulse:false },
+    { label:t("outreach.activeContacts"), val: scored.length, sub:t("outreach.inPlayNow"),     color:'#60a5fa', Icon: Users,        pulse:false },
+    { label:t("outreach.hotRightNow"),   val: hotCount,      sub:t("outreach.touched24h"),   color:'#ef4444', Icon: Flame,        pulse: critCount > 0 },
+    { label:t("outreach.goneCold"),       val: staleCount,    sub:t("outreach.silent7Days"),  color:'#a78bfa', Icon: Snowflake,    pulse:false },
+    { label:t("outreach.contactedToday"), val: sentToday,     sub:t("outreach.persisted"),       color:'#34d399', Icon: CheckCircle2, pulse:false },
   ];
 
   return (
@@ -351,7 +353,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
           switch below, so only "contacted today" stays, as a line. */}
       {slim ? (
         <p style={{ margin:'0 0 14px', fontSize:13, color:P.textSec }}>
-          <b style={{ color:P.text, fontVariantNumeric:'tabular-nums' }}>{sentToday}</b> contacted today
+          <b style={{ color:P.text, fontVariantNumeric:'tabular-nums' }}>{sentToday}</b> {t("outreach.contactedToday2")}
         </p>
       ) : (
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:20 }}>
@@ -422,18 +424,18 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, marginBottom:2 }}>
                       <span style={{ fontSize:13, fontWeight:600, color:P.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:5 }}>
-                        {lead.buyer_name || 'Unknown'}
+                        {lead.buyer_name || t("outreach.unknown")}
                         {lead.last_contacted_at && <CheckCircle2 size={12} style={{ color:P.okTick, flexShrink:0 }} />}
                       </span>
                       <span style={{ fontSize: slim ? 11 : 9, fontWeight:700, color:uc, flexShrink:0, padding: slim ? '1px 7px' : '1px 6px', background: slim ? K.raised : `${uc}14`, borderRadius: slim ? 999 : 4 }}>{fmtAge(lead)}</span>
                     </div>
                     <span style={{ fontSize:11, color:P.textSec, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
-                      {lead.car_listing ? `${lead.car_listing.brand} ${lead.car_listing.model}` : 'Car enquiry'}
-                      {lead.stage === 'enquiry' && <span style={{ marginLeft:6, fontSize:9, fontWeight:700, color: slim ? K.onAccent : '#a78bfa', background: slim ? K.accent : 'rgba(167,139,250,0.12)', padding:'1px 5px', borderRadius:4 }}>NEW</span>}
+                      {lead.car_listing ? `${lead.car_listing.brand} ${lead.car_listing.model}` : t("outreach.carEnquiry")}
+                      {lead.stage === 'enquiry' && <span style={{ marginLeft:6, fontSize:9, fontWeight:700, color: slim ? K.onAccent : '#a78bfa', background: slim ? K.accent : 'rgba(167,139,250,0.12)', padding:'1px 5px', borderRadius:4 }}>{t("outreach.new")}</span>}
                     </span>
                     {lead.last_contacted_at && (
                       <span style={{ fontSize:10, color:P.okTick, fontWeight:600, display:'block', marginTop:1 }}>
-                        Contacted · {fmtContacted(lead.last_contacted_at)}
+                        {t("outreach.contacted")} {fmtContacted(lead.last_contacted_at)}
                       </span>
                     )}
                   </div>
@@ -442,9 +444,9 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
             })}
           </div>
           <div style={{ borderTop:`1px solid ${slim ? K.line : P.border}`, padding:'8px 12px', display:'flex', alignItems:'center', justifyContent: slim ? 'flex-end' : 'space-between' }}>
-            {!slim && <span style={{ fontSize:11, color:P.textSec }}>{scored.length} active contacts</span>}
+            {!slim && <span style={{ fontSize:11, color:P.textSec }}>{scored.length} {t("outreach.activeContacts2")}</span>}
             <button onClick={() => setRefreshKey(k => k + 1)} style={{ background:'none', border:'none', color:P.textSec, cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:FONT }}>
-              <RefreshCw size={11} /> Refresh
+              <RefreshCw size={11} /> {t("outreach.refresh")}
             </button>
           </div>
         </div>
@@ -454,7 +456,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
           {!selected ? (
             <div className="oh-empty" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, gap:12, color:P.textSec }}>
               <div style={{ width:56, height:56, borderRadius:16, background: slim ? K.raised : 'rgba(59,130,246,0.07)', border: slim ? 'none' : '1px solid rgba(59,130,246,0.14)', display:'flex', alignItems:'center', justifyContent:'center' }}><MessageCircle size={24} color={slim ? K.textSec : '#60a5fa'} /></div>
-              <p style={{ fontSize:13, color:P.textMuted, textAlign:'center', lineHeight:1.6 }}>Select a contact to message,<br/>or launch a bulk campaign below.</p>
+              <p style={{ fontSize:13, color:P.textMuted, textAlign:'center', lineHeight:1.6 }}>{t("outreach.selectAContactToMessage")}<br/>{t("outreach.orLaunchABulkCampaign")}</p>
             </div>
           ) : (
             <>
@@ -463,8 +465,8 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   {(selected.buyer_name || '?')[0].toUpperCase()}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:700, color:P.text, marginBottom:2 }}>{selected.buyer_name || 'Unknown'}</p>
-                  <p style={{ fontSize:11, color:P.textMuted }}>{selected.phone} · {selected.last_contacted_at ? `contacted ${fmtContacted(selected.last_contacted_at)}` : `enquired ${fmtAge(selected)} ago`}</p>
+                  <p style={{ fontSize:14, fontWeight:700, color:P.text, marginBottom:2 }}>{selected.buyer_name || t("outreach.unknown")}</p>
+                  <p style={{ fontSize:11, color:P.textMuted }}>{selected.phone} · {selected.last_contacted_at ? t("outreach.contactedAgo", { when: fmtContacted(selected.last_contacted_at) }) : t("outreach.enquiredAgo", { age: fmtAge(selected) })}</p>
                 </div>
                 {/* Premium: the car card right below names the car and its price. */}
                 {selected.car_listing && !slim && (
@@ -504,7 +506,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               )}
 
               <div>
-                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:P.textSec, fontWeight:700, marginBottom:8 }}>Message Template</p>
+                <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:P.textSec, fontWeight:700, marginBottom:8 }}>{t("outreach.messageTemplate")}</p>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
                   {Object.entries(TEMPLATES).map(([key, tpl]) => (
                     <button key={key} onClick={() => setTemplate(key)}
@@ -518,18 +520,18 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               <div style={{ flex:1 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:8 }}>
                   <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.14em', color:P.textSec, fontWeight:700, margin:0 }}>
-                    Preview · editable{aiIsDraft ? ' · AI draft' : ''}
+                    {t("outreach.previewEditable")}{aiIsDraft ? t("outreach.aiDraft") : ''}
                   </p>
                   {salesmanId && (
                     AI_FEATURES_ENABLED ? (
                       <button onClick={aiDraft} disabled={aiLoading}
                         style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background: slim ? K.raised : P.surface, border:`1px solid ${P.violetBorder}`, color:P.violetText, fontSize:11, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:FONT, opacity: aiLoading ? 0.6 : 1 }}>
-                        <Sparkles size={11} /> {aiLoading ? 'Writing…' : 'AI draft'}
+                        <Sparkles size={11} /> {aiLoading ? t("outreach.writing") : t("outreach.aiDraft2")}
                       </button>
                     ) : (
-                      <span title="No Anthropic API credits loaded yet"
+                      <span title={t("outreach.noAnthropicApiCreditsLoaded")}
                         style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, background:'transparent', border:`1px solid ${P.border}`, color:P.textSec, fontSize:11, fontWeight:600, fontFamily:FONT, opacity:0.7 }}>
-                        <Sparkles size={11} /> AI draft — coming soon
+                        <Sparkles size={11} /> {t("outreach.aiDraftComingSoon")}
                       </span>
                     )
                   )}
@@ -540,7 +542,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
 
               <button onClick={() => openWA(selected, draft || TEMPLATES[template].gen(selected))}
                 style={{ width:'100%', padding:'14px', borderRadius: slim ? 999 : 12, ...WA_BTN, border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                <MessageCircle size={16} /> Open WhatsApp — {(selected.buyer_name || 'Lead').split(' ')[0]}
+                <MessageCircle size={16} /> {t("outreach.openWhatsapp")} {(selected.buyer_name || 'Lead').split(' ')[0]}
               </button>
 
               {/* Not a scheduled SEND — it queues a reminder with this message
@@ -548,18 +550,18 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               {salesmanId && (
                 <button onClick={() => setScheduleOpen(true)}
                   style={{ width:'100%', padding:'11px', borderRadius: slim ? 999 : 12, background: slim ? K.raised : P.surface, border:`1px solid ${P.border}`, color: slim ? K.text : P.textSec, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                  <CalendarClock size={14} /> Remind me to send this later
+                  <CalendarClock size={14} /> {t("outreach.remindMeToSendThis")}
                 </button>
               )}
 
               {selected.stage === 'enquiry' ? (
                 <button onClick={() => promoteToPipeline(selected)} disabled={pushing}
                   style={{ width:'100%', padding:'11px', borderRadius: slim ? 999 : 12, background: slim ? K.raised : P.surface, border:`1px solid ${P.infoBorder}`, color:P.infoText, fontSize:13, fontWeight:600, cursor: pushing ? 'wait' : 'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7, opacity: pushing ? 0.6 : 1 }}>
-                  <ArrowRight size={14} /> {pushing ? 'Adding…' : 'Add to Pipeline'}
+                  <ArrowRight size={14} /> {pushing ? t("outreach.adding") : t("outreach.addToPipeline")}
                 </button>
               ) : (
                 <div style={{ width:'100%', padding:'10px', borderRadius:12, background:P.okBg, border:`1px solid ${P.okBorder}`, color:P.okText, fontSize:12, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                  <CheckCircle2 size={14} /> In pipeline · {selected.stage.replace('_', ' ')}
+                  <CheckCircle2 size={14} /> {t("outreach.inPipeline")} {selected.stage.replace('_', ' ')}
                 </div>
               )}
             </>
@@ -571,9 +573,9 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
       <div style={{ boxShadow: plight ? PL.shadow : undefined, background: slim ? K.card : 'rgba(167,139,250,0.06)', border: slim ? 'none' : '1px solid rgba(167,139,250,0.18)', borderRadius: slim ? K.radius.card : 14, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
         <Megaphone size={18} style={{ color: slim ? K.textSec : '#a78bfa', flexShrink:0 }} />
         <div style={{ flex:1, minWidth:200 }}>
-          <p style={{ fontSize:13, fontWeight:700, color:P.text, marginBottom:2 }}>Bulk Campaign · {SEGS[segment].label} Leads</p>
+          <p style={{ fontSize:13, fontWeight:700, color:P.text, marginBottom:2 }}>{t("outreach.bulkCampaign")} {SEGS[segment].label} {t("outreach.leads")}</p>
           <p style={{ fontSize:11, color:P.textMuted, lineHeight:1.5 }}>
-            Guided send to <span style={{ color: slim ? K.text : '#a78bfa', fontWeight:600 }}>{visibleLeads.length} contacts</span> — one chat per click, you stay in control (no paid blast, nothing popup-blocked).
+            {t("outreach.guidedSendTo")} <span style={{ color: slim ? K.text : '#a78bfa', fontWeight:600 }}>{visibleLeads.length} {t("outreach.contactsWord")}</span> {t("outreach.oneChatPerClickYou")}
           </p>
         </div>
         <div style={{ display:'flex', gap:8, flexShrink:0 }}>
@@ -583,7 +585,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
           </select>
           <button data-tour-id="oh-campaign" onClick={launchCampaign}
             style={{ padding:'9px 20px', borderRadius: slim ? 999 : 9, background: plight ? PL.text : slim ? K.accent : 'rgba(167,139,250,0.18)', border: slim ? 'none' : '1px solid rgba(167,139,250,0.35)', color: slim ? K.onAccent : P.violetText, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
-            <Send size={13} /> Contact All ({visibleLeads.length})
+            <Send size={13} /> {t("outreach.contactAll")}{visibleLeads.length})
           </button>
         </div>
       </div>
@@ -597,11 +599,11 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                 <div style={{ width:56, height:56, borderRadius:'50%', background:P.okBg, border:`1px solid ${P.okBorder}`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
                   <CheckCircle2 size={28} style={{ color:P.okTick }} />
                 </div>
-                <h3 style={{ fontSize:17, fontWeight:700, color:P.text, margin:'0 0 6px' }}>Campaign complete</h3>
-                <p style={{ fontSize:13, color:P.textMuted, margin:'0 0 20px' }}>You contacted {campaignIds.length} {campaignIds.length === 1 ? 'lead' : 'leads'}.</p>
+                <h3 style={{ fontSize:17, fontWeight:700, color:P.text, margin:'0 0 6px' }}>{t("outreach.campaignComplete")}</h3>
+                <p style={{ fontSize:13, color:P.textMuted, margin:'0 0 20px' }}>{t("outreach.youContacted")} {campaignIds.length} {campaignIds.length === 1 ? t("outreach.leadSing") : t("outreach.leadPl")}.</p>
                 <button onClick={endCampaign}
                   style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:P.inkBtn, color:P.inkBtnText, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT }}>
-                  Done
+                  {t("outreach.done")}
                 </button>
               </div>
             ) : (
@@ -609,7 +611,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                     <Megaphone size={18} style={{ color: slim ? K.textSec : P.violetStrong }} />
-                    <h3 style={{ fontSize:15, fontWeight:700, color:P.text, margin:0 }}>Guided campaign</h3>
+                    <h3 style={{ fontSize:15, fontWeight:700, color:P.text, margin:0 }}>{t("outreach.guidedCampaign")}</h3>
                   </div>
                   <span style={{ fontSize:12, fontWeight:700, color: slim ? K.text : P.violetStrong, background: slim ? K.raised : 'rgba(167,139,250,0.12)', borderRadius:20, padding:'3px 11px' }}>
                     {campaignIds.length - campaignIdx} left
@@ -620,29 +622,29 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
                   <div style={{ height:'100%', width:`${(campaignIdx / campaignIds.length) * 100}%`, background:P.violetStrong, borderRadius:3, transition:'width 0.3s' }} />
                 </div>
                 <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.12em', color:P.textDim, fontWeight:700, margin:'0 0 6px' }}>
-                  Lead {campaignIdx + 1} of {campaignIds.length}
+                  {t("outreach.leadOf", { i: campaignIdx + 1, n: campaignIds.length })}
                 </p>
                 <div style={{ background:P.surfaceAlt, border:`1px solid ${P.border}`, borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
-                  <p style={{ fontSize:15, fontWeight:700, color:P.text, margin:'0 0 2px' }}>{campaignCurrent?.buyer_name || 'Unknown'}</p>
+                  <p style={{ fontSize:15, fontWeight:700, color:P.text, margin:'0 0 2px' }}>{campaignCurrent?.buyer_name || t("outreach.unknown")}</p>
                   <p style={{ fontSize:12, color:P.textMuted, margin:0 }}>
-                    {campaignCurrent?.phone || 'No phone'}{campaignCurrent?.car_listing ? ` · ${campaignCurrent.car_listing.brand} ${campaignCurrent.car_listing.model}` : ''}
+                    {campaignCurrent?.phone || t("outreach.noPhone")}{campaignCurrent?.car_listing ? ` · ${campaignCurrent.car_listing.brand} ${campaignCurrent.car_listing.model}` : ''}
                   </p>
                 </div>
                 <p style={{ fontSize:12, color:P.textDim, lineHeight:1.5, margin:'0 0 16px', textAlign:'center' }}>
-                  Tap to open WhatsApp, send your message, then come back and continue.
+                  {t("outreach.tapToOpenWhatsappSend")}
                 </p>
                 <button onClick={contactCurrent}
                   style={{ width:'100%', padding:'14px', borderRadius: slim ? 999 : 12, ...WA_BTN, ...(slim ? {} : { color:P.surface }), border:'none', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
-                  <MessageCircle size={16} /> Open WhatsApp — {(campaignCurrent?.buyer_name || 'Lead').split(' ')[0]}
+                  <MessageCircle size={16} /> {t("outreach.openWhatsapp")} {(campaignCurrent?.buyer_name || 'Lead').split(' ')[0]}
                 </button>
                 <div style={{ display:'flex', gap:10 }}>
                   <button onClick={() => setCampaignIdx(i => i + 1)}
                     style={{ flex:1, padding:'10px', borderRadius:10, border:`1px solid ${P.border}`, background:P.surface, color:P.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>
-                    Skip
+                    {t("outreach.skip")}
                   </button>
                   <button onClick={endCampaign}
                     style={{ flex:1, padding:'10px', borderRadius:10, border:`1px solid ${P.dangerBorder}`, background:P.surface, color:P.dangerText, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>
-                    End campaign
+                    {t("outreach.endCampaign")}
                   </button>
                 </div>
               </>
@@ -659,11 +661,10 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
             style={{ background:P.surface, borderRadius:16, maxWidth:400, width:'100%', padding:22, fontFamily:FONT, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:6 }}>
               <CalendarClock size={17} style={{ color:P.textSec }} />
-              <h3 style={{ fontSize:15, fontWeight:700, color:P.text, margin:0 }}>Remind me later</h3>
+              <h3 style={{ fontSize:15, fontWeight:700, color:P.text, margin:0 }}>{t("outreach.remindMeLater")}</h3>
             </div>
             <p style={{ fontSize:12, color:P.textMuted, lineHeight:1.6, margin:'0 0 16px' }}>
-              We'll notify you at this time with the message ready to review.
-              Nothing is sent to {(selected.buyer_name || 'the buyer').split(' ')[0]} automatically — you always press send.
+              {t("outreach.weLlNotifyYouAt")} {(selected.buyer_name || 'the buyer').split(' ')[0]} {t("outreach.automaticallyYouAlwaysPressSend")}
             </p>
 
             <div style={{ display:'grid', gap:7, marginBottom:14 }}>
@@ -675,19 +676,19 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
               ))}
             </div>
 
-            <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:P.textDim, fontWeight:700, margin:'0 0 6px' }}>Or pick a time</p>
+            <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.12em', color:P.textDim, fontWeight:700, margin:'0 0 6px' }}>{t("outreach.orPickATime")}</p>
             <div style={{ display:'flex', gap:8, marginBottom:16 }}>
               <input type="datetime-local" value={customWhen} onChange={e => setCustomWhen(e.target.value)}
                 style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:`1px solid ${P.border}`, background:P.surface, color:P.text, fontSize:13, fontFamily:FONT, outline:'none' }} />
               <button onClick={() => scheduleNudge(new Date(customWhen))} disabled={!customWhen}
                 style={{ padding:'10px 16px', borderRadius:10, border:'none', background: customWhen ? P.inkBtn : P.fill, color: customWhen ? P.inkBtnText : P.textDim, fontSize:13, fontWeight:700, cursor: customWhen ? 'pointer' : 'not-allowed', fontFamily:FONT }}>
-                Set
+                {t("outreach.set")}
               </button>
             </div>
 
             <button onClick={() => setScheduleOpen(false)}
               style={{ width:'100%', padding:'10px', borderRadius:10, border:`1px solid ${P.border}`, background:P.surface, color:P.textMuted, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>
-              Cancel
+              {t("outreach.cancel")}
             </button>
           </div>
         </div>, document.body)}

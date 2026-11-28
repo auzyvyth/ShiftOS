@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 // The engine behind the quick listing form: one question per screen, a tap
 // answers it and slides (180ms) to the next. Each CarForm stage (Car,
@@ -38,13 +39,14 @@ export function Tile({ selected, onClick, children, className = "" }) {
 }
 
 export function Custom({ value, onUse }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onUse}
       className="w-full px-4 py-3 rounded-xl border border-dashed border-gray-300 text-sm text-gray-700 text-left hover:border-gray-400"
     >
-      Not listed — use "<span className="font-semibold">{value}</span>"
+      {t("qst.notListedUse")}<span className="font-semibold">{value}</span>"
     </button>
   );
 }
@@ -77,6 +79,7 @@ export function BigNumber({ inputRef, value, onChange, prefix, suffix, placehold
 // straight on instead of stopping at "Check and continue". The summary is still
 // shown when a seller comes back to the stage or taps a row to change it.
 export default function QuickSteps({ setForm, screens, summaryRows, landOnSummary, contextLine, onExitBack, onDone, dark, skipSummary }) {
+  const { t } = useTranslation();
   const live = screens.filter((s) => !s.skip);
   const byKey = (k) => screens.find((s) => s.key === k);
   const gaps = live.filter((s) => s.required && !s.answered);
@@ -188,12 +191,12 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
   function renderSummary() {
     return (
       <>
-      <p className="text-xs text-gray-500 mb-2">Tap any row to change it.</p>
+      <p className="text-xs text-gray-500 mb-2">{t("qst.tapAnyRowToChange")}</p>
       <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
         {summaryRows.filter((r) => !byKey(r.key)?.skip).map((r) => (
           <button key={r.key + r.label} type="button" onClick={() => editFromSummary(r.key)} className="w-full flex items-center gap-3 px-4 py-3 text-left bg-white hover:bg-gray-50">
             <span className="text-xs text-gray-500 w-28 flex-shrink-0">{r.label}</span>
-            <span className={`flex-1 min-w-0 truncate text-sm ${r.value ? "font-medium text-gray-900" : "text-gray-400"}`}>{r.value || "Add"}</span>
+            <span className={`flex-1 min-w-0 truncate text-sm ${r.value ? "font-medium text-gray-900" : "text-gray-400"}`}>{r.value || t("qst.add")}</span>
             <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
           </button>
         ))}
@@ -239,7 +242,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
           {contextLine && !isSummary && !screen?.hideContext && (
             <p className="text-xs text-gray-400 truncate mb-0.5">{contextLine}</p>
           )}
-          <h3 className="text-xl font-semibold text-gray-900">{isSummary ? "Check and continue" : screen?.title}</h3>
+          <h3 className="text-xl font-semibold text-gray-900">{isSummary ? t("qst.checkAndContinue") : screen?.title}</h3>
         </div>
         {isSummary ? renderSummary() : screen?.render(ctx)}
       </div>
@@ -253,7 +256,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
           onClick={back}
           className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all hover:border-gray-300"
         >
-          <ChevronLeft className="w-4 h-4" />Back
+          <ChevronLeft className="w-4 h-4" />{t("qst.back")}
         </button>
         <button
           type="button"
