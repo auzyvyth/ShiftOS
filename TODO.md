@@ -139,6 +139,8 @@ Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the
 the live data of `/s/premiummotors?brand=perodua` (owner: desktop, Perodua only), `tools/page-video/record.cjs`.
   Hero = the business card with Perodua cut-outs on the ring (`HERO=card:perodua`, a recording-only override: the live page's own
   hero setting is still the big photo).
+  How to buy, Handover day + photos, FAQ, Promos, Delivery and Recently sold are SAMPLE content (`EXAMPLE=1`, owner's call), each
+  stamped "EXAMPLE" in the video, and the caption says so. Handover "photos" are the page's own Perodua car photos, no people.
 - [ ] The bio ("Selling Recon Toyota Alphard...") and the "Recon imports" tag on premiummotors are account settings, not Perodua.
   Once the owner changes them, re-record as `-v3` (v2 was never on staging, so it was overwritten in place).
 
