@@ -145,6 +145,10 @@ const CARD_WORDS = {
     dfy: { name: 'Done for you', desc: 'Premium, set up for you by our team.', cta: 'WhatsApp us',
       wa: `Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`,
       features: ['Everything in Premium', 'Your page set up for you', `Your first ${PF.doneForYouCars} cars uploaded from your photos`, 'Loan posters made for those cars', 'WhatsApp help when you get stuck'] },
+    pro: { name: 'Seller Pro', badge: 'Coming soon', desc: 'Your cars posted to your own social pages for you. For used and recon sellers.', cta: 'Register interest on WhatsApp',
+      wa: `Hi, I'm interested in Drevo Seller Pro (auto-post to Facebook, Instagram and TikTok, about RM${PF.proPrice}/month). Please tell me more.`,
+      notes: ['Not open yet. Tell us you are interested and we will message you first.'],
+      features: ['Everything in Premium', 'New cars posted to your Facebook and Instagram', 'TikTok posts ready for you to approve with one tap', 'Reposts a car that has gone quiet', 'We connect your pages with you on WhatsApp'] },
   },
   ms: {
     per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas', self: 'Atau daftar sendiri',
@@ -158,6 +162,10 @@ const CARD_WORDS = {
     dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disetkan oleh team kami.', cta: 'WhatsApp kami',
       wa: `Hi, saya nak Drevo Kami setkan untuk anda (RM${PF.doneForYouPrice}/bulan).`,
       features: ['Semua dalam Premium', 'Page anda disetkan untuk anda', `${PF.doneForYouCars} kereta pertama dimuat naik dari gambar anda`, 'Poster loan untuk kereta itu', 'Bantuan WhatsApp bila tersekat'] },
+    pro: { name: 'Seller Pro', badge: 'Akan datang', desc: 'Kereta anda dipost ke page sosial anda sendiri. Untuk seller kereta terpakai dan recon.', cta: 'Daftar minat di WhatsApp',
+      wa: `Hi, saya berminat dengan Drevo Seller Pro (auto-post ke Facebook, Instagram dan TikTok, lebih kurang RM${PF.proPrice}/bulan). Boleh terangkan lanjut?`,
+      notes: ['Belum dibuka. Beritahu kami anda berminat dan kami hubungi anda dahulu.'],
+      features: ['Semua dalam Premium', 'Kereta baru dipost ke Facebook dan Instagram anda', 'Post TikTok siap, anda lulus dengan satu tap', 'Post semula kereta yang senyap', 'Kami sambungkan page anda bersama anda di WhatsApp'] },
   },
 };
 
@@ -168,12 +176,15 @@ export const PRICING_FEATURES_LABEL = { en: 'Features', ms: 'Ciri-ciri' };
 // still one tap away as the small "sign up yourself" link (`selfTo`).
 export const waLink = (text) => `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(text)}`;
 
-export function salesmanPricingCards(lang = 'en') {
+// `withPro` adds the Seller Pro interest card (only /plans passes it; the /for-salesmen ad page does not).
+export function salesmanPricingCards(lang = 'en', { withPro = false } = {}) {
   const w = CARD_WORDS[lang] || CARD_WORDS.en;
-  return [
+  const cards = [
     { key: 'lite', ...w.lite, price: w.free, per: '', href: waLink(w.lite.wa), selfTo: PRESENTATION.salesman_lite.route, selfLabel: w.self },
     { key: 'premium', ...w.premium, price: `RM${PF.price}`, per: w.per, featured: true, badge: w.foundingBadge, href: waLink(w.premium.wa), selfTo: PRESENTATION.salesman_full.route, selfLabel: w.self },
     { key: 'dfy', ...w.dfy, price: `RM${PF.doneForYouPrice}`, per: w.per,
       href: waLink(w.dfy.wa) },
   ];
+  if (withPro) cards.push({ key: 'pro', ...w.pro, price: `RM${PF.proPrice}`, per: w.per, href: waLink(w.pro.wa) });
+  return cards;
 }

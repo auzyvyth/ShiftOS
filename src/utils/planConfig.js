@@ -26,6 +26,9 @@ export const PLAN_CONFIG = {
     // hand. Not a separate plan in the DB: it is a Premium payment of this amount.
     doneForYouPrice: 99,
     doneForYouCars: 10,
+    // Pro = auto-post to Facebook / Instagram / TikTok (IDEA-34). PLACEHOLDER price (owner, 2026-11-28): the
+    // card only collects interest on WhatsApp, nothing is charged and nothing posts until it is built.
+    proPrice: 200,
     // Free trial length for a new Premium seller (owner, 2026-10-25: was 30).
     // Same number as the DB trigger apply_premium_free_month().
     trialDays: 7,
