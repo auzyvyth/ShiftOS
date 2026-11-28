@@ -83,6 +83,7 @@ import CameraCapture from "./studio/CameraCapture";
 import DragSlider from "./studio/DragSlider";
 import GradientEditor, { gradientCss, DEFAULT_GRADIENT, DARK_SCRIM_GRADIENT } from "./studio/GradientEditor";
 import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
+import { useTranslation } from 'react-i18next';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // A press moves the object only after the finger travels this far.
@@ -497,8 +498,9 @@ function buildDefaultElements(listing, theme, dealerName) {
 // every template — a full-bleed rect with a transparent dark gradient fill,
 // sitting above the photo but behind the headline/price text (OVERLAY_Z).
 function makeOverlayLayer(overrides = {}) {
+  const { t: tr } = useTranslation();
   return makeLayer("rect", {
-    label: "Gradient",
+    label: tr("studio.gradient"),
     x: 0,
     y: 0,
     width: 100,
@@ -1150,6 +1152,7 @@ function SelectionOverlay({
   onToggleLock,
   onDelete,
 }) {
+  const { t: tr } = useTranslation();
   const [bounds, setBounds] = React.useState(null);
 
   React.useEffect(() => {
@@ -1356,9 +1359,9 @@ function SelectionOverlay({
           zIndex: 5,
         }}
       >
-        <MiniBtn onClick={onDuplicate} title="Duplicate"><Copy size={17} /></MiniBtn>
-        <MiniBtn onClick={onToggleLock} title="Lock"><Lock size={17} /></MiniBtn>
-        <MiniBtn danger onClick={onDelete} title="Delete"><Trash2 size={17} /></MiniBtn>
+        <MiniBtn onClick={onDuplicate} title={tr("studio.duplicate")}><Copy size={17} /></MiniBtn>
+        <MiniBtn onClick={onToggleLock} title={tr("studio.lock")}><Lock size={17} /></MiniBtn>
+        <MiniBtn danger onClick={onDelete} title={tr("studio.delete")}><Trash2 size={17} /></MiniBtn>
       </div>
     </div>
   );
@@ -1465,6 +1468,7 @@ function CanvasPreview({
   innerRef,
   hideInteractive = false,
 }) {
+  const { t: tr } = useTranslation();
   const bgCanvasRef = React.useRef(null);
   const localRef = React.useRef(null);
 
@@ -1586,7 +1590,7 @@ function CanvasPreview({
           }}
         >
           <span style={{ fontSize: 26 * scale, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.85)", textTransform: "uppercase" }}>
-            Your car here
+            {tr("studio.yourCarHere")}
           </span>
           {slide.carZone.hint && (
             <span style={{ fontSize: 17 * scale, color: "rgba(255,255,255,0.55)", textAlign: "center", padding: `0 ${20 * scale}px` }}>
@@ -1624,7 +1628,7 @@ function CanvasPreview({
             <p
               style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 * scale }}
             >
-              AI is editing…
+              {tr("studio.aiIsEditing")}
             </p>
           </div>
         </div>
@@ -1798,6 +1802,7 @@ function SSwitch({ label, value, onChange }) {
 }
 // Quick colours + any colour. `presets` are hex strings.
 function SColorPick({ label, value, onChange, presets }) {
+  const { t: tr } = useTranslation();
   const cur = (value || "").toLowerCase();
   return (
     <div style={{ marginBottom: 10 }}>
@@ -1806,7 +1811,7 @@ function SColorPick({ label, value, onChange, presets }) {
         {presets.map((p) => (
           <button
             key={p}
-            aria-label={`Colour ${p}`}
+            aria-label={tr("studio.colourAria", { c: p })}
             aria-pressed={cur === p.toLowerCase()}
             onClick={() => onChange(p)}
             style={{
@@ -1822,7 +1827,7 @@ function SColorPick({ label, value, onChange, presets }) {
           />
         ))}
         <label
-          aria-label="Pick any colour"
+          aria-label={tr("studio.pickAnyColour")}
           style={{ position: "relative", width: 34, height: 34, borderRadius: 999, border: `1px dashed ${C.muted}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.sec, cursor: "pointer" }}
         >
           <Plus size={14} />
@@ -1855,6 +1860,7 @@ const PHOTO_ADJUST = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 // Small preview tile of a backdrop scene for the picker.
 function BackdropSwatch({ id, accent, active, label, onPick }) {
+  const { t: tr } = useTranslation();
   const ref = React.useRef(null);
   React.useEffect(() => {
     const c = ref.current;
@@ -1871,7 +1877,7 @@ function BackdropSwatch({ id, accent, active, label, onPick }) {
       style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
       <span style={{ display: "block", width: 54, height: 84, borderRadius: 8, overflow: "hidden", boxShadow: active ? "0 0 0 2px #fff" : "0 0 0 1px rgba(255,255,255,0.12)", position: "relative" }}>
         <canvas ref={ref} style={{ width: 54, height: 84, display: "block" }} />
-        {id === "none" && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>Off</span>}
+        {id === "none" && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{tr("studio.off")}</span>}
       </span>
       <span style={{ fontSize: 10, color: active ? "#fff" : "rgba(255,255,255,0.5)", fontWeight: active ? 700 : 500 }}>{label}</span>
     </button>
@@ -1881,6 +1887,7 @@ function BackdropSwatch({ id, accent, active, label, onPick }) {
 // `backdrops`: Salesman Premium only (SalesmanPremium.jsx passes it). Unlocks
 // drawn scenes behind a cut-out car; see src/components/studio/backdrops.js.
 export default function TikTokStudioV3({ listing, onClose, backdrops = false }) {
+  const { t: tr } = useTranslation();
   // ── State ────────────────────────────────────────────────────────────────
   const [slides, setSlides] = useState([]);
   const [active, setActive] = useState(0);
@@ -2948,7 +2955,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       const sq = (wPct, ratio = 1) => ({ width: wPct, height: ((wPct / 100) * CW * ratio / CH) * 100 });
       if (type === "gradient")
         return addLayerScoped("rect", {
-          label: "Gradient",
+          label: tr("studio.gradient"),
           gradient: DARK_SCRIM_GRADIENT,
           x: 0, y: 0, width: 100, height: 100,
           borderWidth: 0, borderRadius: 0,
@@ -3417,7 +3424,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     ],
   };
   const kindTools = TOOLSETS[selKind];
-  const KIND_LABEL = { slide: "Slide", photo: "Photo", text: "Text", badge: "Badge", shape: "Shape", image: "Image" };
+  const KIND_LABEL = { slide: "Slide", photo: "Photo", text: tr("studio.text"), badge: "Badge", shape: "Shape", image: "Image" };
   const selObj = selectedEl || selLayer;
   const onlyHere = allOn && selObj && !linkKey(selObj);
   const deskTool =
@@ -3429,8 +3436,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   const scopeToggle = () =>
     total > 1 ? (
       <SSeg
-        label="Edit this slide or every slide"
-        items={[[false, "This slide"], [true, "All slides"]]}
+        label={tr("studio.editThisSlideOrEvery")}
+        items={[[false, tr("studio.thisSlide")], [true, tr("studio.allSlides")]]}
         value={scopeAll}
         onPick={setScopeAll}
       />
@@ -3445,18 +3452,18 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   // ── Slide tools ──────────────────────────────────────────────────────────
   const slideTemplates = () => (
     <div>
-      {allOn && <SNote>A template goes on all {total} slides, each with its own photo.</SNote>}
+      {allOn && <SNote>{tr("studio.templateAll", { n: total })}</SNote>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {CAR_TEMPLATES.map((t) => (
           <div key={t.id} style={{ background: C.raised, borderRadius: 14, padding: "12px 14px" }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{t.name}</p>
             <p style={{ fontSize: 12, color: C.sec, lineHeight: 1.45, margin: "3px 0 10px" }}>{t.tagline}</p>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => applyProTemplate(t)} style={primaryBtn}>Use template</button>
+              <button onClick={() => applyProTemplate(t)} style={primaryBtn}>{tr("studio.useTemplate")}</button>
               {/* The camera only exists on a phone */}
               {isMobile && (
                 <button onClick={() => openCameraWithTemplate(t)} style={{ ...tileStyle(), flex: 1, background: C.sel }}>
-                  <Camera size={15} /> Use + shoot
+                  <Camera size={15} /> {tr("studio.useShoot")}
                 </button>
               )}
             </div>
@@ -3464,7 +3471,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         ))}
       </div>
 
-      <SLabel>My designs ({savedDesigns.length}/5)</SLabel>
+      <SLabel>{tr("studio.myDesignsN", { n: savedDesigns.length })}</SLabel>
       {libMsg && <SNote>{libMsg}</SNote>}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {savedDesigns.map((d) => (
@@ -3473,8 +3480,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
               {d.thumb && <img src={d.thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
             </div>
             <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
-            <button onClick={() => loadDesign(d)} style={{ ...tileStyle(), height: 36, background: C.sel }}>Apply</button>
-            <button aria-label={`Delete ${d.name}`} onClick={() => deleteDesign(d.id)} style={{ ...tileStyle(), height: 36, width: 36, padding: 0, color: C.redText }}>
+            <button onClick={() => loadDesign(d)} style={{ ...tileStyle(), height: 36, background: C.sel }}>{tr("studio.apply")}</button>
+            <button aria-label={tr("studio.deleteNamed", { name: d.name })} onClick={() => deleteDesign(d.id)} style={{ ...tileStyle(), height: 36, width: 36, padding: 0, color: C.redText }}>
               <Trash2 size={15} />
             </button>
           </div>
@@ -3482,8 +3489,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       </div>
       {savedDesigns.length < 5 && (
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <input value={designName} onChange={(e) => setDesignName(e.target.value)} placeholder="Name this design" style={{ ...inputStyle, flex: 1, fontSize: 14 }} />
-          <button onClick={saveDesign} style={{ ...tileStyle(), background: C.sel, whiteSpace: "nowrap" }}>Save</button>
+          <input value={designName} onChange={(e) => setDesignName(e.target.value)} placeholder={tr("studio.nameThisDesign")} style={{ ...inputStyle, flex: 1, fontSize: 14 }} />
+          <button onClick={saveDesign} style={{ ...tileStyle(), background: C.sel, whiteSpace: "nowrap" }}>{tr("studio.save")}</button>
         </div>
       )}
     </div>
@@ -3491,8 +3498,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
   const slideDesign = () => (
     <div>
-      <SNote>Design settings apply to every slide.</SNote>
-      <SLabel style={{ marginTop: 0 }}>Size</SLabel>
+      <SNote>{tr("studio.designSettingsApplyToEvery")}</SNote>
+      <SLabel style={{ marginTop: 0 }}>{tr("studio.size")}</SLabel>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
         {FORMATS.map((f) => (
           <button key={f.id} aria-pressed={canvasFormat === f.id} onClick={() => setCanvasFormat(f.id)} style={{ ...tileStyle(canvasFormat === f.id), justifyContent: "flex-start", height: 48 }}>
@@ -3501,7 +3508,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           </button>
         ))}
       </div>
-      <SLabel>Style</SLabel>
+      <SLabel>{tr("studio.style")}</SLabel>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
         {STYLE_PRESETS.map((p) => (
           <button key={p.id} onClick={() => setTheme((t) => ({ ...t, ...p.theme }))} style={{ ...tileStyle(), justifyContent: "flex-start" }}>
@@ -3514,10 +3521,10 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           </button>
         ))}
       </div>
-      <SLabel>Colours</SLabel>
-      <SColorPick label="Accent" value={theme.accentColor} onChange={(v) => setTheme((t) => ({ ...t, accentColor: v }))} presets={["#dc2626", "#c9a84c", "#00d4ff", "#00c853", "#ffffff"]} />
-      <SColorPick label="Background" value={theme.bgColor} onChange={(v) => setTheme((t) => ({ ...t, bgColor: v }))} presets={["#0b0c0f", "#0d0d0d", "#020918", "#f0f0f0"]} />
-      <SLabel>Font for every text</SLabel>
+      <SLabel>{tr("studio.colours")}</SLabel>
+      <SColorPick label={tr("studio.accent")} value={theme.accentColor} onChange={(v) => setTheme((t) => ({ ...t, accentColor: v }))} presets={["#dc2626", "#c9a84c", "#00d4ff", "#00c853", "#ffffff"]} />
+      <SColorPick label={tr("studio.background")} value={theme.bgColor} onChange={(v) => setTheme((t) => ({ ...t, bgColor: v }))} presets={["#0b0c0f", "#0d0d0d", "#020918", "#f0f0f0"]} />
+      <SLabel>{tr("studio.fontForEveryText")}</SLabel>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
         {FONTS.map((f) => (
           <button
@@ -3534,7 +3541,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         ))}
       </div>
       <div style={{ marginTop: 12 }}>
-        <SSwitch label="Accent bar at the top" value={theme.showAccentBar !== false} onChange={(v) => setTheme((t) => ({ ...t, showAccentBar: v }))} />
+        <SSwitch label={tr("studio.accentBarAtTheTop")} value={theme.showAccentBar !== false} onChange={(v) => setTheme((t) => ({ ...t, showAccentBar: v }))} />
       </div>
     </div>
   );
@@ -3545,32 +3552,32 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   };
   const slideBrand = () => (
     <div>
-      <SNote>Brand settings apply to every slide.</SNote>
-      <SLabel style={{ marginTop: 0 }}>Logo</SLabel>
+      <SNote>{tr("studio.brandSettingsApplyToEvery")}</SNote>
+      <SLabel style={{ marginTop: 0 }}>{tr("studio.logo")}</SLabel>
       <input value={theme.logoUrl || ""} placeholder="Logo image link (https://)" onChange={(e) => setTheme((t) => ({ ...t, logoUrl: e.target.value || null }))} style={inputStyle} />
       {theme.logoUrl && (
         <div style={{ marginTop: 10 }}>
-          <SSlider label="Logo size" value={theme.logoSize || 80} min={40} max={200} step={4} onChange={(v) => setTheme((t) => ({ ...t, logoSize: v }))} fmt={(v) => `${v}px`} />
+          <SSlider label={tr("studio.logoSize")} value={theme.logoSize || 80} min={40} max={200} step={4} onChange={(v) => setTheme((t) => ({ ...t, logoSize: v }))} fmt={(v) => `${v}px`} />
         </div>
       )}
-      <SLabel>Watermark</SLabel>
-      <input value={theme.watermarkText || ""} placeholder="Your name or business" onChange={(e) => setWatermark({ content: e.target.value })} style={inputStyle} />
+      <SLabel>{tr("studio.watermark")}</SLabel>
+      <input value={theme.watermarkText || ""} placeholder={tr("studio.yourNameOrBusiness")} onChange={(e) => setWatermark({ content: e.target.value })} style={inputStyle} />
       <div style={{ marginTop: 10 }}>
-        <SSlider label="Watermark strength" value={theme.watermarkOpacity ?? 0.5} min={0} max={1} step={0.01} onChange={(v) => setWatermark({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+        <SSlider label={tr("studio.watermarkStrength")} value={theme.watermarkOpacity ?? 0.5} min={0} max={1} step={0.01} onChange={(v) => setWatermark({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
       </div>
-      <SLabel>Badges on every slide</SLabel>
+      <SLabel>{tr("studio.badgesOnEverySlide")}</SLabel>
       <SSwitch
-        label={`Condition (${{ new: "Brand New", recon: "Recon", used: "Used" }[listing?.condition || ""] || "not set"})`}
+        label={tr("studio.conditionOf", { c: ({ new: tr("studio.cond.new"), recon: tr("studio.cond.recon"), used: tr("studio.cond.used") })[listing?.condition || ""] || tr("studio.cond.notSet") })}
         value={!!theme.showConditionBadge}
         onChange={(v) => setTheme((t) => ({ ...t, showConditionBadge: v }))}
       />
-      <SSwitch label="Hot Deal" value={!!theme.showHotDealBadge} onChange={(v) => setTheme((t) => ({ ...t, showHotDealBadge: v }))} />
-      <input value={theme.customBadgeText || ""} placeholder="Your own badge text (empty = none)" onChange={(e) => setTheme((t) => ({ ...t, customBadgeText: e.target.value }))} style={{ ...inputStyle, marginTop: 4 }} />
+      <SSwitch label={tr("studio.hotDeal")} value={!!theme.showHotDealBadge} onChange={(v) => setTheme((t) => ({ ...t, showHotDealBadge: v }))} />
+      <input value={theme.customBadgeText || ""} placeholder={tr("studio.yourOwnBadgeTextEmpty")} onChange={(e) => setTheme((t) => ({ ...t, customBadgeText: e.target.value }))} style={{ ...inputStyle, marginTop: 4 }} />
       <div style={{ marginTop: 10 }}>
-        <SColorPick label="Badge colour" value={theme.badgeColor || "#dc2626"} onChange={(v) => setTheme((t) => ({ ...t, badgeColor: v }))} presets={["#dc2626", "#0b0c0f", "#e8c15a", "#ffffff"]} />
+        <SColorPick label={tr("studio.badgeColour")} value={theme.badgeColor || "#dc2626"} onChange={(v) => setTheme((t) => ({ ...t, badgeColor: v }))} presets={["#dc2626", "#0b0c0f", "#e8c15a", "#ffffff"]} />
       </div>
       <button onClick={saveBranding} style={{ ...primaryBtn, width: "100%", marginTop: 6 }}>
-        {savedBrand ? "Saved" : "Save as my brand kit"}
+        {savedBrand ? tr("studio.saved") : tr("studio.saveAsMyBrandKit")}
       </button>
     </div>
   );
@@ -3578,7 +3585,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   const aiPct = Math.round((aiUsage.count / AI_LIMIT) * 100);
   const slideAI = () => (
     <div>
-      <SNote>Tell it what to change on this slide. {aiUsage.loaded ? `${aiUsage.count} of ${AI_LIMIT} used today.` : ""}</SNote>
+      <SNote>{tr("studio.tellItWhatToChange")} {aiUsage.loaded ? tr("studio.aiUsed", { n: aiUsage.count, max: AI_LIMIT }) : ""}</SNote>
       <div style={{ height: 4, borderRadius: 2, background: C.raised, overflow: "hidden", marginBottom: 12 }}>
         <div style={{ height: "100%", width: `${Math.min(100, aiPct)}%`, background: aiAtLimit ? C.redText : C.text }} />
       </div>
@@ -3589,14 +3596,14 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           onChange={(e) => setAiCmd(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && runAICommand()}
           disabled={aiAtLimit}
-          placeholder="Make the price bigger"
+          placeholder={tr("studio.makeThePriceBigger")}
           style={{ ...inputStyle, flex: 1, opacity: aiAtLimit ? 0.4 : 1 }}
         />
         <button onClick={runAICommand} disabled={applyingCmd || !aiCmd.trim() || aiAtLimit} style={{ ...primaryBtn, flex: "0 0 auto", padding: "0 16px", opacity: applyingCmd || !aiCmd.trim() || aiAtLimit ? 0.5 : 1 }}>
           {applyingCmd ? "..." : "Go"}
         </button>
       </div>
-      {aiAtLimit && <SNote>Daily limit reached. It resets tomorrow.</SNote>}
+      {aiAtLimit && <SNote>{tr("studio.dailyLimitReachedItResets")}</SNote>}
       {genError && <p style={{ fontSize: 12, color: C.redText, margin: "8px 0 0" }}>{genError}</p>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
         {suggestions.map((sg) => (
@@ -3614,7 +3621,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       </div>
       {cmdHistory.length > 0 && (
         <>
-          <SLabel>Recent</SLabel>
+          <SLabel>{tr("studio.recent")}</SLabel>
           {cmdHistory.map((c, i) => (
             <button key={i} onClick={() => setAiCmd(c)} style={{ display: "block", width: "100%", textAlign: "left", minHeight: 36, background: "none", border: "none", color: C.sec, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}>
               {c}
@@ -3628,14 +3635,14 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   // ── Photo tools ──────────────────────────────────────────────────────────
   const photoReplace = () => (
     <div>
-      {allOn && <SNote>A new photo changes this slide only.</SNote>}
+      {allOn && <SNote>{tr("studio.aNewPhotoChangesThis")}</SNote>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
         {images.map((url, i) => {
           const on = url === slide.imageUrl || url === slide.originalImageUrl;
           return (
             <button
               key={url + i}
-              aria-label={`Use photo ${i + 1}`}
+              aria-label={tr("studio.usePhotoN", { n: i + 1 })}
               aria-pressed={on}
               onClick={() => patchSlide({ imageUrl: url, originalImageUrl: null })}
               style={{ aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", padding: 0, border: "none", cursor: "pointer", boxShadow: on ? `0 0 0 2px ${C.text}` : "none", background: C.raised }}
@@ -3647,7 +3654,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
         <label style={{ ...tileStyle(), flex: 1 }}>
-          <Upload size={15} /> Upload
+          <Upload size={15} /> {tr("studio.upload")}
           <input
             type="file"
             accept="image/*"
@@ -3660,7 +3667,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         </label>
         {isMobile && (
           <button onClick={openCamera} style={{ ...tileStyle(), flex: 1 }}>
-            <Camera size={15} /> Take photo
+            <Camera size={15} /> {tr("studio.takePhoto")}
           </button>
         )}
       </div>
@@ -3672,21 +3679,21 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     <div>
       <SNote>
         {cutoutSaved
-          ? "Done on your phone, one photo at a time. Your photo is not uploaded."
-          : `Done on your phone, one photo at a time. The first time downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
+          ? tr("studio.doneOnYourPhoneOne")
+          : tr("studio.cutoutFirst", { mb: Math.round(CUTOUT_MODEL_BYTES / 1e6) })}
       </SNote>
-      {allOn && <SNote>This works on this slide's photo only, even in All slides.</SNote>}
-      {!slide.imageUrl && <SNote>This slide has no photo yet.</SNote>}
+      {allOn && <SNote>{tr("studio.thisWorksOnThisSlide")}</SNote>}
+      {!slide.imageUrl && <SNote>{tr("studio.thisSlideHasNoPhoto")}</SNote>}
       {slide.imageUrl && !cutDoneHere && (
         <button onClick={removeBg} disabled={removingBg} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
-          <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
+          <Scissors size={15} /> {removingBg ? tr("studio.working") : tr("studio.removeTheBackground")}
         </button>
       )}
       {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
       {removeBgError && <p style={{ fontSize: 12, color: C.redText, margin: "8px 0" }}>{removeBgError}</p>}
       {cutDoneHere && !removingBg && (
         <button onClick={restoreBg} style={{ ...tileStyle(), width: "100%" }}>
-          <RotateCcw size={15} /> Put the background back
+          <RotateCcw size={15} /> {tr("studio.putTheBackgroundBack")}
         </button>
       )}
     </div>
@@ -3696,14 +3703,14 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     <div>
       <AdjustStrip
         key={allOn ? "all" : slide.id}
-        items={PHOTO_ADJUST}
+        items={PHOTO_ADJUST.map((a) => ({ ...a, label: tr(`studio.adj.${a.key}`, { defaultValue: a.label }) }))}
         values={{ ...DEF_ADJ, ...(slide.bgAdjust || {}) }}
         onChange={(k, v) => patchPhoto((s) => ({ bgAdjust: { ...DEF_ADJ, ...(s.bgAdjust || {}), [k]: v } }))}
         onResetAll={() => patchPhoto(() => ({ bgAdjust: { ...DEF_ADJ } }))}
       />
       <div style={{ marginTop: 14 }}>
         <SSlider
-          label="Blurred fill around the photo (every slide)"
+          label={tr("studio.blurredFillAroundThePhoto")}
           value={theme.blurIntensity ?? 18}
           min={0}
           max={30}
@@ -3719,9 +3726,9 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     if (!slide.originalImageUrl) {
       return (
         <div>
-          <SNote>Backdrops go behind the car once its background is removed.</SNote>
+          <SNote>{tr("studio.backdropsGoBehindTheCar")}</SNote>
           <button onClick={removeBg} disabled={removingBg || !slide.imageUrl} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
-            <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
+            <Scissors size={15} /> {removingBg ? tr("studio.working") : tr("studio.removeTheBackground")}
           </button>
           {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
         </div>
@@ -3732,18 +3739,18 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     const setFit = (p) => patchPhoto((s) => ({ carFit: { ...DEFAULT_CAR_FIT, ...(s.carFit || {}), ...p } }));
     return (
       <div>
-        <SNote>Drawn behind your car. The car photo itself is not changed.</SNote>
+        <SNote>{tr("studio.drawnBehindYourCarThe")}</SNote>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-          <BackdropSwatch id="none" label="None" accent={theme.accentColor} active={current === "none"} onPick={() => patchPhoto(() => ({ backdrop: "none" }))} />
+          <BackdropSwatch id="none" label={tr("studio.none")} accent={theme.accentColor} active={current === "none"} onPick={() => patchPhoto(() => ({ backdrop: "none" }))} />
           {BACKDROPS.map((b) => (
             <BackdropSwatch key={b.id} id={b.id} label={b.name} accent={theme.accentColor} active={current === b.id} onPick={() => patchPhoto(() => ({ backdrop: b.id }))} />
           ))}
         </div>
         {current !== "none" && (
           <div style={{ marginTop: 12 }}>
-            <SSwitch label="Shadow under the car" value={slide.carShadow !== false} onChange={(v) => patchPhoto(() => ({ carShadow: v }))} />
-            <SSlider label="Car size" value={fit.size} min={0.6} max={1.4} step={0.01} onChange={(v) => setFit({ size: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
-            <SSlider label="Car height" value={fit.lift} min={-0.25} max={0.25} step={0.005} onChange={(v) => setFit({ lift: v })} fmt={(v) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}`} />
+            <SSwitch label={tr("studio.shadowUnderTheCar")} value={slide.carShadow !== false} onChange={(v) => patchPhoto(() => ({ carShadow: v }))} />
+            <SSlider label={tr("studio.carSize")} value={fit.size} min={0.6} max={1.4} step={0.01} onChange={(v) => setFit({ size: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+            <SSlider label={tr("studio.carHeight")} value={fit.lift} min={-0.25} max={0.25} step={0.005} onChange={(v) => setFit({ lift: v })} fmt={(v) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}`} />
           </div>
         )}
       </div>
@@ -3755,23 +3762,23 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   const up = updateSelectedElement;
   const elEdit = () => (
     <div>
-      <input value={el.content || ""} onChange={(e) => up({ content: e.target.value })} placeholder="Type here" style={{ ...inputStyle, fontSize: 16 }} />
-      <SNote>Or double-tap the text on the slide.</SNote>
+      <input value={el.content || ""} onChange={(e) => up({ content: e.target.value })} placeholder={tr("studio.typeHere")} style={{ ...inputStyle, fontSize: 16 }} />
+      <SNote>{tr("studio.orDoubleTapTheText")}</SNote>
     </div>
   );
   const elFont = () => (
     <div>
-      <SSlider label="Size" value={el.fontSize || 32} min={16} max={200} step={1} onChange={(v) => up({ fontSize: v })} fmt={(v) => `${v}`} />
+      <SSlider label={tr("studio.size")} value={el.fontSize || 32} min={16} max={200} step={1} onChange={(v) => up({ fontSize: v })} fmt={(v) => `${v}`} />
       <SSeg
-        label="Weight"
-        items={[["300", "Thin"], ["400", "Regular"], ["600", "Medium"], ["700", "Bold"], ["800", "Black"]]}
+        label={tr("studio.weight")}
+        items={[["300", tr("studio.w.thin")], ["400", tr("studio.w.regular")], ["600", tr("studio.w.medium")], ["700", tr("studio.w.bold")], ["800", tr("studio.w.black")]]}
         value={String(el.fontWeight || "700")}
         onPick={(w) => up({ fontWeight: w })}
       />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 8px" }}>
-        <span style={{ fontSize: 12, color: C.sec }}>Font</span>
+        <span style={{ fontSize: 12, color: C.sec }}>{tr("studio.font")}</span>
         <label style={{ fontSize: 12, color: C.text, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-          <Upload size={13} /> Upload a font
+          <Upload size={13} /> {tr("studio.uploadAFont")}
           <input
             type="file"
             accept=".ttf,.otf,.woff,.woff2,font/*"
@@ -3786,7 +3793,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       {fontUploadErr && <p style={{ fontSize: 12, color: C.redText, margin: "0 0 6px" }}>{fontUploadErr}</p>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
         <button aria-pressed={!el.fontFamily} onClick={() => up({ fontFamily: "" })} style={{ ...tileStyle(!el.fontFamily), justifyContent: "flex-start" }}>
-          Slide default
+          {tr("studio.slideDefault")}
         </button>
         {[
           ...customFonts.map((cf) => ({ id: cf.id, label: cf.label, stack: `"${cf.family}", sans-serif`, custom: true })),
@@ -3799,7 +3806,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
                 {f.label}
               </button>
               {f.custom && (
-                <button aria-label={`Remove ${f.label}`} onClick={() => removeCustomFont(f.id)} style={{ position: "absolute", top: 2, right: 2, width: 28, height: 28, border: "none", background: "transparent", color: C.muted, cursor: "pointer" }}>
+                <button aria-label={tr("studio.removeNamed", { name: f.label })} onClick={() => removeCustomFont(f.id)} style={{ position: "absolute", top: 2, right: 2, width: 28, height: 28, border: "none", background: "transparent", color: C.muted, cursor: "pointer" }}>
                   <X size={13} />
                 </button>
               )}
@@ -3812,8 +3819,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   const textColour = () => (
     <div>
       <SSeg
-        label="Colour type"
-        items={[["solid", "Solid"], ["gradient", "Gradient"]]}
+        label={tr("studio.colourType")}
+        items={[["solid", tr("studio.solid")], ["gradient", tr("studio.gradient")]]}
         value={el.gradient ? "gradient" : "solid"}
         onPick={(v) =>
           v === "solid"
@@ -3829,7 +3836,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         )}
       </div>
       <SSwitch
-        label="Outline only (see-through letters)"
+        label={tr("studio.outlineOnlySeeThroughLetters")}
         value={el.color === "transparent"}
         onChange={(on) =>
           up({
@@ -3838,12 +3845,12 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           })
         }
       />
-      <SLabel>Outline</SLabel>
-      <SSlider label="Thickness" value={el.strokeWidth || 0} min={0} max={14} step={0.5} onChange={(v) => up({ strokeWidth: v })} fmt={(v) => `${v}`} />
+      <SLabel>{tr("studio.outline")}</SLabel>
+      <SSlider label={tr("studio.thickness")} value={el.strokeWidth || 0} min={0} max={14} step={0.5} onChange={(v) => up({ strokeWidth: v })} fmt={(v) => `${v}`} />
       {(el.strokeWidth || 0) > 0 && <SColorPick value={el.strokeColor || "#000000"} onChange={(v) => up({ strokeColor: v })} presets={swatches} />}
-      <SLabel>Box behind the text</SLabel>
+      <SLabel>{tr("studio.boxBehindTheText")}</SLabel>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <button aria-pressed={!el.bgColor} onClick={() => up({ bgColor: null })} style={{ ...tileStyle(!el.bgColor), height: 36 }}>None</button>
+        <button aria-pressed={!el.bgColor} onClick={() => up({ bgColor: null })} style={{ ...tileStyle(!el.bgColor), height: 36 }}>{tr("studio.none")}</button>
         <div style={{ flex: 1 }}>
           <SColorPick value={el.bgColor || ""} onChange={(v) => up({ bgColor: v })} presets={["#0b0c0f", theme.accentColor || "#dc2626", "#ffffff"]} />
         </div>
@@ -3852,37 +3859,37 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   );
   const textStyle = () => (
     <div>
-      <SLabel style={{ marginTop: 0 }}>Align</SLabel>
+      <SLabel style={{ marginTop: 0 }}>{tr("studio.align")}</SLabel>
       <SSeg
-        label="Align"
+        label={tr("studio.align")}
         items={[["left", <AlignLeft key="l" size={16} />], ["center", <AlignCenter key="c" size={16} />], ["right", <AlignRight key="r" size={16} />]]}
         value={el.align || "left"}
         onPick={(a) => up({ align: a })}
       />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginTop: 12 }}>
         <button aria-pressed={el.fontStyle === "italic"} onClick={() => up({ fontStyle: el.fontStyle === "italic" ? "normal" : "italic" })} style={{ ...tileStyle(el.fontStyle === "italic"), fontStyle: "italic" }}>
-          <Italic size={15} /> Italic
+          <Italic size={15} /> {tr("studio.italic")}
         </button>
         <button aria-pressed={!!el.shadow} onClick={() => up({ shadow: !el.shadow })} style={tileStyle(!!el.shadow)}>
-          Shadow
+          {tr("studio.shadow")}
         </button>
       </div>
     </div>
   );
   const badgeColour = () => (
     <div>
-      <SColorPick label="Badge" value={el.bgColor || "#dc2626"} onChange={(v) => up({ bgColor: v })} presets={swatches} />
-      <SColorPick label="Text" value={el.color || "#ffffff"} onChange={(v) => up({ color: v })} presets={["#ffffff", "#0b0c0f", "#e8c15a"]} />
+      <SColorPick label={tr("studio.badge")} value={el.bgColor || "#dc2626"} onChange={(v) => up({ bgColor: v })} presets={swatches} />
+      <SColorPick label={tr("studio.text")} value={el.color || "#ffffff"} onChange={(v) => up({ color: v })} presets={["#ffffff", "#0b0c0f", "#e8c15a"]} />
     </div>
   );
   const badgeShape = () => {
     const r = el.borderRadius ?? 999;
     return (
       <div>
-        <SSeg label="Corners" items={[["pill", "Round ends"], ["custom", "Custom"]]} value={r >= 999 ? "pill" : "custom"} onPick={(v) => up({ borderRadius: v === "pill" ? 999 : 12 })} />
+        <SSeg label={tr("studio.corners")} items={[["pill", tr("studio.roundEnds")], ["custom", tr("studio.custom")]]} value={r >= 999 ? "pill" : "custom"} onPick={(v) => up({ borderRadius: v === "pill" ? 999 : 12 })} />
         {r < 999 && (
           <div style={{ marginTop: 12 }}>
-            <SSlider label="Corner radius" value={Math.min(r, 80)} min={0} max={80} step={1} onChange={(v) => up({ borderRadius: v })} fmt={(v) => `${v}`} />
+            <SSlider label={tr("studio.cornerRadius")} value={Math.min(r, 80)} min={0} max={80} step={1} onChange={(v) => up({ borderRadius: v })} fmt={(v) => `${v}`} />
           </div>
         )}
       </div>
@@ -3890,20 +3897,20 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   };
   const elArrange = () => (
     <div>
-      <SSlider label="Opacity" value={el.opacity ?? 1} min={0} max={1} step={0.01} onChange={(v) => up({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
-      <SSlider label="Rotate" value={((((el.rotation || 0) + 540) % 360) - 180)} min={-180} max={180} step={1} onChange={(v) => up({ rotation: v })} fmt={(v) => `${v}°`} />
-      <SLabel>Order (among texts and badges)</SLabel>
+      <SSlider label={tr("studio.opacity")} value={el.opacity ?? 1} min={0} max={1} step={0.01} onChange={(v) => up({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <SSlider label={tr("studio.rotate")} value={((((el.rotation || 0) + 540) % 360) - 180)} min={-180} max={180} step={1} onChange={(v) => up({ rotation: v })} fmt={(v) => `${v}°`} />
+      <SLabel>{tr("studio.orderAmongTextsAndBadges")}</SLabel>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
-        {[["front", "To front"], ["up", "Forward"], ["down", "Back"], ["back", "To back"]].map(([d, l]) => (
+        {[["front", tr("studio.o.front")], ["up", tr("studio.o.up")], ["down", tr("studio.o.down")], ["back", tr("studio.o.back")]].map(([d, l]) => (
           <button key={d} onClick={() => shiftElement(el.id, d)} style={{ ...tileStyle(), padding: 0, fontSize: 12 }}>{l}</button>
         ))}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginTop: 10 }}>
         <button aria-pressed={!!el.locked} onClick={() => up({ locked: !el.locked })} style={tileStyle(!!el.locked)}>
-          {el.locked ? <Lock size={15} /> : <Unlock size={15} />} {el.locked ? "Locked" : "Lock in place"}
+          {el.locked ? <Lock size={15} /> : <Unlock size={15} />} {el.locked ? tr("studio.locked") : tr("studio.lockInPlace")}
         </button>
         <button aria-pressed={el.visible === false} onClick={() => up({ visible: el.visible === false })} style={tileStyle(el.visible === false)}>
-          {el.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {el.visible === false ? "Hidden" : "Hide"}
+          {el.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {el.visible === false ? tr("studio.hidden") : tr("studio.hide")}
         </button>
       </div>
     </div>
@@ -3975,7 +3982,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     ];
     return (
       <div>
-        {allOn && <SNote>Adds to all {total} slides.</SNote>}
+        {allOn && <SNote>{tr("studio.addsToAll")} {total} slides.</SNote>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
           {tiles.map(([label, Icon, fn]) => (
             <button key={label} onClick={fn} style={{ ...tileStyle(), height: 72, flexDirection: "column", gap: 6, fontSize: 12 }}>
@@ -3983,7 +3990,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
             </button>
           ))}
           <label style={{ ...tileStyle(), height: 72, flexDirection: "column", gap: 6, fontSize: 12 }}>
-            <ImagePlus size={20} /> Image
+            <ImagePlus size={20} /> {tr("studio.image")}
             <input
               type="file"
               accept="image/*"
@@ -4012,17 +4019,17 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           <Icon size={15} style={{ flexShrink: 0, color: C.sec }} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
         </button>
-        <button aria-label={visible ? "Hide" : "Show"} onClick={onEye} style={{ width: 40, height: 40, border: "none", background: "transparent", color: visible ? C.sec : C.muted, cursor: "pointer" }}>
+        <button aria-label={visible ? tr("studio.hide") : tr("studio.show")} onClick={onEye} style={{ width: 40, height: 40, border: "none", background: "transparent", color: visible ? C.sec : C.muted, cursor: "pointer" }}>
           {visible ? <Eye size={16} /> : <EyeOff size={16} />}
         </button>
-        <button aria-label={locked ? "Unlock" : "Lock"} onClick={onLock} style={{ width: 40, height: 40, border: "none", background: "transparent", color: locked ? C.text : C.muted, cursor: "pointer" }}>
+        <button aria-label={locked ? tr("studio.unlock") : tr("studio.lock")} onClick={onLock} style={{ width: 40, height: 40, border: "none", background: "transparent", color: locked ? C.text : C.muted, cursor: "pointer" }}>
           {locked ? <Lock size={16} /> : <Unlock size={16} />}
         </button>
       </div>
     );
     return (
       <div>
-        <SNote>Top of the list = in front. Locked things can only be picked from here.</SNote>
+        <SNote>{tr("studio.topOfTheListIn")}</SNote>
         {els.map((e) =>
           row(
             e.id,
@@ -4050,7 +4057,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           ),
         )}
         <button onClick={selectPhoto} style={{ ...tileStyle(photoSel), width: "100%", justifyContent: "flex-start", marginTop: 4 }}>
-          <ImagePlus size={15} style={{ color: C.sec }} /> Photo (at the back)
+          <ImagePlus size={15} style={{ color: C.sec }} /> {tr("studio.photoAtTheBack")}
         </button>
       </div>
     );
@@ -4174,7 +4181,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
       {selKind === "slide" ? (
         <span style={{ fontSize: compact ? 13 : 15, fontWeight: compact ? 500 : 600, color: compact ? C.sec : C.text, whiteSpace: "nowrap" }}>
-          {compact ? "Nothing selected" : `Slide ${active + 1} of ${total}`}
+          {compact ? tr("studio.nothingSelected") : tr("studio.slideOf", { n: active + 1, total })}
         </span>
       ) : (
         <>
@@ -4236,7 +4243,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           <CameraCapture
             onClose={() => setShowCamera(false)}
             onCapture={handleCameraCapture}
-            carZone={slide?.carZone || { x: 6, y: 30, w: 88, h: 34, hint: "Fill the box with the car" }}
+            carZone={slide?.carZone || { x: 6, y: 30, w: 88, h: 34, hint: tr("studio.fillTheBoxWithThe") }}
             overlayUrl={camOverlay}
             canvasW={CW}
             canvasH={CH}
@@ -4245,13 +4252,13 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
         {/* Header: what never moves */}
         <div style={{ height: HEADER_H, flexShrink: 0, display: "flex", alignItems: "center", gap: 2, padding: "0 6px" }}>
-          <button aria-label="Close studio" onClick={requestClose} style={iconBtn({ color: C.sec })}><X size={20} /></button>
-          <span style={{ flex: 1, fontSize: 16, fontWeight: 600, paddingLeft: 2 }}>Studio</span>
-          <button aria-label="Undo" onClick={undo} disabled={!canUndo} style={iconBtn({ color: canUndo ? C.text : "#4b515c" })}><Undo2 size={19} /></button>
-          <button aria-label="Redo" onClick={redo} disabled={!canRedo} style={iconBtn({ color: canRedo ? C.text : "#4b515c" })}><Redo2 size={19} /></button>
-          <button aria-label="Save this slide" onClick={() => saveSingle(active)} style={iconBtn()}><Download size={19} /></button>
+          <button aria-label={tr("studio.closeStudio")} onClick={requestClose} style={iconBtn({ color: C.sec })}><X size={20} /></button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 600, paddingLeft: 2 }}>{tr("studio.studio")}</span>
+          <button aria-label={tr("studio.undo")} onClick={undo} disabled={!canUndo} style={iconBtn({ color: canUndo ? C.text : "#4b515c" })}><Undo2 size={19} /></button>
+          <button aria-label={tr("studio.redo")} onClick={redo} disabled={!canRedo} style={iconBtn({ color: canRedo ? C.text : "#4b515c" })}><Redo2 size={19} /></button>
+          <button aria-label={tr("studio.saveThisSlide")} onClick={() => saveSingle(active)} style={iconBtn()}><Download size={19} /></button>
           <button onClick={saveAll} disabled={downloading} style={{ height: 38, padding: "0 16px", marginLeft: 2, border: "none", borderRadius: 999, background: C.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            {downloading ? "..." : "Export"}
+            {downloading ? "..." : tr("studio.export")}
           </button>
         </div>
 
@@ -4261,7 +4268,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
             {slides.map((s, i) => (
               <button
                 key={s.id}
-                aria-label={`Slide ${i + 1}`}
+                aria-label={tr("studio.slideN", { n: i + 1 })}
                 aria-current={i === active}
                 onClick={() => {
                   setActive(i);
@@ -4272,7 +4279,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
                 {i + 1}
               </button>
             ))}
-            <button aria-label="Add slide" onClick={addSlide} style={{ minWidth: 36, height: 36, borderRadius: 10, flexShrink: 0, border: "1px dashed #3a404b", background: "transparent", color: C.sec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button aria-label={tr("studio.addSlide")} onClick={addSlide} style={{ minWidth: 36, height: 36, borderRadius: 10, flexShrink: 0, border: "1px dashed #3a404b", background: "transparent", color: C.sec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Plus size={15} />
             </button>
           </div>
@@ -4283,7 +4290,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         <div style={{ height: CHIP_H, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", gap: 8 }}>
           <div style={{ height: 34, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 999, background: C.raised, minWidth: 0 }}>{selChip(true)}</div>
           <button onClick={() => setSheetPanel((p) => (p === "layers" ? null : "layers"))} style={{ height: 34, display: "flex", alignItems: "center", gap: 6, padding: "0 12px", border: "none", borderRadius: 999, background: sheetPanel === "layers" ? C.sel : C.raised, color: C.sec, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-            <Layers size={15} /> Layers
+            <Layers size={15} /> {tr("studio.layers")}
           </button>
         </div>
 
@@ -4345,7 +4352,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{sheetTitle}</div>
                 {note && <div style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>{note}</div>}
               </div>
-              <button aria-label="Close panel" onClick={() => setSheetPanel(null)} style={iconBtn({ color: C.sec })}><ChevronDown size={20} /></button>
+              <button aria-label={tr("studio.closePanel")} onClick={() => setSheetPanel(null)} style={iconBtn({ color: C.sec })}><ChevronDown size={20} /></button>
             </div>
             <div style={{ overflowY: "auto", padding: "4px 16px 16px", WebkitOverflowScrolling: "touch" }}>{sheetBody()}</div>
           </div>
@@ -4356,7 +4363,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           {selKind === "slide" ? (
             <button onClick={() => setSheetPanel((p) => (p === "add" ? null : "add"))} style={{ width: 62, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", background: "transparent", color: C.text, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
               <span style={{ width: 44, height: 32, borderRadius: 12, background: C.red, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={20} /></span>
-              Add
+              {tr("studio.add")}
             </button>
           ) : (
             <button
@@ -4367,7 +4374,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
               style={{ width: 62, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", background: "transparent", color: C.text, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
             >
               <span style={{ width: 44, height: 32, borderRadius: 12, background: C.raised, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={20} /></span>
-              Done
+              {tr("studio.done")}
             </button>
           )}
           <div style={{ width: 1, background: "rgba(255,255,255,0.08)", margin: "18px 2px" }} />
@@ -4423,20 +4430,20 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       >
         {/* Header: what never moves */}
         <div style={{ height: 56, flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderBottom: `1px solid ${C.line}` }}>
-          <button aria-label="Close studio" onClick={requestClose} style={iconBtn({ color: C.sec, width: 40, height: 40 })}><X size={20} /></button>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Studio</span>
+          <button aria-label={tr("studio.closeStudio")} onClick={requestClose} style={iconBtn({ color: C.sec, width: 40, height: 40 })}><X size={20} /></button>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{tr("studio.studio")}</span>
           <span style={{ fontSize: 13, color: C.muted, marginLeft: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {[listing?.year, listing?.brand, listing?.model].filter(Boolean).join(" ")} · {canvasFormat} · {total} slide{total !== 1 ? "s" : ""}
           </span>
           <div style={{ flex: 1 }} />
-          <button aria-label="Undo" title="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo} style={iconBtn({ width: 40, height: 40, color: canUndo ? C.text : "#4b515c" })}><Undo2 size={18} /></button>
-          <button aria-label="Redo" title="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo} style={iconBtn({ width: 40, height: 40, color: canRedo ? C.text : "#4b515c" })}><Redo2 size={18} /></button>
+          <button aria-label={tr("studio.undo")} title={tr("studio.undoCtrlZ")} onClick={undo} disabled={!canUndo} style={iconBtn({ width: 40, height: 40, color: canUndo ? C.text : "#4b515c" })}><Undo2 size={18} /></button>
+          <button aria-label={tr("studio.redo")} title={tr("studio.redoCtrlY")} onClick={redo} disabled={!canRedo} style={iconBtn({ width: 40, height: 40, color: canRedo ? C.text : "#4b515c" })}><Redo2 size={18} /></button>
           <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)", margin: "0 6px" }} />
           <button onClick={() => saveSingle(active)} disabled={dlIdx === active} style={{ height: 38, padding: "0 16px", border: "none", borderRadius: 999, background: C.raised, color: C.text, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-            <Download size={15} /> Save slide
+            <Download size={15} /> {tr("studio.saveSlide")}
           </button>
           <button onClick={saveAll} disabled={downloading} style={{ height: 38, padding: "0 18px", border: "none", borderRadius: 999, background: C.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit" }}>
-            {downloading ? "Exporting..." : "Export all"}
+            {downloading ? tr("studio.exporting") : tr("studio.exportAll")}
           </button>
         </div>
 
@@ -4464,7 +4471,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
             <div style={{ minHeight: 60, display: "flex", alignItems: "center", gap: 6, padding: "8px 10px 4px 16px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {deskMode ? (
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{deskMode === "add" ? "Add" : "Layers"}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{deskMode === "add" ? tr("studio.add") : tr("studio.layers")}</span>
                 ) : (
                   selChip(false)
                 )}
@@ -4472,20 +4479,20 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
               </div>
               {!deskMode && selectedEl && (
                 <>
-                  <button aria-label="Duplicate" title="Duplicate" onClick={duplicateSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
-                  <button aria-label="Delete" title="Delete" onClick={deleteSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
+                  <button aria-label={tr("studio.duplicate")} title={tr("studio.duplicate")} onClick={duplicateSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
+                  <button aria-label={tr("studio.delete")} title={tr("studio.delete")} onClick={deleteSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
                 </>
               )}
               {!deskMode && !selectedEl && selLayer && (
                 <>
-                  <button aria-label="Duplicate" title="Duplicate" onClick={() => dupLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
-                  <button aria-label="Delete" title="Delete" onClick={() => removeLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
+                  <button aria-label={tr("studio.duplicate")} title={tr("studio.duplicate")} onClick={() => dupLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
+                  <button aria-label={tr("studio.delete")} title={tr("studio.delete")} onClick={() => removeLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
                 </>
               )}
               {(deskMode || selKind !== "slide") && (
                 <button
-                  aria-label={deskMode ? "Close" : "Unselect"}
-                  title={deskMode ? "Close" : "Unselect (Esc)"}
+                  aria-label={deskMode ? tr("studio.close") : tr("studio.unselect")}
+                  title={deskMode ? tr("studio.close") : tr("studio.unselectEsc")}
                   onClick={() => (deskMode ? setDeskMode(null) : clearSelectionAll())}
                   style={iconBtn({ width: 36, height: 36, color: C.sec })}
                 >
@@ -4556,32 +4563,32 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                       <span style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>{active + 1}/{total}</span>
                       {[
-                        { icon: <MoveUp size={15} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move slide up" },
-                        { icon: <MoveDown size={15} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move slide down" },
-                        { icon: <Copy size={15} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate slide" },
-                        { icon: <Trash2 size={15} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete slide" },
+                        { icon: <MoveUp size={15} />, fn: () => moveSlide(active, -1), dis: active === 0, title: tr("studio.moveSlideUp") },
+                        { icon: <MoveDown size={15} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: tr("studio.moveSlideDown") },
+                        { icon: <Copy size={15} />, fn: () => duplicateSlideAt(active), dis: false, title: tr("studio.duplicateSlide") },
+                        { icon: <Trash2 size={15} />, fn: () => removeSlide(active), dis: total <= 1, title: tr("studio.deleteSlide") },
                       ].map(({ icon, fn, dis, title }) => (
                         <button key={title} aria-label={title} title={title} onClick={fn} disabled={dis} style={sideBtn(dis)}>{icon}</button>
                       ))}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <button aria-label="Previous slide" onClick={() => { setActive(Math.max(0, active - 1)); clearSelectionAll(); }} disabled={active === 0} style={sideBtn(active === 0)}>
+                      <button aria-label={tr("studio.previousSlide")} onClick={() => { setActive(Math.max(0, active - 1)); clearSelectionAll(); }} disabled={active === 0} style={sideBtn(active === 0)}>
                         <ChevronLeft size={16} style={{ transform: "rotate(90deg)" }} />
                       </button>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
                         {slides.map((s, i) => (
                           <button
                             key={s.id}
-                            aria-label={`Slide ${i + 1}`}
+                            aria-label={tr("studio.slideN", { n: i + 1 })}
                             onClick={() => { setActive(i); clearSelectionAll(); }}
                             style={{ width: 6, height: i === active ? 18 : 6, borderRadius: 3, border: "none", background: i === active ? C.text : "rgba(255,255,255,0.2)", cursor: "pointer", padding: 0, flexShrink: 0 }}
                           />
                         ))}
                       </div>
-                      <button aria-label="Next slide" onClick={() => { setActive(Math.min(total - 1, active + 1)); clearSelectionAll(); }} disabled={active === total - 1} style={sideBtn(active === total - 1)}>
+                      <button aria-label={tr("studio.nextSlide")} onClick={() => { setActive(Math.min(total - 1, active + 1)); clearSelectionAll(); }} disabled={active === total - 1} style={sideBtn(active === total - 1)}>
                         <ChevronRight size={16} style={{ transform: "rotate(90deg)" }} />
                       </button>
-                      <button aria-label="Add slide" title="Add slide" onClick={addSlide} style={{ ...sideBtn(false), border: "1px dashed #3a404b" }}>
+                      <button aria-label={tr("studio.addSlide")} title={tr("studio.addSlide")} onClick={addSlide} style={{ ...sideBtn(false), border: "1px dashed #3a404b" }}>
                         <Plus size={15} />
                       </button>
                     </div>

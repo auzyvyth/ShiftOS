@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { SALESMAN_PLANS, DEALER_PLANS } from '../../utils/plans';
 import PlanCard from './PlanCard';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { useTranslation } from 'react-i18next';
 
 // Shared plan switcher for the onboarding flows. Shows every plan (salesman +
 // dealer) with price, caps and features; selecting one routes to the matching
@@ -18,6 +19,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 // standalone pick-a-plan surface is /plans (src/pages/PlansPage.jsx); the two
 // share the cards and the catalogue so neither can drift.
 export default function PlanPickerModal({ currentTier, onClose }) {
+  const { t } = useTranslation();
   useModalHistory(true, onClose);
   const navigate = useNavigate();
 
@@ -48,11 +50,11 @@ export default function PlanPickerModal({ currentTier, onClose }) {
       <div style={{ width: '100%', maxWidth: 940, background: '#0C1120', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '26px 26px 22px', boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 }}>
           <div>
-            <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(220,38,38,0.7)', marginBottom: 8 }}>Choose your plan</p>
-            <h2 style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 32, letterSpacing: 2, color: '#E8EDF5', lineHeight: 1 }}>Plans &amp; Pricing</h2>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.32)', marginTop: 6 }}>Switch any time — your progress is kept within the same product.</p>
+            <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(220,38,38,0.7)', marginBottom: 8 }}>{t("planPicker.chooseYourPlan")}</p>
+            <h2 style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 32, letterSpacing: 2, color: '#E8EDF5', lineHeight: 1 }}>{t("planPicker.plansPricing")}</h2>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.32)', marginTop: 6 }}>{t("planPicker.switchAnyTimeYourProgress")}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t("planPicker.close")} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={17} />
           </button>
         </div>
@@ -61,7 +63,7 @@ export default function PlanPickerModal({ currentTier, onClose }) {
         {section('For dealerships', DEALER_PLANS, 3)}
 
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 4 }}>
-          Switching between salesman and dealer restarts that product's onboarding.
+          {t("planPicker.switchingBetweenSalesmanAndDealer")}
         </p>
       </div>
     </div>,
