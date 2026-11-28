@@ -17,6 +17,7 @@ import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
 import PhoneInput from '../components/ui/PhoneInput';
 import { toPlus60, isValidMyPhone } from '../lib/phone';
+import { compressImageFile } from '../utils/compressImage';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -79,6 +80,13 @@ const CSS = `
 .eo-preview-av{width:48px;height:48px;border-radius:50%;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;}
 .eo-preview-name{font-size:17px;font-weight:700;color:#111827;word-break:break-all;}
 .eo-preview-sub{font-size:12.5px;color:#6b7280;margin-top:2px;}
+.eo-hello{display:inline-block;margin-bottom:14px;padding:7px 14px;border-radius:999px;background:#111827;color:#fff;font-size:13.5px;font-weight:600;animation:eo-pop 0.45s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes eo-pop{0%{opacity:0;transform:translateY(8px) scale(.85)}100%{opacity:1;transform:none}}
+.eo-preview-av{position:relative;overflow:hidden;cursor:pointer;border:none;padding:0;font-family:inherit;}
+.eo-preview-av img{width:100%;height:100%;object-fit:cover;display:block;}
+.eo-preview-add{margin-top:6px;background:none;border:none;padding:0;font-size:12.5px;font-weight:600;color:#dc2626;cursor:pointer;font-family:inherit;}
+.eo-done-av{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:20px;animation:eo-pop 0.5s cubic-bezier(.34,1.56,.64,1) both;}
+@media(prefers-reduced-motion:reduce){.eo-hello,.eo-done-av{animation:none;}}
 .eo-done-root,.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:#f4f5f7;text-align:center;padding:40px 24px;font-family:var(--xd-font-body,'Outfit',system-ui,sans-serif);}
 .eo-resume-card{width:min(440px,100%);background:#fff;border-radius:20px;padding:32px 26px;box-shadow:0 1px 2px rgba(17,24,39,0.05),0 8px 28px rgba(17,24,39,0.07);}
 .eo-done-ring{width:64px;height:64px;border-radius:50%;background:#111827;display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
@@ -174,6 +182,10 @@ export default function SalesmanOnboarding() {
   const [, setSlugEdited] = useState(false);
 
   const [showPw, setShowPw] = useState(false);
+  // Optional profile photo, picked on the last step and uploaded only when the page is created.
+  const [avatarBlob, setAvatarBlob] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const avatarInput = useRef(null);
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
@@ -463,6 +475,19 @@ export default function SalesmanOnboarding() {
     }
   };
 
+  const pickAvatar = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setErr('Please pick a photo (JPG or PNG).'); return; }
+    setErr('');
+    try {
+      const blob = await compressImageFile(file, { maxDim: 800 });
+      setAvatarBlob(blob);
+      setAvatarPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
+    } catch { setErr('That photo could not be read. Try another one.'); }
+  };
+
   const checkSlug = async (slug) => {
     slugLatest.current = slug;
     if (!slug || slug.length < 3) { setSlugTaken(false); setSlugChecking(false); return; }
@@ -533,6 +558,18 @@ export default function SalesmanOnboarding() {
       if (icDigits.length === 12) {
         const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
         if (icErr) throw icErr;
+      }
+      // Optional photo. Never blocks the signup: a failure here just means no photo yet
+      // (they can add it from Settings). Same path + column as the Settings upload.
+      if (avatarBlob) {
+        try {
+          const path = `${userId}/avatar.jpg`;
+          const up = await supabase.storage.from('avatars').upload(path, avatarBlob, { upsert: true, contentType: 'image/jpeg' });
+          if (!up.error) {
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+            await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', userId);
+          }
+        } catch { /* added later from Settings */ }
       }
       // NEWCAR-2 / NEWCAR-3: every model of the chosen brand becomes a card now
       // that state/city are saved (the price is per area), so nobody fills their
@@ -640,12 +677,14 @@ export default function SalesmanOnboarding() {
     <>
       <style>{CSS}</style>
       <div className="eo-done-root">
-        <div className="eo-done-ring">
+        {avatarPreview
+          ? <img className="eo-done-av" src={avatarPreview} alt="" />
+          : <div className="eo-done-ring">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-        </div>
-        <div className="eo-done-title">Your page is ready</div>
+        </div>}
+        <div className="eo-done-title">Tahniah, page anda dah siap!</div>
         <p className="eo-done-sub">Opening your dashboard...</p>
       </div>
     </>
@@ -654,6 +693,15 @@ export default function SalesmanOnboarding() {
   const canSlugContinue = form.slug.length >= 3 && !slugTaken && !slugChecking && slugCheckedFor === form.slug;
 
   const cfg = TIERS[tier] || TIERS.lite;
+  // A short, friendly line per step (Malay, the way sellers talk). It names where they are,
+  // so the form feels like a conversation and not a form.
+  const HELLO = [
+    'Hai, selamat datang ke Drevo!',
+    'Jom, buat akaun dulu.',
+    'Hampir siap!! Ceritalah sikit pasal diri anda.',
+    'Satu lagi je, nombor WhatsApp anda.',
+    'Last sekali! Pilih nama page anda.',
+  ][step] || '';
 
   return (
     <>
@@ -675,6 +723,7 @@ export default function SalesmanOnboarding() {
           </div>
           <p className="eo-stepline">Step {step + 1} of {STEPS.length}</p>
           <div className="eo-form" key={step} onKeyDown={advanceOnEnter}>
+            {HELLO && <div className="eo-hello" role="status">{HELLO}</div>}
 
             {step === 0 && (
               <>
@@ -859,11 +908,17 @@ export default function SalesmanOnboarding() {
                 </div>
                 <p className="eo-hint">Letters and numbers only, 3 to 20. You can't change it later, so pick one buyers will remember.</p>
                 <div className="eo-preview">
-                  <div className="eo-preview-av">{(form.slug[0] || 'D').toUpperCase()}</div>
+                  <button type="button" className="eo-preview-av" onClick={() => avatarInput.current?.click()} aria-label="Add a profile photo">
+                    {avatarPreview ? <img src={avatarPreview} alt="" /> : (form.slug[0] || 'D').toUpperCase()}
+                  </button>
                   <div style={{ minWidth: 0 }}>
                     <div className="eo-preview-name">{form.slug || 'yourname'}</div>
                     <div className="eo-preview-sub">drevo.my/s/{form.slug || 'yourname'}</div>
+                    <button type="button" className="eo-preview-add" onClick={() => avatarInput.current?.click()}>
+                      {avatarPreview ? 'Change photo' : 'Add a photo (optional)'}
+                    </button>
                   </div>
+                  <input ref={avatarInput} type="file" accept="image/*" onChange={pickAvatar} style={{ display: 'none' }} />
                 </div>
                 {/* Public: this is the page header, the Google title and the advisor
                     list. People typed their HOME here (owner, 2026-10-23), so it
