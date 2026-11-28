@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import { useTranslation } from 'react-i18next';
 
 // Daily caps — MUST mirror salesman_ai_quota_ok() in the DB, or the badge lies
 // about how many uses remain.
 export const AI_QUOTA_LIMITS = { caption: 50, wa_reply: 50, rescore: 20, followup: 30 };
 
 export default function AiQuotaBadge({ userId, feature, limit }) {
+  const { t } = useTranslation();
   const [used, setUsed] = useState(null);
   const cap = limit ?? AI_QUOTA_LIMITS[feature] ?? 50;
 
@@ -36,7 +38,7 @@ export default function AiQuotaBadge({ userId, feature, limit }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {used} / {cap} {feature} used today
+      {used} / {cap} {feature} {t("aiQuota.usedToday")}
     </span>
   );
 }

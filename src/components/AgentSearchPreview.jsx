@@ -8,10 +8,12 @@ import { ROOT_DOMAIN } from '../config/site';
 import { premiumDark as PD } from '../theme/tokens';
 import { agentPageTitle, agentPageDescription, agentSeoIssues, TITLE_LIMIT } from '../utils/agentSeo';
 import { cleanNickname, nicknameProblem } from '../utils/nickname';
+import { useTranslation } from 'react-i18next';
 
 const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 3).trimEnd()}...` : s);
 
 export default function AgentSearchPreview({ profile: typed, slug, carCount = 0, cars }) {
+  const { t } = useTranslation();
   // A nickname that breaks the rules cannot go live, so the preview does not show it (NICKNAME-1).
   const profile = { ...typed, nickname: nicknameProblem(typed?.nickname) ? '' : cleanNickname(typed?.nickname) };
   const title = cut(agentPageTitle({ ...profile, slug }, cars), TITLE_LIMIT);
@@ -20,9 +22,9 @@ export default function AgentSearchPreview({ profile: typed, slug, carCount = 0,
 
   return (
     <div style={{ padding: 18, background: PD.card, borderRadius: PD.radius.card }}>
-      <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: PD.text }}>How you look on Google</p>
+      <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: PD.text }}>{t("searchPreview.howYouLookOnGoogle")}</p>
       <p style={{ margin: '0 0 12px', fontSize: 11, color: PD.textMuted }}>
-        When a buyer searches your name, this is roughly what they see. It updates as you type; save to make it live.
+        {t("searchPreview.whenABuyerSearchesYour")}
       </p>
 
       <div style={{ background: '#fff', borderRadius: 10, padding: '14px 16px', fontFamily: 'arial, sans-serif', minWidth: 0 }}>
@@ -49,7 +51,7 @@ export default function AgentSearchPreview({ profile: typed, slug, carCount = 0,
           ))}
         </ul>
       ) : (
-        <p style={{ margin: '12px 0 0', fontSize: 12, color: PD.textSec }}>Looks good. Your name, area and bio are all in place.</p>
+        <p style={{ margin: '12px 0 0', fontSize: 12, color: PD.textSec }}>{t("searchPreview.looksGoodYourNameArea")}</p>
       )}
     </div>
   );
