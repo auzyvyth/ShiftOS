@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useTranslation } from 'react-i18next';
 
 export default function SuspendedBanner() {
+  const { t } = useTranslation();
   const [suspended, setSuspended] = useState(false);
   // Why. The wall used to say only "contact support", so a seller had no idea
   // what to fix and support got the question instead (A5). The admin console
@@ -65,7 +67,7 @@ export default function SuspendedBanner() {
             marginBottom: 12,
           }}
         >
-          Account Suspended
+          {t("suspended.accountSuspended")}
         </p>
         <p
           style={{
@@ -77,8 +79,8 @@ export default function SuspendedBanner() {
           }}
         >
           {reason
-            ? "Your account has been suspended for the reason below. Sort it out and contact us to have it lifted."
-            : "Your account has been suspended. Please contact Drevo support to resolve this."}
+            ? t("suspended.yourAccountHasBeenSuspended")
+            : t("suspended.yourAccountHasBeenSuspended2")}
         </p>
         {reason && (
           <p
@@ -116,7 +118,7 @@ export default function SuspendedBanner() {
             marginBottom: 12,
           }}
         >
-          Contact Support via WhatsApp
+          {t("suspended.contactSupportViaWhatsapp")}
         </a>
         <br />
         <button
@@ -133,7 +135,7 @@ export default function SuspendedBanner() {
             marginTop: 8,
           }}
         >
-          Sign out
+          {t("suspended.signOut")}
         </button>
       </div>
     </div>

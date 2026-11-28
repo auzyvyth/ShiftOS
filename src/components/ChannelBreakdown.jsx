@@ -2,6 +2,7 @@ import React from "react";
 import { MessageCircle, Users, Camera, Music2, Send, AtSign, Search, Copy, Globe, BookOpen } from "lucide-react";
 import { channelMeta } from "../utils/detectChannel";
 import { premiumDark as PD } from "../theme/tokens";
+import { useTranslation } from 'react-i18next';
 
 // Icon per traffic source — swapped in for the old plain colour dot so each
 // row reads at a glance instead of relying on a decorative glowing bullet.
@@ -41,6 +42,7 @@ export default function ChannelBreakdown({
   // Lite and the linked panel pass nothing and keep the brand colours.
   theme = null,
 }) {
+  const { t } = useTranslation();
   const premium = theme === "premium";
   // Sum by channel in case the caller passes multiple rows per channel.
   const agg = {};
@@ -163,7 +165,7 @@ export default function ChannelBreakdown({
           {/* Premium's Analytics prints its own note on Direct under this. */}
           {!premium && (
             <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#475569" }}>
-              Direct = organic or untagged visits we couldn't attribute to a platform.
+              {t("channels.directOrganicOrUntaggedVisits")}
             </p>
           )}
         </div>

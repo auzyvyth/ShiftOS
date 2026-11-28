@@ -6,6 +6,7 @@
 // Motion = "Redline": a rev bar climbs into the red, bounces off the limiter, and
 // the wordmark shudders with it. It shows nothing that looks like real progress.
 import { premiumLight as PL, premiumDark as PD } from "../theme/tokens";
+import { useTranslation } from 'react-i18next';
 
 const CSS = `
 .al-root{position:fixed;inset:0;z-index:50;display:grid;place-items:center;overflow:hidden}
@@ -36,8 +37,9 @@ const CSS = `
 `;
 
 export default function AppLoader({ theme = "dark" }) {
+  const { t } = useTranslation();
   return (
-    <div className={`al-root ${theme === "light" ? "al-light" : "al-dark"}`} role="status" aria-label="Loading">
+    <div className={`al-root ${theme === "light" ? "al-light" : "al-dark"}`} role="status" aria-label={t("appLoader.loading")}>
       <style>{CSS}</style>
       <div className="al-mid">
         <img className="al-logo" src="/drevo-logo.svg" alt="Drevo" width="688" height="120" />

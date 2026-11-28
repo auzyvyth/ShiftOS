@@ -2720,7 +2720,8 @@
     "body": "Get the Verified badge on your page and cars. Buyers trust checked sellers more. Photos of your MyKad, about 2 minutes.",
     "cta": "Get verified",
     "checkingTitle": "We're checking your ID",
-    "checkingBody": "Your Verified badge shows once it's approved. Your cars are already live."
+    "checkingBody": "Your Verified badge shows once it's approved. Your cars are already live.",
+    "close": "Close"
   },
   "aftercare": {
     "presets": {
@@ -3117,5 +3118,282 @@
     "findMe": "Find me: {{title}}",
     "findMePost": "Find me post",
     "carEnquiry": "Car enquiry"
+  },
+  "pageSite": {
+    "saving": "Saving...",
+    "savedYourPageShowsThis": "Saved. Your page shows this order now.",
+    "sectionsOnYourPage": "Sections on your page",
+    "theOrderBuyersScrollThrough": "The order buyers scroll through. Switch off what you do not want. A section with nothing in it never shows, even when it is on.",
+    "off": "Off",
+    "changesHereSaveAsYou": "Changes here save as you tap.",
+    "promosOfTheMonth": "Promos of the month",
+    "model": "Model",
+    "modelEGYaris1": "Model, e.g. Yaris 1.5G",
+    "whatYouOffer": "What you offer",
+    "fromPriceOptional": "From price (optional)",
+    "fromRm": "From RM",
+    "lastDay": "Last day",
+    "remove": "Remove",
+    "addAPromo": "Add a promo",
+    "yourTakeOnEachModel": "Your take on each model",
+    "oneLineBuyersReadUnder": "One line buyers read under the model, headed with your first name: who it suits and why. It is your opinion, so say it like one. Do not type phone numbers.",
+    "yourTake": "Your take",
+    "whyYouWouldPickIt": "Why you would pick it",
+    "addANote": "Add a note",
+    "deliveryToYourBuyerS": "Delivery to your buyer's town",
+    "whereYouDeliverFromAnd": "Where you deliver from, and how far each town is. Your own estimate; the page says so. Do not type phone numbers.",
+    "deliveringFrom": "Delivering from",
+    "deliveringFromEGKuala": "Delivering from, e.g. Kuala Terengganu",
+    "town": "Town",
+    "townEGMarang": "Town, e.g. Marang",
+    "distanceInKm": "Distance in km",
+    "distanceKm": "Distance (km)",
+    "driveTimeInMinutes": "Drive time in minutes",
+    "minutes": "Minutes",
+    "addATown": "Add a town",
+    "handoverDayWhatTheBuyer": "Handover day: what the buyer gets",
+    "whatYouDoWithEvery": "What you do with every buyer on the day you hand over the keys. Your own list; only promise what you really do. Do not type phone numbers.",
+    "howBuyingWorksWithYou": "How buying works with you",
+    "yourStopsFromTheFirst": "Your stops from the first visit to the handover, in order. Never promise a loan approval: the bank decides. Do not type phone numbers.",
+    "title": "Title",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "whatItMeans": "What it means",
+    "oneLineOnWhatIt": "One line on what it means (optional)",
+    "startFromASampleThen": "Start from a sample, then edit it",
+    "questionsBuyersAsk": "Questions buyers ask",
+    "theQuestionsYouAnswerEvery": "The questions you answer every day, answered once on your page. Never quote a loan rate as certain: the bank decides. Do not type phone numbers.",
+    "question": "Question",
+    "questionEGCanI": "Question, e.g. Can I trade in my old car?",
+    "yourAnswer": "Your answer",
+    "addAQuestion": "Add a question",
+    "aboutMeBestSellersAnd": "About me: best sellers and rankings",
+    "shownUnderAboutMeYour": "Shown under About me. Your rankings are your own claim: your page says \"As stated by you, Drevo has not checked it\". Only type a ranking you can show proof of if a buyer asks.",
+    "bestSellers": "Best sellers",
+    "bestSellersEGS70": "Best sellers, e.g. S70, X50, Saga and X90",
+    "rankingTitle": "Ranking title",
+    "rankingTitleEGTop": "Ranking title, e.g. Top sales advisor, Proton DK Motor 2026",
+    "month": "Month",
+    "rank": "Rank",
+    "rankEG1": "Rank, e.g. 1",
+    "removeRanking": "Remove ranking",
+    "addAMonthSRanking": "Add a month's ranking",
+    "bookAVisitUsesThe": "Book a visit uses the days and hours in Settings, Availability: the same ones buyers see on your car pages. Times already booked are never offered.",
+    "savingTheseSectionsIsNot": "Saving these sections is not available yet. Try again later.",
+    "savedYourPageNowShows": "Saved. Your page now shows this.",
+    "savePageSections": "Save page sections",
+    "promoHint": "Your own offers, with the last day. Each one leaves your page by itself after that day ({{days}} days at most). Do not type phone numbers.",
+    "moveSectionUp": "Move {{name}} up",
+    "moveSectionDown": "Move {{name}} down",
+    "sectionOnOff": "{{name}} on or off",
+    "section": {
+      "promos": "Promos of the month",
+      "models": "Pick a model",
+      "cars": "Cars for sale",
+      "calculator": "Instalment calculator",
+      "delivery": "Delivery to your town",
+      "handover": "Handover day + photos",
+      "steps": "How buying works",
+      "book": "Book a visit",
+      "faq": "Questions buyers ask"
+    }
+  },
+  "heroPhoto": {
+    "yourPhotoOnYourPage": "Your photo on your page",
+    "theBigPhotoOfYou": "The big photo of you at the top of your page, the first thing buyers see. Stand in good light, waist up, against a plain wall. Your phone removes the background; nothing is uploaded until you save.",
+    "layout": "Layout",
+    "saveAPhotoFirstThe": "Save a photo first; the layout is saved with it.",
+    "checkingYourCarPhotos": "Checking your car photos...",
+    "brandOnTheRing": "Brand on the ring",
+    "preview": "Preview",
+    "chooseAPhoto": "Choose a photo",
+    "thePreviewAboveIsYour": "The preview above is your real page. These are your PHONE settings; Desktop has its own.",
+    "theseAreYourDesktopSettings": "These are your DESKTOP settings, separate from phone.",
+    "desktopUsesYourPhoneSettings": "Desktop uses your phone settings until you move a slider here.",
+    "resetSizeAndPosition": "Reset size and position",
+    "sameAsPhone": "Same as phone",
+    "carInFrontOfYou": "Car in front of you",
+    "lookingForYourCutOut": "Looking for your cut-out car photos...",
+    "noneOfYourCarsHas": "None of your cars has a cut-out photo (no background) as its first photo, so no car shows.",
+    "newest": "Newest",
+    "noCar": "No car",
+    "carSize": "Car size",
+    "savingYourPhotoIsNot": "Saving your photo is not available yet. Try again later.",
+    "useThis": "Use this",
+    "usePhotoAsItIs": "Use photo as it is",
+    "removeTheBackground": "Remove the background",
+    "anotherPhoto": "Another photo",
+    "saveChanges": "Save changes",
+    "change": "Change",
+    "remove": "Remove",
+    "layoutHint": "The card uses your round profile photo{{avatarNote}}. On top, one brand's cars turn on a ring, three on show at a time. Only cars with a cut-out photo (no background) can go on it: Remove BG in Drevo Studio makes one. With none, the band shows your cover photo{{coverNote}}.",
+    "avatarNote": " (you have none yet, so this photo is used)",
+    "coverNote": " (none yet, so a dark band in your page colour is used)",
+    "downloadHint": "First time only: your phone downloads the cut-out tool ({{mb}} MB). Use Wi-Fi."
+  },
+  "addons": {
+    "nameAndSellingPriceAre": "Name and selling price are required",
+    "saveFailed": "Save failed",
+    "deleted": "Deleted",
+    "servicesAddOns": "Services & Add-ons",
+    "yourProductCatalogueUsedTwo": "Your product catalogue — used two ways, both explained below",
+    "addProduct": "Add Product",
+    "markOne": "Mark one",
+    "included": "Included",
+    "onAListingInYour": "on a listing (in your Listings tab) → it's a",
+    "freePerkForTheBuyer": "free perk for the buyer",
+    "noExtraChargeShownOn": ", no extra charge, shown on the car page to make your listing stand out.",
+    "attachOneToADeal": "Attach one to a deal in your",
+    "leads": "Leads",
+    "tabInsteadItSA": "tab instead → it's a",
+    "paidAddOn": "paid add-on",
+    "theBuyerPaysForIt": ", the buyer pays for it, and it counts as extra revenue for you.",
+    "addOnRevenueMonth": "Add-on Revenue (Month)",
+    "dealsWAddOns": "Deals w/ Add-ons",
+    "attachRate": "Attach Rate",
+    "noProductsYet": "No products yet",
+    "addTintWarrantyInsuranceOr": "Add tint, warranty, insurance or accessory packages buyers can attach to a deal.",
+    "addYourFirstProduct": "Add your first product",
+    "inactive": "Inactive",
+    "cost": "Cost:",
+    "sell": "Sell:",
+    "editProduct": "Edit Product",
+    "name": "Name *",
+    "eGPaintProtectionFilm": "e.g. Paint Protection Film",
+    "category": "Category *",
+    "costPriceRm": "Cost Price (RM)",
+    "sellingPriceRm": "Selling Price (RM) *",
+    "margin": "Margin:",
+    "active": "Active",
+    "saving": "Saving…",
+    "saveChanges": "Save Changes"
+  },
+  "verifyId": {
+    "useAJpgPngOr": "Use a JPG, PNG or WebP photo.",
+    "bothSidesOfYourMykad": "Both sides of your MyKad are required.",
+    "idSubmittedWeLlReview": "ID submitted — we'll review it shortly.",
+    "identityVerified": "Identity verified",
+    "yourCarsAreLiveOn": "Your cars are live on Drevo and carry the Verified badge.",
+    "idUnderReview": "ID under review",
+    "yourVerifiedBadgeShowsAs": "Your Verified badge shows as soon as it's approved. Your cars are already live.",
+    "back": "Back",
+    "step": "Step",
+    "lastSubmissionWasnTAccepted": "Last submission wasn't accepted:",
+    "getVerified": "Get verified",
+    "aVerifiedBadgeOnYour": "A Verified badge on your page and cars tells buyers a person checked your ID. Two quick steps: your IC number, then photos of your MyKad. About 2 minutes.",
+    "yourIcNumber": "Your IC number",
+    "12DigitsStoredScrambledHashed": "12 digits. Stored scrambled (hashed), never shown to buyers.",
+    "saving": "Saving…",
+    "next": "Next",
+    "photosOfYourMykad": "Photos of your MyKad",
+    "aPersonChecksThemYour": "A person checks them. Your Verified badge shows once it's approved.",
+    "optional": "· optional",
+    "submitting": "Submitting…",
+    "submitForVerification": "Submit for verification",
+    "storedPrivatelyAndDeletedThe": "Stored privately and deleted the moment your review is decided. Never shown to buyers.",
+    "stepOf": "Step {{n}} of 2",
+    "slot": {
+      "front": {
+        "label": "MyKad front",
+        "hint": "The side with your photo and IC number"
+      },
+      "back": {
+        "label": "MyKad back",
+        "hint": "The reverse side"
+      },
+      "selfie": {
+        "label": "Selfie holding your MyKad",
+        "hint": "Your face and the card both readable"
+      }
+    }
+  },
+  "myModels": {
+    "newCarsYouSell": "New cars you sell",
+    "yourPageShowsTheModels": "Your page shows the models you add. Tick them below, or use Add car to list one with your own photos. Prices come from this list and stay up to date by themselves.",
+    "sellNewProtonPeroduaToyota": "Sell new Proton, Perodua, Toyota, BYD or Honda? Pick your brand, then add the models you sell from Add car. You never type a price.",
+    "putModelsOnYourPage": "Put models on your page",
+    "adding": "Adding...",
+    "tickTheModelsYouSell": "Tick the models you sell",
+    "officialPriceList": "Official price list.",
+    "notSetForYourArea": "Not set for your area",
+    "putN": "Put {{count}} on my page",
+    "loadingPrices": "Loading {{brand}} prices...",
+    "addingPriceList": "We're adding the {{brand}} price list. Your models appear here as soon as it's in."
+  },
+  "pending": {
+    "freeTrialEnded": "Free Trial Ended",
+    "awaitingPaymentConfirmation": "Awaiting Payment Confirmation",
+    "keepYourDashboard": "KEEP YOUR DASHBOARD",
+    "almostThere": "ALMOST THERE",
+    "scanToPayWithAny": "Scan to pay with any banking app or eWallet",
+    "paymentReference": "Payment reference:",
+    "iVePaidCheckStatus": "I've Paid — Check Status",
+    "logOut": "Log Out",
+    "thisPageUpdatesAutomaticallyOnce": "This page updates automatically once your payment is confirmed.",
+    "expiredMsg": "Your {{days}}-day free trial is over — all your listings, leads and records are safe. Scan the QR to activate{{plan}} and pick up right where you left off.",
+    "payMsg": "Scan the QR to pay{{forPlan}}. We'll activate your dashboard as soon as we confirm payment.",
+    "forPlan": " for {{label}}"
+  },
+  "motionNews": {
+    "couldnTStartYourFree": "Couldn't start your free trial. Try again.",
+    "duitnowPaymentQr": "DuitNow payment QR"
+  },
+  "lookNews": {
+    "couldnTStartYourFree": "Couldn't start your free trial. Try again.",
+    "close": "Close"
+  },
+  "suspended": {
+    "accountSuspended": "Account Suspended",
+    "yourAccountHasBeenSuspended": "Your account has been suspended for the reason below. Sort it out and contact us to have it lifted.",
+    "yourAccountHasBeenSuspended2": "Your account has been suspended. Please contact Drevo support to resolve this.",
+    "contactSupportViaWhatsapp": "Contact Support via WhatsApp",
+    "signOut": "Sign out"
+  },
+  "aiUpgrade": {
+    "premiumFeatureRm35Mo": "Premium feature · RM35/mo",
+    "isLockedUpgradeToUnlock": "is locked. Upgrade to unlock AI-powered tools.",
+    "orGetItFreeAsk": "Or get it free — ask your dealer to subscribe to DrevoOS.",
+    "upgradeToPremium": "Upgrade to Premium →"
+  },
+  "pushPrompt": {
+    "turningOn": "Turning on…",
+    "tryAgain": "Try again",
+    "turnOn": "Turn on",
+    "notNow": "Not now"
+  },
+  "approved": {
+    "yourAccountHasBeenApproved": "Your account has been approved",
+    "yourAccountHasBeenApproved2": "Your account has been approved. Your listings will be reviewed individually before they go live.",
+    "dismiss": "Dismiss"
+  },
+  "searchPreview": {
+    "howYouLookOnGoogle": "How you look on Google",
+    "whenABuyerSearchesYour": "When a buyer searches your name, this is roughly what they see. It updates as you type; save to make it live.",
+    "looksGoodYourNameArea": "Looks good. Your name, area and bio are all in place."
+  },
+  "loadError": {
+    "holdUpWeReStuck": "Hold up, we're stuck in traffic",
+    "tryAgain": "Try again",
+    "goToTheMarketplace": "Go to the marketplace"
+  },
+  "notifPanel": {
+    "notifications": "Notifications",
+    "markAllRead": "Mark all read",
+    "noNotificationsYet": "No notifications yet."
+  },
+  "appLoader": {
+    "loading": "Loading"
+  },
+  "channels": {
+    "directOrganicOrUntaggedVisits": "Direct = organic or untagged visits we couldn't attribute to a platform."
+  },
+  "aiQuota": {
+    "usedToday": "used today"
+  },
+  "chatSheet": {
+    "closeConversation": "Close conversation"
+  },
+  "wonVariant": {
+    "question": "Which {{model}} did they buy?"
   }
 }

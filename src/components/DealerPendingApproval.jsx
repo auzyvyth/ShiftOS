@@ -2,12 +2,14 @@ import React, { useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { getPlanConfig } from '../utils/planConfig';
 import { liveChannel } from "../lib/liveChannel";
+import { useTranslation } from 'react-i18next';
 
 // Shown to a dealer whose paid signup is complete but awaiting payment
 // confirmation. Used both right after onboarding and as the dashboard gate.
 // When an admin marks payment_status != 'pending' (AdminPage "mark received"),
 // the realtime subscription auto-forwards them into the dashboard.
 export default function DealerPendingApproval({ planKey, dealershipName, email, profileId, redirectTo = '/dashboard', variant = 'payment', trialDays = 14 }) {
+  const { t } = useTranslation();
   const cfg = getPlanConfig(planKey);
   const amount = cfg?.price ? `RM ${Number(cfg.price).toLocaleString('en-MY')}` : '';
   const reference = dealershipName || email || '';
@@ -59,15 +61,15 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
 
       <div style={box}>
         <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(251,191,36,0.9)', margin: '0 0 12px', fontWeight: 600 }}>
-          {expired ? 'Free Trial Ended' : 'Awaiting Payment Confirmation'}
+          {expired ? t("pending.freeTrialEnded") : t("pending.awaitingPaymentConfirmation")}
         </p>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: 2, color: '#E8EDF5', lineHeight: 1.05, marginBottom: 8 }}>
-          {expired ? 'KEEP YOUR DASHBOARD' : 'ALMOST THERE'}
+          {expired ? t("pending.keepYourDashboard") : t("pending.almostThere")}
         </div>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.7, margin: '0 0 22px' }}>
           {expired
-            ? `Your ${trialDays}-day free trial is over — all your listings, leads and records are safe. Scan the QR to activate${cfg?.label ? ` ${cfg.label}` : ''} and pick up right where you left off.`
-            : `Scan the QR to pay${cfg?.label ? ` for ${cfg.label}` : ''}. We'll activate your dashboard as soon as we confirm payment.`}
+            ? t("pending.expiredMsg", { days: trialDays, plan: cfg?.label ? ` ${cfg.label}` : '' })
+            : t("pending.payMsg", { forPlan: cfg?.label ? t("pending.forPlan", { label: cfg.label }) : '' })}
         </p>
 
         {amount && (
@@ -81,7 +83,7 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
         <div style={{ background: '#fff', borderRadius: 12, padding: 10, width: 250, margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img
             src="/payment-qr.png"
-            alt="Scan to pay with any banking app or eWallet"
+            alt={t("pending.scanToPayWithAny")}
             style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
             onError={(e) => {
               e.currentTarget.style.display = 'none';
@@ -93,7 +95,7 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
 
         {reference && (
           <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, margin: '0 0 20px' }}>
-            Payment reference: <span style={{ color: '#E8EDF5', fontWeight: 600 }}>{reference}</span>
+            {t("pending.paymentReference")} <span style={{ color: '#E8EDF5', fontWeight: 600 }}>{reference}</span>
           </p>
         )}
 
@@ -101,18 +103,18 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
           onClick={() => window.location.reload()}
           style={{ width: '100%', height: 46, background: '#dc2626', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', marginBottom: 10 }}
         >
-          I've Paid — Check Status
+          {t("pending.iVePaidCheckStatus")}
         </button>
         <button
           onClick={logout}
           style={{ width: '100%', height: 44, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
-          Log Out
+          {t("pending.logOut")}
         </button>
       </div>
 
       <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, marginTop: 20, textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
-        This page updates automatically once your payment is confirmed.
+        {t("pending.thisPageUpdatesAutomaticallyOnce")}
       </p>
     </div>
   );
