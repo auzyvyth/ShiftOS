@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import DragSlider from "./DragSlider";
+import { useTranslation } from 'react-i18next';
 
 // Photo-app style adjustments: one row of named adjustments, ONE slider under
 // it (STUDIO-UX-2). A ring marks every adjustment that is off its default, the
@@ -9,6 +10,7 @@ import DragSlider from "./DragSlider";
 //
 // items: [{ key, label, min, max, step, def, fmt(v) }]
 export default function AdjustStrip({ items, values, onChange, onResetAll }) {
+  const { t } = useTranslation();
   const [activeKey, setActiveKey] = useState(items[0]?.key);
   const lastUp = useRef(0);
   const item = items.find((i) => i.key === activeKey) || items[0];
@@ -85,14 +87,14 @@ export default function AdjustStrip({ items, values, onChange, onResetAll }) {
         <DragSlider min={item.min} max={item.max} step={item.step} value={val} onChange={set} />
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-        <span style={{ fontSize: 11, color: "#848b98" }}>Double-tap the slider to reset</span>
+        <span style={{ fontSize: 11, color: "#848b98" }}>{t("adjStrip.doubleTapTheSliderTo")}</span>
         {onResetAll && (
           <button
             onClick={onResetAll}
             disabled={!anyChanged}
             style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "none", background: "#181b21", color: anyChanged ? "#f2f4f7" : "#5b616d", fontSize: 12, fontWeight: 500, cursor: anyChanged ? "pointer" : "default", fontFamily: "inherit" }}
           >
-            Reset all
+            {t("adjStrip.resetAll")}
           </button>
         )}
       </div>

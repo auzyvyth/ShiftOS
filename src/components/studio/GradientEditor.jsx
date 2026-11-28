@@ -1,5 +1,6 @@
 import React from "react";
 import DragSlider from "./DragSlider";
+import { useTranslation } from 'react-i18next';
 
 // Hex (#rgb / #rrggbb) → "rgba(r, g, b, a)" for transparent gradient stops
 function hexToRgba(hex, alpha) {
@@ -57,6 +58,7 @@ const PRESETS = [
 ];
 
 export default function GradientEditor({ value, onChange, showAlpha = false }) {
+  const { t } = useTranslation();
   const g = value || DEFAULT_GRADIENT;
   const patch = (p) => onChange({ ...g, ...p });
   const setStop = (i, p) =>
@@ -89,7 +91,7 @@ export default function GradientEditor({ value, onChange, showAlpha = false }) {
 
       {/* Angle */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>Angle</span>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{t("gradEd.angle")}</span>
         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{Math.round(g.angle ?? 90)}°</span>
       </div>
       <DragSlider value={g.angle ?? 90} min={0} max={360} step={1} onChange={(v) => patch({ angle: v })} />
@@ -112,7 +114,7 @@ export default function GradientEditor({ value, onChange, showAlpha = false }) {
             </div>
             {showAlpha && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 34 }}>
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", width: 46, flexShrink: 0 }}>Opacity</span>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", width: 46, flexShrink: 0 }}>{t("gradEd.opacity")}</span>
                 <div style={{ flex: 1 }}>
                   <DragSlider value={Math.round((s.alpha ?? 1) * 100)} min={0} max={100} step={1} onChange={(v) => setStop(i, { alpha: v / 100 })} />
                 </div>
@@ -124,7 +126,7 @@ export default function GradientEditor({ value, onChange, showAlpha = false }) {
       </div>
       {g.stops.length < 4 && (
         <button onClick={addStop} style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 7, border: "1px dashed rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>
-          + Add color stop
+          {t("gradEd.addColorStop")}
         </button>
       )}
     </div>

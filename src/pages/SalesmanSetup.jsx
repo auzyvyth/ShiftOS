@@ -5,6 +5,7 @@ import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/po
 import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 import ProfileLoadError from '../components/ProfileLoadError';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
+import { useTranslation } from 'react-i18next';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -24,6 +25,7 @@ const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 // Older emails still arrive via /reset-password?flow=setup with the session
 // already live; that path shows the same form and skips the verify.
 export default function SalesmanSetup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   // loading | form | expired | alerts | done
   const [phase, setPhase] = useState('loading');
@@ -154,11 +156,11 @@ export default function SalesmanSetup() {
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
           </div>
-          <h2 style={{ ...S.heading, textAlign: 'center' }}>THIS LINK NO LONGER WORKS</h2>
+          <h2 style={{ ...S.heading, textAlign: 'center' }}>{t("setupPage.thisLinkNoLongerWorks")}</h2>
           <p style={{ ...S.body, textAlign: 'center' }}>
-            It has expired, was already used, or a newer setup email replaced it. Open the newest setup email, or ask whoever set up your account to send it again. You can also use "Forgot password" on the sign-in page.
+            {t("setupPage.itHasExpiredWasAlready")}
           </p>
-          <button style={S.btn} onClick={() => navigate('/login')}>GO TO SIGN IN</button>
+          <button style={S.btn} onClick={() => navigate('/login')}>{t("setupPage.goToSignIn")}</button>
         </div>
       )}
 
@@ -168,43 +170,43 @@ export default function SalesmanSetup() {
             <div style={S.successIcon}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
             </div>
-            <p style={{ color: '#4ade80', fontSize: 14, marginTop: 12, fontWeight: 500 }}>Password set</p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 6 }}>Opening your dashboard...</p>
+            <p style={{ color: '#4ade80', fontSize: 14, marginTop: 12, fontWeight: 500 }}>{t("setupPage.passwordSet")}</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 6 }}>{t("setupPage.openingYourDashboard")}</p>
           </div>
         </div>
       )}
 
       {phase === 'form' && (
         <form style={S.card} onSubmit={(e) => { e.preventDefault(); if (!loading) finish(); }}>
-          <p style={S.eyebrow}>Your account is ready</p>
-          <h2 style={S.heading}>SET YOUR PASSWORD</h2>
-          <p style={S.body}>Choose a password and you are in. You will use it with your email to sign in next time.</p>
+          <p style={S.eyebrow}>{t("setupPage.yourAccountIsReady")}</p>
+          <h2 style={S.heading}>{t("setupPage.setYourPassword")}</h2>
+          <p style={S.body}>{t("setupPage.chooseAPasswordAndYou")}</p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={S.label} htmlFor="ss-pw">NEW PASSWORD</label>
+            <label style={S.label} htmlFor="ss-pw">{t("setupPage.newPassword")}</label>
             <div style={{ position: 'relative' }}>
-              <input id="ss-pw" type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 chars, mixed + symbol" style={S.input} autoComplete="new-password" />
-              <button type="button" style={S.eyeBtn} onClick={() => setShowPw(p => !p)}>{showPw ? 'HIDE' : 'SHOW'}</button>
+              <input id="ss-pw" type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={t("setupPage.min8CharsMixedSymbol")} style={S.input} autoComplete="new-password" />
+              <button type="button" style={S.eyeBtn} onClick={() => setShowPw(p => !p)}>{showPw ? t("setupPage.hide") : t("setupPage.show")}</button>
             </div>
-            {password && !STRONG_PW.test(password) && <p style={S.verr}>8+ chars · uppercase · lowercase · number · symbol</p>}
+            {password && !STRONG_PW.test(password) && <p style={S.verr}>{t("setupPage.8CharsUppercaseLowercaseNumber")}</p>}
           </div>
 
           <div style={{ marginBottom: 18 }}>
-            <label style={S.label} htmlFor="ss-confirm">CONFIRM PASSWORD</label>
-            <input id="ss-confirm" type={showPw ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Type it again" style={S.input} autoComplete="new-password" />
-            {confirm && confirm !== password && <p style={S.verr}>Passwords don't match</p>}
+            <label style={S.label} htmlFor="ss-confirm">{t("setupPage.confirmPassword")}</label>
+            <input id="ss-confirm" type={showPw ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={t("setupPage.typeItAgain")} style={S.input} autoComplete="new-password" />
+            {confirm && confirm !== password && <p style={S.verr}>{t("setupPage.passwordsDonTMatch")}</p>}
           </div>
 
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
             <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16, accentColor: '#dc2626', flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.55 }}>
-              I agree to the <a href="/terms" target="_blank" rel="noreferrer" style={S.link}>Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={S.link}>Privacy Policy</a>, and consent to my data being processed under PDPA 2010.
+              {t("setupPage.iAgreeToThe")} <a href="/terms" target="_blank" rel="noreferrer" style={S.link}>{t("setupPage.terms")}</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={S.link}>{t("setupPage.privacyPolicy")}</a>{t("setupPage.andConsentToMyData")}
             </span>
           </label>
 
           {error && <div role="alert" style={S.errorBox}>{error}</div>}
           <button type="submit" style={{ ...S.btn, opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }} disabled={loading}>
-            {loading ? 'SETTING UP...' : 'SET PASSWORD AND ENTER'}
+            {loading ? t("setupPage.settingUp") : t("setupPage.setPasswordAndEnter")}
           </button>
         </form>
       )}

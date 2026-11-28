@@ -34,6 +34,7 @@ import {
 import DragSlider from "./DragSlider";
 import AdjustStrip from "./AdjustStrip";
 import GradientEditor, { gradientCss, stopColor, DARK_SCRIM_GRADIENT } from "./GradientEditor";
+import { useTranslation } from 'react-i18next';
 // react-konva removed — now using CSS div rendering for z-interleave with template
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ function buildFilterStr(f = {}) {
 
 // ─── Text content renderer (shared by LayerDiv and canvas export) ──────────────
 function TextContent({ layer, scale = 1 }) {
+  const { t } = useTranslation();
   const justifyContent =
     layer.textAlign === "left"
       ? "flex-start"
@@ -145,7 +147,7 @@ function TextContent({ layer, scale = 1 }) {
           userSelect: "none",
         }}
       >
-        {layer.text || (layer.type === "text" ? "Text" : "")}
+        {layer.text || (layer.type === "text" ? t("layerCanvas.text") : "")}
       </span>
     </div>
   );
@@ -313,6 +315,7 @@ function SelectionBox({
   onRotateMouseDown,
   onRotateTouchStart,
 }) {
+  const { t } = useTranslation();
   const x = (layer.x / 100) * containerW;
   const y = (layer.y / 100) * containerH;
   const w = (layer.width / 100) * containerW;
@@ -432,7 +435,7 @@ function SelectionBox({
           justifyContent: "center",
           background: "transparent",
         }}
-        title="Rotate"
+        title={t("layerCanvas.rotate")}
       >
         <div
           style={{
@@ -538,6 +541,7 @@ const MINI_BTN = {
 };
 
 function ObjectMiniBar({ layer, cW, cH, onDuplicate, onToggleLock, onDelete }) {
+  const { t } = useTranslation();
   // Hard-clamped inside the canvas frame: just above the selection, else just
   // below it, else docked to the top edge (a full-frame layer).
   const M = 6;
@@ -575,11 +579,11 @@ function ObjectMiniBar({ layer, cW, cH, onDuplicate, onToggleLock, onDelete }) {
         pointerEvents: "auto",
       }}
     >
-      <button aria-label="Duplicate" title="Duplicate" onClick={onDuplicate} style={MINI_BTN}><Copy size={17} /></button>
-      <button aria-label={layer.locked ? "Unlock" : "Lock"} title={layer.locked ? "Unlock" : "Lock"} onClick={onToggleLock} style={MINI_BTN}>
+      <button aria-label={t("layerCanvas.duplicate")} title={t("layerCanvas.duplicate")} onClick={onDuplicate} style={MINI_BTN}><Copy size={17} /></button>
+      <button aria-label={layer.locked ? t("layerCanvas.unlock") : t("layerCanvas.lock")} title={layer.locked ? t("layerCanvas.unlock") : t("layerCanvas.lock")} onClick={onToggleLock} style={MINI_BTN}>
         {layer.locked ? <Unlock size={17} /> : <Lock size={17} />}
       </button>
-      <button aria-label="Delete" title="Delete" onClick={onDelete} style={{ ...MINI_BTN, color: "#f87171" }}><Trash2 size={17} /></button>
+      <button aria-label={t("layerCanvas.delete")} title={t("layerCanvas.delete")} onClick={onDelete} style={{ ...MINI_BTN, color: "#f87171" }}><Trash2 size={17} /></button>
     </div>
   );
 }
@@ -1087,6 +1091,7 @@ export function LayerPropertiesPanel({
   onZ,
   only,
 }) {
+  const { t } = useTranslation();
   if (!layer) {
     return (
       <div
@@ -1097,7 +1102,7 @@ export function LayerPropertiesPanel({
           textAlign: "center",
         }}
       >
-        Select a layer to edit its properties
+        {t("layerCanvas.selectALayerToEdit")}
       </div>
     );
   }
@@ -1135,10 +1140,10 @@ export function LayerPropertiesPanel({
           <span style={{ fontSize: 12, fontWeight: 600, color: "#f2f4f7" }}>{layer.label || layer.type}</span>
           <div style={{ display: "flex", gap: 5 }}>
             <button onClick={() => onDuplicate?.(layer.id)} style={{ ...tileBtn, height: 30, padding: "0 10px" }}>
-              <Copy size={12} /> Copy
+              <Copy size={12} /> {t("layerCanvas.copy")}
             </button>
             <button onClick={() => onDelete?.(layer.id)} style={{ ...tileBtn, height: 30, padding: "0 10px", color: "#f87171" }}>
-              <Trash2 size={12} /> Delete
+              <Trash2 size={12} /> {t("layerCanvas.delete")}
             </button>
           </div>
         </div>
@@ -1146,19 +1151,19 @@ export function LayerPropertiesPanel({
 
       {show("fill") && (
         <>
-          {!only && <SectionLabel>Fill</SectionLabel>}
+          {!only && <SectionLabel>{t("layerCanvas.fill")}</SectionLabel>}
           <div style={segWrap}>
-            <button onClick={() => uc({ gradient: null })} style={segBtn(!layer.gradient)}>Solid</button>
-            <button onClick={() => uc({ gradient: layer.gradient || DARK_SCRIM_GRADIENT })} style={segBtn(!!layer.gradient)}>Gradient</button>
+            <button onClick={() => uc({ gradient: null })} style={segBtn(!layer.gradient)}>{t("layerCanvas.solid")}</button>
+            <button onClick={() => uc({ gradient: layer.gradient || DARK_SCRIM_GRADIENT })} style={segBtn(!!layer.gradient)}>{t("layerCanvas.gradient")}</button>
           </div>
           {layer.gradient ? (
             <GradientEditor value={layer.gradient} onChange={(g) => u({ gradient: g })} showAlpha />
           ) : (
             <>
-              <PropRow label={layer.type === "text" ? "Box colour" : "Colour"}>
+              <PropRow label={layer.type === "text" ? t("layerCanvas.boxColour") : t("layerCanvas.colour")}>
                 <LColorInput value={layer.fill && layer.fill !== "transparent" ? layer.fill : "#e63946"} onChange={(v) => u({ fill: v })} />
               </PropRow>
-              <LSlider label="Opacity" value={layer.fillOpacity ?? 100} min={0} max={100} onChange={(v) => u({ fillOpacity: v })} fmt={(v) => `${v}%`} />
+              <LSlider label={t("layerCanvas.opacity")} value={layer.fillOpacity ?? 100} min={0} max={100} onChange={(v) => u({ fillOpacity: v })} fmt={(v) => `${v}%`} />
             </>
           )}
         </>
@@ -1166,32 +1171,32 @@ export function LayerPropertiesPanel({
 
       {show("border") && (
         <>
-          {!only && <SectionLabel>Border</SectionLabel>}
-          <LSlider label="Width" value={layer.borderWidth ?? 0} min={0} max={20} onChange={(v) => u({ borderWidth: v })} fmt={(v) => `${v}px`} />
+          {!only && <SectionLabel>{t("layerCanvas.border")}</SectionLabel>}
+          <LSlider label={t("layerCanvas.width")} value={layer.borderWidth ?? 0} min={0} max={20} onChange={(v) => u({ borderWidth: v })} fmt={(v) => `${v}px`} />
           {(layer.borderWidth || 0) > 0 && (
             <>
-              <PropRow label="Colour">
+              <PropRow label={t("layerCanvas.colour")}>
                 <LColorInput value={layer.borderColor || "#ffffff"} onChange={(v) => u({ borderColor: v })} />
               </PropRow>
-              <LSlider label="Opacity" value={layer.borderOpacity ?? 100} min={0} max={100} onChange={(v) => u({ borderOpacity: v })} fmt={(v) => `${v}%`} />
+              <LSlider label={t("layerCanvas.opacity")} value={layer.borderOpacity ?? 100} min={0} max={100} onChange={(v) => u({ borderOpacity: v })} fmt={(v) => `${v}%`} />
             </>
           )}
           {layer.type !== "circle" && layer.type !== "triangle" && (
-            <LSlider label="Corner radius" value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
+            <LSlider label={t("layerCanvas.cornerRadius")} value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
           )}
         </>
       )}
 
       {show("content") && (
         <>
-          {!only && <SectionLabel>Text</SectionLabel>}
-          <PropRow label="Text">
+          {!only && <SectionLabel>{t("layerCanvas.text")}</SectionLabel>}
+          <PropRow label={t("layerCanvas.text")}>
             <textarea
               value={layer.text || ""}
               onChange={(e) => u({ text: e.target.value })}
               onBlur={() => onCommit?.()}
               rows={3}
-              placeholder="Type here"
+              placeholder={t("layerCanvas.typeHere")}
               style={{
                 width: "100%",
                 background: "#181b21",
@@ -1212,37 +1217,37 @@ export function LayerPropertiesPanel({
 
       {show("font") && (
         <>
-          <PropRow label="Font">
+          <PropRow label={t("layerCanvas.font")}>
             <select value={layer.fontFamily || "DM Sans"} onChange={(e) => uc({ fontFamily: e.target.value })} style={selectStyle}>
               {TEXT_FONTS.map((fnt) => (
                 <option key={fnt} value={fnt} style={{ fontFamily: fnt }}>{fnt}</option>
               ))}
             </select>
           </PropRow>
-          <LSlider label="Size" value={layer.fontSize || 24} min={8} max={200} onChange={(v) => u({ fontSize: v })} fmt={(v) => `${v}px`} />
+          <LSlider label={t("layerCanvas.size")} value={layer.fontSize || 24} min={8} max={200} onChange={(v) => u({ fontSize: v })} fmt={(v) => `${v}px`} />
         </>
       )}
 
       {show("textColour") && (
-        <PropRow label="Text colour">
+        <PropRow label={t("layerCanvas.textColour")}>
           <LColorInput value={layer.textColor || "#ffffff"} onChange={(v) => u({ textColor: v })} />
         </PropRow>
       )}
 
       {show("textStyle") && (
         <>
-          <PropRow label="Align">
+          <PropRow label={t("layerCanvas.align")}>
             <div style={{ ...segWrap, marginBottom: 0 }}>
               {[
                 [<AlignLeft key="l" size={15} />, "left"],
                 [<AlignCenter key="c" size={15} />, "center"],
                 [<AlignRight key="r" size={15} />, "right"],
               ].map(([icon, val]) => (
-                <button key={val} aria-label={`Align ${val}`} onClick={() => uc({ textAlign: val })} style={segBtn((layer.textAlign || "center") === val)}>{icon}</button>
+                <button key={val} aria-label={t("layerCanvas.alignN", { x: val })} onClick={() => uc({ textAlign: val })} style={segBtn((layer.textAlign || "center") === val)}>{icon}</button>
               ))}
             </div>
           </PropRow>
-          <PropRow label="Up / down">
+          <PropRow label={t("layerCanvas.upDown")}>
             <div style={{ ...segWrap, marginBottom: 0 }}>
               {[["top", "Top"], ["center", "Middle"], ["bottom", "Bottom"]].map(([val, lbl]) => (
                 <button key={val} onClick={() => uc({ textVerticalAlign: val })} style={segBtn((layer.textVerticalAlign || "center") === val)}>{lbl}</button>
@@ -1251,9 +1256,9 @@ export function LayerPropertiesPanel({
           </PropRow>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
             <button onClick={() => uc({ fontWeight: layer.fontWeight === "bold" || Number(layer.fontWeight) >= 700 ? "normal" : "bold" })}
-              style={{ ...tileBtn, fontWeight: 800, background: layer.fontWeight === "bold" || Number(layer.fontWeight) >= 700 ? "#2a2f38" : "#181b21" }}>Bold</button>
+              style={{ ...tileBtn, fontWeight: 800, background: layer.fontWeight === "bold" || Number(layer.fontWeight) >= 700 ? "#2a2f38" : "#181b21" }}>{t("layerCanvas.bold")}</button>
             <button onClick={() => uc({ fontStyle: layer.fontStyle === "italic" ? "normal" : "italic" })}
-              style={{ ...tileBtn, fontStyle: "italic", background: layer.fontStyle === "italic" ? "#2a2f38" : "#181b21" }}>Italic</button>
+              style={{ ...tileBtn, fontStyle: "italic", background: layer.fontStyle === "italic" ? "#2a2f38" : "#181b21" }}>{t("layerCanvas.italic")}</button>
           </div>
         </>
       )}
@@ -1261,7 +1266,7 @@ export function LayerPropertiesPanel({
       {show("image") && (
         <>
           <label style={{ ...tileBtn, width: "100%", marginBottom: 10 }}>
-            <ImagePlus size={16} /> Replace image
+            <ImagePlus size={16} /> {t("layerCanvas.replaceImage")}
             <input
               type="file"
               accept="image/*"
@@ -1273,7 +1278,7 @@ export function LayerPropertiesPanel({
               }}
             />
           </label>
-          <PropRow label="Or paste an image link">
+          <PropRow label={t("layerCanvas.orPasteAnImageLink")}>
             <input
               value={layer.src && !String(layer.src).startsWith("blob:") ? layer.src : ""}
               placeholder="https://"
@@ -1287,20 +1292,20 @@ export function LayerPropertiesPanel({
 
       {show("fit") && (
         <>
-          <PropRow label="Fit">
+          <PropRow label={t("layerCanvas.fit")}>
             <div style={{ ...segWrap, marginBottom: 0 }}>
               {[["cover", "Fill the box"], ["contain", "Show it all"]].map(([val, lbl]) => (
                 <button key={val} onClick={() => uc({ objectFit: val })} style={segBtn((layer.objectFit || "cover") === val)}>{lbl}</button>
               ))}
             </div>
           </PropRow>
-          <LSlider label="Corner radius" value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
+          <LSlider label={t("layerCanvas.cornerRadius")} value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
         </>
       )}
 
       {show("effects") && (
         <>
-          {!only && <SectionLabel>Effects</SectionLabel>}
+          {!only && <SectionLabel>{t("layerCanvas.effects")}</SectionLabel>}
           <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, scrollbarWidth: "none" }}>
             {Object.keys(FILTER_PRESETS).map((name) => (
               <button
@@ -1313,12 +1318,12 @@ export function LayerPropertiesPanel({
             ))}
           </div>
           <AdjustStrip
-            items={LAYER_ADJUST}
+            items={LAYER_ADJUST.map((a) => ({ ...a, label: t(`layerCanvas.adj.${a.key}`, { defaultValue: a.label }) }))}
             values={f}
             onChange={(key, v) => u({ filters: { ...f, [key]: v, preset: null } })}
             onResetAll={() => uc({ filters: { ...FILTER_DEFAULTS, opacity: f.opacity } })}
           />
-          <PropRow label="Blend with what is behind">
+          <PropRow label={t("layerCanvas.blendWithWhatIsBehind")}>
             <select value={layer.blendMode || "normal"} onChange={(e) => uc({ blendMode: e.target.value })} style={{ ...selectStyle, marginTop: 4 }}>
               {["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"].map((m) => (
                 <option key={m} value={m}>{m}</option>
@@ -1330,10 +1335,10 @@ export function LayerPropertiesPanel({
 
       {show("arrange") && (
         <>
-          {!only && <SectionLabel>Arrange</SectionLabel>}
-          <LSlider label="Opacity" value={f.opacity} min={0} max={100} onChange={(v) => u({ filters: { ...f, opacity: v } })} fmt={(v) => `${v}%`} />
-          <LSlider label="Rotate" value={Math.round(((layer.rotation || 0) + 540) % 360) - 180} min={-180} max={180} onChange={(v) => u({ rotation: v })} fmt={(v) => `${v}°`} />
-          <PropRow label="Order">
+          {!only && <SectionLabel>{t("layerCanvas.arrange")}</SectionLabel>}
+          <LSlider label={t("layerCanvas.opacity")} value={f.opacity} min={0} max={100} onChange={(v) => u({ filters: { ...f, opacity: v } })} fmt={(v) => `${v}%`} />
+          <LSlider label={t("layerCanvas.rotate")} value={Math.round(((layer.rotation || 0) + 540) % 360) - 180} min={-180} max={180} onChange={(v) => u({ rotation: v })} fmt={(v) => `${v}°`} />
+          <PropRow label={t("layerCanvas.order")}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
               {[
                 ["To front", () => setZ(Z_FRONT)],
@@ -1347,10 +1352,10 @@ export function LayerPropertiesPanel({
           </PropRow>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
             <button onClick={() => uc({ locked: !layer.locked })} style={{ ...tileBtn, background: layer.locked ? "#2a2f38" : "#181b21" }}>
-              {layer.locked ? <Lock size={15} /> : <Unlock size={15} />} {layer.locked ? "Locked" : "Lock in place"}
+              {layer.locked ? <Lock size={15} /> : <Unlock size={15} />} {layer.locked ? t("layerCanvas.locked") : t("layerCanvas.lockInPlace")}
             </button>
             <button onClick={() => uc({ visible: layer.visible === false })} style={{ ...tileBtn, background: layer.visible === false ? "#2a2f38" : "#181b21" }}>
-              {layer.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {layer.visible === false ? "Hidden" : "Hide"}
+              {layer.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {layer.visible === false ? t("layerCanvas.hidden") : t("layerCanvas.hide")}
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
@@ -1366,7 +1371,7 @@ export function LayerPropertiesPanel({
               </div>
             ))}
           </div>
-          <PropRow label="Name (in the Layers list)">
+          <PropRow label={t("layerCanvas.nameInTheLayersList")}>
             <input
               value={layer.label || ""}
               onChange={(e) => u({ label: e.target.value })}
