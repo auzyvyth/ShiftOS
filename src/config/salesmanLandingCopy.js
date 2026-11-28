@@ -230,7 +230,7 @@ const EN = {
     title: "Scroll through a real Premium page.",
     line: "Pick a model and variant, a loan calculator, a booking form and your story, all on one link you put in your bio.",
     open: "Open the example page",
-    note: "Recorded on a computer from the example page, showing its Perodua models.",
+    note: "Recorded on a computer from the example page, showing its Perodua models. Parts stamped EXAMPLE show sample content.",
     alt: "A Premium seller page on a computer, scrolling from the top to the footer: profile, model picker, cars, loan calculator, booking form, about me and reviews",
   },
 
@@ -589,7 +589,7 @@ const MS = {
     title: "Tengok page Premium sebenar, dari atas sampai bawah.",
     line: "Pilih model dan varian, kalkulator loan, borang booking dan cerita anda, semua dalam satu link untuk bio anda.",
     open: "Buka page contoh",
-    note: "Dirakam di komputer dari page contoh, menunjukkan model Perodua.",
+    note: "Dirakam di komputer dari page contoh, menunjukkan model Perodua. Bahagian bertanda EXAMPLE ialah kandungan contoh.",
     alt: "Page seller Premium di komputer, ditatal dari atas ke bawah: profil, pilihan model, kereta, kalkulator loan, borang booking, tentang saya dan ulasan",
   },
 
