@@ -3339,6 +3339,15 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
   at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
   line before any inbox work.
+  **2026-11-28 (owner): sell-first decision.** Build the Pro feature so it exists, market it, connect accounts only once a seller
+  pays (Zernio bills per CONNECTED account, so nothing costs until then; owner sends the seller a connect link, never asks for
+  passwords). Zernio really costs $6/account at 3-10 accounts platform-wide, $3 at 11-100 (first 2 free): a 3-account seller is
+  about RM80 then RM40 a month, not RM25 (re-check Zernio's page before fixing a price). Own-built posting (Meta + TikTok apps) costs
+  $0/account but needs Meta Business Verification + app review and a TikTok audit (unaudited = private posts only, 5 users/day):
+  start those free applications in parallel, swap in behind the same `social_posts` queue once volume justifies it.
+  DONE: "Seller Pro" interest card on /plans only (`salesmanPricingCards(lang, { withPro: true })`, `src/utils/plans.js`), RM200/month
+  PLACEHOLDER (`PLAN_CONFIG.salesman_full.proPrice`), button = "Register interest on WhatsApp" to `OPS_WHATSAPP`, badge "Coming soon",
+  nothing charged. NOT on /for-salesmen on purpose. Never turn the button into "Buy" before the feature works (CPA 1999 s.10).
   **2026-11-13 later: the seller-facing Pro work was PARKED** when posting moved to the owner's console (SOCIAL-1,
   CLAUDE.md "Drevo's OWN pages"): no seller posts any more, so nothing to gate. `supabase/parked/pro_tier.sql`
   keeps the entitlement table; the lock screen, `proPlan.js` and the console Pro buttons were removed. The notes
