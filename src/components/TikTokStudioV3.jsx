@@ -498,7 +498,8 @@ function buildDefaultElements(listing, theme, dealerName) {
 // every template — a full-bleed rect with a transparent dark gradient fill,
 // sitting above the photo but behind the headline/price text (OVERLAY_Z).
 function makeOverlayLayer(overrides = {}) {
-  const { t: tr } = useTranslation();
+  // Not a component: a hook here throws "Invalid hook call" the moment it runs.
+  const tr = (k, o) => i18n.t(k, o);
   return makeLayer("rect", {
     label: tr("studio.gradient"),
     x: 0,

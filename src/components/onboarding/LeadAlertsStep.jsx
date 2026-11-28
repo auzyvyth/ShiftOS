@@ -7,6 +7,7 @@ import {
   usePushNotifications, isIOS, isStandalone, isInAppBrowser, isAndroid,
 } from '../../hooks/usePushNotifications';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 // PUSH-ONBOARD (owner, 2026-10-31): the LAST screen of every way a seller gets
 // an account, the signup wizard (SalesmanOnboarding) and the set-up email page
@@ -36,7 +37,8 @@ const SLOW_MS = 15000;
 // A request still open after 15s is almost always Chrome's quiet prompt: say
 // where to look. If it then succeeds, the success toast follows.
 function reportAlertsResult(attempt) {
-  const { t: tr } = useTranslation();
+  // Not a component: a hook here throws "Invalid hook call" the moment it runs.
+  const tr = (k, o) => i18n.t(k, o);
   let settled = false;
   const slow = setTimeout(() => {
     if (!settled) toast(tr("leadAlerts.alertsAreNotOnYet"), { duration: 12000 });
