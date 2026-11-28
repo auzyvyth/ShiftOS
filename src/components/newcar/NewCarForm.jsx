@@ -4,6 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { groupByModel, rm, priceBasis } from "../../utils/newCars";
 import { compressListingPhoto, photoExt } from "../../utils/compressImage";
+import { useTranslation } from 'react-i18next';
 
 // NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota / BYD / Honda).
 // Rendered by CarForm in place of the used-car form when
@@ -43,6 +44,7 @@ function saveError(e) {
 }
 
 export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUseUsedForm, onOpenNewCars, dark = false }) {
+  const { t } = useTranslation();
   const th = dark ? themes.dark : themes.light;
   const brand = profile?.new_car_brand || "";
   const editing = !!listing;
@@ -202,9 +204,9 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
   if (!brand) {
     return (
       <div style={{ ...box, padding: 16 }}>
-        <p style={h}>Pick your brand first</p>
-        <p style={sub}>Choose Proton, Perodua, Toyota, BYD or Honda in Settings &gt; New cars, then come back.</p>
-        {onOpenNewCars && <button type="button" onClick={onOpenNewCars} style={{ ...tile(true), marginTop: 12, justifyContent: "center", fontWeight: 600 }}>Open New cars settings</button>}
+        <p style={h}>{t("newCarForm.pickYourBrandFirst")}</p>
+        <p style={sub}>{t("newCarForm.chooseProtonPeroduaToyotaByd")}</p>
+        {onOpenNewCars && <button type="button" onClick={onOpenNewCars} style={{ ...tile(true), marginTop: 12, justifyContent: "center", fontWeight: 600 }}>{t("newCarForm.openNewCarsSettings")}</button>}
       </div>
     );
   }
@@ -216,17 +218,17 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
         {editing ? (
           <>
             <p style={h}>{listing.brand} {listing.model}</p>
-            <p style={sub}>From {rm(listing.selling_price)}, every variant at the official price. Buyers pick the variant on the car page.</p>
+            <p style={sub}>{t("newCarForm.fromPriceEvery", { price: rm(listing.selling_price) })}</p>
           </>
         ) : rows === null ? (
-          <p style={sub}>Loading {brand} models...</p>
+          <p style={sub}>{t("newCarForm.loadingModels", { brand })}</p>
         ) : loadErr ? (
           <p style={{ ...sub, color: "#f59e0b" }}>{loadErr}</p>
         ) : rows.length === 0 ? (
-          <p style={sub}>We're adding the {brand} price list. You can make cards as soon as it's in.</p>
+          <p style={sub}>{t("newCarForm.addingPriceList", { brand })}</p>
         ) : !model ? (
           <>
-            <p style={h}>Which {brand} model?</p>
+            <p style={h}>{t("newCarForm.whichModel", { brand })}</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 140px), 1fr))", gap: 8 }}>
               {groups.map((g) => {
                 const has = takenModels.has(g.model);
@@ -236,7 +238,7 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: "block", fontWeight: 700 }}>{g.model}</span>
                       <span style={{ fontSize: 11.5, color: th.sub }}>
-                        {has ? "On your page" : from ? `from ${rm(from.price)}` : "No price for your area yet"}
+                        {has ? t("newCarForm.onYourPage") : from ? t("newCarForm.fromPrice", { price: rm(from.price) }) : t("newCarForm.noPriceForYourArea")}
                       </span>
                     </span>
                   </button>
@@ -248,21 +250,21 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
           <>
             <button type="button" onClick={() => setModel("")}
               style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginBottom: 8, color: th.sub, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
-              <ChevronLeft size={14} /> All models
+              <ChevronLeft size={14} /> {t("newCarForm.allModels")}
             </button>
             <p style={h}>{brand} {model}</p>
-            <p style={{ ...sub, marginBottom: 8 }}>One card covers every variant. Buyers pick the one they want on your car page.</p>
+            <p style={{ ...sub, marginBottom: 8 }}>{t("newCarForm.oneCardCoversEveryVariant")}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {variants.map((v) => (
                 <div key={v.model_id} style={{ ...tile(false, v.price == null), cursor: "default" }}>
                   <span style={{ minWidth: 0, fontWeight: 600 }}>{v.variant}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-                    {rm(v.price) || "No price yet"}
+                    {rm(v.price) || t("newCarForm.noPriceYet")}
                   </span>
                 </div>
               ))}
             </div>
-            <p style={{ ...sub, fontSize: 11.5, marginTop: 8 }}>{priceBasis(rows[0]?.price_zone)} You can't change it: it's {brand}'s price, and Drevo updates it for every advisor.</p>
+            <p style={{ ...sub, fontSize: 11.5, marginTop: 8 }}>{t("newCarForm.priceBasisNote", { basis: priceBasis(rows[0]?.price_zone), brand })}</p>
           </>
         )}
       </div>
@@ -270,37 +272,37 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       {/* 2. Their own photos. Required: a card without one is the "no photo" problem. */}
       {(editing || chosen) && (
         <div style={{ ...box, padding: 14 }}>
-          <p style={h}>{useStock ? "Photos" : "Your photos of this car"}</p>
+          <p style={h}>{useStock ? t("newCarForm.photos") : t("newCarForm.yourPhotosOfThisCar")}</p>
           <p style={{ ...sub, marginBottom: 10 }}>
             {useStock
-              ? "Drevo's photos of this model are already filled in. Add your own and they replace these: real photos from you get more replies."
-              : "Use your own: the car in your showroom, a customer handover, a test drive. Real photos from you get more replies than brochure pictures."}
+              ? t("newCarForm.drevoSPhotosOfThis")
+              : t("newCarForm.useYourOwnTheCar")}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))", gap: 8 }}>
             {useStock && stock.slice(0, 6).map((u, i) => (
               <div key={u} style={{ position: "relative", aspectRatio: "4 / 3", borderRadius: 8, overflow: "hidden", background: th.soft }}>
                 <img src={u} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "#fff" }}>Cover</span>}
+                {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "#fff" }}>{t("newCarForm.cover")}</span>}
               </div>
             ))}
             {photos.map((u, i) => (
               <div key={u} style={{ position: "relative", aspectRatio: "4 / 3", borderRadius: 8, overflow: "hidden", background: th.soft }}>
                 <img src={u} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "#fff" }}>Cover</span>}
-                <button type="button" aria-label="Remove photo" onClick={() => setPhotos((p) => p.filter((x) => x !== u))}
+                {i === 0 && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "#fff" }}>{t("newCarForm.cover")}</span>}
+                <button type="button" aria-label={t("newCarForm.removePhoto")} onClick={() => setPhotos((p) => p.filter((x) => x !== u))}
                   style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: 12, border: "none", background: "rgba(0,0,0,0.6)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <X size={13} />
                 </button>
               </div>
             ))}
             {Array.from({ length: uploading }).map((_, i) => (
-              <div key={`u${i}`} style={{ aspectRatio: "4 / 3", borderRadius: 8, background: th.soft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: th.sub }}>Uploading</div>
+              <div key={`u${i}`} style={{ aspectRatio: "4 / 3", borderRadius: 8, background: th.soft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: th.sub }}>{t("newCarForm.uploading")}</div>
             ))}
             {photos.length + uploading < MAX_PHOTOS && (
               <button type="button" onClick={() => fileRef.current?.click()}
                 style={{ aspectRatio: "4 / 3", borderRadius: 8, border: `1.5px dashed ${photos.length || useStock ? th.line : "#dc2626"}`, background: "transparent", color: photos.length || useStock ? th.sub : "#dc2626", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 600 }}>
                 {photos.length ? <ImagePlus size={18} /> : <Camera size={18} />}
-                {photos.length ? "Add more" : useStock ? "Use my own" : "Add your photo"}
+                {photos.length ? t("newCarForm.addMore") : useStock ? t("newCarForm.useMyOwn") : t("newCarForm.addYourPhoto")}
               </button>
             )}
           </div>
@@ -312,13 +314,13 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       {(editing || chosen) && (
         <div style={{ ...box, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: th.sub }}>
-            Colours you can get (optional)
-            <input style={input} value={colour} onChange={(e) => setColour(e.target.value)} placeholder="e.g. Snow White, Armour Silver" maxLength={120} />
+            {t("newCarForm.coloursYouCanGetOptional")}
+            <input style={input} value={colour} onChange={(e) => setColour(e.target.value)} placeholder={t("newCarForm.eGSnowWhiteArmour")} maxLength={120} />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: th.sub }}>
-            What you offer (optional)
+            {t("newCarForm.whatYouOfferOptional")}
             <textarea style={{ ...input, minHeight: 96, resize: "vertical" }} value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={2000}
-              placeholder="Delivery time, trade-in, help with the loan, what's in stock this month. Don't promise a loan approval or a rebate that has ended." />
+              placeholder={t("newCarForm.deliveryTimeTradeInHelp")} />
           </label>
         </div>
       )}
@@ -328,14 +330,14 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       {(editing || chosen) && (
         <button type="button" onClick={save} disabled={!canSave}
           style={{ height: 46, borderRadius: 12, border: "none", background: canSave ? "#dc2626" : th.soft, color: canSave ? "#fff" : th.sub, fontSize: 15, fontWeight: 700, cursor: canSave ? "pointer" : "default", fontFamily: "inherit" }}>
-          {saving ? "Saving..." : editing ? "Save changes" : photos.length || useStock ? "Put it on my page" : "Add a photo to continue"}
+          {saving ? t("newCarForm.saving") : editing ? t("newCarForm.saveChanges") : photos.length || useStock ? t("newCarForm.putItOnMyPage") : t("newCarForm.addAPhotoToContinue")}
         </button>
       )}
 
       {!editing && onUseUsedForm && (
         <button type="button" onClick={onUseUsedForm}
           style={{ background: "none", border: "none", color: th.sub, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline", alignSelf: "center" }}>
-          Selling a used or recon car? Use the used-car form
+          {t("newCarForm.sellingAUsedOrRecon")}
         </button>
       )}
     </div>
