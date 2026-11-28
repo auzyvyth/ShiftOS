@@ -137,8 +137,10 @@ nobody live, then run `select ops_daily_checkup();` once as postgres and confirm
 Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the plan tour, in a browser-window frame; video
 `public/for-salesmen/premium-page-scroll-v2.mp4` (0.75 MB, 16.3 s, 1280x800, loads only when scrolled near). Recorded at DESKTOP size from
 the live data of `/s/premiummotors?brand=perodua` (owner: desktop, Perodua only), `tools/page-video/record.cjs`.
-- [ ] The banner car (a Honda Civic), the bio ("Selling Recon Toyota Alphard...") and the "Recon imports" tag on premiummotors are
-  account settings, not Perodua. Once the owner changes them, re-record as `-v3`.
+  Hero = the business card with Perodua cut-outs on the ring (`HERO=card:perodua`, a recording-only override: the live page's own
+  hero setting is still the big photo).
+- [ ] The bio ("Selling Recon Toyota Alphard...") and the "Recon imports" tag on premiummotors are account settings, not Perodua.
+  Once the owner changes them, re-record as `-v3` (v2 was never on staging, so it was overwritten in place).
 
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
