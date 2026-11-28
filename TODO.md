@@ -79,18 +79,8 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [x] SEC-12 (2026-11-26) buyer purchase tracker now matches only a verified sign-in identity; migration
   `20261126b` APPLIED 2026-11-27 00:47 MYT, probe-verified. Delete this line next session.
 - [ ] 2. One pass over the ~129 SECURITY DEFINER functions anon can call (see INPUT-1).
-- [ ] 3. HONEYPOT-1 tripwire (infrastructure migration `20261127a` APPLIED 2026-11-28 02:1x MYT, anon has no access; still to do: create the decoys with the two builder functions, set the env var for the web paths): decoy database objects + decoy web paths that no screen uses.
-  Any touch = log + `notify_ops` alert (phone + Telegram). Alarm, NOT an IP block on the
-  database: buyers talk to Supabase directly and Malaysian carriers share one IP across many
-  phones, so blocking hurts real buyers and a hacker just changes IP. Block only on the decoy
-  web paths (Vercel). Decoy names must look ordinary and must not be listed in this repo.
-  Database part = DDL, after midnight only.
-  **Built 2026-11-27, not live yet:** web decoys in `middleware.js` read their paths from the Vercel env var
-  `HONEYPOT_PATHS` (unset = off); database side = migration `20261127a_honeypot_infra.sql` (QUEUED: log table,
-  `honeypot_record`, two builders). Left: (a) owner sets `HONEYPOT_PATHS` in Vercel, (b) after midnight apply
-  `20261127a`, then create the decoys by calling `honeypot_make_table` / `honeypot_make_rpc` from the SQL
-  editor (names live only in `honeypot_decoys`), (c) probe in a rolled-back transaction as anon, (d) catching
-  READS of a decoy table needs the API logs (a read-only request cannot write), not built, (e) release after midnight.
+- [ ] 3. HONEYPOT-1: web check and migration file removed from the repo (owner, 2026-11-28). Migration `20261127a`
+  was recorded as applied, so its database objects need a separate decision: keep or drop.
 - [ ] 4. SEC-A5 waitlist lookup via the server key, revoke from anon (see AUDIT-1021).
 - [ ] 5. SEC-9 login lock-out by email: key on IP as well (see SEC).
 - [ ] 6. Owner: revoke the old Anthropic + remove.bg keys at the provider (removed from Vercel 2026-10-28).

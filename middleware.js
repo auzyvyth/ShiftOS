@@ -89,46 +89,9 @@ function shellRewrite(req, url) {
   return new Response(null, { headers: { 'x-middleware-rewrite': new URL(`/api/shell?p=${page}`, url).toString() } });
 }
 
-// HONEYPOT-1 (owner, 2026-11-27): decoy web paths. The NAMES are never in git: they come from the
-// HONEYPOT_PATHS env var in Vercel (comma separated, e.g. "/a,/b/c"). A hit is logged + alerted through
-// the honeypot_record() database function (service key), and the visitor gets a plain 404. No env var = off.
-let decoyRaw = null;
-let decoySet = new Set();
-function isDecoy(pathname) {
-  const raw = process.env.HONEYPOT_PATHS || '';
-  if (raw !== decoyRaw) {
-    decoyRaw = raw;
-    decoySet = new Set(raw.split(',').map((x) => x.trim().toLowerCase().replace(/\/+$/, '')).filter(Boolean));
-  }
-  if (!decoySet.size) return false;
-  return decoySet.has(pathname.toLowerCase().replace(/\/+$/, ''));
-}
-
-function reportDecoy(req, pathname) {
-  const base = process.env.VITE_SUPABASE_URL || 'https://lemdkdizdlcirhbzqlos.supabase.co';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) return Promise.resolve();
-  const ip = req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null;
-  return fetch(`${base}/rest/v1/rpc/honeypot_record`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      p_kind: 'path', p_name: pathname.slice(0, 120), p_action: req.method,
-      p_ip: ip, p_ua: (req.headers.get('user-agent') || '').slice(0, 300),
-    }),
-  }).catch(() => {});
-}
-
-export default async function middleware(req, event) {
+export default async function middleware(req) {
   const url = new URL(req.url);
   const { pathname } = url;
-
-  if (isDecoy(pathname)) {
-    const sent = reportDecoy(req, pathname);
-    if (event && typeof event.waitUntil === 'function') event.waitUntil(sent);
-    else await sent;
-    return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } });
-  }
 
   const shell = shellRewrite(req, url);
   if (shell) return shell;
@@ -173,7 +136,5 @@ export default async function middleware(req, event) {
 }
 
 export const config = {
-  // First entry: every page-like path (so a decoy path from HONEYPOT_PATHS can be caught), not the app's own
-  // assets or files with a static extension. The handler returns at once unless the path is a decoy.
-  matcher: ['/((?!assets/|api/|brands/|models/|news/|_vercel/|.*\\.(?:js|css|png|jpe?g|webp|gif|svg|ico|woff2?|map|json|txt|xml|mp4|onnx|wasm|webmanifest)$).*)', '/', '/showroom', '/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status', '/api/auth-throttle'],
+  matcher: ['/', '/showroom', '/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status', '/api/auth-throttle'],
 };
