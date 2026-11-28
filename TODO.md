@@ -99,12 +99,14 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 9. Dependabot: `i18next` updated 24 -> 26.7.2 (2026-11-28, on staging). Left, all moderate and build-tool or server-picture-code only (not in the browser):
   Sentry vite plugin, `glob` / `minimatch` via `vite-plugin-pwa`, `fflate` / `satori`. Review in the next dependency pass.
   The video-ad project (`marketing/ads/drevo-remotion`) had only the `i18next` alert; update it there too.
-- [ ] 10. LANG-1 (owner, 2026-11-28): every Lite + Premium screen and pop-up in English AND Malay. Done on staging: both main panels,
-  Lite Listings tab, share menu, car pop-up, booking calendar, chat inbox, referral, upgrade card, verify prompt, bug report.
-  Left (English-only today): PageSiteCard, ServicesAddonsTab, HeroPhotoCard, VerifyIdentity, MyNewModels, DealerPendingApproval,
-  the two "news" pop-ups, SuspendedBanner and a few banners; then the pop-ups opened from them (CarForm, LeadDrawer, LivePresenter,
-  LoanCheck / LoanDesk, Studio, onboarding, linked/*), the plan feature lines in `plans.js`, and `claimInviteCode` messages.
-  Find them with an AST scan for JSX text / `label:` / `toast(...)` strings that are not inside `t(...)`.
+- [ ] 10. LANG-1 (owner, 2026-11-28): every Lite + Premium screen and pop-up in English AND Malay. DONE on staging: both main panels and
+  tabs, car form + quick add + new-car form, Outreach, posters, Studio, loans, brokers, linked-dealer screens, handover, customers, add lead,
+  chat, page editor, hero/handover photos, add-ons, ID verification, pay box, banners, setup + signup wizard.
+  LEFT (English only): the seller's PUBLIC page and its blocks (`components/agent/*`, `SalesmanProfilePage.jsx`), the signup wizard's step
+  names + plan tier lists (`STEPS`, `TIERS` in SalesmanOnboarding.jsx), plan feature lines (`plans.js`), `claimInviteCode` messages
+  (`utils/invite.js`), `ReportSections`, `BulkBar`, Studio font/theme/format NAMES (kept as names), buyer chat (`BuyerChat`, `BuyerInbox`,
+  `SellerFeedback`). Left on purpose: legal text, Live presenter (own EN/BM switch, `liveCopy.js`), owner-only social posting.
+  Method: AST scan for JSX text / `label:` / `toast(...)` outside `t(...)`; check every key exists in en AND ms before shipping.
 
 ## STORE + META READINESS (checked 2026-11-28, partial, read of `main`) - store work stays PAUSED
 Owner: API applications postponed (users first). This is a list, not an approval to build.
