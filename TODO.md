@@ -94,6 +94,32 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
   the ones the app actually ships to the browser or api/ first.
 
+## STORE + META READINESS (checked 2026-11-28, partial, read of `main`) - store work stays PAUSED
+Owner: API applications postponed (users first). This is a list, not an approval to build.
+Rules must be re-checked on Apple / Google / Meta / TikTok pages before building.
+- [ ] READY-1 Payments: Premium is paid in-app by DuitNow QR + WhatsApp. Apple 3.1.1 asks for in-app
+  purchase to unlock features. Check regional exceptions and Google Play billing rules (not checked).
+- [ ] READY-2 Chat safety (Apple 1.2, check Play UGC too): listing + seller reporting exist. Searches found
+  no chat block / report control and no content filter. Needs filter, report, block, contact details.
+- [ ] READY-3 Google sign-in in the app (MOBILE-9). On iOS likely also needs a privacy-focused login
+  option (Apple 4.8), e.g. Sign in with Apple.
+- [ ] READY-4 Apple 4.2 (more than a website): no native feature plugins found. See MOBILE-8, MOBILE-10.
+- [ ] READY-5 Store setup: icon + splash (MOBILE-11), final app name + app ID (still ShiftOS /
+  `my.xdrive.shiftos`), MOBILE-5.
+- [ ] READY-6 Public web page to request account + data deletion (Google Play). No dedicated route found.
+  In-app deletion exists (buyer, Lite, Premium, eligible dealers); not tested, purge not tested.
+- [ ] READY-7 Privacy: it names the operator as "sole proprietor" but SSM was noted as not registered.
+  Confirm. Confirm `legal@xdrive.my` receives mail, or move to a drevo.my address.
+- [ ] READY-8 Play: a personal account made after 13 Nov 2023 needs 12 testers for 14 days in a row.
+- [ ] READY-9 Meta (only if our own app is needed): SSM with matching name, business verification,
+  drevo.my email + domain, data deletion callback if required, working connect flow. Own Pages may
+  work on Standard Access without App Review; seller accounts need App Review.
+- [ ] READY-10 TikTok: its API guidelines reject tools for our own accounts only, so keep Zernio.
+  CHECK SOON, not paused: our posts add a watermark, a price cover and drevo.my text; TikTok's
+  guidelines bar added logos, watermarks and promotional text.
+- [ ] READY-11 Security review of the current Supabase security advisor results (see INFRA-6 and
+  SECURITY-NOW item 2; include views added since INFRA-6). Warnings are not proof of a hole. Do first.
+
 ## OPS-DAILY: daily check-up to Telegram + phone (owner, 2026-11-28)
 Built, QUEUED: `supabase/migrations/20261128b_ops_daily_checkup.sql` (`ops_daily_checkup()` + cron 23:30 UTC). Apply after midnight MYT,
 nobody live, then run `select ops_daily_checkup();` once as postgres and confirm the message lands; check `has_function_privilege('anon', ...)` is false.
