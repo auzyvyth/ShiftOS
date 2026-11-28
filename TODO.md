@@ -99,6 +99,11 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
   the ones the app actually ships to the browser or api/ first.
 
+## SIGNUP-1128: sole-seller signup redo (owner, 2026-11-28) - on the session branch, NOT on staging
+- [ ] `src/pages/SalesmanOnboarding.jsx` restyled light, 5 steps (the review/"Activate account" step is gone: "Create my page" is on the page step), no payment wording; the brand box is removed, the page username IS the public name; `dealership` now saves the username, not the legal name.
+- [ ] Migration `20261128b_public_seller_name.sql` QUEUED (after midnight, nobody live): public readers (`get_salesman_by_slug`, `get_salesman_by_id`, `get_new_model_advisors`) return the username in `full_name` for a solo seller (dealer_id null), so the page, Google title, share card and advisor list stop showing the legal name. Verify afterwards with `get_salesman_by_slug('sirhonda')`.
+- [ ] Not done: restyle `LeadAlertsStep` (last screen), sole-seller trial-ended screen, dealer expired screen + DB lock (see the audit in the session summary), old sellers' `dealership` may still hold a legal name.
+
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
 COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
