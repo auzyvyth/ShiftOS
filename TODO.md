@@ -99,6 +99,12 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
   the ones the app actually ships to the browser or api/ first.
 
+## OPS-DAILY: daily check-up to Telegram + phone (owner, 2026-11-28)
+Built, QUEUED: `supabase/migrations/20261128b_ops_daily_checkup.sql` (`ops_daily_checkup()` + cron 23:30 UTC). Apply after midnight MYT,
+nobody live, then run `select ops_daily_checkup();` once as postgres and confirm the message lands; check `has_function_privilege('anon', ...)` is false.
+- [ ] Website speed from outside (page load time of drevo.my + one car page): needs an edge function or Vercel check, not built.
+- [ ] Add honeypot touches and Dependabot counts to the message once HONEYPOT-1 is live.
+
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
 COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
