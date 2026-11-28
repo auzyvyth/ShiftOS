@@ -3252,7 +3252,7 @@ export default function SalesmanPremium() {
  } else if (key === "reschedule") {
  setAssistantOpen(false); switchTab("enquiries"); setInboxSubTab("bookings");
  } else if (key === "whatsapp") {
- const when = new Date(card.when).toLocaleString("en-MY", { weekday: "long", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kuala_Lumpur" });
+ const when = new Date(card.when).toLocaleString(ac.locale, { weekday: "long", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kuala_Lumpur" });
  const href = weekWaLink(card.phone, ac.booking.wa(card, when));
  if (href) window.open(href, "_blank", "noopener,noreferrer");
  }

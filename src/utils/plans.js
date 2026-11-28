@@ -43,6 +43,7 @@ import { LITE_POSTERS_PER_MONTH } from './loanPoster.js';
 // feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
   { group: 'live', en: 'Full Live presentation: Budget + Viewer, Docs, totals, salary guide', ms: 'Live presentation penuh: Bajet + Penonton, Dokumen, jumlah bayaran, panduan gaji' },
+  { group: 'dash', en: 'Assistant: bookings to confirm, buyers waiting and quiet cars in one feed', ms: 'Pembantu: booking nak disahkan, pembeli menunggu dan kereta senyap dalam satu feed' },
   { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
@@ -141,7 +142,7 @@ const CARD_WORDS = {
     premium: { name: 'Salesman Premium', desc: 'Know who to call today, what to send them, and what a viewer pays each month.', cta: `Try ${PF.trialDays} days free on WhatsApp`,
       wa: `Hi, I'm a car salesman and want to try Drevo Premium free for ${PF.trialDays} days. Can you set it up for me?`,
       notes: [`Or RM${PF.yearlyPrice} a year, paid once (about 2 months free).`, `Founding price for the first ${PF.foundingSpots} sellers, yours while you stay. Then RM${PF.listPrice}.`],
-      features: [`Everything in Lite, up to ${PF.listingCap} cars`, 'A "This week" call list: who never got a reply, who went quiet, whose insurance is due', 'Follow-ups already written. You read them and press send', 'Full Live presentation for TikTok: Budget, Viewer and Docs screens', 'Loan check before the bank sees the file, and unlimited loan posters'] },
+      features: [`Everything in Lite, up to ${PF.listingCap} cars`, 'A "This week" call list with follow-ups already written. You read them and press send', 'An Assistant: bookings to confirm, buyers waiting and cars gone quiet, with a button for each', 'Full Live presentation for TikTok: Budget, Viewer and Docs screens', 'Loan check before the bank sees the file, and unlimited loan posters'] },
     dfy: { name: 'Done for you', desc: 'Premium, built for you. Send us your photos and get a working page.', cta: 'WhatsApp us',
       wa: `Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`,
       features: ['Everything in Premium', 'We set up your page', `Your first ${PF.doneForYouCars} cars listed from your photos`, 'A loan poster made for each one', 'WhatsApp help when you get stuck'] },
@@ -158,7 +159,7 @@ const CARD_WORDS = {
     premium: { name: 'Salesman Premium', desc: 'Tahu siapa nak call hari ini, apa nak hantar, dan berapa ansuran bulanan pembeli.', cta: `Cuba ${PF.trialDays} hari percuma di WhatsApp`,
       wa: `Hi, saya salesman kereta dan nak cuba Drevo Premium percuma ${PF.trialDays} hari. Boleh tolong setupkan?`,
       notes: [`Atau RM${PF.yearlyPrice} setahun, bayar sekali (lebih kurang 2 bulan percuma).`, `Harga pengasas untuk ${PF.foundingSpots} seller pertama, kekal selagi melanggan. Lepas tu RM${PF.listPrice}.`],
-      features: [`Semua dalam Lite, sampai ${PF.listingCap} kereta`, 'Senarai call "Minggu ini": siapa belum dibalas, siapa senyap, siapa insurans nak tamat', 'Mesej follow up sudah ditulis. Anda baca dan tekan hantar', 'Live presentation penuh untuk TikTok: skrin Bajet, Penonton dan Dokumen', 'Semakan loan sebelum fail sampai bank, dan poster loan tanpa had'] },
+      features: [`Semua dalam Lite, sampai ${PF.listingCap} kereta`, 'Senarai call "Minggu ini" dengan mesej follow up sudah ditulis. Anda baca dan tekan hantar', 'Pembantu: booking nak disahkan, pembeli menunggu dan kereta senyap, dengan butang untuk setiap satu', 'Live presentation penuh untuk TikTok: skrin Bajet, Penonton dan Dokumen', 'Semakan loan sebelum fail sampai bank, dan poster loan tanpa had'] },
     dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disiapkan untuk anda. Hantar gambar, dapat page yang siap.', cta: 'WhatsApp kami',
       wa: `Hi, saya nak Drevo Kami setkan untuk anda (RM${PF.doneForYouPrice}/bulan).`,
       features: ['Semua dalam Premium', 'Kami setkan page anda', `${PF.doneForYouCars} kereta pertama disenaraikan dari gambar anda`, 'Poster loan dibuat untuk setiap kereta', 'Bantuan WhatsApp bila anda tersekat'] },
