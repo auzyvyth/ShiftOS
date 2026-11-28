@@ -50,6 +50,7 @@ const COPY = {
 };
 
 export default function PremiumLookNews({ userId, profile, isPremium, blocked, onPremiumScreen }) {
+  const { t } = useTranslation();
   const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('news') === '1';
   const seen = !!profile?.starter_tasks?.[SEEN_KEY];
   const want = !!userId && !!profile && (forced || (NEWS_READY && !seen)) && !blocked;
@@ -96,7 +97,7 @@ export default function PremiumLookNews({ userId, profile, isPremium, blocked, o
     setBusy(true);
     const { data, error } = await supabase.rpc('start_premium_trial');
     setBusy(false);
-    if (error) { toast.error("Couldn't start your free trial. Try again."); return; }
+    if (error) { toast.error(t("lookNews.couldnTStartYourFree")); return; }
     if (data === 'ok' || data === 'already_premium') { window.location.href = '/salesman-premium'; return; }
     setOffer((o) => ({ ...o, trial_available: false }));
     toast.error(data === 'used' ? 'Your free trial has already been used.' : "This account can't start a free trial.");
@@ -113,7 +114,7 @@ export default function PremiumLookNews({ userId, profile, isPremium, blocked, o
       <div onClick={(e) => e.stopPropagation()}
         style={{ position: 'relative', width: 'min(420px, 100%)', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', background: '#111318', color: '#f4f5f7',
           borderRadius: 20, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
-        <button type="button" onClick={close} aria-label="Close"
+        <button type="button" onClick={close} aria-label={t("lookNews.close")}
           style={{ position: 'absolute', top: 10, right: 10, zIndex: 1, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.55)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <X size={18} />
         </button>

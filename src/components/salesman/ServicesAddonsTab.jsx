@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { SERVICE_CATEGORY_OPTIONS } from "../../utils/serviceCategories";
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { useTranslation } from 'react-i18next';
 
 // Personal product catalogue for standalone salesmen (Lite/Premium). Writes to
 // the same `dealer_products` table the full dealer dashboard uses — a Lite
@@ -41,6 +42,7 @@ function CatBadge({ category }) {
 }
 
 export default function ServicesAddonsTab({ dealerId }) {
+  const { t } = useTranslation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
@@ -107,7 +109,7 @@ export default function ServicesAddonsTab({ dealerId }) {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.selling_price) {
-      toast.error("Name and selling price are required");
+      toast.error(t("addons.nameAndSellingPriceAre"));
       return;
     }
     setSaving(true);
@@ -130,7 +132,7 @@ export default function ServicesAddonsTab({ dealerId }) {
       closePanel();
       toast.success(editTarget ? "Product updated" : "Product added");
     } catch {
-      toast.error("Save failed");
+      toast.error(t("addons.saveFailed"));
     }
     setSaving(false);
   };
@@ -139,7 +141,7 @@ export default function ServicesAddonsTab({ dealerId }) {
     if (!window.confirm("Delete this product?")) return;
     await supabase.from("dealer_products").delete().eq("id", id);
     setProducts((p) => p.filter((x) => x.id !== id));
-    toast.success("Deleted");
+    toast.success(t("addons.deleted"));
   };
 
   const handleToggle = async (p) => {
@@ -153,17 +155,17 @@ export default function ServicesAddonsTab({ dealerId }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <div>
           <h2 style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 24, letterSpacing: "0.05em", color: "#f1f5f9", margin: 0 }}>
-            Services &amp; Add-ons
+            {t("addons.servicesAddOns")}
           </h2>
           <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>
-            Your product catalogue — used two ways, both explained below
+            {t("addons.yourProductCatalogueUsedTwo")}
           </p>
         </div>
         <button
           onClick={openAdd}
           style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: "linear-gradient(135deg,#dc2626,#b91c1c)", color: "#fff", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}
         >
-          <Plus size={13} /> Add Product
+          <Plus size={13} /> {t("addons.addProduct")}
         </button>
       </div>
 
@@ -175,22 +177,22 @@ export default function ServicesAddonsTab({ dealerId }) {
         <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
           <Gift size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, lineHeight: 1.5 }}>
-            Mark one <strong style={{ color: "#e5e7eb" }}>Included</strong> on a listing (in your Listings tab) → it's a <strong style={{ color: "#4ade80" }}>free perk for the buyer</strong>, no extra charge, shown on the car page to make your listing stand out.
+            {t("addons.markOne")} <strong style={{ color: "#e5e7eb" }}>{t("addons.included")}</strong> {t("addons.onAListingInYour")} <strong style={{ color: "#4ade80" }}>{t("addons.freePerkForTheBuyer")}</strong>{t("addons.noExtraChargeShownOn")}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
           <Wallet size={15} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 12, color: "#9ca3af", margin: 0, lineHeight: 1.5 }}>
-            Attach one to a deal in your <strong style={{ color: "#e5e7eb" }}>Leads</strong> tab instead → it's a <strong style={{ color: "#fbbf24" }}>paid add-on</strong>, the buyer pays for it, and it counts as extra revenue for you.
+            {t("addons.attachOneToADeal")} <strong style={{ color: "#e5e7eb" }}>{t("addons.leads")}</strong> {t("addons.tabInsteadItSA")} <strong style={{ color: "#fbbf24" }}>{t("addons.paidAddOn")}</strong>{t("addons.theBuyerPaysForIt")}
           </p>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
         {[
-          { label: "Add-on Revenue (Month)", value: fmtRM(summary?.totalRevenue) },
-          { label: "Deals w/ Add-ons", value: summary?.dealsWithAddons ?? "—" },
-          { label: "Attach Rate", value: summary?.attachRate != null ? `${summary.attachRate}%` : "—" },
+          { label: t("addons.addOnRevenueMonth"), value: fmtRM(summary?.totalRevenue) },
+          { label: t("addons.dealsWAddOns"), value: summary?.dealsWithAddons ?? "—" },
+          { label: t("addons.attachRate"), value: summary?.attachRate != null ? `${summary.attachRate}%` : "—" },
         ].map((s) => (
           <div key={s.label} style={{ ...CARD, padding: "12px 14px", minWidth: 0 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -211,15 +213,15 @@ export default function ServicesAddonsTab({ dealerId }) {
         ) : products.length === 0 ? (
           <div style={{ textAlign: "center", padding: "24px 12px" }}>
             <Package size={28} style={{ color: "#374151", margin: "0 auto 10px" }} />
-            <p style={{ fontSize: 13, color: "#9ca3af", margin: "0 0 4px" }}>No products yet</p>
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: "0 0 4px" }}>{t("addons.noProductsYet")}</p>
             <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 14px" }}>
-              Add tint, warranty, insurance or accessory packages buyers can attach to a deal.
+              {t("addons.addTintWarrantyInsuranceOr")}
             </p>
             <button
               onClick={openAdd}
               style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
             >
-              Add your first product
+              {t("addons.addYourFirstProduct")}
             </button>
           </div>
         ) : (
@@ -234,13 +236,13 @@ export default function ServicesAddonsTab({ dealerId }) {
                       <CatBadge category={p.category} />
                       {!p.is_active && (
                         <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "rgba(255,255,255,0.06)", color: "#6b7280" }}>
-                          Inactive
+                          {t("addons.inactive")}
                         </span>
                       )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, color: "#6b7280" }}>Cost: {fmtRM(p.cost_price)}</span>
-                      <span style={{ fontSize: 11, color: "#9ca3af" }}>Sell: {fmtRM(p.selling_price)}</span>
+                      <span style={{ fontSize: 11, color: "#6b7280" }}>{t("addons.cost")} {fmtRM(p.cost_price)}</span>
+                      <span style={{ fontSize: 11, color: "#9ca3af" }}>{t("addons.sell")} {fmtRM(p.selling_price)}</span>
                       <span style={{ fontSize: 11, fontWeight: 700, color: marginColor(pct) }}>{pct != null ? `${pct}%` : "—"} margin</span>
                     </div>
                   </div>
@@ -270,6 +272,7 @@ export default function ServicesAddonsTab({ dealerId }) {
 }
 
 function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
+  const { t } = useTranslation();
   useModalHistory(true, onClose);
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -292,7 +295,7 @@ function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
         className="sm:!rounded-2xl"
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{editTarget ? "Edit Product" : "Add Product"}</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{editTarget ? t("addons.editProduct") : t("addons.addProduct")}</p>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#9ca3af" }}>
             <X size={14} />
           </button>
@@ -300,11 +303,11 @@ function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <label style={label}>Name *</label>
-            <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Paint Protection Film" style={inp} />
+            <label style={label}>{t("addons.name")}</label>
+            <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder={t("addons.eGPaintProtectionFilm")} style={inp} />
           </div>
           <div>
-            <label style={label}>Category *</label>
+            <label style={label}>{t("addons.category")}</label>
             <select value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} style={inp}>
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -313,19 +316,19 @@ function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={label}>Cost Price (RM)</label>
+              <label style={label}>{t("addons.costPriceRm")}</label>
               <input type="number" min="0" value={form.cost_price} onChange={(e) => setForm((p) => ({ ...p, cost_price: e.target.value }))} placeholder="0" style={inp} />
             </div>
             <div>
-              <label style={label}>Selling Price (RM) *</label>
+              <label style={label}>{t("addons.sellingPriceRm")}</label>
               <input type="number" min="0" value={form.selling_price} onChange={(e) => setForm((p) => ({ ...p, selling_price: e.target.value }))} placeholder="0" style={inp} />
             </div>
           </div>
           {form.selling_price && (
-            <p style={{ fontSize: 12, fontWeight: 600, color: marginColor(mPct), margin: "-8px 0 0" }}>Margin: {mPct}%</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: marginColor(mPct), margin: "-8px 0 0" }}>{t("addons.margin")} {mPct}%</p>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
-            <span style={{ fontSize: 13, color: "#9ca3af" }}>Active</span>
+            <span style={{ fontSize: 13, color: "#9ca3af" }}>{t("addons.active")}</span>
             <button onClick={() => setForm((p) => ({ ...p, is_active: !p.is_active }))} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
               {form.is_active ? <ToggleRight size={26} style={{ color: "#4ade80" }} /> : <ToggleLeft size={26} style={{ color: "#4b5563" }} />}
             </button>
@@ -337,7 +340,7 @@ function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
           disabled={saving}
           style={{ width: "100%", marginTop: 18, padding: 11, borderRadius: 8, background: "linear-gradient(135deg,#dc2626,#b91c1c)", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}
         >
-          {saving ? "Saving…" : editTarget ? "Save Changes" : "Add Product"}
+          {saving ? t("addons.saving") : editTarget ? t("addons.saveChanges") : t("addons.addProduct")}
         </button>
       </div>
     </div>,

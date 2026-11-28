@@ -29,6 +29,7 @@ const SHOT_H = 1120;
 const SHOTS = {
   liteLeads: "lite-leads",
   dashboard: "dashboard",
+  assistant: "assistant",
   listings: "listings",
   chat: "chat",
   premiumLeads: "leads",
@@ -42,7 +43,7 @@ const SHOTS = {
 const PLAN_ORDER = {
   lite: { keys: ["liteLeads"], to: "/salesman-onboarding/lite" },
   premium: {
-    keys: ["dashboard", "listings", "chat", "premiumLeads", "inbox", "sold", "analytics", "loans", "outreach"],
+    keys: ["dashboard", "assistant", "listings", "chat", "premiumLeads", "inbox", "sold", "analytics", "loans", "outreach"],
     to: "/salesman-onboarding/premium",
   },
 };

@@ -8,6 +8,7 @@ import {
   Plus,
 } from "lucide-react";
 import { STAGE_CONFIG } from "../../lib/leadsHelpers";
+import { useTranslation } from 'react-i18next';
 
 const TYPE_CONFIG = {
   created: {
@@ -100,6 +101,7 @@ function ActivityItem({ activity }) {
 }
 
 export default function LeadActivityLog({ activities, onAddNote, loading }) {
+  const { t } = useTranslation();
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -119,13 +121,13 @@ export default function LeadActivityLog({ activities, onAddNote, loading }) {
   return (
     <div>
       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">
-        Activity
+        {t("leadLog.activity")}
       </h4>
 
       {loading ? (
-        <p className="text-xs text-gray-600 py-4">Loading…</p>
+        <p className="text-xs text-gray-600 py-4">{t("leadLog.loading")}</p>
       ) : activities.length === 0 ? (
-        <p className="text-xs text-gray-600 py-2">No activity yet.</p>
+        <p className="text-xs text-gray-600 py-2">{t("leadLog.noActivityYet")}</p>
       ) : (
         <div>
           {activities.map((a) => (
@@ -139,7 +141,7 @@ export default function LeadActivityLog({ activities, onAddNote, loading }) {
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Add a note…"
+          placeholder={t("leadLog.addANote")}
           rows={2}
           className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 resize-none transition-all"
           onKeyDown={(e) => {
@@ -156,7 +158,7 @@ export default function LeadActivityLog({ activities, onAddNote, loading }) {
           }}
         >
           <Send className="w-3.5 h-3.5" />
-          {saving ? "Saving…" : "Add Note"}
+          {saving ? t("leadLog.saving") : t("leadLog.addNote")}
         </button>
       </div>
     </div>

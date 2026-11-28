@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { cdnImg } from "../../utils/img";
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 // NEWCAR-2: "Which models do you sell?" One implementation, used by signup
 // (SalesmanOnboarding) and Settings > New cars (MyNewModels).
@@ -36,6 +38,7 @@ export function useStarterModels(brand) {
 }
 
 export default function StarterModelPicker({ brand, models, value, onChange, exclude }) {
+  const { t } = useTranslation();
   const shown = useMemo(() => (models || []).filter((m) => !exclude?.has(m.model)), [models, exclude]);
   if (!brand || !shown.length) return null;
   const picked = new Set(value || []);
@@ -71,7 +74,7 @@ export default function StarterModelPicker({ brand, models, value, onChange, exc
                 {brand} {m.model}
               </span>
               <span style={{ display: "block", fontSize: 11, color: "#9ca3af" }}>
-                {m.variants === 1 ? "1 variant" : `${m.variants} variants`}
+                {m.variants === 1 ? t("starterPicker.1Variant") : t("starterPicker.variants", { count: m.variants })}
               </span>
             </span>
           </button>
@@ -88,8 +91,8 @@ export function addCardsSummary(rows) {
   const noArea = by("no_price_for_area");
   const failed = (rows || []).filter((x) => !["added", "already_listed", "no_price_for_area"].includes(x.result)).map((x) => x.model);
   const parts = [];
-  if (added.length) parts.push(`${added.join(", ")} ${added.length === 1 ? "is" : "are"} on your page.`);
-  if (noArea.length) parts.push(`${noArea.join(", ")}: no official price for your area yet, so ${noArea.length === 1 ? "it was" : "they were"} not added.`);
-  if (failed.length) parts.push(`${failed.join(", ")} could not be added. Try again from Add car.`);
+  if (added.length) parts.push(i18n.t("starterPicker.areOn", { count: added.length, list: added.join(", ") }));
+  if (noArea.length) parts.push(i18n.t("starterPicker.noArea", { count: noArea.length, list: noArea.join(", ") }));
+  if (failed.length) parts.push(i18n.t("starterPicker.failed", { list: failed.join(", ") }));
   return parts.join(" ");
 }

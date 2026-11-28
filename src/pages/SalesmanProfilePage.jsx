@@ -39,7 +39,7 @@ import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { pageAccent } from '../utils/pageAccent';
+import { pageAccent, paletteVars } from '../utils/pageAccent';
 import { aboutFacts } from '../utils/agentAbout';
 import { applyCarOrder, brandFromParam, orderedBrands, brandName } from '../utils/liveMaths';
 
@@ -1267,7 +1267,9 @@ export default function SalesmanProfilePage() {
               )}
     </>
   );
-  const hasModels = pro && listings.some((c) => c.is_model_card);
+  // A ?brand= link locks the models section and the booking car list to that brand too.
+  const modelCars = lockedBrand ? shownListings : listings;
+  const hasModels = pro && modelCars.some((c) => c.is_model_card);
   const calcOk = pro && !profile.page_basic && shownListings.length > 0;
   const siteWa = (source, item) => trackEvent(supabase, 'whatsapp_click', {
     car_id: item?.id || null,
@@ -1278,16 +1280,16 @@ export default function SalesmanProfilePage() {
   const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
   const siteNodes = {
     promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
-    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
+    models: <ModelPicker key="models" cars={modelCars} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
     cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
     calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
     handover: <HandoverBlock key="handover" items={site.handover} photos={handoverPhotos} soldCount={soldCount} firstName={firstName} />,
     steps: <StepsBlock key="steps" steps={site.steps} firstName={firstName} />,
-    book: <BookBlock key="book" cars={listings} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
+    book: <BookBlock key="book" cars={modelCars} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
     faq: <FaqBlock key="faq" faq={site.faq} firstName={firstName} />,
   };
-  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: listings.some((c) => c.status === 'available' && c.dealer_id) }) : [];
+  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: modelCars.some((c) => c.status === 'available' && c.dealer_id) }) : [];
   // The page reads as rows (owner, 2026-11-25: "everything is too wide"): models + cars take a
   // row each, the other sections go two to a row on a wide screen. The fixed sections after
   // the seller's own (About, Why me, Track record, Find me) join the same flow.
@@ -1696,7 +1698,7 @@ export default function SalesmanProfilePage() {
         .ap-ranks-h { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
         .ap-ranks-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
         .ap-ranks-g div { padding: 12px; border-radius: 10px; corner-shape: squircle; background: #f4f4f6; color: #0f1115; }
-        .ap-ranks-g div.is-top { background: #dc2626; color: #fff; }
+        .ap-ranks-g div.is-top { background: var(--ap-a, #dc2626); color: var(--ap-on, #fff); }
         .ap-ranks-g b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; letter-spacing: .02em; }
         .ap-ranks-g span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
         .ap-ranks-f { margin: 8px 0 0; font-size: 11.5px; color: #6b7280; }
@@ -1725,7 +1727,7 @@ export default function SalesmanProfilePage() {
       {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
-      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? paletteVars(pro) : undefined}>
         {/* The strip below is FIXED, so it sat on top of the page's own Back / Share / Dashboard /
             Live presentation buttons (owner, 2026-11-27: "they are gone"). This spacer, the strip's
             own height, moves the page down while the strip shows. */}

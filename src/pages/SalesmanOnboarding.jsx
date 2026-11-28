@@ -4,6 +4,7 @@ import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { useStarterModels } from '../components/newcar/StarterModelPicker';
 import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
 import PlanPickerModal from '../components/onboarding/PlanPickerModal';
@@ -17,93 +18,85 @@ import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
 import PhoneInput from '../components/ui/PhoneInput';
 import { toPlus60, isValidMyPhone } from '../lib/phone';
+import { compressImageFile } from '../utils/compressImage';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-.eo-root{display:flex;height:100vh;height:100dvh;overflow:hidden;background:#070A12;font-family:'Outfit',system-ui,sans-serif;}
-.eo-left{width:380px;min-width:380px;background:#0C1120;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;padding:40px 36px;overflow-y:auto;flex-shrink:0;}
-.eo-right{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 48px;position:relative;}
-.eo-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
-.eo-logo-icon{width:30px;height:30px;background:#dc2626;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;font-family:'Bebas Neue',cursive;letter-spacing:1px;}
-.eo-logo-img{height:18px;width:auto;display:block;}
-.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.1em;color:#fff;text-transform:uppercase;margin-bottom:10px;width:fit-content;}
-.eo-changeplan{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 11px;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);cursor:pointer;margin-bottom:32px;font-family:'Outfit',system-ui,sans-serif;transition:border-color 0.15s,color 0.15s;}
-.eo-changeplan:hover{border-color:rgba(220,38,38,0.45);color:rgba(255,255,255,0.8);}
-.eo-step-list{display:flex;flex-direction:column;gap:0;flex:1;}
-.eo-step{display:flex;align-items:flex-start;gap:14px;position:relative;}
-.eo-step:not(:last-child)::after{content:'';position:absolute;left:13px;top:30px;bottom:-4px;width:1px;background:rgba(255,255,255,0.06);}
-.eo-step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;transition:all 0.2s;}
-.eo-dot-active{background:#dc2626;color:#fff;}
-.eo-dot-done{background:rgba(220,38,38,0.12);color:#dc2626;border:1px solid rgba(220,38,38,0.3);}
-.eo-dot-pending{background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.07);}
-.eo-step-info{padding-bottom:24px;}
-.eo-step-name{font-size:12px;font-weight:500;letter-spacing:0.06em;margin-bottom:2px;}
-.eo-name-active{color:#E8EDF5;}
-.eo-name-done{color:rgba(220,38,38,0.55);}
-.eo-name-pending{color:rgba(255,255,255,0.18);}
-.eo-step-sub{font-size:10px;color:rgba(255,255,255,0.18);letter-spacing:0.04em;}
-.eo-features{margin-top:8px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.05);}
-.eo-feature{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px;color:rgba(255,255,255,0.35);}
-.eo-feature-dot{width:4px;height:4px;border-radius:50%;background:#dc2626;flex-shrink:0;opacity:0.6;}
-.eo-trustline{margin-top:auto;padding-top:24px;font-size:10px;color:rgba(255,255,255,0.12);letter-spacing:0.1em;text-transform:uppercase;line-height:1.8;}
-.eo-form{width:100%;max-width:480px;animation:eo-up 0.28s ease both;}
-@keyframes eo-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.eo-eyebrow{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(220,38,38,0.7);margin-bottom:12px;font-weight:500;}
-.eo-heading{font-family:'Bebas Neue',cursive;font-size:clamp(30px,4vw,42px);letter-spacing:3px;color:#E8EDF5;line-height:1.15;margin-bottom:10px;}
-.eo-sub{font-size:14px;color:rgba(255,255,255,0.55);line-height:1.65;margin-bottom:28px;}
-.eo-label{display:block;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:7px;margin-top:18px;}
-.eo-inp{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'Outfit',system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
-.eo-inp:focus{border-color:rgba(220,38,38,0.45);background:rgba(255,255,255,0.055);}
-.eo-inp::placeholder{color:rgba(255,255,255,0.3);}
-.eo-select{width:100%;height:48px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-family:'Outfit',system-ui,sans-serif;font-size:15px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
-.eo-select:focus{border-color:rgba(220,38,38,0.45);}
-.eo-btn{width:100%;height:48px;background:#dc2626;border:none;border-radius:8px;color:#fff;font-family:'Outfit',system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
-.eo-btn:hover:not(:disabled){background:#ef4444;}
-.eo-btn:disabled{opacity:0.35;cursor:not-allowed;}
-.eo-ghost{width:100%;height:48px;background:transparent;border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:rgba(255,255,255,0.6);font-family:'Outfit',system-ui,sans-serif;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:border-color 0.15s,color 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
-.eo-ghost:hover:not(:disabled){border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);}
-.eo-ghost:disabled{opacity:0.3;cursor:not-allowed;}
-.eo-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:0.12em;}
-.eo-divider::before,.eo-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1);}
-.eo-otp-row{display:flex;gap:8px;margin-top:14px;}
-.eo-otp-box{width:48px;height:56px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:#E8EDF5;font-size:22px;font-weight:600;text-align:center;outline:none;transition:border-color 0.15s;caret-color:#dc2626;}
-.eo-otp-box:focus{border-color:#dc2626;background:rgba(220,38,38,0.05);}
-.eo-legal-wrap{border:1px solid rgba(255,255,255,0.08);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;margin-top:16px;height:320px;}
-.eo-legal-scroll{flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:rgba(220,38,38,0.25) transparent;}
-.eo-legal-foot{padding:10px 20px;border-top:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;}
-.eo-legal-foot-ok{color:rgba(74,222,128,0.6);}
-.eo-check{display:flex;gap:11px;align-items:flex-start;margin-top:14px;cursor:pointer;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,0.55);}
-.eo-check input{width:17px;height:17px;margin-top:1px;flex-shrink:0;accent-color:#dc2626;cursor:pointer;}
-.eo-check a{color:rgba(220,38,38,0.85);text-decoration:none;}
+.eo-root{min-height:100vh;min-height:100dvh;background:#f4f5f7;font-family:var(--xd-font-body,'Outfit',system-ui,sans-serif);color:#111827;display:flex;flex-direction:column;}
+.eo-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;max-width:1040px;width:100%;margin:0 auto;}
+.eo-logo{display:flex;align-items:center;}
+.eo-logo-img{height:20px;width:auto;display:block;}
+.eo-plan-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#fff;border-radius:999px;font-size:12px;font-weight:600;color:#374151;box-shadow:0 1px 2px rgba(17,24,39,0.06),0 2px 8px rgba(17,24,39,0.05);}
+.eo-changeplan{background:none;border:none;padding:4px 2px;font-size:12px;font-weight:600;color:#dc2626;cursor:pointer;font-family:inherit;}
+.eo-changeplan:hover{text-decoration:underline;}
+.eo-main{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 16px 48px;}
+.eo-form{width:100%;max-width:500px;background:#fff;border-radius:20px;padding:32px 28px;box-shadow:0 1px 2px rgba(17,24,39,0.05),0 8px 28px rgba(17,24,39,0.07);animation:eo-up 0.25s ease both;}
+@keyframes eo-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.eo-progress-track{height:4px;background:#e5e7eb;border-radius:99px;overflow:hidden;width:100%;max-width:500px;margin:0 auto 14px;}
+.eo-progress-fill{height:100%;background:#dc2626;border-radius:99px;transition:width 0.35s ease;}
+.eo-stepline{width:100%;max-width:500px;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:10px;}
+.eo-eyebrow{font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;}
+.eo-heading{font-family:var(--xd-font-body,'Outfit',system-ui,sans-serif);font-size:clamp(24px,3.4vw,28px);font-weight:700;letter-spacing:-0.01em;color:#111827;line-height:1.2;margin-bottom:8px;}
+.eo-sub{font-size:14.5px;color:#4b5563;line-height:1.6;margin-bottom:22px;}
+.eo-label{display:block;font-size:13px;font-weight:600;color:#111827;margin-bottom:6px;margin-top:18px;}
+.eo-inp{width:100%;height:50px;background:#f4f5f7;border:1.5px solid transparent;border-radius:12px;color:#111827;font-family:inherit;font-size:16px;padding:0 14px;outline:none;transition:border-color 0.15s,background 0.15s;}
+.eo-inp:focus{border-color:#111827;background:#fff;}
+.eo-inp::placeholder{color:#9ca3af;}
+.eo-select{width:100%;height:50px;background:#f4f5f7;border:1.5px solid transparent;border-radius:12px;color:#111827;font-family:inherit;font-size:16px;padding:0 14px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+.eo-select:focus{border-color:#111827;background-color:#fff;}
+.eo-select:disabled{opacity:0.55;cursor:not-allowed;}
+.eo-btn{width:100%;height:52px;background:linear-gradient(180deg,#ef4444,#dc2626);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 0 #991b1b,0 6px 14px rgba(220,38,38,0.28);transition:transform 0.08s,box-shadow 0.08s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;}
+.eo-btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 0 0 #991b1b,0 2px 6px rgba(220,38,38,0.28);}
+.eo-btn:disabled{opacity:0.4;cursor:not-allowed;box-shadow:none;}
+.eo-ghost{width:100%;height:48px;background:#f4f5f7;border:none;border-radius:12px;color:#374151;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+.eo-ghost:hover:not(:disabled){background:#eceef1;}
+.eo-ghost:disabled{opacity:0.4;cursor:not-allowed;}
+.eo-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:#9ca3af;font-size:12px;font-weight:600;}
+.eo-divider::before,.eo-divider::after{content:'';flex:1;height:1px;background:#e5e7eb;}
+.eo-legal-wrap{background:#f4f5f7;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;margin-top:14px;height:300px;}
+.eo-legal-scroll{flex:1;overflow-y:auto;padding:18px;scrollbar-width:thin;color:#374151;}
+.eo-check{display:flex;gap:11px;align-items:flex-start;margin-top:14px;cursor:pointer;font-size:13px;line-height:1.55;color:#4b5563;}
+.eo-check input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:#dc2626;cursor:pointer;}
+.eo-check a{color:#dc2626;text-decoration:none;font-weight:600;}
 .eo-check a:hover{text-decoration:underline;}
-.eo-review-wrap{border:1px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;margin:20px 0;}
-.eo-review-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,0.05);}
-.eo-review-row:last-child{border-bottom:none;}
-.eo-review-key{font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.12em;text-transform:uppercase;}
-.eo-review-val{font-size:13px;color:#E8EDF5;font-weight:500;max-width:60%;text-align:right;word-break:break-all;}
-.eo-error{font-size:12px;color:#f87171;margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.15);border-radius:6px;line-height:1.5;}
-.eo-hint{font-size:12px;color:rgba(255,255,255,0.4);margin-top:7px;line-height:1.6;}
-.eo-mobile-bar{display:none;justify-content:space-between;align-items:center;padding:0 0 20px;width:100%;max-width:480px;}
-.eo-progress-track{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.06);z-index:50;}
-.eo-progress-fill{height:100%;background:#dc2626;transition:width 0.35s ease;}
-.eo-mobile-features{display:none;flex-wrap:wrap;gap:7px;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;max-width:480px;}
-.eo-mobile-feature-pill{display:flex;align-items:center;gap:6px;font-size:10.5px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:99px;padding:5px 10px;}
-.eo-mobile-feature-dot{width:4px;height:4px;border-radius:50%;background:#dc2626;flex-shrink:0;}
-.eo-mobile-plan-badge{display:none;align-items:center;gap:6px;padding:5px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.1em;color:#fff;text-transform:uppercase;margin-bottom:14px;width:fit-content;}
-.eo-done-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;gap:0;padding:40px 24px;}
-.eo-done-ring{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
-.eo-done-title{font-family:'Bebas Neue',cursive;font-size:clamp(52px,8vw,84px);letter-spacing:4px;color:#E8EDF5;line-height:1.12;margin-bottom:16px;}
-.eo-done-sub{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;text-transform:uppercase;}
-.eo-slug-status{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;letter-spacing:0.1em;}
+.eo-link{color:#dc2626;text-decoration:none;font-weight:600;}
+.eo-error{font-size:13px;color:#b91c1c;margin-top:14px;padding:11px 14px;background:#f4f5f7;border-radius:10px;line-height:1.5;font-weight:500;}
+.eo-hint{font-size:12.5px;color:#6b7280;margin-top:7px;line-height:1.6;}
+.eo-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.eo-chip{flex:1 1 140px;min-width:0;text-align:left;padding:12px 14px;border-radius:12px;cursor:pointer;background:#f4f5f7;border:1.5px solid transparent;font-family:inherit;color:#111827;}
+.eo-chip b{display:block;font-size:14px;font-weight:700;}
+.eo-chip span{display:block;margin-top:2px;font-size:12px;color:#6b7280;}
+.eo-chip.on{background:#111827;}
+.eo-chip.on b{color:#fff;}
+.eo-chip.on span{color:rgba(255,255,255,0.7);}
+.eo-chip.sm{flex:1 1 72px;text-align:center;padding:10px 8px;font-size:13.5px;font-weight:700;}
+.eo-chip.sm.on{color:#fff;}
+.eo-features{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
+.eo-feature-pill{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#374151;background:#f4f5f7;border-radius:99px;padding:6px 12px;}
+.eo-pw-rule{display:flex;align-items:center;gap:8px;font-size:12.5px;}
 .eo-slug-wrap{position:relative;}
-.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#070A12;text-align:center;padding:40px 24px;}
-@media(max-width:820px){
-  .eo-left{display:none;}
-  .eo-right{padding:48px 20px 36px;justify-content:flex-start;}
-  .eo-mobile-bar{display:flex;padding-bottom:24px;}
-  .eo-mobile-features{display:flex;}
-  .eo-mobile-plan-badge{display:inline-flex;}
+.eo-slug-status{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;}
+.eo-preview{margin-top:18px;background:#f4f5f7;border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;}
+.eo-preview-av{width:48px;height:48px;border-radius:50%;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;}
+.eo-preview-name{font-size:17px;font-weight:700;color:#111827;word-break:break-all;}
+.eo-preview-sub{font-size:12.5px;color:#6b7280;margin-top:2px;}
+.eo-hello{display:block;margin:-32px -28px 24px;padding:15px 28px;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#ef4444,#dc2626);color:#fff;font-size:16px;font-weight:700;letter-spacing:-0.005em;animation:eo-pop 0.45s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes eo-pop{0%{opacity:0;transform:translateY(8px) scale(.85)}100%{opacity:1;transform:none}}
+.eo-preview-av{position:relative;overflow:hidden;cursor:pointer;border:none;padding:0;font-family:inherit;}
+.eo-preview-av img{width:100%;height:100%;object-fit:cover;display:block;}
+.eo-preview-add{margin-top:6px;background:none;border:none;padding:0;font-size:12.5px;font-weight:600;color:#dc2626;cursor:pointer;font-family:inherit;}
+.eo-done-av{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:20px;animation:eo-pop 0.5s cubic-bezier(.34,1.56,.64,1) both;}
+@media(prefers-reduced-motion:reduce){.eo-hello,.eo-done-av{animation:none;}}
+.eo-done-root,.eo-resume-root{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:#f4f5f7;text-align:center;padding:40px 24px;font-family:var(--xd-font-body,'Outfit',system-ui,sans-serif);}
+.eo-resume-card{width:min(440px,100%);background:#fff;border-radius:20px;padding:32px 26px;box-shadow:0 1px 2px rgba(17,24,39,0.05),0 8px 28px rgba(17,24,39,0.07);}
+.eo-done-ring{width:64px;height:64px;border-radius:50%;background:#111827;display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
+.eo-done-title{font-size:clamp(28px,6vw,36px);font-weight:700;letter-spacing:-0.01em;color:#111827;line-height:1.2;margin-bottom:8px;}
+.eo-done-sub{font-size:14px;color:#6b7280;}
+@media(max-width:560px){
+  .eo-top{padding:14px 16px;}
+  .eo-form{padding:24px 18px;border-radius:18px;}
+  .eo-hello{margin:-24px -18px 20px;padding:14px 18px;border-radius:18px 18px 0 0;font-size:15px;}
 }
 `;
 
@@ -128,8 +121,7 @@ const STEPS = [
   { label: 'ACCOUNT', sub: 'Email or Google' },
   { label: 'DETAILS', sub: 'Your name' },
   { label: 'PHONE', sub: 'Contact number' },
-  { label: 'PROFILE', sub: 'Your public page' },
-  { label: 'ACTIVATE', sub: 'Go live' },
+  { label: 'PAGE', sub: 'Your public page' },
 ];
 
 const TIERS = {
@@ -153,66 +145,9 @@ const TIERS = {
 };
 
 
-function slugify(s) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
-}
-
-function StepDot({ state, num }) {
-  const cls = state === 'active' ? 'eo-dot-active' : state === 'done' ? 'eo-dot-done' : 'eo-dot-pending';
-  return (
-    <div className={`eo-step-dot ${cls}`}>
-      {state === 'done' ? (
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2">
-          <polyline points="1.5 5 3.8 7.5 8.5 2.5" />
-        </svg>
-      ) : (
-        String(num).padStart(2, '0')
-      )}
-    </div>
-  );
-}
-
-function LeftPanel({ step, tier, onChangePlan }) {
-  const cfg = TIERS[tier] || TIERS.lite;
-  return (
-    <div className="eo-left">
-      <div className="eo-logo">
-        <div className="eo-logo-icon">X</div>
-        <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
-      </div>
-      <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
-      <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
-      <div className="eo-step-list">
-        {STEPS.map((s, i) => {
-          const state = i < step ? 'done' : i === step ? 'active' : 'pending';
-          return (
-            <div key={i} className="eo-step">
-              <StepDot state={state} num={i + 1} />
-              <div className="eo-step-info">
-                <div className={`eo-step-name eo-name-${state}`}>{s.label}</div>
-                <div className="eo-step-sub">{s.sub}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="eo-features">
-        {cfg.features.map((f, i) => (
-          <div key={i} className="eo-feature">
-            <div className="eo-feature-dot" />
-            <span>{f}</span>
-          </div>
-        ))}
-      </div>
-      <div className="eo-trustline">
-        PDPA 2010 compliant<br />256-bit TLS encryption<br />Malaysia
-      </div>
-    </div>
-  );
-}
-
 export default function SalesmanOnboarding() {
   // AUTH-6: signUp and resend both hit captcha-guarded auth endpoints.
+  const { t } = useTranslation();
   const { getToken } = useAuthCaptcha();
   const navigate = useNavigate();
   const { tier: tierParam } = useParams();
@@ -247,9 +182,13 @@ export default function SalesmanOnboarding() {
   // an earlier value let a taken handle through to a raw duplicate-key error.
   const [slugCheckedFor, setSlugCheckedFor] = useState('');
   // Once the seller types in the handle box, the brand name stops filling it.
-  const [slugEdited, setSlugEdited] = useState(false);
+  const [, setSlugEdited] = useState(false);
 
   const [showPw, setShowPw] = useState(false);
+  // Optional profile photo, picked on the last step and uploaded only when the page is created.
+  const [avatarBlob, setAvatarBlob] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const avatarInput = useRef(null);
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
@@ -286,7 +225,7 @@ export default function SalesmanOnboarding() {
   useEffect(() => {
     const draft = readDraft(userId);
     if (!draft) return;
-    draftStep.current = [3, 4, 5].includes(draft.step) ? draft.step : null;
+    draftStep.current = [3, 4, 5].includes(draft.step) ? Math.min(draft.step, 4) : null;
     setForm((p) => {
       const next = { ...p };
       DRAFT_FIELDS.forEach((k) => {
@@ -311,11 +250,11 @@ export default function SalesmanOnboarding() {
   // Mirror Supabase's password policy (8+ chars + one of each class) so users
   // never hit an opaque server-side rejection on sign-up.
   const pwChecks = [
-    { label: 'At least 8 characters', ok: form.password.length >= 8 },
-    { label: 'A lowercase letter (a-z)', ok: /[a-z]/.test(form.password) },
-    { label: 'An uppercase letter (A-Z)', ok: /[A-Z]/.test(form.password) },
-    { label: 'A number (0-9)', ok: /[0-9]/.test(form.password) },
-    { label: 'A symbol (!@#$%…)', ok: /[^a-zA-Z0-9]/.test(form.password) },
+    { label: t('onboard.atLeast8Characters'), ok: form.password.length >= 8 },
+    { label: t('onboard.aLowercaseLetterAZ'), ok: /[a-z]/.test(form.password) },
+    { label: t('onboard.anUppercaseLetterAZ'), ok: /[A-Z]/.test(form.password) },
+    { label: t('onboard.aNumber09'), ok: /[0-9]/.test(form.password) },
+    { label: t('signup.aSymbol'), ok: /[^a-zA-Z0-9]/.test(form.password) },
   ];
   const pwValid = pwChecks.every(c => c.ok);
   const pwMatch = form.password.length > 0 && form.password === form.confirmPassword;
@@ -437,8 +376,8 @@ export default function SalesmanOnboarding() {
 
   const signUp = async () => {
     setErr('');
-    if (!pwValid) { setErr('Password needs 8+ characters with an uppercase, lowercase, number and symbol.'); return; }
-    if (form.password !== form.confirmPassword) { setErr('Passwords do not match.'); return; }
+    if (!pwValid) { setErr(t('signup.errPwPolicy')); return; }
+    if (form.password !== form.confirmPassword) { setErr(t('signup.errPwMismatch')); return; }
     setLoading(true);
     try {
       // Persist onboarding context so the post-confirmation callback (which runs
@@ -468,7 +407,7 @@ export default function SalesmanOnboarding() {
       // when the email is already registered — anti-enumeration. Detect it so we
       // don't silently advance into a broken signup.
       if (data?.user && (data.user.identities?.length ?? 0) === 0) {
-        setErr('An account with this email already exists. Please log in instead.');
+        setErr(t('signup.errExists'));
         return;
       }
       // Email confirmation is required — Supabase returns a user but no session,
@@ -517,8 +456,8 @@ export default function SalesmanOnboarding() {
   // saved here (it's their display identity, low-sensitivity).
   const skipIdentity = async () => {
     setErr('');
-    if (!form.fullName.trim()) { setErr('Full name is required'); return; }
-    if (form.sells.includes('new_car') && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
+    if (!form.fullName.trim()) { setErr(t('signup.errName')); return; }
+    if (form.sells.includes('new_car') && !form.newCarBrand) { setErr(t('signup.errBrand')); return; }
     setLoading(true);
     try {
       if (userId) {
@@ -537,6 +476,19 @@ export default function SalesmanOnboarding() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const pickAvatar = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setErr(t('signup.errPhotoType')); return; }
+    setErr('');
+    try {
+      const blob = await compressImageFile(file, { maxDim: 800 });
+      setAvatarBlob(blob);
+      setAvatarPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
+    } catch { setErr(t('signup.errPhotoRead')); }
   };
 
   const checkSlug = async (slug) => {
@@ -566,7 +518,7 @@ export default function SalesmanOnboarding() {
     setErr('');
     // If an IC was provided (here or at the identity step), enforce 18+ from it.
     if (form.icNumber && isAdultFromIC(form.icNumber) === false) {
-      setErr('You must be at least 18 years old to sell on Drevo.');
+      setErr(t('signup.errAge'));
       return;
     }
     setLoading(true);
@@ -585,7 +537,8 @@ export default function SalesmanOnboarding() {
         // When skipped we stamp a soft deadline; the panel hard-enforces at 1 week.
         role: 'salesman',
         slug: form.slug,
-        dealership: (form.brand || form.fullName).trim(),
+        // Public name = the page username (PUBLIC-NAME-1). Never the legal name.
+        dealership: form.slug,
         state: form.state || null,
         city: form.city || null,
         is_active: true,
@@ -609,6 +562,18 @@ export default function SalesmanOnboarding() {
         const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
         if (icErr) throw icErr;
       }
+      // Optional photo. Never blocks the signup: a failure here just means no photo yet
+      // (they can add it from Settings). Same path + column as the Settings upload.
+      if (avatarBlob) {
+        try {
+          const path = `${userId}/avatar.jpg`;
+          const up = await supabase.storage.from('avatars').upload(path, avatarBlob, { upsert: true, contentType: 'image/jpeg' });
+          if (!up.error) {
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+            await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', userId);
+          }
+        } catch { /* added later from Settings */ }
+      }
       // NEWCAR-2 / NEWCAR-3: every model of the chosen brand becomes a card now
       // that state/city are saved (the price is per area), so nobody fills their
       // page by hand. Models with no photos or no price for the area are skipped
@@ -630,7 +595,7 @@ export default function SalesmanOnboarding() {
       // handle step with a plain message, never the raw constraint name.
       if (/profiles_slug_unique/.test(e.message || '')) {
         setSlugTaken(true); setSlugCheckedFor(form.slug); setStep(4);
-        setErr('That page link was just taken. Pick another one.');
+        setErr(t('signup.errTaken'));
       } else setErr(e.message);
     } finally {
       setLoading(false);
@@ -652,28 +617,24 @@ export default function SalesmanOnboarding() {
     <>
       <style>{CSS}</style>
       <div className="eo-resume-root">
-        <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
-          <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
-            <div className="eo-logo-icon">X</div>
-            <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
+        <div className="eo-resume-card">
+          <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 24 }}>
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
-          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>
-            {resumeIsBuyer ? "YOU'RE ALREADY SIGNED IN" : 'INCOMPLETE SIGN-UP FOUND'}
-          </p>
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL?' : 'WELCOME BACK'}
+          <div className="eo-heading" style={{ textAlign: 'center' }}>
+            {resumeIsBuyer ? t('signup.continueEmailQ') : t('signup.welcomeBack')}
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'Your Drevo account is signed in as' : 'You have an incomplete sign-up as'}
+          <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 4, textAlign: 'center' }}>
+            {resumeIsBuyer ? t('onboard.yourDrevoAccountIsSigned') : t('signup.unfinished')}
           </p>
-          <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
+          <p style={{ color: '#111827', fontWeight: 600, fontSize: 15, marginBottom: 28, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : (draftStep.current || 2)); }}>
-            {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL' : 'CONTINUE SIGN-UP'}
+            {resumeIsBuyer ? t('signup.continueEmail') : t('signup.continueSignup')}
           </button>
-          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'USE ANOTHER EMAIL' : 'USE A DIFFERENT ACCOUNT'}</button>
+          <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? t('signup.useOtherEmail') : t('signup.useOtherAccount')}</button>
           {!resumeIsBuyer && (
-            <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
+            <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13 }}>
+              <a href="/login" className="eo-link">{t('signup.signInExisting')}</a>
             </p>
           )}
         </div>
@@ -685,22 +646,20 @@ export default function SalesmanOnboarding() {
     <>
       <style>{CSS}</style>
       <div className="eo-resume-root">
-        <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
-          <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
-            <div className="eo-logo-icon">X</div>
-            <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
+        <div className="eo-resume-card">
+          <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 24 }}>
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
-          <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>ONE MORE STEP</p>
-          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>CHECK YOUR EMAIL</div>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>We sent a confirmation link to</p>
-          <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
-          <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12, marginBottom: 24, textAlign: 'center', lineHeight: 1.6 }}>
-            Click the link to verify your account — it'll bring you straight back here to finish signing up.
+          <div className="eo-heading" style={{ textAlign: 'center' }}>{t('signup.checkEmail')}</div>
+          <p style={{ color: '#4b5563', fontSize: 14, marginBottom: 4, textAlign: 'center' }}>{t('onboard.weSentAConfirmationLink')}</p>
+          <p style={{ color: '#111827', fontWeight: 600, fontSize: 15, marginBottom: 20, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
+          <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 20, textAlign: 'center', lineHeight: 1.6 }}>
+            {t('onboard.clickTheLinkToVerify')}
           </p>
-          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>RESEND EMAIL</button>
+          <button className="eo-ghost" style={{ marginTop: 0 }} onClick={resendConfirmation}>{t('signup.resend')}</button>
           {resendMsg && <div className="eo-hint" style={{ textAlign: 'center', marginTop: 10 }}>{resendMsg}</div>}
-          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-            <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in to existing account</a>
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13 }}>
+            <a href="/login" className="eo-link">{t('signup.signInExisting')}</a>
           </p>
         </div>
       </div>
@@ -721,13 +680,15 @@ export default function SalesmanOnboarding() {
     <>
       <style>{CSS}</style>
       <div className="eo-done-root">
-        <div className="eo-done-ring">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
+        {avatarPreview
+          ? <img className="eo-done-av" src={avatarPreview} alt="" />
+          : <div className="eo-done-ring">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-        </div>
-        <div className="eo-done-title">ACTIVATED</div>
-        <p className="eo-done-sub">Launching your salesman panel</p>
+        </div>}
+        <div className="eo-done-title">{t('signup.doneTitle')}</div>
+        <p className="eo-done-sub">{t('signup.doneSub')}</p>
       </div>
     </>
   );
@@ -735,57 +696,46 @@ export default function SalesmanOnboarding() {
   const canSlugContinue = form.slug.length >= 3 && !slugTaken && !slugChecking && slugCheckedFor === form.slug;
 
   const cfg = TIERS[tier] || TIERS.lite;
+  // A short, friendly line per step (Malay, the way sellers talk). It names where they are,
+  // so the form feels like a conversation and not a form.
+  const HELLO = [
+    t('signup.hello0'),
+    t('signup.hello1'),
+    t('signup.hello2'),
+    t('signup.hello3'),
+    t('signup.hello4'),
+  ][step] || '';
 
   return (
     <>
       <style>{CSS}</style>
-      <div className="eo-progress-track">
-        <div className="eo-progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
-      </div>
       {showPlans && <PlanPickerModal currentTier={tier} onClose={() => setShowPlans(false)} />}
       <div className="eo-root">
-        <LeftPanel step={step} tier={tier} onChangePlan={() => setShowPlans(true)} />
-        <div className="eo-right">
+        <div className="eo-top">
+          <a href="/" className="eo-logo" aria-label="Drevo">
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
+          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="eo-plan-badge">{tier === 'premium' ? 'Premium' : 'Lite'}</span>
+            <button type="button" className="eo-changeplan" onClick={() => setShowPlans(true)}>{t('onboard.changePlan')}</button>
+          </div>
+        </div>
+        <div className="eo-main">
+          <div className="eo-progress-track">
+            <div className="eo-progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+          </div>
+          <p className="eo-stepline">{t('signup.stepOf', { n: step + 1, total: STEPS.length })}</p>
           <div className="eo-form" key={step} onKeyDown={advanceOnEnter}>
+            {HELLO && <div className="eo-hello" role="status">{HELLO}</div>}
 
-            {/* Mobile top bar */}
-            <div className="eo-mobile-bar">
-              <div className="eo-logo" style={{ marginBottom: 0 }}>
-                <div className="eo-logo-icon">X</div>
-                <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-                <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>
-                  {step + 1} / {STEPS.length}
-                </span>
-                {/* The plan is named on every step: the desktop sidebar that
-                    shows it is hidden on phones, which left "Change plan" with
-                    no way to tell which plan was chosen. */}
-                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>{cfg.label} &middot; Change</button>
-              </div>
-            </div>
-
-            {/* Mobile-only: the value prop that desktop shows in the left
-                sidebar — without this, a phone user's first screen is a bare
-                Terms wall with no context for why they're here. */}
             {step === 0 && (
               <>
-                <div className="eo-mobile-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
-                <div className="eo-mobile-features">
-                  {cfg.features.map((f, i) => (
-                    <span key={i} className="eo-mobile-feature-pill">
-                      <span className="eo-mobile-feature-dot" />{f}
-                    </span>
-                  ))}
+                <p className="eo-eyebrow">{t('signup.pdpa')}</p>
+                <div className="eo-heading">{t('signup.beforeStart')}</div>
+                <p className="eo-sub">{cfg.price === 'FREE' ? t('signup.freeStart') : t('signup.noCardStart')} {t('signup.readTerms')}</p>
+                <div className="eo-features">
+                  {cfg.features.slice(0, 4).map((f, i) => <span key={i} className="eo-feature-pill">{f}</span>)}
                 </div>
-              </>
-            )}
-
-            {step === 0 && (
-              <>
-                <p className="eo-eyebrow">PDPA 2010 — REQUIRED</p>
-                <div className="eo-heading">Terms &amp; Conditions</div>
-                <p className="eo-sub">Review our Terms of Service, Privacy Policy and Data Processing Agreement, then confirm below.</p>
                 <div className="eo-legal-wrap">
                   <div className="eo-legal-scroll">
                     <LegalContent />
@@ -793,120 +743,106 @@ export default function SalesmanOnboarding() {
                 </div>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} />
-                  <span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and Data Processing Agreement.</span>
+                  <span>{t("onboard.iHaveReadAndAgree")} <a href="/terms" target="_blank" rel="noopener noreferrer">{t("onboard.termsOfService")}</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">{t("onboard.privacyPolicy")}</a> {t("onboard.andDataProcessingAgreement")}</span>
                 </label>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)} />
-                  <span>I consent to Drevo collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
+                  <span>{t("onboard.iConsentToDrevoCollecting")}</span>
                 </label>
                 <button className="eo-btn" onClick={agreeLegal} disabled={!agreeTerms || !agreePdpa}>
-                  I AGREE — CONTINUE
+                  {t('signup.agree')}
                 </button>
               </>
             )}
 
             {step === 1 && (
               <>
-                <p className="eo-eyebrow">STEP 2 OF {STEPS.length}</p>
-                <div className="eo-heading">Create Account</div>
-                <p className="eo-sub">Sign up with your work email or continue with Google.</p>
-                <button className="eo-ghost" style={{ marginTop: 0, borderColor: 'rgba(255,255,255,0.14)', height: 48 }} onClick={signInWithGoogle} disabled={loading}>
+                <div className="eo-heading">{t('signup.createYourAccount')}</div>
+                <p className="eo-sub">{t('signup.useGoogleOrEmail')}</p>
+                <button className="eo-ghost" style={{ marginTop: 0 }} onClick={signInWithGoogle} disabled={loading}>
                   <svg width="17" height="17" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  CONTINUE WITH GOOGLE
+                  {t('signup.google')}
                 </button>
-                <div className="eo-divider">OR</div>
-                <label className="eo-label">EMAIL ADDRESS</label>
+                <div className="eo-divider">{t('signup.or')}</div>
+                <label className="eo-label">{t('signup.email')}</label>
                 <input className="eo-inp" type="email" placeholder="you@example.com" value={form.email}
                   onChange={e => upd('email')(e.target.value)} autoComplete="email" />
-                <label className="eo-label">PASSWORD</label>
+                <label className="eo-label">{t('signup.password')}</label>
                 <div style={{ position: 'relative' }}>
-                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Create a strong password" value={form.password}
+                  <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t('onboard.createAStrongPassword')} value={form.password}
                     onChange={e => upd('password')(e.target.value)} autoComplete="new-password" style={{ paddingRight: 62 }} />
                   <button type="button" onClick={() => setShowPw(v => !v)} tabIndex={-1}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                    {showPw ? 'Hide' : 'Show'}
+                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {showPw ? t('onboard.hide') : t('onboard.show')}
                   </button>
                 </div>
                 {form.password.length > 0 && !pwValid && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {pwChecks.map(c => (
-                      <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: c.ok ? '#4ade80' : 'rgba(255,255,255,0.35)' }}>
+                      <div key={c.label} className="eo-pw-rule" style={{ color: c.ok ? '#15803d' : '#6b7280' }}>
                         <span style={{ width: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                           {c.ok
-                            ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                            : <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.25)' }} />}
+                            ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                            : <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#9ca3af' }} />}
                         </span>
                         {c.label}
                       </div>
                     ))}
                   </div>
                 )}
-                <label className="eo-label">CONFIRM PASSWORD</label>
-                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder="Re-enter your password" value={form.confirmPassword}
+                <label className="eo-label">{t('signup.confirmPw')}</label>
+                <input className="eo-inp" type={showPw ? 'text' : 'password'} placeholder={t('onboard.reEnterYourPassword')} value={form.confirmPassword}
                   onChange={e => upd('confirmPassword')(e.target.value)} autoComplete="new-password" />
                 {form.confirmPassword.length > 0 && !pwMatch && (
-                  <div className="eo-hint" style={{ color: '#f87171', marginTop: 6 }}>Passwords don't match</div>
+                  <div className="eo-hint" style={{ color: '#b91c1c', marginTop: 6 }}>{t('onboard.passwordsDonTMatch')}</div>
                 )}
                 {guestNotice && (
-                  <div className="eo-hint" style={{ marginTop: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)' }}>
-                    You were browsing as a guest. Selling needs a real account with
-                    an email and password, so you can sign back in later.
+                  <div className="eo-hint" style={{ marginTop: 12 }}>
+                    {t('onboard.youWereBrowsingAsA')}
                   </div>
                 )}
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={signUp} disabled={loading || !form.email || !pwValid || !pwMatch}>
-                  {loading ? 'CREATING ACCOUNT…' : 'CREATE ACCOUNT'}
+                  {loading ? t('signup.creating') : t('signup.createAccount')}
                 </button>
-                <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-                  Already have an account?{' '}
-                  <a href="/login" style={{ color: 'rgba(220,38,38,0.75)', textDecoration: 'none' }}>Sign in</a>
+                <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: '#6b7280' }}>
+                  {t('onboard.alreadyHaveAnAccount')}{' '}
+                  <a href="/login" className="eo-link">{t('onboard.signIn')}</a>
                 </p>
               </>
             )}
 
             {step === 2 && (
               <>
-                <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
-                <div className="eo-heading">Your Details</div>
+                <div className="eo-heading">{t('signup.aboutYou')}</div>
                 <p className="eo-sub">
-                  Your name is what buyers see. You can get verified later from your profile, in about 2 minutes.
+                  {t('signup.aboutSub')}
                 </p>
 
-                <label className="eo-label">HOW DO YOU SELL CARS? PICK ONE OR TWO</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.howSell')}</label>
+                <div className="eo-chips">
                   {SELLS_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}
-                      style={{
-                        flex: '1 1 140px', minWidth: 0, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                        background: form.sells.includes(opt.key) ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${form.sells.includes(opt.key) ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
-                        fontFamily: 'inherit',
-                      }}>
-                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: form.sells.includes(opt.key) ? '#fca5a5' : '#E8EDF5' }}>{opt.title}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>{opt.sub}</p>
+                      className={`eo-chip${form.sells.includes(opt.key) ? ' on' : ''}`}>
+                      <b>{opt.title}</b>
+                      <span>{opt.sub}</span>
                     </button>
                   ))}
                 </div>
                 {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
-                    <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <label className="eo-label" style={{ marginTop: 10 }}>{t('signup.whichBrand')}</label>
+                    <div className="eo-chips">
                       {NEW_CAR_BRANDS.map((b) => {
                         const on = form.newCarBrand === b;
                         return (
-                          <button key={b} type="button" onClick={() => { upd('newCarBrand')(b); if (b !== form.newCarBrand) upd('newCarModels')([]); }}
-                            style={{
-                              flex: '1 1 72px', minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-                              fontSize: 12.5, fontWeight: 700,
-                              background: on ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${on ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
-                              color: on ? '#fca5a5' : '#E8EDF5',
-                            }}>
+                          <button key={b} type="button" className={`eo-chip sm${on ? ' on' : ''}`}
+                            onClick={() => { upd('newCarBrand')(b); if (b !== form.newCarBrand) upd('newCarModels')([]); }}>
                             {b}
                           </button>
                         );
@@ -914,133 +850,108 @@ export default function SalesmanOnboarding() {
                     </div>
                     {starterModels?.length ? (
                       <p className="eo-hint" style={{ marginTop: 10 }}>
-                        Every {form.newCarBrand} model ({starterModels.length}) goes on your page with photos, ready to share. The official price for your area fills in by itself. Take off any you don't sell, or add your own photos, any time from Settings.
+                        {t('signup.brandAuto', { brand: form.newCarBrand, count: starterModels.length })}
                       </p>
                     ) : (
                       <p className="eo-hint" style={{ marginTop: 6 }}>
-                        You add the {form.newCarBrand || 'brand'} models you sell from Add car. The official price for your area fills in by itself.
+                        {t('signup.brandManual', { brand: form.newCarBrand || '' })}
                       </p>
                     )}
                   </div>
                 ) : (
                 <p className="eo-hint" style={{ marginBottom: 18 }}>
-                  Already work at a dealership? Ask them to send you an invite instead — your dealership shows up on your page automatically, verified, no typing it in yourself.
+                  {t('signup.dealerNote')}
                 </p>
                 )}
 
-                <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
-                <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
+                <label className="eo-label">{t('signup.fullName')}</label>
+                <input className="eo-inp" type="text" placeholder={t('onboard.ahmadBinAbdullah')} value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" onClick={skipIdentity}
                   disabled={loading || !form.fullName.trim()}>
-                  {loading ? 'SAVING…' : 'CONTINUE'}
+                  {loading ? t('signup.saving') : t('signup.continue')}
                 </button>
               </>
             )}
 
             {step === 3 && (
               <>
-                <p className="eo-eyebrow">STEP 4 OF {STEPS.length}</p>
-                <div className="eo-heading">Contact Number</div>
-                <p className="eo-sub">Your WhatsApp number is shown to buyers on your listings and used for account notifications.</p>
-                <label className="eo-label">WHATSAPP / MOBILE NUMBER</label>
+                <div className="eo-heading">{t('signup.waHeading')}</div>
+                <p className="eo-sub">{t('signup.waSub')}</p>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.waLabel')}</label>
                 <PhoneInput mobileOnly className="eo-inp" value={form.phone} onChange={upd('phone')} />
-                <p className="eo-hint">Malaysian numbers only (+60). This appears on your public listing page.</p>
+                <p className="eo-hint">{t('signup.waHint')}</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn"
                   onClick={() => { setErr(''); setStep(4); }}
                   disabled={!isValidMyPhone(form.phone, { mobileOnly: true })}>
-                  CONTINUE
+                  {t('signup.continue')}
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(2); }}>
-                  BACK
+                  {t('signup.back')}
                 </button>
               </>
             )}
 
             {step === 4 && (
               <>
-                <p className="eo-eyebrow">STEP 5 OF {STEPS.length}</p>
-                <div className="eo-heading">Setup Your Profile</div>
-                <p className="eo-sub">This is what buyers will see on your public listing page.</p>
-                <label className="eo-label">DISPLAY NAME / BRAND</label>
-                <input className="eo-inp" type="text" placeholder="Ahmad Motors" value={form.brand}
-                  onChange={e => {
-                    upd('brand')(e.target.value);
-                    // Suggest the handle from the brand until the seller edits it
-                    // (it used to fill only while empty, so it froze on the first letter).
-                    if (!slugEdited) handleSlugChange(slugify(e.target.value), true);
-                  }} />
-                <label className="eo-label">PROFILE URL HANDLE</label>
+                <div className="eo-heading">{t('signup.pageHeading')}</div>
+                <p className="eo-sub">{t('signup.pageSub')}</p>
+                <label className="eo-label" style={{ marginTop: 0 }}>{t('signup.pageLabel')}</label>
                 <div className="eo-slug-wrap">
-                  <input className="eo-inp" type="text" placeholder="yourname" value={form.slug}
-                    onChange={e => handleSlugChange(e.target.value)} style={{ paddingRight: 80 }} />
+                  <input className="eo-inp" type="text" placeholder="e.g. sirhonda" value={form.slug}
+                    onChange={e => handleSlugChange(e.target.value)} style={{ paddingRight: 96 }} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
                   {form.slug.length >= 3 && (
-                    <span className="eo-slug-status" style={{ color: slugTaken ? '#f87171' : slugChecking ? 'rgba(255,255,255,0.3)' : '#4ade80' }}>
-                      {slugChecking ? 'CHECKING' : slugTaken ? 'TAKEN' : 'AVAILABLE'}
+                    <span className="eo-slug-status" style={{ color: slugTaken ? '#b91c1c' : slugChecking ? '#9ca3af' : '#15803d' }}>
+                      {slugChecking ? t('signup.checking') : slugTaken ? t('signup.taken') : t('signup.available')}
                     </span>
                   )}
                 </div>
-                <p className="eo-hint">drevo.my/s/{form.slug || 'yourname'} &middot; Letters and numbers, 3–20 chars</p>
+                <p className="eo-hint">{t('signup.pageHint')}</p>
+                <div className="eo-preview">
+                  <button type="button" className="eo-preview-av" onClick={() => avatarInput.current?.click()} aria-label={t('signup.addPhotoAria')}>
+                    {avatarPreview ? <img src={avatarPreview} alt="" /> : (form.slug[0] || 'D').toUpperCase()}
+                  </button>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="eo-preview-name">{form.slug || 'yourname'}</div>
+                    <div className="eo-preview-sub">drevo.my/s/{form.slug || 'yourname'}</div>
+                    <button type="button" className="eo-preview-add" onClick={() => avatarInput.current?.click()}>
+                      {avatarPreview ? t('signup.changePhoto') : t('signup.addPhoto')}
+                    </button>
+                  </div>
+                  <input ref={avatarInput} type="file" accept="image/*" onChange={pickAvatar} style={{ display: 'none' }} />
+                </div>
                 {/* Public: this is the page header, the Google title and the advisor
                     list. People typed their HOME here (owner, 2026-10-23), so it
                     asks for where buyers meet them. */}
-                <label className="eo-label">STATE WHERE YOU SELL</label>
+                <label className="eo-label">{t('signup.stateLabel')}</label>
                 <select className="eo-select" value={form.state}
                   onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
-                  <option value="">Select state</option>
+                  <option value="">{t('onboard.selectState')}</option>
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
-                  AREA WHERE YOU SELL <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>— OPTIONAL</span>
+                  {t('signup.areaLabel')} <span style={{ color: '#9ca3af', fontWeight: 500 }}>{t('signup.optional')}</span>
                 </label>
                 <select className="eo-select" value={form.city} disabled={!form.state}
                   onChange={e => upd('city')(e.target.value)}>
-                  <option value="">{form.state ? 'Select city / area' : 'Select a state first'}</option>
+                  <option value="">{form.state ? t('onboard.selectCityArea') : t('onboard.selectAStateFirst')}</option>
                   {cityOptionsFor(form.state, form.city).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <p className="eo-hint">Your showroom or office, where buyers meet you. Shown on your page and on Google, so never your home.</p>
+                <p className="eo-hint">{t('onboard.yourShowroomOrOfficeWhere')}</p>
                 {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" disabled={!canSlugContinue || loading}
-                  onClick={() => { setErr(''); setStep(5); }}>
-                  CONTINUE
+                <button className="eo-btn" disabled={!canSlugContinue || loading} onClick={activate}>
+                  {loading ? t('signup.creatingPage') : t('signup.createPage')}
                 </button>
-                <button className="eo-ghost" onClick={() => { setErr(''); setStep(3); }}>
-                  BACK
+                <button className="eo-ghost" onClick={() => { setErr(''); setStep(3); }} disabled={loading}>
+                  {t('signup.back')}
                 </button>
-              </>
-            )}
-
-            {step === 5 && (
-              <>
-                <p className="eo-eyebrow">REVIEW YOUR DETAILS</p>
-                <div className="eo-heading">Almost There</div>
-                <p className="eo-sub">Confirm everything is accurate before activating your account.</p>
-                <div className="eo-review-wrap">
-                  {[
-                    ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
-                    ['NAME', form.fullName],
-                    ['EMAIL', userEmail],
-                    ['PHONE', toPlus60(form.phone)],
-                    ['PROFILE URL', 'drevo.my/s/' + form.slug],
-                    ['STATE', form.state || '—'],
-                  ].map(([k, v]) => (
-                    <div key={k} className="eo-review-row">
-                      <span className="eo-review-key">{k}</span>
-                      <span className="eo-review-val" style={k === 'PROFILE URL' ? { color: 'rgba(220,38,38,0.75)' } : {}}>{v}</span>
-                    </div>
-                  ))}
-                </div>
-                {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" onClick={activate} disabled={loading}>
-                  {loading ? 'ACTIVATING…' : 'ACTIVATE ACCOUNT'}
-                </button>
-                <button className="eo-ghost" onClick={() => { setErr(''); setStep(4); }} disabled={loading}>
-                  BACK
-                </button>
-                <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'rgba(255,255,255,0.15)', lineHeight: 1.7 }}>
-                  By activating, you confirm all information is accurate and you have agreed to our Terms, Privacy Policy, and DPA.
+                <p className="eo-hint" style={{ textAlign: 'center', marginTop: 16 }}>
+                  {tier === 'premium'
+                    ? t('signup.trialLine')
+                    : t('signup.freeLine')}{' '}
+                  {t('signup.agreeLine')}
                 </p>
               </>
             )}

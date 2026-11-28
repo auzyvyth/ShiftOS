@@ -96,8 +96,79 @@ Order agreed 2026-11-26. Details live in the items named; this is the queue.
 - [ ] 6. Owner: revoke the old Anthropic + remove.bg keys at the provider (removed from Vercel 2026-10-28).
 - [ ] 7. Owner: backups. Free plan = no point-in-time restore; check what the plan keeps and decide.
 - [ ] 8. SEC-5 leaked-password protection: needs Supabase Pro.
-- [ ] 9. Dependabot: GitHub reported 6 moderate package alerts on main (2026-11-26). Read each, update
-  the ones the app actually ships to the browser or api/ first.
+- [ ] 9. Dependabot: `i18next` updated 24 -> 26.7.2 (2026-11-28, on staging). Left, all moderate and build-tool or server-picture-code only (not in the browser):
+  Sentry vite plugin, `glob` / `minimatch` via `vite-plugin-pwa`, `fflate` / `satori`. Review in the next dependency pass.
+  The video-ad project (`marketing/ads/drevo-remotion`) had only the `i18next` alert; update it there too.
+- [ ] 10. LANG-1 (owner, 2026-11-28): every Lite + Premium screen and pop-up in English AND Malay. DONE on staging: both main panels and
+  tabs, car form + quick add + new-car form, Outreach, posters, Studio, loans, brokers, linked-dealer screens, handover, customers, add lead,
+  chat, page editor, hero/handover photos, add-ons, ID verification, pay box, banners, setup + signup wizard.
+  LEFT (English only): the seller's PUBLIC page and its blocks (`components/agent/*`, `SalesmanProfilePage.jsx`), the signup wizard's step
+  names + plan tier lists (`STEPS`, `TIERS` in SalesmanOnboarding.jsx), plan feature lines (`plans.js`), `claimInviteCode` messages
+  (`utils/invite.js`), `ReportSections`, `BulkBar`, Studio font/theme/format NAMES (kept as names), buyer chat (`BuyerChat`, `BuyerInbox`,
+  `SellerFeedback`). Left on purpose: legal text, Live presenter (own EN/BM switch, `liveCopy.js`), owner-only social posting.
+  Method: AST scan for JSX text / `label:` / `toast(...)` outside `t(...)`; check every key exists in en AND ms before shipping.
+
+## STORE + META READINESS (checked 2026-11-28, partial, read of `main`) - store work stays PAUSED
+Owner: API applications postponed (users first). This is a list, not an approval to build.
+Rules must be re-checked on Apple / Google / Meta / TikTok pages before building.
+- [ ] READY-1 Payments: Premium is paid in-app by DuitNow QR + WhatsApp. Apple 3.1.1 asks for in-app
+  purchase to unlock features. Check regional exceptions and Google Play billing rules (not checked).
+- [ ] READY-2 Chat safety (Apple 1.2, check Play UGC too): listing + seller reporting exist. Searches found
+  no chat block / report control and no content filter. Needs filter, report, block, contact details.
+- [ ] READY-3 Google sign-in in the app (MOBILE-9). On iOS likely also needs a privacy-focused login
+  option (Apple 4.8), e.g. Sign in with Apple.
+- [ ] READY-4 Apple 4.2 (more than a website): no native feature plugins found. See MOBILE-8, MOBILE-10.
+- [ ] READY-5 Store setup: icon + splash (MOBILE-11), final app name + app ID (still ShiftOS /
+  `my.xdrive.shiftos`), MOBILE-5.
+- [ ] READY-6 Public web page to request account + data deletion (Google Play). No dedicated route found.
+  In-app deletion exists (buyer, Lite, Premium, eligible dealers); not tested, purge not tested.
+- [ ] READY-7 Privacy: it names the operator as "sole proprietor" but SSM was noted as not registered.
+  Confirm. Confirm `legal@xdrive.my` receives mail, or move to a drevo.my address.
+- [ ] READY-8 Play: a personal account made after 13 Nov 2023 needs 12 testers for 14 days in a row.
+- [ ] READY-9 Meta (only if our own app is needed): SSM with matching name, business verification,
+  drevo.my email + domain, data deletion callback if required, working connect flow. Own Pages may
+  work on Standard Access without App Review; seller accounts need App Review.
+- [ ] READY-10 TikTok: its API guidelines reject tools for our own accounts only, so keep Zernio.
+  CHECK SOON, not paused: our posts add a watermark, a price cover and drevo.my text; TikTok's
+  guidelines bar added logos, watermarks and promotional text.
+- [ ] READY-11 Security review of the current Supabase security advisor results (see INFRA-6 and
+  SECURITY-NOW item 2; include views added since INFRA-6). Warnings are not proof of a hole. Do first.
+
+## OPS-DAILY: daily check-up to Telegram + phone (owner, 2026-11-28)
+Built, QUEUED: `supabase/migrations/20261128b_ops_daily_checkup.sql` (`ops_daily_checkup()` + cron 23:30 UTC). Apply after midnight MYT,
+nobody live, then run `select ops_daily_checkup();` once as postgres and confirm the message lands; check `has_function_privilege('anon', ...)` is false.
+- [ ] Website speed from outside (page load time of drevo.my + one car page): needs an edge function or Vercel check, not built.
+- [ ] Add honeypot touches and Dependabot counts to the message once HONEYPOT-1 is live.
+
+## PAGE-VIDEO: /for-salesmen "Scroll through a real Premium page" (owner, 2026-11-28)
+Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the plan tour, in a browser-window frame; video
+`public/for-salesmen/premium-page-scroll-v2.mp4` (0.75 MB, 16.3 s, 1280x800, loads only when scrolled near). Recorded at DESKTOP size from
+the live data of `/s/premiummotors?brand=perodua` (owner: desktop, Perodua only), `tools/page-video/record.cjs`.
+  Hero = the business card with Perodua cut-outs on the ring (`HERO=card:perodua`, a recording-only override: the live page's own
+  hero setting is still the big photo).
+  How to buy, Handover day + photos, FAQ, Promos, Delivery and Recently sold are SAMPLE content (`EXAMPLE=1`, owner's call), each
+  stamped "EXAMPLE" in the video, and the caption says so. Handover "photos" are the page's own Perodua car photos, no people.
+- [ ] The bio ("Selling Recon Toyota Alphard...") and the "Recon imports" tag on premiummotors are account settings, not Perodua.
+  Once the owner changes them, re-record as `-v3` (v2 was never on staging, so it was overwritten in place).
+
+## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
+Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
+COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,
+Accountant net profit no longer counts commission twice, mini page owner buttons, poster MP4 duration.
+Live DB: `20261127a` and `20261127b` APPLIED 2026-11-28 00:2x MYT (probed in rolled-back transactions).
+- [ ] Apply `20261128a_move_old_costs.sql` (moves 7 old repair/ad rows into car_costs; one orphan repair row
+  on a deleted stock record stays). The tool asks to confirm deletes: confirm the prompt. After midnight MYT.
+- [ ] Production release of the above (owner's "ship tonight").
+- [ ] Then: drop `recon_jobs` / `ad_spend` reads from `lib/carCosts.js` and the old tables (one migration).
+- [ ] Bill photo on a cost (needs a private storage folder).
+- [ ] Next DMS step: stock status ladder (in transit, in repair, ready...) + movement history.
+- [ ] Accountant GP is the sale-time GP (no holding/transfer/admin/warranty): make it read carPnl (one engine).
+- [ ] `stock_units` has three unused chassis columns (`chassis_number`, `vin`, `vin_number`): retire.
+
+## SIGNUP-1128: sole-seller signup redo (owner, 2026-11-28) - on the session branch, NOT on staging
+- [ ] `src/pages/SalesmanOnboarding.jsx` restyled light, 5 steps (the review/"Activate account" step is gone: "Create my page" is on the page step), no payment wording; the brand box is removed, the page username IS the public name; `dealership` now saves the username, not the legal name.
+- [ ] Migration `20261128b_public_seller_name.sql` QUEUED (after midnight, nobody live): public readers (`get_salesman_by_slug`, `get_salesman_by_id`, `get_new_model_advisors`) return the username in `full_name` for a solo seller (dealer_id null), so the page, Google title, share card and advisor list stop showing the legal name. Verify afterwards with `get_salesman_by_slug('sirhonda')`.
+- [ ] Not done: restyle `LeadAlertsStep` (last screen), sole-seller trial-ended screen, dealer expired screen + DB lock (see the audit in the session summary), old sellers' `dealership` may still hold a legal name.
 
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
@@ -3145,6 +3216,17 @@ Background (from the idea):
     Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 ## 💡 Ideas (unrefined — capture only, not scheduled)
+- **IDEA-49 -> ASSIST-1: seller assistant, IN-APP (owner 2026-11-28, Telegram dropped: 2 of 17 sellers use it, sellers live in WhatsApp).**
+  BUILT (Premium only, not on staging yet): Assistant button beside the bell opens a feed (`src/components/assistant/AssistantFeed.jsx`,
+  rules in `assistantRules.js`, words EN+BM in `assistantCopy.js`, `npm run test:assistant`). Groups: Needs you (pending bookings with
+  Confirm / Reschedule / WhatsApp, unread enquiries, chats, car questions), Worth a look (the silent car with Share again / Make a poster /
+  Keep it 14 days / Snooze 3 days, and a morning brief of counts), Done (with Undo). Keep / Snooze are DEVICE-ONLY (`xd_assistant_<uid>`).
+  MARKETING (same day): Premium feature list line + plan card lines + /for-salesmen FAQ + the "What you get" tour step (`public/for-salesmen/tour-assistant-{en,ms}.webp`, real component on sample data; re-shoot when the feed changes) all say Assistant. SHIP THEM WITH THE FEATURE, never before it.
+  NOT built: (1) step 1, find why 2 new sellers got through signup with no push device and nudge the active seller with no installed app
+  (counts 2026-11-28: 17 active sellers, 8 with push, 4 of the 9 without are gone 30+ days); (2) real alert rules in the DB (quiet lead,
+  push for the silent car), after midnight; (3) calm the overdue-handover noise (100 of 192 notifications in 30 days); (4) typed chat/AI box.
+
+- **IDEA-50 (owner, 2026-11-28): ask a new seller to share their page link to Threads before they reach the dashboard.** A call-to-action at the end of signup, after "Create my page" and around the lead-alerts step (`LeadAlertsStep`), so the first thing a new seller does is post their `drevo.my/s/<slug>` link. Why: free reach at the moment they are most excited, and Threads is where sellers already are. Open: use the platform share sheet or a Threads intent link, copy-ready caption (no invented claims, EN + BM), link carries `?src=share` (`shareVisits()`), and it must never block or delay entering the dashboard (skippable, same rule as a gate with no way out losing the signup). Not scheduled until the owner decides to build it.
 - **IDEA-48 (owner, 2026-11-25): a "sales advisor website" style Premium page (seen on Threads: a Toyota SA's personal site, post by `kmrzmn`, screen recording from the owner).** Sections seen: a promo-of-the-month table, a model picker (variant list with price + colour switcher), "from the showroom to your door" (distance/time to the buyer's town), and a monthly-instalment calculator before the bank. Owner: "we can do this for the pro plan of salesman". Most of it exists already: model pages (`/new-cars/:brand/:model`, NEWCAR-PAGE), `BudgetFinder.jsx`, `financing.js`, PAGE-PRO page (`/s/:slug`). Gaps: a promo table (promos expire, so it must be typed by the seller with a date, never stored as a price), a per-seller instalment calculator on the page, a delivery-distance block. Constraints: copy the ORGANISATION idea only, never their look, words or photos (see POSTER-1 rule); Premium only; rebates are device-only/never server prices (NEWCAR-1); never worded as bank approval. Not scheduled until the owner picks which section.
   - **Progress 2026-11-25 (later, PAGE-SITE 2, owner: "all three in one go", section order + on/off, no stock/AI car photos in new sections):** built on the session branch, not on staging: promos of the month (seller-typed, END DATE required, hides itself, ticker + board), a model > variant > colour picker for new-car advisors (`site/ModelPicker.jsx`, same cards + variant store as the car page), "from <town> to your door" (seller-typed km + minutes, labelled their estimate), and Settings > `PageSiteCard.jsx` (promos, towns, order + on/off). Rules: `src/utils/pageSite.js` (`npm run test:pagesite`). Data: ONE jsonb `profiles.page_site` via `set_my_page_site`, read by `get_agent_site(slug)`; migration `20261125b_page_site.sql` QUEUED, not applied (validator tested on a local Postgres 16: 10 cases + set/get round trip). Until applied the page shows its default sections and the editor says saving is not available yet. Open: with a model picker AND the car grid AND the calculator the same cards show three times for an advisor; owner call whether the grid hides when the picker is on. Still not built: "book a meeting" with no car, linked-salesman dealer brand, seller-leaves rule.
   - **Model picker v2 (2026-11-25, from the owner's Proton-advisor reference):** tabs with "from RM", photo stage with photo thumbnails + body type, colour dots, spec strip (engine / power / torque / seats; range + battery for an EV), all variants, the seller's own note per model (`page_site.notes`, in the same queued migration `20261125b`, Settings editor "Your take on each model"), and "Not sure which model?" (questions BUILT FROM THE ADVISOR'S OWN LINEUP: shape, people, fuel, what matters most, monthly budget; a question the data cannot answer is not asked; the pick shows from the first answer and refines; no-match names the answer to change). Rules + facts: `src/utils/modelPick.js` (`npm run test:modelpick`): shape / fuel / people / budget band are rules, "what matters most" only orders what is left; an unknown seat count never rules a car out (seats are blank for every Toyota + Honda row; safety/boot/economy data is patchy by brand, so no safety or space question yet); budget bands come from the advisor's OWN models' monthly estimates; every line quotes spec-sheet data, never "best". One batch call (`useNewCarInfos`) feeds the tabs + helper. Colour changes the WhatsApp words, not the photo (one photo set per model).
@@ -3327,6 +3409,15 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   `src=` on the post link so Analytics shows leads from socials. Cost: 4 accounts/seller = $12-24/mo
   at Zernio's tiers. Open: price, dealers vs solo sellers first, TikTok audit state, privacy page + PDPA s.129
   line before any inbox work.
+  **2026-11-28 (owner): sell-first decision.** Build the Pro feature so it exists, market it, connect accounts only once a seller
+  pays (Zernio bills per CONNECTED account, so nothing costs until then; owner sends the seller a connect link, never asks for
+  passwords). Zernio really costs $6/account at 3-10 accounts platform-wide, $3 at 11-100 (first 2 free): a 3-account seller is
+  about RM80 then RM40 a month, not RM25 (re-check Zernio's page before fixing a price). Own-built posting (Meta + TikTok apps) costs
+  $0/account but needs Meta Business Verification + app review and a TikTok audit (unaudited = private posts only, 5 users/day):
+  start those free applications in parallel, swap in behind the same `social_posts` queue once volume justifies it.
+  DONE: "Seller Pro" interest card on /plans only (`salesmanPricingCards(lang, { withPro: true })`, `src/utils/plans.js`), RM200/month
+  PLACEHOLDER (`PLAN_CONFIG.salesman_full.proPrice`), button = "Register interest on WhatsApp" to `OPS_WHATSAPP`, badge "Coming soon",
+  nothing charged. NOT on /for-salesmen on purpose. Never turn the button into "Buy" before the feature works (CPA 1999 s.10).
   **2026-11-13 later: the seller-facing Pro work was PARKED** when posting moved to the owner's console (SOCIAL-1,
   CLAUDE.md "Drevo's OWN pages"): no seller posts any more, so nothing to gate. `supabase/parked/pro_tier.sql`
   keeps the entitlement table; the lock screen, `proPlan.js` and the console Pro buttons were removed. The notes

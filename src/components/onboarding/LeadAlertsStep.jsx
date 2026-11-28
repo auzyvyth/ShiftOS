@@ -6,6 +6,8 @@ import { Bell, Check, Copy, ExternalLink } from 'lucide-react';
 import {
   usePushNotifications, isIOS, isStandalone, isInAppBrowser, isAndroid,
 } from '../../hooks/usePushNotifications';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 // PUSH-ONBOARD (owner, 2026-10-31): the LAST screen of every way a seller gets
 // an account, the signup wizard (SalesmanOnboarding) and the set-up email page
@@ -35,24 +37,27 @@ const SLOW_MS = 15000;
 // A request still open after 15s is almost always Chrome's quiet prompt: say
 // where to look. If it then succeeds, the success toast follows.
 function reportAlertsResult(attempt) {
+  // Not a component: a hook here throws "Invalid hook call" the moment it runs.
+  const tr = (k, o) => i18n.t(k, o);
   let settled = false;
   const slow = setTimeout(() => {
-    if (!settled) toast('Alerts are not on yet. If you see a bell in the address bar, tap it and choose Allow.', { duration: 12000 });
+    if (!settled) toast(tr("leadAlerts.alertsAreNotOnYet"), { duration: 12000 });
   }, SLOW_MS);
   attempt.then((r) => {
     settled = true;
     clearTimeout(slow);
-    if (r?.ok) toast.success('Lead alerts are on. Buyers will reach this device.');
-    else if (r?.reason === 'denied') toast.error('Alerts are blocked for this site. Unblock them from the icon left of the address bar.', { duration: 10000 });
-    else toast.error('Alerts did not turn on. We will ask again tomorrow.', { duration: 8000 });
+    if (r?.ok) toast.success(tr("leadAlerts.leadAlertsAreOnBuyers"));
+    else if (r?.reason === 'denied') toast.error(tr("leadAlerts.alertsAreBlockedForThis"), { duration: 10000 });
+    else toast.error(tr("leadAlerts.alertsDidNotTurnOn"), { duration: 8000 });
   }).catch(() => {
     settled = true;
     clearTimeout(slow);
-    toast.error('Alerts did not turn on. We will ask again tomorrow.', { duration: 8000 });
+    toast.error(tr("leadAlerts.alertsDidNotTurnOn"), { duration: 8000 });
   });
 }
 
 export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'Last step', title = 'TURN ON LEAD ALERTS', intro }) {
+  const { t: tr } = useTranslation();
   const push = usePushNotifications(userId);
   const overlay = typeof onCancel === 'function';
   useModalHistory(overlay, overlay ? onCancel : () => {});
@@ -122,24 +127,24 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
 
   // A supported browser still checking whether this device is already on.
   if (!overlay && mode === 'ask' && !push.checked && !waitedOut) {
-    return <Shell overlay={overlay} onCancel={onCancel}><p style={S.sub}>Checking this device...</p></Shell>;
+    return <Shell overlay={overlay} onCancel={onCancel}><p style={S.sub}>{tr("leadAlerts.checkingThisDevice")}</p></Shell>;
   }
 
   return (
     <Shell overlay={overlay} onCancel={onCancel}>
       <div style={S.ring}>{mode === 'on' ? <Check size={26} color="#4ade80" /> : <Bell size={26} color="#dc2626" />}</div>
       <p style={S.eyebrow}>{eyebrow}</p>
-      <h1 style={S.title}>{mode === 'on' ? 'ALERTS ARE ON' : title}</h1>
+      <h1 style={S.title}>{mode === 'on' ? tr("leadAlerts.alertsAreOn") : title}</h1>
 
-      {mode === 'on' && <p style={S.sub}>A buyer's message, booking or WhatsApp tap will reach this phone, even with the app closed.</p>}
+      {mode === 'on' && <p style={S.sub}>{tr("leadAlerts.aBuyerSMessageBooking")}</p>}
 
       {mode === 'ask' && (
         <>
           <p style={S.sub}>
-            {intro || 'Buyers move on fast. Turn on alerts so a new message, booking or enquiry reaches your phone the moment it happens, even with the app closed.'}
+            {intro || tr("leadAlerts.buyersMoveOnFastTurn")}
           </p>
           <button type="button" style={S.btn} onClick={turnOn}>
-            <Bell size={16} /> Turn on alerts
+            <Bell size={16} /> {tr("leadAlerts.turnOnAlerts")}
           </button>
         </>
       )}
@@ -147,48 +152,48 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
       {mode === 'inapp' && (
         <>
           <p style={S.sub}>
-            You are inside {/Instagram/i.test(navigator.userAgent) ? 'Instagram' : /TikTok|musical_ly|Bytedance/i.test(navigator.userAgent) ? 'TikTok' : 'an app'}'s built-in browser, and alerts cannot work in here. Open your account in {isIOS() ? 'Safari' : 'Chrome'} and sign in with the same email.
+            {tr("leadAlerts.youAreInside")} {/Instagram/i.test(navigator.userAgent) ? 'Instagram' : /TikTok|musical_ly|Bytedance/i.test(navigator.userAgent) ? 'TikTok' : tr("leadAlerts.anApp")}{tr("leadAlerts.sBuiltInBrowserAnd")} {isIOS() ? tr("leadAlerts.safari") : tr("leadAlerts.chrome")} {tr("leadAlerts.andSignInWithThe")}
           </p>
           {isAndroid() ? (
-            <a href={chromeIntent} style={{ ...S.btn, textDecoration: 'none' }}><ExternalLink size={16} /> Open in Chrome</a>
+            <a href={chromeIntent} style={{ ...S.btn, textDecoration: 'none' }}><ExternalLink size={16} /> {tr("leadAlerts.openInChrome")}</a>
           ) : (
-            <p style={S.steps}>Tap the <b>···</b> menu at the top, then <b>Open in browser</b>. Then add it to your Home Screen and turn alerts on there.</p>
+            <p style={S.steps}>{tr("leadAlerts.tapThe")} <b>···</b> {tr("leadAlerts.menuAtTheTopThen")} <b>{tr("leadAlerts.openInBrowser")}</b>{tr("leadAlerts.thenAddItToYour")}</p>
           )}
-          <button type="button" style={S.ghost} onClick={copyLink}><Copy size={14} /> {copied ? 'Link copied' : 'Copy the link'}</button>
-          <button type="button" style={S.skip} onClick={finish}>Continue here for now</button>
+          <button type="button" style={S.ghost} onClick={copyLink}><Copy size={14} /> {copied ? tr("leadAlerts.linkCopied") : tr("leadAlerts.copyTheLink")}</button>
+          <button type="button" style={S.skip} onClick={finish}>{tr("leadAlerts.continueHereForNow")}</button>
         </>
       )}
 
       {mode === 'ios' && (
         <>
-          <p style={S.sub}>On iPhone, Apple only sends alerts to apps on your Home Screen. It takes ten seconds:</p>
+          <p style={S.sub}>{tr("leadAlerts.onIphoneAppleOnlySends")}</p>
           <ol style={S.list}>
-            <li>Tap <b>Share</b> (the square with the arrow) at the bottom of Safari.</li>
-            <li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
-            <li>Open the app from your Home Screen, sign in, and tap <b>Turn on alerts</b>.</li>
+            <li>{tr("leadAlerts.tap")} <b>{tr("leadAlerts.share")}</b> {tr("leadAlerts.theSquareWithTheArrow")}</li>
+            <li>{tr("leadAlerts.tap")} <b>{tr("leadAlerts.addToHomeScreen")}</b>{tr("leadAlerts.then")} <b>{tr("leadAlerts.add")}</b>.</li>
+            <li>{tr("leadAlerts.openTheAppFromYour")} <b>{tr("leadAlerts.turnOnAlerts")}</b>.</li>
           </ol>
-          <button type="button" style={S.skip} onClick={finish}>I will do it now, continue</button>
+          <button type="button" style={S.skip} onClick={finish}>{tr("leadAlerts.iWillDoItNow")}</button>
         </>
       )}
 
       {mode === 'unsupported' && (
         <>
-          <p style={S.sub}>This browser cannot receive alerts. Open your account in Chrome (Android) or Safari (iPhone) to turn them on.</p>
-          <button type="button" style={S.ghost} onClick={copyLink}><Copy size={14} /> {copied ? 'Link copied' : 'Copy the link'}</button>
-          <button type="button" style={S.skip} onClick={finish}>Continue for now</button>
+          <p style={S.sub}>{tr("leadAlerts.thisBrowserCannotReceiveAlerts")}</p>
+          <button type="button" style={S.ghost} onClick={copyLink}><Copy size={14} /> {copied ? tr("leadAlerts.linkCopied") : tr("leadAlerts.copyTheLink")}</button>
+          <button type="button" style={S.skip} onClick={finish}>{tr("leadAlerts.continueForNow")}</button>
         </>
       )}
 
       {mode === 'denied' && (
         <>
-          <p style={S.sub}>Alerts are blocked for this site, so your phone will not ask again. To unblock:</p>
+          <p style={S.sub}>{tr("leadAlerts.alertsAreBlockedForThis2")}</p>
           <ol style={S.list}>
-            <li>Tap the icon left of the address bar (a lock or sliders).</li>
-            <li>Open <b>Permissions</b> or <b>Site settings</b>, set <b>Notifications</b> to <b>Allow</b>.</li>
-            <li>Reload this page.</li>
+            <li>{tr("leadAlerts.tapTheIconLeftOf")}</li>
+            <li>{tr("leadAlerts.open")} <b>{tr("leadAlerts.permissions")}</b> or <b>{tr("leadAlerts.siteSettings")}</b>{tr("leadAlerts.set")} <b>{tr("leadAlerts.notifications")}</b> to <b>{tr("leadAlerts.allow")}</b>.</li>
+            <li>{tr("leadAlerts.reloadThisPage")}</li>
           </ol>
-          <button type="button" style={S.ghost} onClick={() => window.location.reload()}>I unblocked it, reload</button>
-          <button type="button" style={S.skip} onClick={finish}>Continue, we will email you instead</button>
+          <button type="button" style={S.ghost} onClick={() => window.location.reload()}>{tr("leadAlerts.iUnblockedItReload")}</button>
+          <button type="button" style={S.skip} onClick={finish}>{tr("leadAlerts.continueWeWillEmailYou")}</button>
         </>
       )}
     </Shell>
@@ -196,6 +201,7 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
 }
 
 function Shell({ children, overlay, onCancel }) {
+  const { t: tr } = useTranslation();
   if (!overlay) {
     return (
       <div style={S.root}>
@@ -205,7 +211,7 @@ function Shell({ children, overlay, onCancel }) {
   }
   return createPortal(
     <div style={S.overlay} role="dialog" aria-modal="true">
-      <button type="button" aria-label="Close" style={S.close} onClick={onCancel}>×</button>
+      <button type="button" aria-label={tr("leadAlerts.close")} style={S.close} onClick={onCancel}>×</button>
       <div style={S.card}>{children}</div>
     </div>,
     document.body,

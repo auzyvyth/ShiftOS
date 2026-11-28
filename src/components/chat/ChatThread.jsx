@@ -8,6 +8,7 @@ import CarPickerSheet, { carTitle, fmtRM } from './CarPickerSheet';
 import { supabase } from '../../supabaseClient';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
+import { useTranslation } from 'react-i18next';
 
 // One conversation. Shared by the buyer widget (dark, on the marketplace) and
 // the seller inbox (light, in the panel), so ticks, masking and the send box
@@ -68,6 +69,7 @@ const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-MY', { hour: 'nume
 // Splits redacted text so each [number hidden] / [contact hidden] placeholder
 // renders as a tappable chip instead of dead literal text.
 function RedactedBody({ text, onReveal, t }) {
+  const { t: tr } = useTranslation();
   const parts = String(text).split(/(\[(?:number|contact) hidden\])/g);
   return (
     <>
@@ -75,7 +77,7 @@ function RedactedBody({ text, onReveal, t }) {
         /^\[(number|contact) hidden\]$/.test(part) ? (
           <button key={i} onClick={onReveal}
             style={{ display:'inline-flex', alignItems:'center', gap:4, margin:'0 2px', padding:'1px 7px', borderRadius:5, border:`1px dashed ${t.border}`, background:'rgba(127,127,127,0.14)', color:'inherit', font:'inherit', fontSize:'0.92em', cursor:'pointer', verticalAlign:'baseline' }}>
-            <Eye size={11} /> tap to show
+            <Eye size={11} /> {tr("chatThread.tapToShow")}
           </button>
         ) : (
           <span key={i}>{part}</span>
@@ -88,6 +90,7 @@ function RedactedBody({ text, onReveal, t }) {
 // red "mine" bubble reads as an error state, not a listing. The seller opens
 // it in a new tab so their panel stays where it was; the buyer just goes.
 function CarCard({ car, t, newTab }) {
+  const { t: tr } = useTranslation();
   const sold = car.status === 'sold';
   const img = Array.isArray(car.images) ? car.images[0] : null;
   const meta = [fmtRM(car.selling_price), Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString('en-MY')} km` : null]
@@ -102,7 +105,7 @@ function CarCard({ car, t, newTab }) {
         <span style={{ display:'block', fontSize:13.5, fontWeight:700, lineHeight:1.35 }}>{carTitle(car)}</span>
         {meta && <span style={{ display:'block', fontSize:12, color:t.sub, marginTop:2 }}>{meta}</span>}
         <span style={{ display:'block', fontSize:12, fontWeight:600, marginTop:6, color: sold ? t.sub : '#dc2626' }}>
-          {sold ? 'Sold' : car.status === 'reserved' ? 'Reserved · View car' : 'View car'}
+          {sold ? tr("chatThread.sold") : car.status === 'reserved' ? tr("chatThread.reservedViewCar") : tr("chatThread.viewCar")}
         </span>
       </span>
     </a>
@@ -110,6 +113,7 @@ function CarCard({ car, t, newTab }) {
 }
 
 function Bubble({ msg, mine, t, role }) {
+  const { t: tr } = useTranslation();
   const [revealed, setRevealed] = useState(false);
   const state = tickState(msg);
   const hidden = msg.has_sensitive && !revealed;
@@ -154,7 +158,7 @@ function Bubble({ msg, mine, t, role }) {
           <span style={{ fontSize:10.5, color:t.sub }}>{fmtTime(msg.created_at)}</span>
           {msg.failed && (
             <span style={{ fontSize:10.5, color:'#f87171', display:'inline-flex', alignItems:'center', gap:3 }}>
-              <AlertCircle size={11} /> not sent
+              <AlertCircle size={11} /> {tr("chatThread.notSent")}
             </span>
           )}
           {mine && !msg.failed && (
@@ -200,6 +204,7 @@ export default function ChatThread({
   readOnly = false,
   footer = null,
 }) {
+  const { t: tr } = useTranslation();
   const t = THEMES[theme] || THEMES.light;
   const { messages, loading, sending, send, markRead } = useChatThread(threadId, role);
   const [draft, setDraft] = useState('');
@@ -410,8 +415,7 @@ export default function ChatThread({
         <div style={{ display:'flex', gap:8, padding:'9px 14px', background:t.warnBg, borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
           <ShieldAlert size={14} style={{ color:t.warnIcon, flexShrink:0, marginTop:1 }} />
           <p style={{ margin:0, fontSize:11.5, lineHeight:1.5, color:t.text }}>
-            Keep IC numbers, bank details and copies of documents out of this chat.
-            Phone numbers are hidden by default and only shown when the other person taps.
+            {tr("chatThread.keepIcNumbersBankDetails")}
           </p>
         </div>
       )}
@@ -419,10 +423,10 @@ export default function ChatThread({
       <div ref={listRef} style={{ flex:1, overflowY:'auto', padding:'14px', minHeight:0 }}>
         <div style={centre || undefined}>
         {loading ? (
-          <p style={{ fontSize:12.5, color:t.sub, textAlign:'center', marginTop:24 }}>Loading…</p>
+          <p style={{ fontSize:12.5, color:t.sub, textAlign:'center', marginTop:24 }}>{tr("chatThread.loading")}</p>
         ) : messages.length === 0 ? (
           <p style={{ fontSize:12.5, color:t.sub, textAlign:'center', marginTop:24, lineHeight:1.6 }}>
-            No messages yet.<br />Say hello and ask anything about the car.
+            {tr("chatThread.noMessagesYet")}<br />{tr("chatThread.sayHelloAndAskAnything")}
           </p>
         ) : messages.map(m => (
           <Bubble key={m.id} msg={m} mine={m.sender_role === role} t={t} role={role} />
@@ -441,11 +445,11 @@ export default function ChatThread({
         <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 12px', flexShrink:0 }}>
           <Lock size={12} style={{ color:t.sub, flexShrink:0 }} />
           <p style={{ margin:0, flex:'1 1 150px', minWidth:0, fontSize:11.5, lineHeight:1.5, color:t.sub }}>
-            Draft replies and ask about a buyer with AI on Premium.
+            {tr("chatThread.draftRepliesAndAskAbout")}
           </p>
           <a href={upgradeHref}
             style={{ display:'inline-flex', alignItems:'center', gap:5, flexShrink:0, padding:'6px 12px', borderRadius:8, background:'#dc2626', color:'#fff', fontSize:11.5, fontWeight:700, textDecoration:'none', fontFamily:t.font }}>
-            <Sparkles size={12} /> Upgrade
+            <Sparkles size={12} /> {tr("chatThread.upgrade")}
           </a>
         </div>
       )}
@@ -457,7 +461,7 @@ export default function ChatThread({
         <div style={{ display:'flex', alignItems:'center', gap:9, borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 12px', flexShrink:0 }}>
           <Sparkles size={12} style={{ color:t.sub, flexShrink:0 }} />
           <p style={{ margin:0, fontSize:11.5, lineHeight:1.5, color:t.sub }}>
-            AI drafting &amp; buyer Q&amp;A — coming soon.
+            {tr("chatThread.aiDraftingBuyerQA")}
           </p>
         </div>
       )}
@@ -467,7 +471,7 @@ export default function ChatThread({
           {aiAnswer && (
             <div style={{ display:'flex', gap:8, background:t.aiBg, border:`1px solid ${t.aiLine}`, borderRadius:9, padding:'10px 12px', marginBottom:8 }}>
               <p style={{ margin:0, flex:1, fontSize:12.5, lineHeight:1.6, color:t.text, whiteSpace:'pre-wrap' }}>{aiAnswer}</p>
-              <button onClick={() => setAiAnswer(null)} aria-label="Dismiss"
+              <button onClick={() => setAiAnswer(null)} aria-label={tr("chatThread.dismiss")}
                 style={{ background:'none', border:'none', color:t.sub, cursor:'pointer', padding:0, height:'fit-content' }}>
                 <X size={13} />
               </button>
@@ -476,15 +480,15 @@ export default function ChatThread({
           <div style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
             <button onClick={() => callAssist('suggest')} disabled={aiLoading}
               style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 11px', borderRadius:8, border:`1px solid ${t.aiBtnLine}`, background:'transparent', color:t.aiText, fontSize:11.5, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:t.font, whiteSpace:'nowrap' }}>
-              <Sparkles size={12} /> {aiLoading ? 'Thinking…' : 'Draft a reply'}
+              <Sparkles size={12} /> {aiLoading ? tr("chatThread.thinking") : tr("chatThread.draftAReply")}
             </button>
             <input value={askText} onChange={e => setAskText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && askText.trim()) { e.preventDefault(); callAssist('ask', askText); } }}
-              placeholder="Ask the AI about this buyer…" aria-label="Ask the AI about this conversation"
+              placeholder={tr("chatThread.askTheAiAboutThis")} aria-label={tr("chatThread.askTheAiAboutThis2")}
               style={{ flex:'1 1 160px', minWidth:0, boxSizing:'border-box', padding:'7px 11px', borderRadius:8, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:11.5, fontFamily:t.font, outline:'none' }} />
           </div>
           <p style={{ margin:'7px 2px 0', fontSize:10.5, color:t.sub, lineHeight:1.5 }}>
-            The AI reads this chat with phone numbers and IC numbers already stripped out. Drafts are yours to edit and send.
+            {tr("chatThread.theAiReadsThisChat")}
           </p>
         </div>
       )}
@@ -533,20 +537,20 @@ export default function ChatThread({
         <div style={{ display:'flex', alignItems:'flex-end', gap:6, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:22, padding: role === 'seller' ? '6px 6px 6px 6px' : '6px 6px 6px 16px', boxShadow:t.shadow, ...centre }}>
         {/* Sellers only: the database refuses a card from a buyer anyway. */}
         {role === 'seller' && (
-          <button type="button" onClick={() => setPickingCar(true)} aria-label="Send a car" title="Send a car"
+          <button type="button" onClick={() => setPickingCar(true)} aria-label={tr("chatThread.sendACar")} title={tr("chatThread.sendACar")}
             style={{ flexShrink:0, width:38, height:38, marginBottom:2, borderRadius:16, border:'none', background:'transparent', color:t.sub, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Car size={18} />
           </button>
         )}
-        <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
+        <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder={tr("chatThread.typeAMessage")}
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
-          rows={1} maxLength={4000} aria-label="Message"
+          rows={1} maxLength={4000} aria-label={tr("chatThread.message")}
           style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, lineHeight:1.4, fontFamily:t.font, outline:'none', resize:'none', display:'block' }} />
         {/* Keeps focus in the input: without this the tap blurs it, the bar
             unpins out from under the finger before the click lands, and the
             keyboard shuts between every message. */}
         <button type="submit" onMouseDown={e => e.preventDefault()}
-          disabled={!draft.trim() || sending} aria-label="Send"
+          disabled={!draft.trim() || sending} aria-label={tr("chatThread.send")}
           style={{ flexShrink:0, width:38, height:38, marginBottom:2, borderRadius:16, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <Send size={16} />
         </button>

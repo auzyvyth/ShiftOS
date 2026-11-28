@@ -11,10 +11,12 @@ import { Car } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { premiumDark as PD } from "../../theme/tokens";
 import { suggestCommission } from "../../utils/commission";
+import { useTranslation } from 'react-i18next';
 
 const COLS = "id, slug, year, brand, model, variant, selling_price, images, mileage, transmission, fuel_type, commission_amount, assigned_to, status";
 
 export default function DealerInventory({ dealerId, userId, myCarIds, onFeatured, onUnfeatured }) {
+  const { t } = useTranslation();
   const [cars, setCars] = useState(null); // null = loading
   const [loadError, setLoadError] = useState(false);
   const [commConfig, setCommConfig] = useState(null);
@@ -55,9 +57,9 @@ export default function DealerInventory({ dealerId, userId, myCarIds, onFeatured
     setBusyId(car.id);
     const { error } = await supabase.from("salesman_listings").insert({ dealer_id: dealerId, salesman_id: userId, listing_id: car.id });
     setBusyId(null);
-    if (error && error.code !== "23505") { toast.error("Could not add this car to your listings"); return; }
+    if (error && error.code !== "23505") { toast.error(t("linkedInv.couldNotAddThisCar")); return; }
     onFeatured?.(car);
-    toast.success(`${[car.year, car.brand, car.model].filter(Boolean).join(" ")} added to your listings`);
+    toast.success(t("linkedInv.addedToListings", { car: [car.year, car.brand, car.model].filter(Boolean).join(" ") }));
   };
 
   const unfeature = async (car) => {
@@ -66,7 +68,7 @@ export default function DealerInventory({ dealerId, userId, myCarIds, onFeatured
     const { data, error } = await supabase.from("salesman_listings").delete()
       .eq("salesman_id", userId).eq("listing_id", car.id).select("listing_id");
     setBusyId(null);
-    if (error || !data?.length) { toast.error("Could not remove this car"); return; }
+    if (error || !data?.length) { toast.error(t("linkedInv.couldNotRemoveThisCar")); return; }
     onUnfeatured?.(car);
   };
 
@@ -74,18 +76,18 @@ export default function DealerInventory({ dealerId, userId, myCarIds, onFeatured
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>Dealer cars</p>
+      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>{t("linkedInv.dealerCars")}</p>
       <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textMuted }}>
-        The dealership's open stock. Add a car to your listings to share it and work its buyers.
+        {t("linkedInv.theDealershipSOpenStock")}
       </p>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search make, model, year"
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("linkedInv.searchMakeModelYear")}
         style={{ width: "100%", maxWidth: 360, marginBottom: 16, background: PD.raised, border: "none", borderRadius: PD.radius.row, color: PD.text, fontSize: 14, padding: "11px 14px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
       {cars === null ? (
-        <p style={{ fontSize: 13, color: PD.textMuted }}>Loading dealer cars...</p>
+        <p style={{ fontSize: 13, color: PD.textMuted }}>{t("linkedInv.loadingDealerCars")}</p>
       ) : loadError ? (
-        <p style={{ fontSize: 13, color: PD.accentText }}>Could not load the dealer's cars. Pull to refresh and try again.</p>
+        <p style={{ fontSize: 13, color: PD.accentText }}>{t("linkedInv.couldNotLoadTheDealer")}</p>
       ) : shown.length === 0 ? (
-        <p style={{ fontSize: 13, color: PD.textMuted }}>{cars.length === 0 ? "No open cars right now." : "No cars match your search."}</p>
+        <p style={{ fontSize: 13, color: PD.textMuted }}>{cars.length === 0 ? t("linkedInv.noOpenCarsRightNow") : t("linkedInv.noCarsMatchYourSearch")}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 250px), 1fr))", gap: 14 }}>
           {shown.map((car) => {
@@ -107,21 +109,21 @@ export default function DealerInventory({ dealerId, userId, myCarIds, onFeatured
                     {[car.variant, car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null, car.transmission].filter(Boolean).join(" · ")}
                   </p>
                   <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 700, color: PD.text, fontVariantNumeric: "tabular-nums" }}>
-                    {car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "Ask for price"}
+                    {car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : t("linkedInv.askForPrice")}
                   </p>
                   <p style={{ margin: 0, fontSize: 12, color: comm != null ? PD.up : PD.textMuted }}>
-                    {comm != null ? `Earn RM ${comm.toLocaleString("en-MY")}` : "Commission set by dealer"}
+                    {comm != null ? t("linkedInv.earn", { n: comm.toLocaleString("en-MY") }) : t("linkedInv.commissionSetByDealer")}
                   </p>
                   <div style={{ marginTop: "auto", paddingTop: 8 }}>
                     {mine ? (
                       <button type="button" onClick={() => unfeature(car)} disabled={busyId === car.id}
                         style={{ width: "100%", padding: "10px 12px", borderRadius: PD.radius.row, background: PD.raised, color: PD.textSec, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                        {busyId === car.id ? "Removing..." : "On your listings. Remove"}
+                        {busyId === car.id ? t("linkedInv.removing") : t("linkedInv.onYourListingsRemove")}
                       </button>
                     ) : (
                       <button type="button" onClick={() => feature(car)} disabled={busyId === car.id}
                         style={{ width: "100%", padding: "10px 12px", borderRadius: PD.radius.row, background: PD.accent, color: PD.onAccent, border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: busyId === car.id ? 0.6 : 1 }}>
-                        {busyId === car.id ? "Adding..." : "Add to my listings"}
+                        {busyId === car.id ? t("linkedInv.adding") : t("linkedInv.addToMyListings")}
                       </button>
                     )}
                   </div>

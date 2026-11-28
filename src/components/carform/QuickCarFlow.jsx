@@ -6,6 +6,7 @@ import {
   BODY_TYPES, FUEL_TYPES, TRANSMISSIONS, CC_PRESETS, POPULAR_BRANDS, COLOURS, CONDITION_COPY,
 } from "../../utils/carFormOptions";
 import QuickSteps, { Tile, Custom, BigNumber, fmtNum } from "./QuickSteps";
+import { useTranslation } from 'react-i18next';
 
 // The Car stage of the quick listing form (new listings only — CarForm
 // decides). Anything the catalogue already knows is filled for the seller and
@@ -16,6 +17,7 @@ import QuickSteps, { Tile, Custom, BigNumber, fmtNum } from "./QuickSteps";
 const ALL_BRANDS = Object.keys(CAR_DATA).sort();
 
 export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unlockSpecs, onExitBack, onDone, renderExtras, dark, conditionChosen }) {
+  const { t } = useTranslation();
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // ── Variant suggestions: what other sellers called this model's trims ─────
@@ -78,7 +80,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
         {q && !exact && !models.length && <Custom value={query.trim()} onUse={() => pick({ brand: query.trim(), model: "" })} />}
         {!q && (
           <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-1">All brands</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-1">{t("qcf.allBrands")}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{ALL_BRANDS.filter((b) => !popular.includes(b)).map(brandTile)}</div>
           </>
         )}
@@ -94,7 +96,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
       <div className="space-y-4">
         {searchBox(all.length ? `Search ${form.brand} models` : "Type the model")}
         {!all.length && (
-          <p className="text-xs text-gray-500">We don't have a model list for {form.brand} yet — type it, then tap the suggestion.</p>
+          <p className="text-xs text-gray-500">{t("qcf.noModelList", { brand: form.brand })}</p>
         )}
         {list.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -138,13 +140,13 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
             ref={inputRef}
             autoFocus
             inputMode="numeric"
-            placeholder="Type the year, e.g. 1998"
+            placeholder={t("qcf.typeTheYearEG")}
             value={form.year}
             onChange={(e) => set("year", e.target.value.replace(/\D/g, "").slice(0, 4))}
             className={textCls}
           />
         ) : (
-          <button type="button" onClick={() => setOtherOpen(true)} className={linkBtn}>Another year</button>
+          <button type="button" onClick={() => setOtherOpen(true)} className={linkBtn}>{t("qcf.anotherYear")}</button>
         )}
       </div>
     );
@@ -176,7 +178,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
     return (
       <div className="space-y-3">
         <BigNumber inputRef={inputRef} value={form.mileage} onChange={(v) => set("mileage", v)} suffix="km" placeholder="e.g. 45,000" maxDigits={7} />
-        <p className="text-xs text-gray-500">As shown on the odometer.</p>
+        <p className="text-xs text-gray-500">{t("qcf.asShownOnTheOdometer")}</p>
       </div>
     );
   }
@@ -194,9 +196,9 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
           ))}
         </div>
         {otherOpen || (form.colour && !known) ? (
-          <input ref={inputRef} autoFocus={otherOpen} placeholder="e.g. Pearl White" value={form.colour} onChange={(e) => set("colour", e.target.value)} className={textCls} />
+          <input ref={inputRef} autoFocus={otherOpen} placeholder={t("qcf.eGPearlWhite")} value={form.colour} onChange={(e) => set("colour", e.target.value)} className={textCls} />
         ) : (
-          <button type="button" onClick={() => setOtherOpen(true)} className={linkBtn}>Other colour</button>
+          <button type="button" onClick={() => setOtherOpen(true)} className={linkBtn}>{t("qcf.otherColour")}</button>
         )}
       </div>
     );
@@ -207,13 +209,13 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
       <div className="space-y-4">
         {variants.length > 0 && (
           <>
-            <p className="text-xs text-gray-500">What other sellers list for the {form.brand} {form.model}:</p>
+            <p className="text-xs text-gray-500">{t("qcf.otherSellersList", { car: `${form.brand} ${form.model}` })}</p>
             <div className="flex flex-wrap gap-2">
               {variants.map((v) => <Tile key={v} selected={form.variant === v} onClick={() => pick({ variant: v })}>{v}</Tile>)}
             </div>
           </>
         )}
-        <input ref={inputRef} placeholder="Or type it, e.g. 1.5 V" value={form.variant} onChange={(e) => set("variant", e.target.value)} enterKeyHint="next" className={textCls} />
+        <input ref={inputRef} placeholder={t("qcf.orTypeItEG")} value={form.variant} onChange={(e) => set("variant", e.target.value)} enterKeyHint="next" className={textCls} />
       </div>
     );
   }
@@ -230,7 +232,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
     return (
       <div className="space-y-4">
         <p className="text-sm text-gray-500">
-          From our catalogue for the {specLock?.make} {specLock?.model} {specLock ? `(${specLock.yearFrom}${specLock.yearTo >= 2099 ? " on" : `-${specLock.yearTo}`})` : ""}.
+          {t("qcf.fromCatalogue", { car: `${specLock?.make} ${specLock?.model}`, years: specLock ? `(${specLock.yearFrom}${specLock.yearTo >= 2099 ? " on" : `-${specLock.yearTo}`})` : "" })}
         </p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-4 rounded-xl border border-gray-200 bg-gray-50">
           {rows.map(([k, v]) => (
@@ -241,7 +243,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
           ))}
         </dl>
         <button type="button" onClick={() => { unlockSpecs(); goto("body"); }} className={linkBtn}>
-          Not my car? Set the specs myself
+          {t("qcf.notMyCarSetThe")}
         </button>
       </div>
     );
@@ -266,7 +268,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
         <div className="relative">
           <input
             inputMode="numeric"
-            placeholder="Or exact cc, e.g. 1497"
+            placeholder={t("qcf.orExactCcEG")}
             value={form.engineCc}
             onChange={(e) => set("engineCc", e.target.value.replace(/\D/g, "").slice(0, 5))}
             className={`${textCls} pr-12`}
@@ -279,34 +281,34 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
 
   const hasMileage = form.mileage !== "" && form.mileage != null;
   const screens = [
-    { key: "brand", title: "What's the brand?", required: true, answered: !!form.brand, render: renderBrand, focus: "fine", hideContext: true, onEnter: searchEnter("brand") },
-    { key: "model", title: "Which model?", required: true, answered: !!form.model, render: renderModel, focus: "fine", onEnter: searchEnter("model") },
-    { key: "year", title: "What year?", required: true, answered: !!form.year, render: renderYear },
+    { key: "brand", title: t("qcf.whatSTheBrand"), required: true, answered: !!form.brand, render: renderBrand, focus: "fine", hideContext: true, onEnter: searchEnter("brand") },
+    { key: "model", title: t("qcf.whichModel"), required: true, answered: !!form.model, render: renderModel, focus: "fine", onEnter: searchEnter("model") },
+    { key: "year", title: t("qcf.whatYear"), required: true, answered: !!form.year, render: renderYear },
     // A salesman already answered this in the Used / Recon / New chooser that
     // opens the form (CarKindChooser passes the condition in): asking again was
     // the same question twice. Everyone else still gets the screen.
-    { key: "condition", title: "Used, recon or new?", skip: !!conditionChosen, required: true, answered: !!form.condition, render: renderCondition },
-    { key: "mileage", title: "How many km on it?", skip: form.condition === "new", required: true, answered: hasMileage, render: renderMileage, focus: "always" },
-    { key: "colour", title: "What colour?", required: true, answered: !!form.colour, render: renderColour },
-    { key: "variant", title: "Which variant?", filled: !!form.variant, render: renderVariant },
-    { key: "specs", title: "We filled in the specs", skip: !specsLocked, render: renderSpecs, primaryLabel: "Looks right", primaryIcon: "check" },
-    { key: "body", title: "Body type?", skip: specsLocked, required: true, answered: !!form.bodyType, render: pillScreen(BODY_TYPES, "bodyType") },
-    { key: "fuel", title: "Fuel type?", skip: specsLocked, required: true, answered: !!form.fuelType, render: pillScreen(FUEL_TYPES, "fuelType") },
-    { key: "transmission", title: "Gearbox?", skip: specsLocked, filled: !!form.transmission, render: pillScreen(TRANSMISSIONS, "transmission") },
-    { key: "cc", title: "Engine size?", skip: specsLocked, filled: !!form.engineCc, render: renderCc },
-    { key: "extras", title: "Anything else? (optional)", render: renderExtras, primaryLabel: "Done", enter: "pass" },
+    { key: "condition", title: t("qcf.usedReconOrNew"), skip: !!conditionChosen, required: true, answered: !!form.condition, render: renderCondition },
+    { key: "mileage", title: t("qcf.howManyKmOnIt"), skip: form.condition === "new", required: true, answered: hasMileage, render: renderMileage, focus: "always" },
+    { key: "colour", title: t("qcf.whatColour"), required: true, answered: !!form.colour, render: renderColour },
+    { key: "variant", title: t("qcf.whichVariant"), filled: !!form.variant, render: renderVariant },
+    { key: "specs", title: t("qcf.weFilledInTheSpecs"), skip: !specsLocked, render: renderSpecs, primaryLabel: "Looks right", primaryIcon: "check" },
+    { key: "body", title: t("qcf.bodyType"), skip: specsLocked, required: true, answered: !!form.bodyType, render: pillScreen(BODY_TYPES, "bodyType") },
+    { key: "fuel", title: t("qcf.fuelType"), skip: specsLocked, required: true, answered: !!form.fuelType, render: pillScreen(FUEL_TYPES, "fuelType") },
+    { key: "transmission", title: t("qcf.gearbox"), skip: specsLocked, filled: !!form.transmission, render: pillScreen(TRANSMISSIONS, "transmission") },
+    { key: "cc", title: t("qcf.engineSize"), skip: specsLocked, filled: !!form.engineCc, render: renderCc },
+    { key: "extras", title: t("qcf.anythingElseOptional"), render: renderExtras, primaryLabel: "Done", enter: "pass" },
   ];
 
   const summaryRows = [
-    { key: "brand", label: "Brand", value: form.brand },
-    { key: "model", label: "Model", value: form.model },
-    { key: "year", label: "Year", value: form.year },
-    { key: "condition", label: "Condition", value: CONDITION_COPY[form.condition]?.label || form.condition },
-    { key: "mileage", label: "Mileage", value: hasMileage ? `${fmtNum(form.mileage)} km` : "" },
-    { key: "colour", label: "Colour", value: form.colour },
-    { key: "variant", label: "Variant", value: form.variant },
-    { key: specsLocked ? "specs" : "body", label: "Specs", value: [form.engineCc && `${form.engineCc}cc`, form.bodyType, form.fuelType, form.transmission].filter(Boolean).join(" · ") },
-    { key: "extras", label: "Plate & extras", value: [form.plate_number, form.listing_title && "title set"].filter(Boolean).join(" · ") },
+    { key: "brand", label: t("qcf.brand"), value: form.brand },
+    { key: "model", label: t("qcf.model"), value: form.model },
+    { key: "year", label: t("qcf.year"), value: form.year },
+    { key: "condition", label: t("qcf.condition"), value: CONDITION_COPY[form.condition]?.label || form.condition },
+    { key: "mileage", label: t("qcf.mileage"), value: hasMileage ? `${fmtNum(form.mileage)} km` : "" },
+    { key: "colour", label: t("qcf.colour"), value: form.colour },
+    { key: "variant", label: t("qcf.variant"), value: form.variant },
+    { key: specsLocked ? "specs" : "body", label: t("qcf.specs"), value: [form.engineCc && `${form.engineCc}cc`, form.bodyType, form.fuelType, form.transmission].filter(Boolean).join(" · ") },
+    { key: "extras", label: t("qcf.plateExtras"), value: [form.plate_number, form.listing_title && "title set"].filter(Boolean).join(" · ") },
   ];
 
   // Land on the summary when the car is already identified (Back from a later

@@ -11,6 +11,7 @@ import {
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
+import PageVideo from "../components/salesmanLanding/PageVideo";
 import PricingCards from "../components/pricing/PricingCards";
 import { salesmanPricingCards, PRICING_FEATURES_LABEL } from "../utils/plans";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
@@ -302,6 +303,9 @@ export default function SalesmanLiteLanding() {
         {/* ── What you get with each plan: one real screenshot per tab ── */}
         <PlanTour copy={t.tour} lang={lang} {...(inApp ? { ctaHref: waHref, ctaLabel: t.inApp.cta, onCtaClick: onWa("tour") } : {})} />
 
+        {/* ── A real Premium page, scrolling top to footer (under the tour's circuit line) ── */}
+        <PageVideo copy={t.pageVideo} examplePath={EXAMPLE_PAGE.path} exampleLabel={EXAMPLE_PAGE.label} />
+
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
           <div className="sll-wrap">
@@ -438,6 +442,9 @@ const CSS = `
   .sll-hero-bill { font-size: 13.5px; color: #4b5563; margin: 4px 0 0; max-width: 460px; line-height: 1.5; }
   .sll-hero-lite { font-size: 14px; font-weight: 600; color: #374151; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
   .sll-hero-lite:hover { color: #0a0a0a; text-decoration-color: #0a0a0a; }
+  /* Stacked hero (owner, 2026-11-28): the three screens come straight after the intro line, the
+     1-2-3 list under them. Order only; the two-column laptop layout places by grid areas and ignores it. */
+  .sll-parts, .sll-badges, .sll-hero-cta { order: 2; }
 
   /* Try it: the interactive presenter, under the hero */
   .sll-try-inner { display: grid; grid-template-columns: 1fr minmax(320px, 400px); gap: 56px; align-items: center; }
@@ -618,7 +625,8 @@ const CSS = `
     .sll-sticker-p { font-size: 28px; }
     .sll-sticker-p small { font-size: 12px; }
     .sll-sticker-k, .sll-sticker-n { font-size: 10.5px; }
-    .sll-shots-note { margin-top: 18px; }
+    .sll-shots-note { margin: 18px 0 26px; }
+    .sll-lead { margin-bottom: 12px; }
     .sll-try-inner { gap: 28px; }
     .sll-feat { gap: 28px; padding: 8px 0 36px; }
     .sll-feat + .sll-feat { padding-top: 36px; }

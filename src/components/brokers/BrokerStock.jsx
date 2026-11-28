@@ -10,6 +10,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import { PLAN_CONFIG } from '../../utils/planConfig';
 import { SITE_URL } from '../../config/site';
 import * as api from '../../lib/brokerApi';
+import { useTranslation } from 'react-i18next';
 
 // BROKER-1: the broker's "Dealer stock" tab, in Salesman Lite (theme "dark") and
 // Salesman Premium (theme "premium"). A broker is a standalone seller connected to one or
@@ -37,6 +38,7 @@ const THEMES = {
 const STATUS_WORD = { active: 'Connected', paused: 'Paused', requested: 'Waiting', revoked: 'Ended' };
 
 export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', onUpgrade, hasWhatsApp = true }) {
+  const { t } = useTranslation();
   const T = THEMES[theme] || THEMES.dark;
   const [dealers, setDealers] = useState(null); // null = loading
   const [regs, setRegs] = useState([]);
@@ -95,7 +97,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
   const join = () => run(async () => {
     const res = await api.requestDealer(sub.trim());
     if (!res.ok) { toast.error(api.brokerError(res.reason)); return; }
-    toast.success('Request sent. The dealer has to approve you.');
+    toast.success(t("brokerStock.requestSentTheDealerHas"));
     setSub('');
     setJoinOpen(false);
     await loadBase();
@@ -119,17 +121,17 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
     setStock((rows) => (rows || []).map((c) => (c.id === car.id ? { ...c, on_my_page: adding } : c)));
     api.applyPageCar(car, dealerId, (active.find((d) => d.dealer_id === dealerId) || {}).name, adding);
     if (quiet) return;
-    if (adding) toast.success(`${title} is now on your page.`);
-    else toast(`${title} removed from your page.`, { action: { label: 'Undo', onClick: () => togglePage({ ...car, on_my_page: false }, true) } });
+    if (adding) toast.success(t("brokerStock.nowOnPage", { title }));
+    else toast(t("brokerStock.removedFromPage", { title }), { action: { label: t("brokerStock.undo"), onClick: () => togglePage({ ...car, on_my_page: false }, true) } });
   });
 
   const copyLink = async (car) => {
-    if (!car.slug) { toast.error('This car has no link yet.'); return; }
+    if (!car.slug) { toast.error(t("brokerStock.thisCarHasNoLink")); return; }
     const url = `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(slug || '')}&src=share`;
     try {
       if (navigator.share) { await navigator.share({ url }); return; }
       await navigator.clipboard.writeText(url);
-      toast.success('Link copied. Anyone who enquires from it comes to you.');
+      toast.success(t("brokerStock.linkCopiedAnyoneWhoEnquires"));
     } catch { /* share sheet closed */ }
   };
 
@@ -151,7 +153,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
   };
 
   if (dealers === null) {
-    return <div style={{ padding: 24, color: T.sec, fontSize: 14 }}>Loading your dealers...</div>;
+    return <div style={{ padding: 24, color: T.sec, fontSize: 14 }}>{t("brokerStock.loadingYourDealers")}</div>;
   }
 
   const price = PLAN_CONFIG.salesman_full?.price;
@@ -159,43 +161,41 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '8px 0 40px', display: 'flex', flexDirection: 'column', gap: 16, color: T.text }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>Dealer stock</h2>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>{t("brokerStock.dealerStock")}</h2>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: T.sec, lineHeight: 1.5 }}>
-          Cars from dealers you work with. The amount in green is what you earn if the car sells to your buyer.
+          {t("brokerStock.carsFromDealersYouWork")}
         </p>
       </div>
 
       {loadError && (
         <div style={{ ...card, fontSize: 13, color: T.accentText }}>
           {loadError}{' '}
-          <button type="button" onClick={loadBase} style={{ ...greyKey, minHeight: 36, marginLeft: 8 }}>Try again</button>
+          <button type="button" onClick={loadBase} style={{ ...greyKey, minHeight: 36, marginLeft: 8 }}>{t("brokerStock.tryAgain")}</button>
         </div>
       )}
 
       {isPremium && !hasWhatsApp && (
         <div style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
-          <b style={{ color: T.text || 'inherit' }}>Add your WhatsApp number in Settings.</b> Until you do, a buyer who taps WhatsApp on a
-          dealer's car from your page reaches the dealer, not you, and no lead is filed for you.
+          <b style={{ color: T.text || 'inherit' }}>{t("brokerStock.addYourWhatsappNumberIn")}</b> {t("brokerStock.untilYouDoABuyer")}
         </div>
       )}
 
       {!isPremium && (
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 600 }}>Sell dealers' cars</div>
+          <div style={{ fontSize: 17, fontWeight: 600 }}>{t("brokerStock.sellDealersCars")}</div>
           <p style={{ margin: 0, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
-            See every car a dealer opens to brokers, put them on your own page, and register your buyers so
-            the buyer is held for you on that dealer's cars for {api.HOLD_DAYS} days. This comes with Premium
-            {price ? `, RM ${price} a month` : ''}.
+            {t("brokerStock.seeEveryCarADealer")} {api.HOLD_DAYS} {t("brokerStock.daysThisComesWithPremium")}
+            {price ? t("brokerStock.perMonth", { price }) : ''}.
           </p>
           <div>
-            <button type="button" onClick={onUpgrade} style={redKey}>See Premium</button>
+            <button type="button" onClick={onUpgrade} style={redKey}>{t("brokerStock.seePremium")}</button>
           </div>
         </div>
       )}
 
       {!isPremium && (dealers || []).length > 0 && (
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 13, color: T.muted }}>Your dealers</div>
+          <div style={{ fontSize: 13, color: T.muted }}>{t("brokerStock.yourDealers")}</div>
           {dealers.map((d) => (
             <div key={d.dealer_id} style={{ background: T.row, borderRadius: T.rowRadius, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14 }}>
               <span>{d.name}</span>
@@ -214,71 +214,71 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
               </button>
             ))}
             <button type="button" onClick={() => setView('buyers')} style={pill(view === 'buyers')}>
-              My buyers{regs.length ? ` (${regs.length})` : ''}
+              {t("brokerStock.myBuyers")}{regs.length ? ` (${regs.length})` : ''}
             </button>
-            <button type="button" onClick={() => setJoinOpen((v) => !v)} style={pill(false)}>Join a dealer</button>
+            <button type="button" onClick={() => setJoinOpen((v) => !v)} style={pill(false)}>{t("brokerStock.joinADealer")}</button>
           </div>
 
           {joinOpen && (
             <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <label style={{ fontSize: 13, color: T.sec }} htmlFor="broker-sub">The dealer's storefront name or address (like vyth or vyth.drevo.my)</label>
+              <label style={{ fontSize: 13, color: T.sec }} htmlFor="broker-sub">{t("brokerStock.theDealerSStorefrontName")}</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input
                   id="broker-sub" type="text" value={sub} onChange={(e) => setSub(e.target.value)}
                   placeholder="bandarauto" autoCapitalize="none" autoCorrect="off" maxLength={40}
                   style={{ flex: '1 1 200px', minWidth: 0, height: 48, border: 0, borderRadius: 12, background: T.input, color: T.text, fontSize: 16, padding: '0 14px', fontFamily: 'inherit' }}
                 />
-                <button type="button" onClick={join} disabled={busy || sub.trim().length < 2} style={{ ...redKey, opacity: busy || sub.trim().length < 2 ? 0.4 : 1 }}>Send request</button>
+                <button type="button" onClick={join} disabled={busy || sub.trim().length < 2} style={{ ...redKey, opacity: busy || sub.trim().length < 2 ? 0.4 : 1 }}>{t("brokerStock.sendRequest")}</button>
               </div>
-              <div style={{ fontSize: 12, color: T.muted }}>The dealer has to approve you before you see their cars.</div>
+              <div style={{ fontSize: 12, color: T.muted }}>{t("brokerStock.theDealerHasToApprove")}</div>
             </div>
           )}
 
           {invites.map((d) => (
             <div key={d.dealer_id} style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{d.name} invited you</div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{d.name} {t("brokerStock.invitedYou")}</div>
                 <div style={{ fontSize: 13, color: T.sec, marginTop: 2 }}>
-                  {Number(d.commission_default) > 0 ? `${api.money(d.commission_default)} per car sold to your buyer.` : 'Commission is agreed with the dealer.'}
+                  {Number(d.commission_default) > 0 ? t("brokerStock.perCarSold", { amount: api.money(d.commission_default) }) : t("brokerStock.commissionIsAgreedWithThe")}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" disabled={busy} onClick={() => answerInvite(d, 'decline')} style={greyKey}>Decline</button>
-                <button type="button" disabled={busy} onClick={() => answerInvite(d, 'accept')} style={redKey}>Accept</button>
+                <button type="button" disabled={busy} onClick={() => answerInvite(d, 'decline')} style={greyKey}>{t("brokerStock.decline")}</button>
+                <button type="button" disabled={busy} onClick={() => answerInvite(d, 'accept')} style={redKey}>{t("brokerStock.accept")}</button>
               </div>
             </div>
           ))}
 
           {waiting.map((d) => (
             <div key={d.dealer_id} style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.5 }}>
-              <strong style={{ color: T.text }}>Waiting for {d.name}.</strong> You will get a notification the moment they approve.
+              <strong style={{ color: T.text }}>{t("brokerStock.waitingFor")} {d.name}.</strong> {t("brokerStock.youWillGetANotification")}
             </div>
           ))}
 
           {paused.map((d) => (
             <div key={d.dealer_id} style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.5 }}>
-              <strong style={{ color: T.text }}>{d.name} paused your access.</strong> Their cars are hidden until they resume it. Buyers you already registered stay yours.
+              <strong style={{ color: T.text }}>{d.name} {t("brokerStock.pausedYourAccess")}</strong> {t("brokerStock.theirCarsAreHiddenUntil")}
             </div>
           ))}
 
           {view === 'cars' && !active.length && !invites.length && !waiting.length && !paused.length && (
             <div style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
-              You are not connected to a dealer yet. Tap Join a dealer and type their storefront name, or ask a dealer to invite you by your page name.
+              {t("brokerStock.youAreNotConnectedTo")}
             </div>
           )}
 
           {view === 'cars' && dealerId && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.sec }}>
-                <span>Dealer cars on your page</span>
+                <span>{t("brokerStock.dealerCarsOnYourPage")}</span>
                 <span style={{ color: T.text, fontWeight: 500 }}>{onPageCount} of {api.BROKER_CAR_CAP}</span>
               </div>
 
               {stockError && <div style={{ ...card, fontSize: 13, color: T.accentText }}>{stockError}</div>}
-              {stock === null && <div style={{ color: T.sec, fontSize: 14 }}>Loading cars...</div>}
+              {stock === null && <div style={{ color: T.sec, fontSize: 14 }}>{t("brokerStock.loadingCars")}</div>}
               {stock && !stock.length && !stockError && (
                 <div style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
-                  This dealer has no cars open to brokers right now.
+                  {t("brokerStock.thisDealerHasNoCars")}
                 </div>
               )}
 
@@ -296,9 +296,9 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
                           {[car.transmission, car.mileage ? `${Number(car.mileage).toLocaleString('en-MY')} km` : null].filter(Boolean).join(' · ')}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 16, fontWeight: 600 }}>{car.selling_price ? api.money(car.selling_price) : 'Ask'}</span>
+                          <span style={{ fontSize: 16, fontWeight: 600 }}>{car.selling_price ? api.money(car.selling_price) : t("brokerStock.ask")}</span>
                           {Number(car.commission) > 0 && (
-                            <span style={{ fontSize: 13, fontWeight: 500, color: T.up }}>You earn {api.money(car.commission)}</span>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: T.up }}>{t("brokerStock.youEarn")} {api.money(car.commission)}</span>
                           )}
                         </div>
                       </div>
@@ -314,23 +314,23 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
                         }}
                       >
                         {pendingId === car.id
-                          ? (car.on_my_page ? 'Removing...' : 'Adding...')
+                          ? (car.on_my_page ? t("brokerStock.removing") : t("brokerStock.adding"))
                           : car.on_my_page
-                            ? (<><Check size={16} strokeWidth={2.6} /> On your page</>)
-                            : (<><Plus size={16} strokeWidth={2.4} /> Add to my page</>)}
+                            ? (<><Check size={16} strokeWidth={2.6} /> {t("brokerStock.onYourPage")}</>)
+                            : (<><Plus size={16} strokeWidth={2.4} /> {t("brokerStock.addToMyPage")}</>)}
                       </button>
-                      <button type="button" onClick={() => setSheetCar({ ...car, title })} style={{ ...redKey, flex: 1 }}>Register a buyer</button>
+                      <button type="button" onClick={() => setSheetCar({ ...car, title })} style={{ ...redKey, flex: 1 }}>{t("brokerStock.registerABuyer")}</button>
                     </div>
                     {car.on_my_page && (
                       <button type="button" onClick={() => copyLink(car)} style={{ ...greyKey, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 40 }}>
-                        <Link2 size={16} /> Share my link for this car
+                        <Link2 size={16} /> {t("brokerStock.shareMyLinkForThis")}
                       </button>
                     )}
                   </div>
                 );
               })}
               <p style={{ margin: 0, fontSize: 12, color: T.muted, lineHeight: 1.5 }}>
-                Cars the dealer has locked to one salesperson are not shown. If the dealer ends the connection, their cars leave your page straight away.
+                {t("brokerStock.carsTheDealerHasLocked")}
               </p>
             </>
           )}
@@ -341,7 +341,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {!regs.length && (
             <div style={{ ...card, fontSize: 14, color: T.sec, lineHeight: 1.55 }}>
-              No buyers registered yet. Open a dealer's car and tap Register a buyer.
+              {t("brokerStock.noBuyersRegisteredYetOpen")}
             </div>
           )}
           {regs.map((r) => {
@@ -359,12 +359,12 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: stateColor }}>{state}</div>
                 </div>
-                {r.source === 'page' && <div style={{ fontSize: 13, color: T.sec }}>Came through your page</div>}
+                {r.source === 'page' && <div style={{ fontSize: 13, color: T.sec }}>{t("brokerStock.cameThroughYourPage")}</div>}
                 {r.status !== 'sold' && Number(r.commission_agreed) > 0 && (
-                  <div style={{ fontSize: 13, color: T.sec }}>If the dealer sells to them: {api.money(r.commission_agreed)}. The dealer cannot lower this.</div>
+                  <div style={{ fontSize: 13, color: T.sec }}>{t("brokerStock.ifTheDealerSellsTo")} {api.money(r.commission_agreed)}{t("brokerStock.theDealerCannotLowerThis")}</div>
                 )}
                 {r.status === 'sold' && Number(r.commission_amount) > 0 && (
-                  <div style={{ fontSize: 13, color: T.sec }}>Your commission: {api.money(r.commission_amount)}</div>
+                  <div style={{ fontSize: 13, color: T.sec }}>{t("brokerStock.yourCommission")} {api.money(r.commission_amount)}</div>
                 )}
                 <div>
                   <a
@@ -393,6 +393,7 @@ export default function BrokerStock({ userId, slug, isPremium, theme = 'dark', o
 // (CLAUDE.md overlay rules). Shows the result inside the sheet so a clash is read, not toasted away.
 // Also opened from a lead's "Link a car" picker (BROKER-2) with the lead's name + number filled in.
 export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, onDone, initialName = '', initialPhone = '', leadId = null }) {
+  const { t } = useTranslation();
   useModalHistory(true, onClose);
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
@@ -417,9 +418,9 @@ export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, on
     setBusy(false);
     if (res.ok) { setDone(res); return; }
     if (res.reason === 'held') {
-      setMsg(`This buyer is already held by another broker on this dealer's cars until ${api.shortDate(res.until)}. You cannot register them on these cars until then. We do not say who.`);
+      setMsg(t("brokerStock.heldByOther", { date: api.shortDate(res.until) }));
     } else if (res.reason === 'mine') {
-      setMsg(`You already registered this buyer on this dealer's cars. Your hold runs until ${api.shortDate(res.until)}.`);
+      setMsg(t("brokerStock.alreadyRegistered", { date: api.shortDate(res.until) }));
     } else {
       setMsg(api.brokerError(res.reason));
     }
@@ -429,44 +430,44 @@ export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, on
 
   return createPortal(
     <div
-      role="dialog" aria-modal="true" aria-label="Register a buyer"
+      role="dialog" aria-modal="true" aria-label={t("brokerStock.registerABuyer")}
       style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{ width: '100%', maxWidth: 480, maxHeight: '92vh', overflowY: 'auto', background: T.card, color: T.text, borderRadius: '20px 20px 0 0', padding: 20, display: 'flex', flexDirection: 'column', gap: 14, fontFamily: 'inherit' }}>
         {done ? (
           <>
-            <div style={{ fontSize: 22, fontWeight: 600 }}>Buyer registered</div>
+            <div style={{ fontSize: 22, fontWeight: 600 }}>{t("brokerStock.buyerRegistered")}</div>
             <p style={{ margin: 0, fontSize: 14, color: T.sec, lineHeight: 1.5 }}>
-              {name.trim()} is held for you on {dealerName}'s cars until {api.shortDate(done.until)}. The time is recorded by the system.
+              {name.trim()} {t("brokerStock.isHeldForYouOn")} {dealerName}{t("brokerStock.sCarsUntil")} {api.shortDate(done.until)}{t("brokerStock.theTimeIsRecordedBy")}
             </p>
             <div style={{ background: T.row, borderRadius: T.rowRadius, padding: 14, fontSize: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: T.sec }}>Car</span><span style={{ textAlign: 'right' }}>{car.title}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: T.sec }}>{t("brokerStock.car")}</span><span style={{ textAlign: 'right' }}>{car.title}</span></div>
               {Number(car.commission) > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: T.sec }}>If it sells</span><span style={{ color: T.up, fontWeight: 500 }}>You earn {api.money(car.commission)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: T.sec }}>{t("brokerStock.ifItSells")}</span><span style={{ color: T.up, fontWeight: 500 }}>{t("brokerStock.youEarn")} {api.money(car.commission)}</span></div>
               )}
             </div>
-            <button type="button" onClick={() => onDone(done)} style={{ minHeight: 52, border: 0, borderRadius: 14, background: T.accent, color: T.onAccent, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Done</button>
+            <button type="button" onClick={() => onDone(done)} style={{ minHeight: 52, border: 0, borderRadius: 14, background: T.accent, color: T.onAccent, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t("brokerStock.done")}</button>
           </>
         ) : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>Register a buyer</div>
+                <div style={{ fontSize: 18, fontWeight: 600 }}>{t("brokerStock.registerABuyer")}</div>
                 <div style={{ fontSize: 13, color: T.sec, marginTop: 2 }}>{car.title}</div>
               </div>
-              <button type="button" onClick={onClose} aria-label="Close" style={{ flex: '0 0 44px', height: 44, border: 0, borderRadius: 22, background: T.row, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" onClick={onClose} aria-label={t("brokerStock.close")} style={{ flex: '0 0 44px', height: 44, border: 0, borderRadius: 22, background: T.row, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: T.sec }}>
-              Buyer name
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="As on their IC" style={field} />
+              {t("brokerStock.buyerName")}
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder={t("brokerStock.asOnTheirIc")} style={field} />
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: T.sec }}>
-              Buyer phone
+              {t("brokerStock.buyerPhone")}
               <PhoneInput
                 value={phone} onChange={setPhone} mobileOnly
                 style={{ height: 48, borderRadius: 12, background: T.input, color: T.text, fontSize: 16 }}
@@ -476,7 +477,7 @@ export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, on
 
             <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 13, color: T.sec, lineHeight: 1.45 }}>
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ flex: '0 0 22px', width: 22, height: 22, margin: 0, accentColor: T.accent }} />
-              <span>The buyer knows I am giving their name and number to {dealerName} for this car.</span>
+              <span>{t("brokerStock.theBuyerKnowsIAm")} {dealerName} {t("brokerStock.forThisCar")}</span>
             </label>
 
             {msg && <div style={{ background: T.row, borderRadius: T.rowRadius, padding: '12px 14px', fontSize: 13, lineHeight: 1.5 }}>{msg}</div>}
@@ -484,9 +485,9 @@ export function RegisterSheet({ T = THEMES.premium, car, dealerName, onClose, on
             <button
               type="button" onClick={submit} disabled={!valid || busy}
               style={{ minHeight: 52, border: 0, borderRadius: 14, background: T.accent, color: T.onAccent, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: !valid || busy ? 0.4 : 1 }}
-            >{busy ? 'Registering...' : 'Register buyer'}</button>
+            >{busy ? t("brokerStock.registering") : t("brokerStock.registerBuyer")}</button>
             <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.5 }}>
-              Registering holds this buyer for you on this dealer's cars for {api.HOLD_DAYS} days. The time is recorded by the system. Neither you nor the dealer can change it.
+              {t("brokerStock.registeringHoldsThisBuyerFor")} {api.HOLD_DAYS} {t("brokerStock.daysTheTimeIsRecorded")}
             </div>
           </>
         )}

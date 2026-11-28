@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { premiumDark as PD } from "../../theme/tokens";
+import { useTranslation } from 'react-i18next';
 
 // 00:00 on the 1st of this month in Malaysia (UTC+8, no daylight saving), as an ISO string.
 export function malaysiaMonthStartIso(now = new Date()) {
@@ -15,6 +16,7 @@ export function malaysiaMonthStartIso(now = new Date()) {
 }
 
 export default function TeamBoard({ dealerId, userId }) {
+  const { t: tr } = useTranslation();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(false);
 
@@ -45,16 +47,16 @@ export default function TeamBoard({ dealerId, userId }) {
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>Team</p>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textMuted }}>Cars sold this month by each salesman. Names are shared, deals stay private.</p>
+      <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: PD.text }}>{tr("linkedTeam.team")}</p>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textMuted }}>{tr("linkedTeam.carsSoldThisMonthBy")}</p>
       {rows === null ? (
-        <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 16, fontSize: 13, color: PD.textMuted }}>Loading...</div>
+        <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 16, fontSize: 13, color: PD.textMuted }}>{tr("linkedTeam.loading")}</div>
       ) : error ? (
-        <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 16, fontSize: 13, color: PD.accentText }}>Could not load the team. Try again in a moment.</div>
+        <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 16, fontSize: 13, color: PD.accentText }}>{tr("linkedTeam.couldNotLoadTheTeam")}</div>
       ) : rows.length === 0 ? (
         <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: "40px 16px", textAlign: "center", fontSize: 14, color: PD.textMuted }}>
           <Users size={28} style={{ margin: "0 auto 10px", display: "block" }} />
-          No teammates yet.
+          {tr("linkedTeam.noTeammatesYet")}
         </div>
       ) : (
         <div style={{ background: PD.card, borderRadius: PD.radius.card, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -63,7 +65,7 @@ export default function TeamBoard({ dealerId, userId }) {
               <span style={{ width: 22, textAlign: "center", fontSize: 14, fontWeight: 700, color: i < 3 && r.units > 0 ? PD.text : PD.textMuted, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {r.name}{r.isMe ? <span style={{ color: PD.textMuted, fontWeight: 500 }}> · You</span> : null}
+                  {r.name}{r.isMe ? <span style={{ color: PD.textMuted, fontWeight: 500 }}> {tr("linkedTeam.you")}</span> : null}
                 </p>
                 <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: PD.hover, overflow: "hidden" }}>
                   <div style={{ width: `${(r.units / max) * 100}%`, height: "100%", borderRadius: 99, background: r.isMe ? PD.accent : PD.textMuted }} />

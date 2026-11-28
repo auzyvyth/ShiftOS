@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, RefreshCw, Zap, ImagePlus } from "lucide-react";
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { useTranslation } from 'react-i18next';
 
 // ─── CameraCapture ────────────────────────────────────────────────────────────
 // Full-screen camera with a live template overlay:
@@ -13,6 +14,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 // getUserMedia is unavailable/denied.
 
 export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl, canvasW = 1080, canvasH = 1920 }) {
+  const { t: tr } = useTranslation();
   useModalHistory(true, onClose);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -163,7 +165,7 @@ export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl,
           <div style={{ position: "absolute", inset: 0, border: "3px dashed rgba(255,255,255,0.9)", borderRadius: 14, boxShadow: "0 0 0 2000px rgba(0,0,0,0.0)" }} />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.14em", color: "rgba(255,255,255,0.9)", textShadow: "0 2px 8px rgba(0,0,0,0.8)", textTransform: "uppercase" }}>
-              Your car here
+              {tr("camera.yourCarHere")}
             </span>
           </div>
           {carZone?.hint && (
@@ -181,9 +183,9 @@ export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl,
       {err && (
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, background: "rgba(0,0,0,0.85)", padding: 24, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: 600 }}>{err}</p>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, maxWidth: 280 }}>You can still shoot with your phone's native camera instead.</p>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, maxWidth: 280 }}>{tr("camera.youCanStillShootWith")}</p>
           <button onClick={() => fileRef.current?.click()} style={{ display: "flex", alignItems: "center", gap: 8, background: "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "12px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            <ImagePlus size={16} /> Open native camera
+            <ImagePlus size={16} /> {tr("camera.openNativeCamera")}
           </button>
         </div>
       )}
@@ -191,16 +193,16 @@ export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl,
 
       {/* Top bar */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
-        <button onClick={onClose} style={roundBtn} aria-label="Close camera"><X size={20} /></button>
+        <button onClick={onClose} style={roundBtn} aria-label={tr("camera.closeCamera")}><X size={20} /></button>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => setGhost((g) => !g)}
             style={{ ...roundBtn, width: "auto", borderRadius: 999, padding: "0 14px", fontSize: 12, fontWeight: 700, color: ghost ? "#fff" : "rgba(255,255,255,0.45)" }}
-            title="Toggle template ghost"
+            title={tr("camera.toggleTemplateGhost")}
           >
-            <Zap size={13} style={{ marginRight: 5 }} /> Ghost {ghost ? "ON" : "OFF"}
+            <Zap size={13} style={{ marginRight: 5 }} /> {tr("camera.ghost")} {ghost ? "ON" : tr("camera.off")}
           </button>
-          <button onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))} style={roundBtn} aria-label="Flip camera">
+          <button onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))} style={roundBtn} aria-label={tr("camera.flipCamera")}>
             <RefreshCw size={18} />
           </button>
         </div>
@@ -209,11 +211,11 @@ export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl,
       {/* Shutter */}
       {!err && (
         <div style={{ position: "absolute", bottom: 26, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 30 }}>
-          <button onClick={() => fileRef.current?.click()} style={{ ...roundBtn, width: 40, height: 40 }} title="Pick from gallery"><ImagePlus size={17} /></button>
+          <button onClick={() => fileRef.current?.click()} style={{ ...roundBtn, width: 40, height: 40 }} title={tr("camera.pickFromGallery")}><ImagePlus size={17} /></button>
           <button
             onClick={capture}
             disabled={!ready}
-            aria-label="Capture"
+            aria-label={tr("camera.capture")}
             style={{ width: 74, height: 74, borderRadius: "50%", border: "4px solid #fff", background: ready ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.08)", cursor: ready ? "pointer" : "default", boxShadow: "0 4px 30px rgba(0,0,0,0.6)" }}
           />
           <div style={{ width: 40 }} />

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Search, Car } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { useTranslation } from 'react-i18next';
 
 // The seller's "send a car" list. Every row comes from chat_sendable_cars,
 // which applies the SAME rule the insert policy does (chat_can_send_car), so
@@ -15,6 +16,7 @@ export const carTitle = (c) =>
 export const fmtRM = (n) => (Number(n) > 0 ? `RM ${Number(n).toLocaleString('en-MY')}` : null);
 
 export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
+  const { t: tr } = useTranslation();
   useModalHistory(true, onClose);
   const [cars, setCars] = useState(null);
   const [error, setError] = useState(null);
@@ -69,11 +71,11 @@ export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
   return createPortal(
     <div onClick={onClose}
       style={{ position:'fixed', inset:0, zIndex:12000, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-      <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Send a car"
+      <div onClick={e => e.stopPropagation()} role="dialog" aria-label={tr("chatPicker.sendACar")}
         style={{ width:'100%', maxWidth:520, maxHeight:'80vh', display:'flex', flexDirection:'column', background:t.sheet || t.bg, color:t.text, borderRadius:'16px 16px 0 0', border:`1px solid ${t.border}`, boxShadow:t.shadow, fontFamily:t.font || 'system-ui,sans-serif', boxSizing:'border-box' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 14px 10px' }}>
-          <p style={{ margin:0, flex:1, fontSize:15, fontWeight:700 }}>Send a car</p>
-          <button type="button" onClick={onClose} aria-label="Close"
+          <p style={{ margin:0, flex:1, fontSize:15, fontWeight:700 }}>{tr("chatPicker.sendACar")}</p>
+          <button type="button" onClick={onClose} aria-label={tr("chatPicker.close")}
             style={{ background:'none', border:'none', color:t.sub, cursor:'pointer', padding:4, display:'flex' }}>
             <X size={18} />
           </button>
@@ -82,7 +84,7 @@ export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
           <div style={{ padding:'0 14px 8px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:7, border:`1px solid ${t.border}`, borderRadius:10, padding:'0 10px', background:t.inputBg }}>
               <Search size={14} style={{ color:t.sub, flexShrink:0 }} />
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search your cars" aria-label="Search your cars"
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder={tr("chatPicker.searchYourCars")} aria-label={tr("chatPicker.searchYourCars")}
                 style={{ flex:1, minWidth:0, padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, outline:'none', fontFamily:'inherit' }} />
             </div>
           </div>
@@ -91,13 +93,13 @@ export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
           {error ? (
             <p style={{ margin:'16px 14px', fontSize:13, color:'#f87171' }}>{error}</p>
           ) : cars === null ? (
-            <p style={{ margin:'16px 14px', fontSize:13, color:t.sub }}>Loading your cars…</p>
+            <p style={{ margin:'16px 14px', fontSize:13, color:t.sub }}>{tr("chatPicker.loadingYourCars")}</p>
           ) : cars.length === 0 ? (
             <p style={{ margin:'16px 14px', fontSize:13, color:t.sub, lineHeight:1.55 }}>
-              No cars to send yet. Cars show here once they are listed as available or reserved in your stock.
+              {tr("chatPicker.noCarsToSendYet")}
             </p>
           ) : shown.length === 0 ? (
-            <p style={{ margin:'16px 14px', fontSize:13, color:t.sub }}>No car matches “{q}”.</p>
+            <p style={{ margin:'16px 14px', fontSize:13, color:t.sub }}>{tr("chatPicker.noCarMatches")}{q}”.</p>
           ) : fits.length > 0 ? (
             <>
               {label('Fits their post')}
