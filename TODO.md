@@ -3187,6 +3187,7 @@ Background (from the idea):
   rules in `assistantRules.js`, words EN+BM in `assistantCopy.js`, `npm run test:assistant`). Groups: Needs you (pending bookings with
   Confirm / Reschedule / WhatsApp, unread enquiries, chats, car questions), Worth a look (the silent car with Share again / Make a poster /
   Keep it 14 days / Snooze 3 days, and a morning brief of counts), Done (with Undo). Keep / Snooze are DEVICE-ONLY (`xd_assistant_<uid>`).
+  MARKETING (same day): Premium feature list line + plan card lines + /for-salesmen FAQ + the "What you get" tour step (`public/for-salesmen/tour-assistant-{en,ms}.webp`, real component on sample data; re-shoot when the feed changes) all say Assistant. SHIP THEM WITH THE FEATURE, never before it.
   NOT built: (1) step 1, find why 2 new sellers got through signup with no push device and nudge the active seller with no installed app
   (counts 2026-11-28: 17 active sellers, 8 with push, 4 of the 9 without are gone 30+ days); (2) real alert rules in the DB (quiet lead,
   push for the silent car), after midnight; (3) calm the overdue-handover noise (100 of 192 notifications in 30 days); (4) typed chat/AI box.

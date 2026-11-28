@@ -5,7 +5,7 @@ const modelName = (c) => c?.model || carName(c);
 
 export const COPY = {
   en: {
-    title: 'Assistant', sub: 'Only you see this', open: 'Assistant', close: 'Close',
+    title: 'Assistant', sub: 'Only you see this', open: 'Assistant', close: 'Close', today: 'Today', yesterday: 'Yesterday', locale: 'en-MY',
     sec: { needs: 'Needs you', worth: 'Worth a look', done: 'Done', doneSub: 'This week' },
     more: (n) => `${n} more in your notifications`,
     empty: { title: 'You are all caught up', body: 'When a buyer writes, a booking needs you, or a car goes quiet, it shows up here.' },
@@ -37,7 +37,7 @@ export const COPY = {
     toast: { confirmed: 'Booking confirmed' },
   },
   ms: {
-    title: 'Pembantu', sub: 'Hanya anda nampak ini', open: 'Pembantu', close: 'Tutup',
+    title: 'Pembantu', sub: 'Hanya anda nampak ini', open: 'Pembantu', close: 'Tutup', today: 'Hari ini', yesterday: 'Semalam', locale: 'ms-MY',
     sec: { needs: 'Perlukan anda', worth: 'Patut tengok', done: 'Siap', doneSub: 'Minggu ini' },
     more: (n) => `${n} lagi di notifikasi anda`,
     empty: { title: 'Semua sudah selesai', body: 'Bila pembeli mesej, ada booking nak disahkan, atau kereta jadi senyap, ia muncul di sini.' },

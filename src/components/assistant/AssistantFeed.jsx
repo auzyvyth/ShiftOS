@@ -16,15 +16,16 @@ import { mytDay } from "./assistantRules";
 
 const TZ = "Asia/Kuala_Lumpur";
 const fmtTime = (ts) => new Date(ts).toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit", timeZone: TZ });
-const fmtWhen = (ts, now) => {
+// Times stay "3:30 pm" in both languages; the day words follow the panel language.
+const fmtWhen = (ts, now, c) => {
   const d = new Date(ts);
-  const day = mytDay(d) === mytDay(now) ? "Today" : d.toLocaleDateString("en-MY", { weekday: "long", timeZone: TZ });
+  const day = mytDay(d) === mytDay(now) ? c.today : d.toLocaleDateString(c.locale, { weekday: "long", timeZone: TZ });
   return `${day}, ${fmtTime(d)}`;
 };
-const fmtStamp = (ts, now) => {
+const fmtStamp = (ts, now, c) => {
   const d = new Date(ts);
   if (mytDay(d) === mytDay(now)) return fmtTime(d);
-  return mytDay(d) === mytDay(new Date(now.getTime() - 86400000)) ? "Yesterday" : d.toLocaleDateString("en-MY", { weekday: "short", timeZone: TZ });
+  return mytDay(d) === mytDay(new Date(now.getTime() - 86400000)) ? c.yesterday : d.toLocaleDateString(c.locale, { weekday: "short", timeZone: TZ });
 };
 
 const font = "var(--xd-font-body, 'Outfit', system-ui, sans-serif)";
@@ -73,7 +74,7 @@ export default function AssistantFeed({ cards, lang, isMobile, now = new Date(),
 
   const renderNeeds = (x) => {
     if (x.kind === "booking") {
-      const when = fmtWhen(x.when, now);
+      const when = fmtWhen(x.when, now, c);
       return (
         <div key={x.id} style={S.card}>
           <div style={S.kind}><Dot />{c.kind.booking}</div>
@@ -92,7 +93,7 @@ export default function AssistantFeed({ cards, lang, isMobile, now = new Date(),
     const k = x.kind; // enquiry | chat | question
     return (
       <div key={x.id} style={S.card}>
-        <div style={S.kind}><Dot />{c.kind[k]}<span style={{ marginLeft: "auto" }}>{fmtStamp(x.when, now)}</span></div>
+        <div style={S.kind}><Dot />{c.kind[k]}<span style={{ marginLeft: "auto" }}>{fmtStamp(x.when, now, c)}</span></div>
         <p style={S.line}>{x.notif.title || c.kind[k]}</p>
         <p style={S.sub}>{x.notif.body || c[k].sub}</p>
         <div style={S.acts}><button style={btn("soft")} onClick={() => onAction(x, "open")}>{c[k].open}</button></div>
@@ -193,7 +194,7 @@ export default function AssistantFeed({ cards, lang, isMobile, now = new Date(),
                   {(d.kind === "keep" || d.kind === "snooze") && (
                     <button onClick={() => onUndo(d)} style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: PD.textMuted, textDecoration: "underline", textUnderlineOffset: 2, font: `13px ${font}` }}>{c.done.undo}</button>
                   )}
-                  <span style={{ marginLeft: "auto", color: PD.textMuted, fontSize: 12.5, flexShrink: 0 }}>{fmtStamp(d.at, now)}</span>
+                  <span style={{ marginLeft: "auto", color: PD.textMuted, fontSize: 12.5, flexShrink: 0 }}>{fmtStamp(d.at, now, c)}</span>
                 </div>
               ))}
             </div>
