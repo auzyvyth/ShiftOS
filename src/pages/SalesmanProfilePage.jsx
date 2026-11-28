@@ -1267,7 +1267,9 @@ export default function SalesmanProfilePage() {
               )}
     </>
   );
-  const hasModels = pro && listings.some((c) => c.is_model_card);
+  // A ?brand= link locks the models section and the booking car list to that brand too.
+  const modelCars = lockedBrand ? shownListings : listings;
+  const hasModels = pro && modelCars.some((c) => c.is_model_card);
   const calcOk = pro && !profile.page_basic && shownListings.length > 0;
   const siteWa = (source, item) => trackEvent(supabase, 'whatsapp_click', {
     car_id: item?.id || null,
@@ -1278,16 +1280,16 @@ export default function SalesmanProfilePage() {
   const siteWaUrl = (text) => sellerWaUrl({ slug: profile.slug, text });
   const siteNodes = {
     promos: <PromoBoard key="promos" site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
-    models: <ModelPicker key="models" cars={listings} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
+    models: <ModelPicker key="models" cars={modelCars} site={site} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} onCalc={calcOk && !site.off.includes('calculator') ? openCalc : null} />,
     cars: <React.Fragment key="cars">{carsSec}</React.Fragment>,
     calculator: <React.Fragment key="calculator">{calcSec}</React.Fragment>,
     delivery: <DeliveryBlock key="delivery" delivery={site.delivery} firstName={firstName} hasWa={hasWa} waUrlFor={siteWaUrl} onWhatsApp={siteWa} />,
     handover: <HandoverBlock key="handover" items={site.handover} photos={handoverPhotos} soldCount={soldCount} firstName={firstName} />,
     steps: <StepsBlock key="steps" steps={site.steps} firstName={firstName} />,
-    book: <BookBlock key="book" cars={listings} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
+    book: <BookBlock key="book" cars={modelCars} firstName={firstName} slug={profile.slug || slug} place={mapLocationStr} avatar={profile.avatar_url || null} />,
     faq: <FaqBlock key="faq" faq={site.faq} firstName={firstName} />,
   };
-  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: listings.some((c) => c.status === 'available' && c.dealer_id) }) : [];
+  const siteIds = pro ? visibleSections(site, { models: hasModels, cars: true, calculator: calcOk, photos: handoverPhotos.length > 0, book: modelCars.some((c) => c.status === 'available' && c.dealer_id) }) : [];
   // The page reads as rows (owner, 2026-11-25: "everything is too wide"): models + cars take a
   // row each, the other sections go two to a row on a wide screen. The fixed sections after
   // the seller's own (About, Why me, Track record, Find me) join the same flow.

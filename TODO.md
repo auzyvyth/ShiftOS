@@ -134,11 +134,11 @@ nobody live, then run `select ops_daily_checkup();` once as postgres and confirm
 - [ ] Add honeypot touches and Dependabot counts to the message once HONEYPOT-1 is live.
 
 ## PAGE-VIDEO: /for-salesmen "Scroll through a real Premium page" (owner, 2026-11-28)
-Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the plan tour; video
-`public/for-salesmen/premium-page-scroll-v1.mp4` (1.3 MB, 19.6 s, loads only when scrolled near). Recorded in the cloud sandbox,
-which cannot reach drevo.my, so it is the REAL page code with premiummotors' real public rows but only the 5 cars whose photos are in
-the repo, no profile photo (shows "A") and a blank map. The caption says "showing 5 of its cars".
-- [ ] Re-record from a session that can reach drevo.my (or the owner's phone) so it shows the real photo and every car: `tools/page-video/record.cjs`.
+Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the plan tour, in a browser-window frame; video
+`public/for-salesmen/premium-page-scroll-v2.mp4` (0.75 MB, 16.3 s, 1280x800, loads only when scrolled near). Recorded at DESKTOP size from
+the live data of `/s/premiummotors?brand=perodua` (owner: desktop, Perodua only), `tools/page-video/record.cjs`.
+- [ ] The banner car (a Honda Civic), the bio ("Selling Recon Toyota Alphard...") and the "Recon imports" tag on premiummotors are
+  account settings, not Perodua. Once the owner changes them, re-record as `-v3`.
 
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
