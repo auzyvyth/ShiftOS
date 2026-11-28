@@ -738,12 +738,12 @@ export default function SalesmanPremium() {
  useEffect(() => { setPinnedIds(Array.isArray(profile?.pinned_listing_ids) ? profile.pinned_listing_ids : []); }, [profile?.pinned_listing_ids]);
  const togglePin = useCallback(async (carId) => {
  const on = pinnedIds.includes(carId);
- if (!on && pinnedIds.length >= 4) { toast.error("You can pin 4 cars. Unpin one first."); return; }
+ if (!on && pinnedIds.length >= 4) { toast.error(t("salesmanPremium.pin.max")); return; }
  const prev = pinnedIds;
  const next = on ? pinnedIds.filter((x) => x !== carId) : [...pinnedIds, carId];
  setPinnedIds(next);
  const { data, error } = await supabase.rpc("set_my_pinned_listings", { p_ids: next });
- if (error || !data?.ok) { setPinnedIds(prev); toast.error("Could not save the pin. Try again."); return; }
+ if (error || !data?.ok) { setPinnedIds(prev); toast.error(t("salesmanPremium.pin.saveFailed")); return; }
  toast.success(on ? "Unpinned." : "Pinned to the top of your page.");
  }, [pinnedIds]);
  // A dealer car comes off the broker's page from the Listings tab too (the same call as Dealer stock).
@@ -752,7 +752,7 @@ export default function SalesmanPremium() {
  if (!res.ok) { toast.error(brokerError(res.reason)); return; }
  applyBrokerPageCar(car, car.dealerId, car.dealerName, false);
  setPinnedIds((p) => p.filter((x) => x !== car.id));
- toast.success("Removed from your page.");
+ toast.success(t("salesmanPremium.pin.removedFromPage"));
  }, []);
  const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
@@ -936,7 +936,7 @@ export default function SalesmanPremium() {
  const [editListing, setEditListing] = useState(null);
  // LINKED-PREMIUM: a dealer car is edited by the dealer, not the salesman.
  useEffect(() => {
- if (isLinked && editListing) { setEditListing(null); toast.error("Only your dealer can edit this car. Ask them to update it."); }
+ if (isLinked && editListing) { setEditListing(null); toast.error(t("salesmanPremium.linked.onlyDealerEdit")); }
  }, [isLinked, editListing]);
 
  // tour
@@ -2700,7 +2700,7 @@ export default function SalesmanPremium() {
  // keeps the one-tap win.
  const agreed = Number(wonPrompt.price) || null;
  if (isLinked && (!agreed || agreed <= 0)) {
- toast.error("Enter the price agreed with the buyer");
+ toast.error(t("salesmanPremium.linked.enterAgreedPrice"));
  setWonSaving(false);
  return;
  }
@@ -2740,14 +2740,14 @@ export default function SalesmanPremium() {
  const back = Array.isArray(won.data) ? won.data[0] : null;
  if (back && back.stage !== "won" && back.stage !== "closed_won" && back.won_requested_at) {
  setLeads((p) => p.map((l) => l.id === leadId ? { ...l, won_requested_at: back.won_requested_at } : l));
- toast.success(`Sent to ${wonDealerSale?.reg?.dealer_name || "the dealer"} to approve. It moves to Won once they confirm.`);
+ toast.success(t("salesmanPremium.linked.sentToDealerWon", { dealer: wonDealerSale?.reg?.dealer_name || t("salesmanPremium.linked.theDealer") }));
  setWonSaving(false);
  setWonPrompt(null);
  return;
  }
  if (won.pending) {
  // Over the dealer's discount limit: nothing is sold until the dealer approves.
- toast.success("Sent to your dealer to approve the price. You'll get a notification when they answer.");
+ toast.success(t("salesmanPremium.linked.sentToDealerPrice"));
  setWonSaving(false);
  setWonPrompt(null);
  return;
@@ -2784,7 +2784,7 @@ export default function SalesmanPremium() {
  // BROKER-2: a Won on a buyer registered on a dealer's car files a sale claim in the database; nothing
  // is owed until the dealer approves it. Say so, and pull the registration state forward.
  if (wonDealerSale) {
- toast.success(`Sent to ${wonDealerSale.reg.dealer_name} to approve. Your commission is owed once they confirm.`);
+ toast.success(t("salesmanPremium.linked.sentToDealerCommission", { dealer: wonDealerSale.reg.dealer_name }));
  loadBrokerRegs();
  }
 
@@ -2957,7 +2957,7 @@ export default function SalesmanPremium() {
  // (above); every other status, and "Sold elsewhere", is the dealer's call. The
  // write would silently change nothing (update_listing_status checks the owner).
  if (isLinked) {
- toast.error("Only your dealer can change this car's status. Sell it by marking the buyer's lead Won.");
+ toast.error(t("salesmanPremium.linked.onlyDealerStatus"));
  return;
  }
  const prevStatus = car.status;
@@ -3016,14 +3016,14 @@ export default function SalesmanPremium() {
  // LINKED-PREMIUM: "Delete" on a dealer car only takes it off MY listings.
  if (isLinked) {
  const car = myListings.find((c) => c.id === carId);
- if (car?.assigned_to === userId) { toast.error("Your dealer assigned this car to you. Ask them to unassign it."); return; }
+ if (car?.assigned_to === userId) { toast.error(t("salesmanPremium.linked.assignedToYou")); return; }
  setDeletingId(carId);
  const { data: gone, error: unErr } = await supabase.from("salesman_listings").delete()
  .eq("salesman_id", userId).eq("listing_id", carId).select("listing_id");
  setDeletingId(null);
- if (unErr || !gone?.length) { toast.error("Could not remove this car from your listings"); return; }
+ if (unErr || !gone?.length) { toast.error(t("salesmanPremium.linked.removeFailed")); return; }
  setMyListings((p) => p.filter((c) => c.id !== carId));
- toast.success("Removed from your listings");
+ toast.success(t("salesmanPremium.linked.removed"));
  return;
  }
  setDeletingId(carId);
@@ -3283,9 +3283,9 @@ export default function SalesmanPremium() {
  ] : []),
  // Dealer connections, only for a salesman under a dealer (LINKED-PREMIUM).
  ...(isLinked ? [
- { tab: "incoming", label: "Incoming", icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
- { tab: "inventory", label: "Dealer cars", icon: <Store style={{ width: 16, height: 16 }} /> },
- { tab: "team", label: "Team", icon: <Users style={{ width: 16, height: 16 }} /> },
+ { tab: "incoming", label: t("salesmanPremium.linked.tabIncoming"), icon: <Inbox style={{ width: 16, height: 16 }} />, badge: incomingCount || null },
+ { tab: "inventory", label: t("salesmanPremium.linked.tabInventory"), icon: <Store style={{ width: 16, height: 16 }} /> },
+ { tab: "team", label: t("salesmanPremium.linked.tabTeam"), icon: <Users style={{ width: 16, height: 16 }} /> },
  ] : []),
  {
  tab: "enquiries",
@@ -3651,7 +3651,7 @@ export default function SalesmanPremium() {
  {/* BROKER-4: Won pressed on a dealer's car, waiting for the dealer to confirm. */}
  {!isWonLead && lead.won_requested_at && (
  <div style={{ fontSize: 12, color: PD.textSec, background: PD.raised, borderRadius: 10, padding: "8px 10px", marginTop: 8 }}>
- Won is waiting for the dealer to confirm the sale.
+ {t("salesmanPremium.ds.wonWaiting")}
  </div>
  )}
 
@@ -4438,18 +4438,18 @@ export default function SalesmanPremium() {
  const disputed = reg.status === "registered" && !claimed && !!reg.claim_disputed_at;
  const earn = Number(reg.status === "sold" ? reg.commission_amount : reg.commission_agreed) || 0;
  let headline; let tone = PD.textSec;
- if (reg.status === "sold") { headline = reg.paid_at ? "Sale approved. Commission paid." : `Sale approved. Commission owed: ${brokerMoney(earn)}.`; tone = PD.up; }
- else if (claimed) { headline = `Waiting for ${reg.dealer_name} to approve this sale.`; tone = PD.text; }
- else if (disputed) { headline = `${reg.dealer_name} did not confirm this sale. Talk to them.`; tone = PD.accentText; }
- else if (holding) { headline = `Held for you until ${brokerDate(reg.hold_until)}.`; tone = PD.up; }
- else headline = `Hold ended ${brokerDate(reg.hold_until)}.`;
+ if (reg.status === "sold") { headline = reg.paid_at ? t("salesmanPremium.ds.approvedPaid") : t("salesmanPremium.ds.approvedOwed", { amount: brokerMoney(earn) }); tone = PD.up; }
+ else if (claimed) { headline = t("salesmanPremium.ds.waitingApprove", { dealer: reg.dealer_name }); tone = PD.text; }
+ else if (disputed) { headline = t("salesmanPremium.ds.notConfirmed", { dealer: reg.dealer_name }); tone = PD.accentText; }
+ else if (holding) { headline = t("salesmanPremium.ds.heldUntil", { date: brokerDate(reg.hold_until) }); tone = PD.up; }
+ else headline = t("salesmanPremium.ds.holdEnded", { date: brokerDate(reg.hold_until) });
  return (
  <div style={{ marginTop: 8, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised }}>
- <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>Dealer sale</p>
+ <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.ds.title")}</p>
  <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 600, color: tone }}>{headline}</p>
  {reg.status !== "sold" && (
  <p style={{ margin: "3px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.45 }}>
- {earn > 0 ? `You earn ${brokerMoney(earn)} once the dealer approves the sale. ` : ""}{claimed ? "They were told when you marked it won." : "Mark this lead won when the buyer buys, and it goes to the dealer to approve."}
+ {earn > 0 ? t("salesmanPremium.ds.earn", { amount: brokerMoney(earn) }) + " " : ""}{claimed ? t("salesmanPremium.ds.told") : t("salesmanPremium.ds.markWon")}
  </p>
  )}
  </div>
@@ -5234,7 +5234,7 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: PD.text, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(242,244,247,0.3)" }}>{carTitle}</p>
  {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: PD.textSec }}>{carVariant}</p>}
  {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: PD.text, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
- {carVin && <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : `${t("salesmanPremium.bookings.plate")} `}{carVin}</p>}
+ {carVin && <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? t("salesmanPremium.ds.vin") + " " : `${t("salesmanPremium.bookings.plate")} `}{carVin}</p>}
  </div>
  </div>
 
@@ -5733,7 +5733,7 @@ export default function SalesmanPremium() {
  body: {
  dealer_id: getDealerIdFromProfile(profile),
  channel_id: chatId,
- message: `Telegram connected! You'll get appointment + booking reminders here. — ${profile?.full_name || "DrevoOS"}`,
+ message: `${t("salesmanPremium.settings.telegramConnectedMsg")} — ${profile?.full_name || "DrevoOS"}`,
  },
  headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
  });
@@ -6001,7 +6001,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
  <div style={{ flex: "1 1 150px", minWidth: 0 }}>
  <label style={lbl}>{t("salesmanPremium.settings.city")}</label>
- <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
+ <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder={t("salesmanPremium.ds.cityPh")} style={inputStyle} />
  </div>
  <div style={{ flex: "1 1 150px", minWidth: 0 }}>
  <label style={lbl}>{t("salesmanPremium.settings.state")}</label>
@@ -6015,7 +6015,7 @@ export default function SalesmanPremium() {
  </div>
  <div>
  <label style={lbl}>{t("salesmanPremium.settings.address")}</label>
- <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
+ <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder={t("salesmanPremium.ds.addressPh")} style={inputStyle} />
  <p style={hint}>{t("salesmanPremium.settings.addressHint")}</p>
  </div>
  </div>
@@ -7314,7 +7314,7 @@ export default function SalesmanPremium() {
  <p style={{ fontSize: 12.5, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {profile?.full_name || profile?.slug || t("salesmanPremium.nav.salesman")}
  </p>
- <p style={{ fontSize: 10.5, color: "#4b5563", margin: "2px 0 0" }}>{isPremium ? "Premium" : "Lite"}</p>
+ <p style={{ fontSize: 10.5, color: "#4b5563", margin: "2px 0 0" }}>{isPremium ? t("salesmanPremium.ds.planPremium") : t("salesmanPremium.ds.planLite")}</p>
  </div>
  <button
  onClick={() => setLogoutConfirmOpen(true)}
@@ -8068,15 +8068,15 @@ export default function SalesmanPremium() {
  const off = ask - (Number(wonPrompt.price) || 0);
  return (
  <div style={{ margin: "0 0 16px" }}>
- <label htmlFor="won-agreed" style={{ display: "block", fontSize: 12, fontWeight: 600, color: PD.textSec, margin: "0 0 6px" }}>Agreed price (RM)</label>
+ <label htmlFor="won-agreed" style={{ display: "block", fontSize: 12, fontWeight: 600, color: PD.textSec, margin: "0 0 6px" }}>{t("salesmanPremium.ds.agreedPrice")}</label>
  <input id="won-agreed" type="number" inputMode="numeric" min="1" value={wonPrompt.price || ""}
  onChange={(e) => setWonPrompt((p) => (p ? { ...p, price: e.target.value } : p))}
  style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: PD.radius.row, background: PD.raised, border: "none", color: PD.text, fontSize: 16, outline: "none", fontFamily: "inherit" }} />
  {ask > 0 && (
  <p style={{ margin: "8px 0 0", fontSize: 12, color: PD.textMuted, lineHeight: 1.5 }}>
  {off > 0
- ? `RM ${off.toLocaleString("en-MY")} off the asking price of RM ${ask.toLocaleString("en-MY")}. Over your dealer's limit, it goes to them to approve first.`
- : `Asking price RM ${ask.toLocaleString("en-MY")}.`}
+ ? t("salesmanPremium.ds.offAsking", { off: off.toLocaleString("en-MY"), ask: ask.toLocaleString("en-MY") })
+ : t("salesmanPremium.ds.askingPrice", { ask: ask.toLocaleString("en-MY") })}
  </p>
  )}
  </div>
