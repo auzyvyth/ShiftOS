@@ -39,13 +39,13 @@ import NicknameField from "../components/profile/NicknameField";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
-import { chosenPageColor } from "../utils/pageAccent";
+import { chosenPageColor, pagePalette, cleanHex, PAGE_COLOR_DEFAULT } from "../utils/pageAccent";
 import PremiumLookNews from "../components/news/PremiumLookNews";
 import MotionPosterNews from "../components/news/MotionPosterNews";
 import MotionPosterGuide from "../components/news/MotionPosterGuide";
 import HeroPhotoCard from "../components/premium/HeroPhotoCard";
 import PageSiteCard from "../components/premium/PageSiteCard";
-import PageGradientPicker from "../components/premium/PageGradientPicker";
+import PageColorPicker from "../components/premium/PageColorPicker";
 import { ABOUT_LANGUAGES, ABOUT_LIMITS, aboutPayload, aboutForm as toAboutForm } from "../utils/agentAbout";
 import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
@@ -5635,8 +5635,9 @@ export default function SalesmanPremium() {
  };
 
  // PAGE-PRO: the page colour, saved on tap (profiles.brand_color).
- const savePageColor = async (hex) => {
- if (pageColorSaving) return;
+ const savePageColor = async (raw) => {
+ const hex = cleanHex(raw);
+ if (pageColorSaving || !hex) return;
  const prev = profile?.brand_color;
  setPageColorSaving(true);
  setProfile((p) => ({ ...p, brand_color: hex }));
@@ -5876,15 +5877,15 @@ export default function SalesmanPremium() {
  </div>
  </div>
  {/* PAGE-HERO: the big photo at the top of the public page (cut out on the phone). */}
- <HeroPhotoCard userId={userId} accent={chosenPageColor(profile) || undefined} />
+ <HeroPhotoCard userId={userId} accent={pagePalette(chosenPageColor(profile) || PAGE_COLOR_DEFAULT).accent} onAccent={pagePalette(chosenPageColor(profile) || PAGE_COLOR_DEFAULT).on} />
  {/* PAGE-SITE 2: promos, delivery towns and section order on the public page. */}
- <PageSiteCard userId={userId} accent={chosenPageColor(profile) || undefined} />
- {/* PAGE-PRO: the page's colour (WhatsApp button, accent line, photo ring).
-     Saved on tap; the DB default gold counts as "not chosen" (pageAccent.js). */}
+ <PageSiteCard userId={userId} accent={pagePalette(chosenPageColor(profile) || PAGE_COLOR_DEFAULT).accent} onAccent={pagePalette(chosenPageColor(profile) || PAGE_COLOR_DEFAULT).on} />
+ {/* PAGE-COLOR: the page's ONE colour (buttons, picked chips, calculator, booking pass); shades and
+     the text colour on it are worked out (pageAccent.js pagePalette). The DB default gold = "not chosen". */}
  <div style={card}>
  <label style={lbl}>{t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })}</label>
- <PageGradientPicker value={chosenPageColor(profile)} saving={pageColorSaving} onSave={savePageColor} />
- <p style={hint}>{t("salesmanPremium.settings.pageColor.hint", { defaultValue: "Your page's main button and accents. Only Premium pages have one." })}</p>
+ <PageColorPicker value={chosenPageColor(profile)} saving={pageColorSaving} onSave={savePageColor} />
+ <p style={hint}>{t("salesmanPremium.settings.pageColor.hint", { defaultValue: "Pick any colour. Your buttons, picked options and calculator follow it; lighter and darker shades and the text colour are worked out for you." })}</p>
  </div>
  <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>

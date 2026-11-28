@@ -39,7 +39,7 @@ import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { pageAccent } from '../utils/pageAccent';
+import { pageAccent, paletteVars } from '../utils/pageAccent';
 import { aboutFacts } from '../utils/agentAbout';
 import { applyCarOrder, brandFromParam, orderedBrands, brandName } from '../utils/liveMaths';
 
@@ -1696,7 +1696,7 @@ export default function SalesmanProfilePage() {
         .ap-ranks-h { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
         .ap-ranks-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
         .ap-ranks-g div { padding: 12px; border-radius: 10px; corner-shape: squircle; background: #f4f4f6; color: #0f1115; }
-        .ap-ranks-g div.is-top { background: #dc2626; color: #fff; }
+        .ap-ranks-g div.is-top { background: var(--ap-a, #dc2626); color: var(--ap-on, #fff); }
         .ap-ranks-g b { display: block; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; letter-spacing: .02em; }
         .ap-ranks-g span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
         .ap-ranks-f { margin: 8px 0 0; font-size: 11.5px; color: #6b7280; }
@@ -1725,7 +1725,7 @@ export default function SalesmanProfilePage() {
       {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
-      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? paletteVars(pro) : undefined}>
         {/* The strip below is FIXED, so it sat on top of the page's own Back / Share / Dashboard /
             Live presentation buttons (owner, 2026-11-27: "they are gone"). This spacer, the strip's
             own height, moves the page down while the strip shows. */}

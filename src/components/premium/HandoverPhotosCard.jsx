@@ -28,7 +28,7 @@ const pathOf = (url, uid) => {
   return i < 0 ? null : decodeURIComponent(String(url).slice(i + '/car-images/'.length).split('?')[0]);
 };
 
-export default function HandoverPhotosCard({ userId, accent = '#DC2626' }) {
+export default function HandoverPhotosCard({ userId, accent = '#DC2626', onAccent = '#fff' }) {
   const [rows, setRows] = useState(undefined);
   const [notReady, setNotReady] = useState(false);
   const [file, setFile] = useState(null);
@@ -120,7 +120,7 @@ export default function HandoverPhotosCard({ userId, accent = '#DC2626' }) {
   const hint = { margin: '4px 0 12px', fontSize: 12.5, lineHeight: 1.5, color: PD.textMuted };
   const input = { boxSizing: 'border-box', width: '100%', minWidth: 0, height: 44, padding: '0 12px', borderRadius: PD.radius.row, border: 'none', background: PD.raised, color: PD.text, fontFamily: 'inherit', fontSize: 14, outline: 'none' };
   const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, padding: '0 16px', borderRadius: PD.radius.pill, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
-  const chip = (on) => ({ ...btn, minHeight: 40, background: on ? accent : PD.hover, color: on ? '#fff' : PD.textSec });
+  const chip = (on) => ({ ...btn, minHeight: 40, background: on ? accent : PD.hover, color: on ? onAccent : PD.textSec });
 
   return (
     <div style={card}>
@@ -147,7 +147,7 @@ export default function HandoverPhotosCard({ userId, accent = '#DC2626' }) {
         </div>
         <button type="button" role="checkbox" aria-checked={agreed} onClick={() => setAgreed((a) => !a)}
           style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 0, border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.45, color: PD.text }}>
-          <i style={{ flexShrink: 0, width: 20, height: 20, marginTop: 1, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: agreed ? accent : 'transparent', border: agreed ? 'none' : `1.5px solid ${PD.textMuted}`, color: '#fff' }}>
+          <i style={{ flexShrink: 0, width: 20, height: 20, marginTop: 1, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: agreed ? accent : 'transparent', border: agreed ? 'none' : `1.5px solid ${PD.textMuted}`, color: onAccent }}>
             {agreed && <Check size={12} strokeWidth={3} />}
           </i>
           The buyer in this photo agreed to it being on my public page.
