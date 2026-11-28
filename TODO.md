@@ -105,6 +105,13 @@ nobody live, then run `select ops_daily_checkup();` once as postgres and confirm
 - [ ] Website speed from outside (page load time of drevo.my + one car page): needs an edge function or Vercel check, not built.
 - [ ] Add honeypot touches and Dependabot counts to the message once HONEYPOT-1 is live.
 
+## PAGE-VIDEO: /for-salesmen "Scroll through a real Premium page" (owner, 2026-11-28)
+Built (not on staging): `src/components/salesmanLanding/PageVideo.jsx` under the plan tour; video
+`public/for-salesmen/premium-page-scroll-v1.mp4` (1.3 MB, 19.6 s, loads only when scrolled near). Recorded in the cloud sandbox,
+which cannot reach drevo.my, so it is the REAL page code with premiummotors' real public rows but only the 5 cars whose photos are in
+the repo, no profile photo (shows "A") and a blank map. The caption says "showing 5 of its cars".
+- [ ] Re-record from a session that can reach drevo.my (or the owner's phone) so it shows the real photo and every car: `tools/page-video/record.cjs`.
+
 ## DMS-GAP: dealer DMS gap audit follow-ups (2026-11-27/28) - on staging, NOT on production
 Built this session (all on staging, see the handoff): chassis rule (one live car per chassis per dealer),
 COSTS-1 cost list per car (Owner tab + Stock tab Costs pop-up + Bills to pay), break-even warranty note,

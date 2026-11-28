@@ -11,6 +11,7 @@ import {
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
+import PageVideo from "../components/salesmanLanding/PageVideo";
 import PricingCards from "../components/pricing/PricingCards";
 import { salesmanPricingCards, PRICING_FEATURES_LABEL } from "../utils/plans";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
@@ -301,6 +302,9 @@ export default function SalesmanLiteLanding() {
 
         {/* ── What you get with each plan: one real screenshot per tab ── */}
         <PlanTour copy={t.tour} lang={lang} {...(inApp ? { ctaHref: waHref, ctaLabel: t.inApp.cta, onCtaClick: onWa("tour") } : {})} />
+
+        {/* ── A real Premium page, scrolling top to footer (under the tour's circuit line) ── */}
+        <PageVideo copy={t.pageVideo} examplePath={EXAMPLE_PAGE.path} exampleLabel={EXAMPLE_PAGE.label} />
 
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
